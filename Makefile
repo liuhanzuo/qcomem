@@ -1,4 +1,4 @@
-.PHONY: bootstrap run system-info smoke test
+.PHONY: bootstrap run system-info smoke context test
 
 bootstrap:
 	bash scripts/bootstrap.sh
@@ -11,6 +11,9 @@ system-info:
 
 smoke:
 	.venv/bin/macllm-run-mlx --config configs/smoke.json
+
+context:
+	.venv/bin/macllm-context-bench
 
 test:
 	.venv/bin/python -m compileall -q src

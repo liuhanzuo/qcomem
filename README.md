@@ -32,6 +32,12 @@ make smoke
 source .venv/bin/activate
 ```
 
+Run the same-process 512/2048/8192-token context benchmark:
+
+```bash
+make context
+```
+
 ## First experiment
 
 The smoke configuration uses
