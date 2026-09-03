@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "c557217eba583f4b47559e4fcbc1c75c71f688febb1f9c633cbdab4d45906277",
+  "role": "experimental_rigor",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文把观察性长度关联、同题干预和跨数据床敏感性明确分层，并使用以题目为簇的 bootstrap、成对对照和多重性校正。主要方向性结论由数据支持，但解码随机性未被重复采样，观察效应与填充干预效应之间也未形成同一估计量上的正式检验；MATH500 的人工锚定样本仍不足。",
+    "presentation": "核心估计量、证据等级和撤回边界在正文及表1、表3、表4、表6中较清楚，图表可读且没有视觉截断。材料略显审计化，多个 judge 版本、锚定路线和四态标签增加了阅读负担，但关键数字与限制均能定位。",
+    "contribution": "最有价值的是把自然长度关联拆成置信度与准确率两部分，并用预先声明的同题、无语义填充干预检验一个具体因果机制。当前证据只覆盖一个模型、一个主要任务与一种人工填充操作，第二数据床又处于 POWER_LIMITED，因此尚不足以形成可迁移的一般结论。"
+  },
+  "paper_summary": "本文研究 masked-diffusion 模型中提示长度与有符号置信度—准确率差 SCE=confidence−accuracy 的关系。GSM8K 的事后极端长度三分位比较得到 ΔSCE=+0.2227，95% 题目簇 bootstrap 区间为[0.169,0.277]，分解为置信度下降−0.0314与准确率下降−0.2541。随后在400道题上实施 Short、Long（增加37个无语义冗余 token）和随机剂量臂；Long−Short 的 ΔSCE 为−0.0075，区间[−0.052,+0.039]，因此论文将“无语义长度本身导致差距扩大”判为 NOT_IDENTIFIED，而不是把观察关联解释为因果。MATH500 上自动 judge 给出正向差异，但30个人工锚点的校正区间跨零，故跨床结论被标为 POWER_LIMITED。",
+  "strongest_verified_contribution": "第2节表1所示的400题同题干预最可信：在固定 NFE=64、同题配对及题目簇 bootstrap 下，增加37个无语义 token 同时降低置信度和准确率，但未检测到 SCE 扩大（−0.0075，[−0.052,+0.039]）。这有力地否定了“观察到的约+0.223差距可由该无语义长度操作直接复现”这一具体机制解释；它不证明自然长度没有因果作用。",
+  "strengths": [
+    "第2节将 ΔSCE 精确分解为 Δconfidence−Δaccuracy，避免把准确率下降误写成纯校准恶化。",
+    "表1的同题三臂设计固定解码预算并保存题目级配对；正文还指出逐 decode 的朴素斜率会因共享题目异质性产生伪显著，而题目簇斜率为+0.0009/token、区间跨零。",
+    "观察性主分析按题目而不是1948条预测进行聚类重采样，并明确说明中间三分位不进入极端对比。",
+    "MATH500 judge 修复、30个锚点、已知隐藏 false accept 以及 FULL-193 尚未完成都被主动披露，没有把不充分的敏感性区间包装成经典置信区间。",
+    "局限性与证据等级用 SUPPORT、POWER_LIMITED、NOT_IDENTIFIED、NOT_MEASURED 区分，最终结论总体遵守这些边界。"
+  ],
+  "questions": [
+    "各题各臂的生成是否在给定 seed 下完全确定？若不是，为什么每题每臂仅一次生成足以让题目簇 bootstrap 覆盖解码随机性？",
+    "能否对“观察性 ΔSCE 与 Long−Short ΔSCE 的差异”构造一个共同重采样的直接对比区间，而不只比较一个点估计是否落在另一个区间内？",
+    "37-token 冗余填充与自然长度差异在语义、格式和难度上完全不同；作者愿否加入内容承载但任务等价的长度操作，以检验更接近自然长度变化的机制？",
+    "MATH500 的30个锚点如何抽取，为什么称为 purposive；已知隐藏 false accept 后，何时会完成预先声明的 accepted/rejected 双层概率抽样？",
+    "100题、200个比较的语义有效性门是否与最终400题随机独立，且评审者是否对处理臂和模型输出盲法？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A32-R3-01",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility"],
+      "location": "第2节“Within-item causal check”及表1（PDF第3–4页）；第5节解码计划（PDF第7页）",
+      "claim_ids": ["within-item-causal-null", "random-dose-slope"],
+      "evidence_ids": ["Table-1", "Table-3"],
+      "observed_evidence": "每道题在 Short/Long/Random 各臂保存一个结果，并以题目为重采样簇；文中给出一个固定 seed，但未展示跨独立解码 seed 的重复生成或方差分解。",
+      "why_it_matters": "题目簇 bootstrap 正确处理同题多臂相关性，却不能自动估计随机生成器在固定题目上的方差。若解码并非确定性的，一次生成可能使零效应区间过窄，也无法判断结果是否依赖某个随机轨迹。",
+      "required_fix": "明确证明当前解码在固定输入下是确定性的；否则对一个预先指定的题目子集或全体题目运行多个独立解码 seed，并用题目为主簇、seed 为题内重复的层级分析重新估计主对比。",
+      "verification_test": "至少用3–5个独立解码 seed 复现 Long−Short ΔSCE，报告题目间与题内 seed 方差，并检查合并层级95%区间是否仍包含0且排除具有实践意义的正效应界。",
+      "evidence_needed": "确定性执行证明，或多 seed 的逐题逐臂输出及层级 bootstrap/混合模型结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R3-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第2节图1与表1附近（PDF第3–4页）及第7节结论（PDF第9页）",
+      "claim_ids": ["observational-vs-intervention-contrast", "mechanism-boundary"],
+      "evidence_ids": ["Figure-1", "Table-1", "Figure-2a"],
+      "observed_evidence": "论文以观察性 ΔSCE=+0.2227 与同题填充干预 ΔSCE=−0.0075 对照，并强调后者区间不含前者的量级；但二者来自不同样本构造、不同长度内容和不同估计量，未报告二者差值的联合不确定性。",
+      "why_it_matters": "一个点估计未落入另一个估计量的区间并不等价于正式的效应差异检验。更重要的是，无语义填充只检验一种长度处理，不能单独排除自然题面长度携带的语义、格式或难度机制。",
+      "required_fix": "把结论严格限定为“该无语义填充操作未复现观察量级”，并在共享题目上定义可比较的自然变体/填充变体差值，或给出联合 bootstrap 的 contrast-of-contrasts。",
+      "verification_test": "对共享题目同时重采样所有相关臂，输出(自然长−自然短)−(填充长−短)的95%区间；若新增内容承载臂，还应预先声明等价性/非劣界限。",
+      "evidence_needed": "统一估计目标的联合重采样结果，以及更贴近自然长度变化的受控处理。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R3-03",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "limitations_responsible_claims"],
+      "location": "第3节 MATH500 分析（PDF第4–5页）、第6节表4，以及附录表5–6（PDF第10–12页）",
+      "claim_ids": ["cross-bed-sensitivity", "human-anchor-correction"],
+      "evidence_ids": ["Table-4", "Table-5", "Table-6"],
+      "observed_evidence": "主 v2 judge 的未校正读数为+0.2382 [0.1639,0.3125]，但30个 purposive 人工锚点下的 lenient 校正为+0.1606 [−0.059,+0.380]。论文还发现一个未包含在锚点中的已知 false accept，并明确指出 FULL-193 未完成。",
+      "why_it_matters": "30个非概率锚点无法为整个 accepted/rejected 集合提供可解释的抽样覆盖；已知漏掉的 false accept 直接表明“接受集洁净”路线失效。跨床方向因此不能作为外部有效性证据。",
+      "required_fix": "完成预先声明的 accepted 与 rejected 两层概率样本人工标注，使用盲法双人判定和冲突仲裁，并按抽样概率估计校正量与不确定性。",
+      "verification_test": "报告 FULL-193 或经功效论证的等价设计；在预先冻结的阈值下检查校正后 ΔSCE 区间是否排除0，并公开两层 false-accept/false-reject 计数。",
+      "evidence_needed": "完整分层人工标签、抽样权重、盲法/一致性记录与校正后区间。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R3-04",
+      "severity": "minor",
+      "dimensions": ["clarity", "limitations_responsible_claims"],
+      "location": "摘要、贡献列表与第2节对三臂设计的表述（PDF第1、3–4页）",
+      "claim_ids": ["randomized-within-item-description"],
+      "evidence_ids": ["Table-1"],
+      "observed_evidence": "Random 臂的0–55 token 剂量按预先声明 seed 抽取，但 Short 与 Long 是每题固定的0与37 token 操作。全文多处把整个设计简写为“randomized within-item experiment”。",
+      "why_it_matters": "这种表述可能让读者误以为 Short/Long 处理分配本身随机化并识别平均处理效应；实际最强识别来自同题固定对比，Random 臂才有随机剂量。",
+      "required_fix": "将主设计称为预先声明的同题配对干预，并单独说明 Random 臂的剂量随机化；给出臂顺序、seed 与是否存在顺序效应。",
+      "verification_test": "逐处核查摘要、贡献和结论，确保“randomized”仅修饰确有随机分配的部分，且方法表可重建分配过程。",
+      "evidence_needed": "修订后的设计措辞和完整分配说明。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "A32-R3-05",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "reproducibility"],
+      "location": "表1注释和第5节设置（PDF第4、7页）",
+      "claim_ids": ["semantic-validity-gate"],
+      "evidence_ids": ["Table-1-validity-gate"],
+      "observed_evidence": "无语义填充的有效性门只在100题、200个比较上报告0次语义漂移；正文没有充分说明这100题相对最终400题的抽样方式、审阅者盲法和判定一致性。",
+      "why_it_matters": "若有效性子集经过便利选择或审阅者知道处理臂，0/200不足以排除填充改变解析、格式或答案条件的系统风险。",
+      "required_fix": "补充预先冻结的抽样框、盲法、判定规则和审阅者一致性；最好对400题随机概率子样本做独立复核。",
+      "verification_test": "由不了解模型结果与处理标签的第二审阅者复核随机子样本，报告漂移率上界和一致性；若发现漂移，按预先规则重算主结果。",
+      "evidence_needed": "有效性门的逐项标签、抽样记录和独立复核统计。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文使用公开数学基准与模型输出，未见人类受试者、个人数据或部署伤害问题。人工锚点属于结果判定而非受试者研究；仍应说明标注者来源与质量控制，但这不构成本审稿中的实质伦理警报。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "多独立解码 seed 的层级复现显示同题零效应区间稳定，并预先给出有实践意义的等价界限。",
+    "在至少一个额外模型家族和额外自然任务上预先注册并复现观察分解与机制对照。",
+    "完成 MATH500 accepted/rejected 双层概率样本的人审填充，使跨床校正区间获得可解释的覆盖。",
+    "加入内容承载但任务等价的长度操作，并以联合 contrast-of-contrasts 正式检验观察关联与干预效应差异。"
+  ],
+  "evidence_that_would_lower_score": [
+    "跨解码 seed 后 Long−Short ΔSCE 的符号或区间显著不稳定。",
+    "扩大人工锚点后 MATH500 judge 出现足以改变主结论的系统性 false accept/false reject。",
+    "发现填充文本改变题意、解析路径或答案格式，且这种漂移与主效应相关。",
+    "复算发现题目级配对、聚类 bootstrap 或多重性校正没有按文中描述执行。"
+  ],
+  "review_limitations": [
+    "仅审阅所给冻结 PDF；按隔离要求未访问随附代码、CSV、运行工件或源文件，因此 PDF 中的哈希、预注册时序、逐项配对与可复现性声明未做外部执行核验。",
+    "未联网，未核验外部引文、相关工作优先权、模型/基准版本或公开讨论；相关不确定性不应被解释为已验证。",
+    "已逐页视觉核查12页 PDF，未发现影响阅读的图表截断或公式渲染缺陷。"
+  ]
+}

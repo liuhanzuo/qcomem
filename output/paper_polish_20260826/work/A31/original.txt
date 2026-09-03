@@ -1,0 +1,1475 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      T HE R ECORDER T RACKS THE S CHEDULE : D ETECTED
+002   I DENTITY-L OCK
+003
+004   P ERIOD F OLLOWS B LOCK L ENGTH UNDER AN
+005
+006
+      ACTIVE -B LOCK R ECORDER ,
+007   WITH A T WO -L AYER M EASUREMENT C ANON FOR
+008
+009   D IFFUSION -LLM B OUNDARY A NALYSIS
+010
+011
+       Anonymous authors
+012
+       Paper under double-blind review
+013
+014
+015
+016                                              A BSTRACT
+017
+018            Position-decomposed diagnostics of diffusion large language models can confuse
+019            sampler geometry with model behavior because an active-block recorder exposes
+020            positions only through the current sampling window. In a recorder-scoped com-
+021
+               parison, we hold the model, questions, canvas, decoding rule, and total function
+               evaluations ﬁxed while applying a composite intervention: block partition changes
+022
+               and the required per-block step allocation necessarily co-varies. The detected
+023
+               boundary period follows block length on this bed; separately registered non-nested
+024            probes on a distinct canvas-96 bed do not reveal a recorder-observable ﬁxed-32
+025            component. We contribute a reporting canon that separates what boundary-set
+026            composition makes reachable before data from what measured magnitudes sup-
+027            port after data. The amended decision branch, composite intervention, and unmea-
+028            sured cross-model, cross-schedule, and cross-recorder scope preclude a model-
+029            mechanism claim.
+030
+031
+032   1   I NTRODUCTION
+033
+034
+      Diffusion language models generate discrete sequences by iterative denoising (Austin et al., 2021;
+      Zheng et al., 2024; Lou et al., 2024; Shi et al., 2024; Nie et al., 2025). As decoding schedules
+035
+      become variable or structured (Li et al., 2025; Sun et al., 2026; Wang et al., 2026), a position-
+036
+      resolved diagnostic can inherit periodicity from the schedule that exposes its positions. Without an
+037   intervention, such a readout cannot distinguish model-intrinsic state, sampler state, and what the
+038   recorder makes observable.
+039
+040
+      We examine identity-lock time on a blockwise-decoded LLaDA-style model (Nie et al., 2025; 2026).
+      An apparent period of 32 motivates a matched composite intervention over the block partition and
+041
+      its required per-block step allocation: the model, 300 questions, canvas, total NFE, decoding rule,
+042
+      and temperature remain ﬁxed. The active-block recorder, however, logs only masked positions in
+043   the currently active block. Its lock-time proﬁle is therefore deﬁned relative to the sampling window
+044   (Figure 1).
+045
+046
+047
+048
+049
+050
+051
+052
+053
+
+
+
+                                                       1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056   L=16
+057
+058
+059
+060   L=32
+061
+062
+063
+064   L=64
+065
+066
+067
+068   Figure 1: Qualitative measurement pipeline. From top to bottom, block length L grows while canvas
+069   extent stays ﬁxed; color marks the one active block exposed to the recorder, and the right-hand ticks
+070
+      depict the boundary spacing visible through that window. Pulse and group counts are schematic, not
+      quantitative evidence. Measured proﬁles and separations are in Figure 2 and Table 3.
+071
+072
+073   Across the matched arms, the detected period follows the conﬁgured block length; separate non-
+074   power-of-two probes show the same recorder-observable pattern without the nested-32 boundary
+075   relation. Neither result identiﬁes a causal subtype. The originally registered model-intrinsic branch
+076   was withdrawn after treatment (amendment v3; Appendix A), and the measured candidate-32 signs
+077   are not values forced by nesting alone.
+078   Our contribution is one reporting rule: state before data which outcomes boundary-set composition
+079   makes reachable, then state separately what measured magnitudes show. It prevents a recorder-
+080   deﬁned window from quietly becoming a claim about the mechanism that produced the tokens.
+081   A development control, matched block-length intervention, bootstrap stability checks, negative
+082   probes, and content-sensitivity analysis support this distinction on the tested beds; none establishes
+083   a mechanism across models or schedules.
+084
+085   2    M EASUREMENT AND D ESIGN
+086
+087   Core notation is deﬁned here before it is used; Appendix C retains the longer terminology crosswalk.
+088
+089       Notation. For decode i and relative canvas position r, ℓi,r is the recorded identity-lock time. Its posi-
+090       tionwise median is m(r) and d(r) = m(r+1) − m(r). For candidate period P , BP contains candi-
+091       date boundary indices and IP their interior complement; sep(P ) is the boundary-minimum minus the
+092       interior-maximum of d(r), and P ∗ maximizes it. “Canvas 96” denotes the separate 96-position probe
+          bed. BINk denotes a restricted content null with k equally populated offset-rank strata.
+093
+094
+095   Model bed. We use an LLaDA-style masked dLLM at the LLaDA-8B-Instruct scale with a lo-
+096
+      cally registered checkpoint on GSM8K (Cobbe et al., 2021). Decoding uses temperature 0 and
+      remasking=low_confidence, the conﬁdence-ordered parallel decoding rule introduced for
+097
+      conditional masked language models and used by LLaDA (Ghazvininejad et al., 2019; Nie et al.,
+098
+      2025). The main differential ﬁxes NFE at 48 and uses the same 300 questions. Its L32/NFE48 arm
+099   is a frozen development control: the registered contiguous decode_id ∈ [345, 645) subset of a
+100   pre-existing pool. The L32/NFE32 content bed is separate and supports only Section 3.4.
+101
+102   Setup and protocol. Table 1 consolidates every bed and schedule. The headline length metric is
+103   d(r) = m(r+1) − m(r), the adjacent difference of median identity-lock time. For content, the same
+104   lock-time ordering is compared with residualized conﬁdence under an explicit eight-stratum offset-
+105   rank null (BIN8; four-position granularity), plus a same-amplitude position-fake: conﬁdence values
+106   are assigned to positions to preserve amplitude while destroying the observed content-to-position
+107   pairing. Intervals use cluster-bootstrap percentiles over units (Davison & Hinkley, 1997); decode
+      resampling preserves multiplicity.
+
+
+                                                             2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+       Element         Measured arms               L32 control        Non-nested probes     Content bed
+109
+110    Canvas / NFE    256/48                      256/48           96/48                   256/32
+       L; per-block    16 : [4]×8 + [2]×8;         32 : [8]×4+[4]×4 24 : [12]×4;            32
+111
+       steps           64 : [16, 16, 8, 8]                          48 : [24]×2
+112    Questions       same 300                    contiguous       same 300                GSM8K
+113                                                [345, 645),
+114                                                n=300
+115                                                                 {8, 16, 24,
+116    Candidate grid {8, 16, 32, 64}              {8, 16, 32, 64}  32, 48, 64}             —
+       Resampling     period B=2000;               period B=2000    period B=2000           interval B=500;
+117
+                      stability/sign B=1000                                                 null R=2000
+118
+119   Table 1: Uniﬁed conﬁguration. All beds use the same model family, task, temperature, and remask-
+120   ing rule. The control’s contiguous [345, 645) subset is not part of the non-nested probes. Those
+121   two arms form a separate canvas-96 setup with n=300, NFE 48, the displayed schedules and grid,
+122   and 2,000 cluster-bootstrap replicates. NFE denotes total function evaluations. At ﬁxed total NFE,
+123   changing the partition also changes the required per-block step allocation; the design is therefore a
+124   composite intervention and does not isolate an allocation effect.
+125
+126
+      Identity-lock time. For decode i, relative canvas position r, and recorded step s, let xi,r,s be the
+127
+      predicted token and xfi,r its ﬁnal value. We deﬁne
+128
+129                          ℓi,r = min{s : xi,r,t = xfi,r for every recorded t ≥ s}.                      (1)
+130
+      Thus, ℓi,r is the earliest recorded step after which the token identity never changes again. The
+131
+      position proﬁle is m(r) = mediani ℓi,r and its adjacent difference is d(r) = m(r + 1) − m(r). All
+132
+      analysis uses relative generated-canvas position, not prompt position.
+133
+134   Min–max period separation. For each candidate period in the registered grid (Table 3), deﬁne
+135   the candidate boundary set BP = {r : r mod P = P − 1} and interior IP as its complement. The
+136   registered estimator is
+137
+                         sep(P ) = min d(r) − max d(r),           P ∗ = arg max sep(P ).                   (2)
+138                                 r∈BP          r∈IP                         P
+139   Exact ties select the ﬁrst (smallest) period in the ordered registered grid. Positive separation requires
+140   every candidate boundary jump to exceed every interior jump. On a strictly L-supported proﬁle
+141   it penalizes divisors with false boundaries and multiples that leave true boundaries inside; without
+142   that condition it is not a general divisor/multiple guarantee. A period is detected only under the
+143   conjunction sep(P ∗ ) > 0 and a cluster-bootstrap modal period equal to P ∗ with mode fraction at
+144   least 0.95. The same conjunction classiﬁes each bootstrap readout below. We resample the 300
+145
+      decodes with replacement, preserving multiplicity, for B=2,000 replicates.
+146
+147
+      Selection stability and its honest reading of “no misses.” Two resampling readouts are reported.
+      First, a joint paired cluster bootstrap resamples a shared index set of the 300 decodes once and ap-
+148
+      plies the same indices to all ﬁve arms (the matched three plus the two canvas-96 probes), so the head-
+149
+      line is tested as a cross-arm relation on shared questions rather than as ﬁve independent marginals.
+                                                            ∗           ∗          ∗
+150   Across B=2,000 replicates (seed 20260824), Pr[P16       =16 ∧ P32   =32 ∧ P64  =64] = 1.0000; each
+151   of all ﬁve arms also has marginal Pr[P ∗ =L] = 1.0 (Table 11). Second, we report the probability
+152   that the detection rule actually ﬁres, Pr[sep(L) > 0], instead of the “0 misses” language. Table 2
+153   consolidates this readout across all ﬁve arms. Because the lock times are integer (temperature 0),
+154   the min–max separation is an integer-valued extremum of integer medians, so the bootstrap lower
+155   bound can sit exactly at the point estimate and “0 misses” reﬂects discrete selection stability rather
+156   than an absence of error. We therefore do not read a 0/2,000 miss count as “no false detections.”
+157   Because sep is an extremum statistic, we also report a non-extremal robustiﬁed comparison: a rank-
+158   sum (Mann–Whitney U ) separation between candidate-boundary and candidate-interior values of
+159   d(r). Its argmax period equals L on all ﬁve arms, including the L32 control where the min–max
+160   separation was weakest; the per-arm statistics are in Table 2 and their provenance in Table 11. A
+161   quantile-based separation survives only on L64 and L48 and selects multiples otherwise, which we
+      report honestly as partial rather than as a full vote for the extremum statistic.
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      Replication accounting. Table 1 is the complete resampling inventory. Period selection and its
+163   interval share one draw, whereas the sign and stability checks use separate draws; Table 3 identiﬁes
+164   the shared readouts. Uncounted values are observed-data point estimates; artifacts are in Table 11.
+165
+166   Matched intervention and scope. The two treatment arms and frozen development control are in
+167   Table 1. At ﬁxed total NFE, changing the partition necessarily changes per-block step allocation,
+168   so the treatment is partition-plus-required-allocation. A within-arm rank transform preserves P ∗ =L
+169   and each candidate-32 sign on all ﬁve tested block-length arms, including the non-power-of-two
+170   L=24 and L=48 (Table 11); a uniform-allocation arm was not registered. The result therefore
+171   identiﬁes a recorder-output association with the composite partition-plus-allocation schedule, not
+172   which component places or scales the boundary. A factorial allocation/partition intervention is future
+173
+      work.
+174
+175
+      Registration and two-layer reachability. The estimator and detection rule were ﬁxed before
+      treatment, but amendment v3 withdrew the model-intrinsic decision branch after treatment; the
+176
+      timestamped chronology is in Appendix A, Table 10. The canvas-96 probes were registered sep-
+177
+      arately before their execution. We therefore report reachability at two layers. A priori, nesting such
+178   as B32 ⊂ B16 determines set composition but not the sign of sep(32). From events, the observed
+179   magnitude ordering gives sep(32) = −2 on L16 and a negative value on L64. Thus a recorder-
+180   observable ﬁxed-32 component is not detected under these active-block regimes; this does not iden-
+181   tify model-intrinsic or sampler-state causes. The exact loci and synthetic condition are consolidated
+182   in Table 6; the legacy verdict labels remain only in Appendix C.
+183
+184   Separately conditioned content analysis. On the separate L32/NFE32 bed, BIN8 permutes con-
+185   ﬁdence within eight equally-populated offset-rank bins after a ﬁxed nuisance ﬁt. The initial conﬁ-
+186   dence conf0 is read at the ﬁrst recorded step of a position’s block, following conﬁdence-ordered
+187
+      parallel decoding (Ghazvininejad et al., 2019; Nie et al., 2025). This supporting diagnostic is not a
+      cross-block-length validation.
+188
+189
+190   3     R ESULTS
+191
+192   3.1   T HE DETECTED PERIOD FOLLOWS BLOCK LENGTH
+193
+194   The development control recovers its known period, and both treatment arms move to their respec-
+195
+      tive block lengths (Figure 2; Table 3). Only the selected period has positive min–max separation, and
+      the bootstrap selects it in every replicate. The paired cross-arm relation holds in all 2,000 shared-
+196
+      cluster resamples, while a rank-sum point estimator independently selects P ∗ =L in all ﬁve arms.
+197
+      Across the ﬁve arms, P ∗ leads the best wrong candidate by +2.0 to +8.0 d-units; four reach 5%
+198   signiﬁcance against the within-block null (exact pmargin ≤ 2.1 × 10−2 ), while L24 is marginal at
+199   pmargin = 7.1 × 10−2 (Table 5). The alignment is therefore not reproduced by within-block jitter
+200   under that registered grid.
+201
+202
+203                                                           L32              L24 L48
+                       Readout                           L16 control   L64    probe probe
+204
+205                    Pr[sep(L) > 0], joint bootstrap    1.0 0.8805 0.9995 0.999     1.0
+206                    Rank-sum z at L                   13.9 8.3      4.4   3.9      2.0
+                       Wrong-candidate ﬁre rate,          0.0   0.0    0.0    —       —
+207
+                       original three-bed probe
+208
+209   Table 2: Selection stability and non-extremal robustness (not a false-positive rate). The ﬁrst row
+210   uses one B=2,000 joint paired bootstrap and reports how often the conjunction sep(L) > 0 and
+211   mode fraction ≥ 0.95 ﬁres. The L32 control’s 0.8805 is the weakest arm and appears alongside the
+212   perfect modal-argmax relation. The second row is the Mann–Whitney comparison, whose maximiz-
+213   ing candidate is L on every arm. The ﬁnal row is a separate B=1,000 in-place wrong-candidate
+214   diagnostic for the original three beds: its zeros follow from negative point estimates and are not
+215   fresh-null false-positive rates. Within an arm, cells share draws. Provenance is in Table 11.
+
+
+
+                                                         4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234   Figure 2: Data-derived differential result. Left: three stacked facets isolate the median adjacent-
+235   difference proﬁle d(r) = m(r+1) − m(r) for L16 (orange), the L32 frozen control (blue), and
+236   L64 (green), each from n=300 decodes; shaded ticks mark that arm’s block edges. The control is
+237   the contiguous decode_id ∈ [345, 645) subset. Right: only the matching candidate has posi-
+238   tive separation in each arm. Regenerated by scripts/r265_fig_dprofile_overlay.py;
+239   quantitative values come from the registered events, and the recorder-level comparison does not dis-
+240
+      tinguish sampler from model mechanism.
+241
+242
+                                  sep(P )
+243                                                 P∗           sep(P ∗ )    (minB , maxI )
+244   L (source)      P = 8 P = 16 P = 32 P = 64 (mode frac.) stability band†     @P ∗       |BP ∗ | |IP ∗ |
+245   16 (measured)      −1      +1         −2    −2    16 (1.0)     [+1, +1]     (+2.0, +1.0)   15    240
+246   32 (control)       −1      −1         +1    −1    32 (1.0)     [ 0, +2]     (+2.0, +1.0)    7    248
+247   64 (measured)      −1      −1         −1    +2    64 (1.0)     [+1, +3]     (+3.0, +1.0)    3    252
+248   24 (probe)         —       —          —     —     24 (1.0)   [+1.5, +4.0]   (+5.0, +1.0)    3     92
+      48 (probe)         —       —          —     —     48 (1.0)   [+4.0, +6.5]   (+8.0, +1.5)    1     94
+249
+250
+      Table 3: Development-control, differential, and probe results. Each arm uses 2,000 cluster-bootstrap
+251
+      replicates; the mode fraction and percentile band are paired readouts of the same draw. The
+252   (minB , maxI ) columns report the boundary minimum and interior maximum, followed by their
+253   observed set cardinalities. Every arm selects its conﬁgured block length. Because lock times are
+254   integer-valued, the bands diagnose selection stability rather than coverage: L16 collapses to a point
+255   mass, while the L48 probe rests on one boundary location. Tables 1, 2, 5, 7, and 8 give the complete
+256   resampling inventory and separately budgeted checks; provenance is in Table 11.
+257
+258
+259   Candidate 32 under the active-block recorder. Table 3 reports sep(32) = −2 on the measured
+260
+      L = 16 arm. The exact values in Table 6 show why: candidate-32 boundary values remain positive,
+      but the measured odd-16 interior is larger. The joint sign sep(16) > 0 ∧ sep(32) < 0 holds in
+261
+      all 1,000 dedicated bootstrap replicates. Candidate 32 is therefore not detected at the recorder-
+262
+      observable layer on this bed. Nesting alone does not force that sign, and the result says nothing
+263   about an unobserved model-intrinsic or sampler-state component.
+264
+265
+266
+267
+268
+269
+
+
+
+                                                         5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+                          Probe arm     Non-nested sep(32)        Disclosed marginal candidate
+271
+272                       L=24 probe           −8.0              P =48: −1.0; band [−3.0, 0.0]
+                          L=48 probe           −7.5                           —
+273
+274
+      Table 4: Separate canvas-96 non-nested probes. Candidate 32 is disjoint from the L=24 boundaries.
+275
+      The L24 marginal cell concerns the mismatched P =48 candidate rather than detected P ∗ =24; the
+276   displayed percentile band is a selection-stability diagnostic, not a coverage-valid interval.
+277
+278
+279
+                  Arm                                  P ∗ sep(P ∗ ) mobs                   psepL      pmargin
+280
+                                                                                              −4
+281               L16 (canvas 256)                     16       +1.0    +2.0     5.0 × 10           1.5 × 10−3
+                  L64 (canvas 256)                     64       +2.0    +3.0     5.0 × 10−4         1.0 × 10−3
+282
+                  L24 (canvas 96)                      24       +4.0    +5.0     5.0 × 10−4         7.1 × 10−2
+283
+                  L48 (canvas 96)                      48       +6.5    +8.0     2.3 × 10−2         2.1 × 10−2
+284               L32 control (canvas 256, NFE 48)     32       +1.0    +2.0     5.0 × 10−4         1.0 × 10−3
+285
+286   Table 5: Separation-margin selectivity calibration. Each of R=2,000 replicates (seed 20260825)
+287   permutes d(r) within each true L-block, including its edge index, then records the argmax can-
+288   didate’s top-minus-second gap. Here mobs = sep(P ∗ ) − maxc̸=P ∗ sep(c) and the discrete exact
+289   p = (1 + #{mperm ≥ mobs })/(R + 1). The psepL column tests sep(P ∗ ) alone; pmargin is the
+290   selection-controlled readout. Provenance and the original-gate size audit are in Table 11 and Ap-
+291   pendix A.4.
+292
+293
+294    Measured class            Loci                            d(r) values                        Readout
+295                              [31, 63, 95, 127,
+296    L32 true-32 boundaries    159, 191, 223]                  [2, 3, 4, 5, 3, 3, 4]              development control
+297                              [15, 47, 79, 111,
+298    L16 true-16 odd chain     143, 175, 207, 239]             [4, 3, 3, 4, 2, 2, 2, 2]           candidate-32 interior
+299                                                                                                 max 4
+                                 [31, 63, 95, 127,
+300
+       L16 would-be B32          159, 191, 223]                  [2, 3, 4, 4, 2, 2, 2]              boundary min 2;
+301
+                                                                                                    sep(32) = −2
+302    L64 mid-block 32          [31, 95, 159, 223]              L64: [0, 0, 0, 0]; L32:            recorder-observable
+303                                                              [2, 4, 3, 4]                       collapse
+304    L64 true-64               [63, 127, 191]                  L64: [3.5, 5, 3]; L32:             true boundary
+305                                                              [3, 5, 3]                          remains
+306
+                            Strict-support synthetic L Source periods           Selected P ∗
+307
+                                        16              {8, 16, 32, 48} 16 for every source
+308
+                                        32               {8, 16, 32} 32 for every source
+309                                     64               {8, 16, 32} 64 for every source
+310
+311   Table 6: Consolidated negative evidence, reachability, and development check. A priori, nested
+312   boundary sets determine membership but do not force the sign. From events, L16 candidate 32
+313   has boundary minimum 2 and interior maximum 4; the joint sign holds in 1,000/1,000 bootstrap
+314   replicates. On L64, would-be 32 boundaries are recorder-observable interiors. The lower panel is
+315   a development-only synthetic control: P ∗ = L holds for the shown strictly L-supported proﬁles,
+316   not for arbitrary residuals. The upper rows are observed-data readouts from their arm samples, not
+317   additional replications. Provenance is in Table 11.
+318
+319   3.2   S EPARATION AND STABILITY, NOT AN EFFECT- SIZE POWER CLAIM
+320
+321   The central estimand is discrete period identity. On the observed samples, positive min–max sepa-
+322   ration is a deterministic property of the recorded proﬁles; the bootstrap then probes the stability of
+323   period selection to resampling decodes. The selected period is stable under both the per-arm boot-
+      strap and the joint paired bootstrap that re-applies one shared question-index draw to all ﬁve arms
+
+
+                                                            6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      (Section 2); the detection rule ﬁres in 0.88–1.0 of resamples across arms, with the L32 development
+325   control the weakest at Pr[sep(32)>0]=0.8805. A robustiﬁed non-extremal rank-sum separation still
+326   selects L on all ﬁve arms. This does not establish an arbitrarily small effect or a universal period:
+327   it establishes stable selection among the registered candidates on the stated bed, and the low-factor
+328   cells (|B48 |=1 on the L48 probe) temper any margin reading. The L32 control also reuses a pre-
+329   existing contiguous [345, 645) pool and its percentile stability band [0, +2] touches zero (it is not a
+330   coverage-valid CI). These three weaknesses are disclosed together; a fresh in-session L32 rerun is
+331   GPU-gated future work.
+332
+333   3.3   A TESTED SPECTRAL RESIDUAL FAMILY DOES NOT TRIGGER ON L16
+334
+335
+      For a nested candidate such as B32 ⊂ B16 , a negative sep(32) is not evidence of absence:
+      the extremum comparison cannot recover every possible residual shape. An exploratory (post-
+336
+      data, not pre-registered) check therefore asks whether a non-nesting estimator recovers a residual
+337
+                 ∑ that sep misses. We use a DFT periodogram (non-nesting): for each candidate P ,
+      source period
+338
+      G(P ) = ∥ r d(r)e−2πir/P ∥/∥d∥ is the normalized spectral magnitude of the adjacent-difference
+339   proﬁle at frequency 1/P , with a permutation null (shufﬂe d(r) positions; 4,000 replicates) and
+340   family-wise q95 over all candidates. Harmonic testing follows the periodogram tradition (Fisher,
+341   1929); our ﬁnite-grid threshold is a bespoke single-step maximum over candidates, using the stan-
+342   dard permutation max-statistic construction (Nichols & Holmes, 2002). We also run a direct two-
+343   sample test of the two L=16-boundary subsets in Table 6 (the odd-16 chain vs. the would-be-B32
+344   positions), a reachable test of residual 32-amplitude modulation.
+345
+346               Case                   G(8) G(16) G(24) G(32) G(48) G(64)              q95 @32
+347               Synthetic, residual-32
+348               present                3.58   3.58    —      4.86     —        —        1.74
+349               Synthetic, no residual 4.01   4.01    —      0.25     —        —        1.75
+350               Real L16 measured      3.79   3.70   0.15    0.23    0.36     0.18    2.15 (FW)
+351
+352    Supporting check      Statistic                            Threshold / reference Reading
+353    Injected residual     Residual-32 amplitude 0.5 over       q95 =1.74               ﬁres
+354                          comb-16 amplitude 3.0;
+355                          G(32)=4.86
+       No-residual synthetic G(32)=0.25                           q95 =1.75               null
+356
+       Real L16 remaining    G(24)=0.15, G(48)=0.36,              per-candidate           no residual
+357    grid                  G(64)=0.18                           q95 ≈ 1.71–1.78         candidate
+358    Comb harmonic         G(8)/G(16)=1.000 (pure comb),        1.0 reference ratio     recorder-comb
+359                          1.024 (real L16)                                             harmonic
+360    Power sweep           Amplitude 0.15: no ﬁre; 0.20: ﬁre;   q95 above               transition bracketed
+                             grid step 0.05 (5.0%–6.7% of comb
+361
+                             amplitude 3.0)
+362    Odd-16 vs.            Mean |∆d|=0.036; permutation         α = 0.05                no amplitude split
+363    would-be-B32          p=1.0
+364
+365   Table 7: Spectral (DFT) periodogram of the adjacent-difference proﬁle d(r) — an exploratory,
+366   non-nesting check (Section 3.3). G(P ) is the normalized spectral magnitude at frequency 1/P ;
+367   “ﬁres” means the 32-component exceeds its permutation q95 (4,000 replicates). The upper panel
+368   completes the synthetic diagnostic grid and reports every real candidate; the lower panel separates
+369   the supporting power, harmonic, and two-sample checks from their interpretation. The synthetic
+370
+      residual ﬁres, whereas the comb-only synthetic and real L16 proﬁle are null at the target period.
+      On real L16, no candidate in the tested grid is signiﬁcant; only the recorder-comb harmonics ﬁre.
+371
+      The power sweep brackets sensitivity for the tested sinusoidal family only, and the direct boundary-
+372
+      subset comparison ﬁnds no split. Provenance is in Table 11.
+373
+374
+375   Development control. On the recorder-consistent synthetic grid, with a clean sinusoidal residual-32
+376   component overlaid on the L=16 comb, sep returns P ∗ =16 (blind) while the spectral 32-component
+377   ﬁres; on the no-residual synthetic comb, both are silent (Table 7). This is a positive control for the
+      tested sinusoidal family, not validation against arbitrary residual shapes.
+
+
+                                                        7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Real L16 arm. The tested candidate grid does not exceed its family-wise threshold at P = 32,
+379   and the boundary-subset test ﬁnds no amplitude split. The registered power sweep brackets the
+380   tested-family transition and records its amplitude range in Table 7. Hence the measured arm does
+381   not trigger for this tested sinusoidal family and amplitude range; arbitrary residual shapes are not
+382   ruled out (Table 11).
+383
+      Canvas-96 non-nested probe (boundary disclosure). On the separate canvas-96 probe beds, candi-
+384
+      date 32 is non-nested (B32 ∩B24 = ∅), and the same estimator does not detect a recorder-observable
+385   ﬁxed-32 component without relying on the canvas-256 nesting relation. Table 3 reports the two
+386   probe estimates, their selected block lengths, and the disclosed marginal mismatched cell (Table 4);
+387   the probes used about 0.38 GPU-h. This is a scoped extension (canvas 96 ̸= 256), not a replacement
+388   for the matched canvas-256 arms.
+389
+      The L64 mid-block reversal and its L32 comparator are reported without a separate verdict vocabu-
+390
+      lary in the consolidated negative-evidence Table 6.
+391
+392
+      3.4   A CONTENT ASSOCIATION ON A SEPARATE SHARED BED
+393
+394   Estimand τ . On the separate L32/NFE32 bed, one unit is a decode-block with resolved positions
+395   R; cr is initial conﬁdence and or = r mod 32 is block offset. The estimand is the median per-unit
+396   rank association after residualizing conﬁdence on offset:
+              ∑
+                 p<q∈R: ℓp ̸=ℓq sgn(ℓq − ℓp ) sgn(c̃p − c̃q )
+397                                                                       (                        )
+398     ru =                                                  , c̃r = rank rank(cr ) − β̂ rank(or ) , (3)
+                        #{p < q ∈ R : ℓp ̸= ℓq }
+399
+400   Here the registered statistic ﬁts β̂ once on the observed data and shufﬂes the resulting c̃ within
+401   offset-rank strata. A sensitivity check instead reﬁts β̂ inside every permutation replicate. Earlier
+402   lock with higher residualized conﬁdence contributes +1. Inference is rooted at decode clusters:
+403   the 500-replicate interval resamples decodes and carries their block units with multiplicity. The
+404   position-fake keeps the observed amplitude but reassigns it to positions, destroying the observed
+405   content–position pairing. This differently budgeted bed supplies supporting, not cross-block-length,
+406   evidence.
+407
+       Quantity                           Estimate / band           Null q95              Null readout
+408
+409    Content-layer τres                 0.2722 [0.2649, 0.2812]   BIN16 0.20235         0/2000 exceed
+410    Reﬁt-β̂ sensitivity                0.2722                    BIN8 0.13545          0/2000 exceed
+411
+       Same-amplitude position fake       max. margin +0.00979      observed margin       below observed
+                                                                    +0.12837
+412
+413
+      Table 8: Content-versus-structure result on the separate L = 32, NFE-32 bed. The statistic τ is
+414
+      the median decode-block rank association between earlier lock and higher conﬁdence after offset
+415   residualization. BIN16 is the load-bearing conservative, non-degenerate null; the per-replicate nui-
+416   sance reﬁt is a separate BIN8 sensitivity and replays bit-exactly. Table 13 reports the full granularity
+417   ladder and three-bucket one-ﬂip classiﬁcation. This supporting analysis is not a cross-block-length
+418   experiment.
+419
+420
+      The full-granularity ladder in Table 13 is essential. The observed association clears every non-
+421
+      degenerate restricted null through BIN16, but matches the zero-power point mass at BIN32. Thus
+422
+      content association is established at moderate granularity, never at the ﬁnest registered granularity;
+423   the construction-speciﬁc BIN32 line is not interpreted as a lower bound. Its behavior under L ∈
+424   {16, 64} is unmeasured, and the two analyses are not claimed to be mutually calibrated.
+425
+426
+      The full operational checklist and its strictly-L-supported scope are given in Appendix A.
+427
+428   4     L IMITATIONS
+429
+430          • Observation is not mechanism. The active-block recorder cannot separate model-intrinsic
+431            state, sampler state, and recorder-observable state. Candidate 32 is not detected only at the
+               last layer under the tested regimes.
+
+
+                                                            8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+             • Registration history. The estimator was selected with a failed development control before
+433            treatment, but the model-intrinsic decision branch was withdrawn after treatment. The
+434            non-nested probes have their own pre-run registration and a different 96-position canvas.
+435
+             • Bed and grid. Evidence covers one model family, one task, and the candidate grids in
+436
+               Table 1; off-grid periods, other models, tasks, samplers, and untested block lengths are not
+437            covered.
+438
+             • Composite intervention. Partition and required per-block step allocation vary together.
+439
+               Boundary location is measured; a distinct allocation effect on amplitude is not.
+440
+441          • Boundary cardinality. The min–max separation is an extremum statistic, so its support
+442
+               matters: on the probe arms the selected period rests on few measured boundary positions
+               (the L48 probe has |B48 |=1), making its positive separation a single-locus readout rather
+443
+               than a stable margin. We report |BP ∗ | and |IP ∗ | per arm in Table 3 for this reason.
+444
+445          • Recorder and control arms. A dual-recorder comparison that logs the same trajectory
+446
+               through active-block and full-canvas/passive instruments is GPU-gated future work; no
+               cross-recorder result is claimed. A fresh in-session L32/NFE48 run is also GPU-gated: the
+447
+               present control reuses a pre-existing contiguous pool, has the lowest positivity (0.8805),
+448
+               and its percentile stability band touches zero.
+449
+450
+             • Content scope. The content association comes from one L32/NFE32 bed and survives
+               only through moderate null granularity (it is not established at the ﬁnest registered BIN32
+451
+               granularity). Its behavior on the L16/L64 beds is not measured.
+452
+453
+454   5    R ELATED W ORK
+455
+456   Foundational discrete-diffusion work studies the generative formulation or likelihood rather than
+457   this recorder trace. Austin et al. (2021) deﬁne structured discrete-state denoising; Zheng et al.
+458   (2024) change its parameterization; Lou et al. (2024) estimate data-distribution ratios; and Shi et al.
+459
+      (2024) simplify masked diffusion. In each comparison, the object and observation window are the
+      model/sampler formulation and its generated trajectory, not an active-block event recorder perturbed
+460
+      while model and NFE stay ﬁxed. We therefore use them as background, not as failed instances of
+461
+      our test.
+462
+463
+      Work                 Relevant decoding intervention                        (a) position-   (b) controlled
+464                                                                                resolved      block length?
+465                                                                              commit/lock
+466                                                                                timing?
+467   Gu et al. (2018)     Fully parallel NAT with fertility planning                No               No
+468   Wang et al. (2018)   Group size K controls semi-AR parallelism; reports        No               Yes
+469                        positionwise cross-entropy, not commit timing
+      Ghazvininejad        Iteratively remasks least-conﬁdent tokens                 No               No
+470
+      et al. (2019)
+471   Nie et al. (2025)    LLaDA low-conﬁdence remasking                             No               No
+472   Nie et al. (2026)    Improved LLaDA inference/training                         No               No
+473   (preprint)
+474   Li et al. (2025)     Varies denoising length, not block length                 No               No
+      (preprint)
+475
+      Sun et al. (2026)    Adapts decoding structure by Bayesian inference           No               No
+476   (preprint)
+477   Wang et al. (2026)   Revisits earlier diffusion decisions                      No               No
+478   (preprint)
+479   This work            Fixed-NFE composite block-partition plus                  Yes         Yes, composite
+                           required-allocation intervention
+480
+481
+      Table 9: Veriﬁed blockwise and parallel-decoding comparison. Column (a) requires position-
+482
+      resolved commit or lock timing, not merely positionwise loss; column (b) requires an explicit block-
+483
+      length intervention, not a change in total denoising length or an adaptive schedule. “Yes, composite”
+484   discloses that our per-block allocation necessarily co-varies with the partition.
+485
+
+
+
+                                                             9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      The nearest methods on the schedule axis make the distinction sharper. Fully parallel NAT (Gu
+487   et al., 2018), semi-autoregressive grouped decoding (Wang et al., 2018), conﬁdence-ordered mask-
+488   predict decoding (Ghazvininejad et al., 2019), LLaDA-style decoding (Nie et al., 2025; 2026), and
+489   variable or reversible schedules (Li et al., 2025; Sun et al., 2026; Wang et al., 2026) all change how
+490   positions are generated or revisited. Table 9 asks the narrower question: does each work report
+491   position-resolved commit/lock timing, and does it vary block length as a controlled intervention?
+492
+      Among these veriﬁed works, none reports position-resolved commit/lock timing across a controlled
+493   block-length intervention. The recorder-scoped differential in Section 3.1 is therefore new on that
+494   axis, while Wang et al.’s positionwise cross-entropy periodicity is the closest partial precedent.
+495   These setup differences do not imply a ﬁeld-wide absence claim. Appendix Table 14 gives the
+496   fuller row-wise comparison. Section 3.4 also differs from conﬁdence-dynamics work: it measures
+497   association between the ﬁrst-step conﬁdence and later recorder lock ordering, rather than proposing
+498   a new conﬁdence-based remasking policy.
+499   A second, closer axis is the measurement literature that already warns that a readout instrument can
+500   induce the signal it claims to observe. Sahoo et al. (2026) show that a linear probe’s near-perfect
+501   accuracy on language-model hidden states can be driven entirely by task-format confounds (source
+502   identity, option count, response length), vanishing after deconfounding — an instrumentation-bias
+503   lesson we mirror in the recorder-window geometry. Jiang et al. (2020) argue that any prompt-based
+504   measurement is at best a lower bound on stored knowledge because a sub-optimal prompt fails to
+505   retrieve facts the model does hold; this is exactly the a-priori-reachability vs. measured-magnitude
+506   split we make explicit. Belinkov & Glass (2019) survey how the choice of analysis method changes
+507
+      what is measured about a representation, and Feng et al. (2024) show a model can internally encode
+      a faithful world state while decoding unfaithfully — the observational-equivalence gap between a
+508
+      recorded layer and the behavior that produced it. Conversely, Stolfo et al. (2023) attribute mech-
+509
+      anism from internal states via causal mediation; we deliberately do not — our contribution is the
+510   reporting rule, not a mechanism claim. To make the boundary checkable, the appendix setup com-
+511   parisons (Appendix A) state each prior object’s observation window, intervention, and measurement-
+512   layer contrast. Table 15 makes the same-dimensionality question explicit: each closest measurement
+513   work operates on a scale other than recorder-window period separation, so our addition is a differ-
+514   ential separator and negative probes on that dimension, not a claim to out-measure those works on
+515   their own scale.
+516   More generally, construct validity requires matching an instrument to the quantity its coefﬁcient or
+517   probe can support: conditioned coefﬁcients can answer a different target than the headline exposure
+518   (Westreich & Greenland, 2013), and representation analyses inherit the choices and confounds of
+519   their probes (Belinkov & Glass, 2019; Sahoo et al., 2026). Preregistration separates planned analysis
+520   from outcome-contingent interpretation but does not itself validate a construct (Nosek et al., 2018).
+521   Our two-layer rule adds a precise audit record rather than a general validity theory: before events,
+522   freeze the set-algebraic outcomes the estimator makes reachable; after events, report the magni-
+523   tude ordering without retroactively treating reachability as measured evidence. The post-treatment
+524
+      amendment remains visible, so the split does not convert it into an a-priori claim.
+525   This work is therefore not a decoder or a mechanism attribution. Its contribution is the two-layer
+526   reporting canon, exercised with a matched recorder-level differential. The min–max estimator sep-
+527   arates the displayed divisors and multiples only under the stated strictly-L-supported condition; the
+528   exploratory DFT control covers only the tested sinusoidal residual family.
+529
+530   6   C ONCLUSION
+531
+532   Under the tested active-block recorder, the detected identity-lock period follows block length. De-
+533   velopment controls, matched arms, non-nested probes, bootstrap stability, and negative evidence
+534   support that recorder-level statement. They do not distinguish model-intrinsic state, sampler state,
+535   and recorder observability. The transferable result is the reporting rule: state what is reachable from
+536   set composition before data, then separately state what the measured magnitudes show. Calibrate
+537   position-decomposed measurements to the schedule that recorded them, and do not infer a mecha-
+538   nism or cross-bed relation that the intervention did not measure.
+539
+
+
+
+                                                        10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      R EFERENCES
+541
+542   Jacob Austin, Daniel D. Johnson, Jonathan Ho, Daniel Tarlow, and Rianne van den Berg. Structured
+543     denoising diffusion models in discrete state-spaces. In Advances in Neural Information Process-
+544     ing Systems, volume 34, pp. 17981–17993, 2021. URL https://arxiv.org/abs/2107.
+545
+        03006.
+546   Yonatan Belinkov and James Glass. Analysis methods in neural language processing: A survey.
+547     Transactions of the Association for Computational Linguistics, 7:49–72, 2019. URL https:
+548     //arxiv.org/abs/1812.08951.
+549
+      Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+550
+        Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John
+551
+        Schulman. Training veriﬁers to solve math word problems. arXiv preprint arXiv:2110.14168,
+552     2021. URL https://arxiv.org/abs/2110.14168.
+553
+554   Anthony C. Davison and David V. Hinkley. Bootstrap Methods and their Application. Cambridge
+555     University Press, Cambridge, UK, 1997.
+556   Jiahai Feng, Stuart Russell, and Jacob Steinhardt. Monitoring latent world states in language models
+557      with propositional probes. In Advances in Neural Information Processing Systems, 2024. URL
+558      https://arxiv.org/abs/2406.19501.
+559
+560   Ronald A. Fisher. Tests of signiﬁcance in harmonic analysis. Proceedings of the Royal Society of
+561
+        London. Series A, 125(796):54–59, 1929. doi: 10.1098/rspa.1929.0151.
+562   Marjan Ghazvininejad, Omer Levy, Yinhan Liu, and Luke Zettlemoyer. Mask-predict: Parallel
+563    decoding of conditional masked language models. In Proceedings of the 2019 Conference on
+564    Empirical Methods in Natural Language Processing and the 9th International Joint Conference
+565    on Natural Language Processing, pp. 6111–6120. Association for Computational Linguistics,
+566    2019. doi: 10.18653/v1/D19-1633. URL https://aclanthology.org/D19-1633/.
+567
+      Jiatao Gu, James Bradbury, Caiming Xiong, Victor O. K. Li, and Richard Socher. Non-
+568      autoregressive neural machine translation. In International Conference on Learning Represen-
+569      tations, 2018. URL https://openreview.net/forum?id=B1l8BtlCb.
+570
+571   Zhengbao Jiang, Frank F. Xu, Jun Araki, and Graham Neubig. How can we know what language
+572
+        models know? Transactions of the Association for Computational Linguistics, 8:423–438, 2020.
+        URL https://arxiv.org/abs/1911.12543.
+573
+574   Jinsong Li, Xiaoyi Dong, Yuhang Zang, Yuhang Cao, Jiaqi Wang, and Dahua Lin. Beyond ﬁxed:
+575      Training-free variable-length denoising for diffusion large language models. arXiv preprint
+576      arXiv:2508.00819, 2025. URL https://arxiv.org/abs/2508.00819.
+577
+      Aaron Lou, Chenlin Meng, and Stefano Ermon. Discrete diffusion modeling by estimating the
+578
+        ratios of the data distribution. In International Conference on Machine Learning, 2024. URL
+579     https://arxiv.org/abs/2310.16834.
+580
+581   Thomas E. Nichols and Andrew P. Holmes. Nonparametric permutation tests for functional
+582     neuroimaging: A primer with examples. Human Brain Mapping, 15(1):1–25, 2002. doi:
+583     10.1002/hbm.1058.
+584   Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai Lin,
+585     Ji-Rong Wen, and Chongxuan Li. Large language diffusion models. In Advances in Neural
+586     Information Processing Systems, volume 38, 2025. URL https://arxiv.org/abs/2502.
+587     09992.
+588
+      Shen Nie, Qiyang Min, Shaoxuan Xu, Zihao Huang, Yuxuan Song, Yong Shan, Yankai Lin,
+589
+        Wayne Xin Zhao, Chongxuan Li, and Ji-Rong Wen. Improved large language diffusion models.
+590
+        arXiv preprint arXiv:2606.25331, 2026. URL https://arxiv.org/abs/2606.25331.
+591
+592   Brian A. Nosek, Charles R. Ebersole, Alexander C. DeHaven, and David T. Mellor. The preregis-
+593     tration revolution. Proceedings of the National Academy of Sciences, 115(11):2600–2606, 2018.
+        doi: 10.1073/pnas.1708274114.
+
+
+                                                      11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      Subramanyam Sahoo, Vinija Jain, Aman Chadha, and Divya Chaudhary. Linear probes detect task
+595     format, not reasoning mode in language model hidden states. In 6th Workshop on Trustworthy
+596     NLP, ACL, 2026. URL https://arxiv.org/abs/2606.02907.
+597
+598   Jiaxin Shi, Kehang Han, Zhe Wang, Arnaud Doucet, and Michalis K. Titsias. Simpliﬁed and
+599      generalized masked diffusion for discrete data. arXiv preprint arXiv:2406.04329, 2024. URL
+600
+         https://arxiv.org/abs/2406.04329.
+601   Alessandro Stolfo, Yonatan Belinkov, and Mrinmaya Sachan. A mechanistic interpretation of arith-
+602     metic reasoning in language models using causal mediation analysis. In International Conference
+603     on Learning Representations, 2023. URL https://arxiv.org/abs/2305.15054.
+604
+605
+      Bian Sun, Kevin Zhai, Mubarak Shah, and Zhenyi Wang. Dystruct: Dynamically structured diffu-
+        sion language model decoding via bayesian inference. arXiv preprint arXiv:2605.09820, 2026.
+606
+        URL https://arxiv.org/abs/2605.09820.
+607
+608   Chunqi Wang, Ji Zhang, and Haiqing Chen. Semi-autoregressive neural machine translation. In
+609     Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing, pp.
+610     479–488. Association for Computational Linguistics, 2018. doi: 10.18653/v1/D18-1044. URL
+611     https://aclanthology.org/D18-1044/.
+612
+      Xinyun Wang, Min Zhang, Sen Cui, Zhikang Chen, Bo Jiang, Kun Kuang, and Mingbao Lin. Re-
+613     versible diffusion decoding for diffusion language models. arXiv preprint arXiv:2602.00150,
+614     2026. URL https://arxiv.org/abs/2602.00150.
+615
+616   Daniel Westreich and Sander Greenland. The table 2 fallacy: Presenting and interpreting confounder
+617     and modiﬁer coefﬁcients. American Journal of Epidemiology, 177(4):292–298, 2013. doi: 10.
+618
+        1093/aje/kws412.
+619   Lin Zheng, Jianbo Yuan, Lei Yu, and Lingpeng Kong. A reparameterized discrete diffusion model
+620     for text generation. In Proceedings of the First Conference on Language Modeling, 2024. URL
+621     https://arxiv.org/abs/2302.05737.
+622
+623
+624   A     P ROTOCOL C HRONOLOGY, M EASUREMENT C ANON , AND S ENSITIVITIES
+625
+626   A.1    R EGISTRATION CHRONOLOGY
+627
+628       Timestamp       Status        Recorded event
+629
+          2026-08-20      Pre-data      Original registration ﬁled before any GPU submission.
+630       17:55
+631       2026-08-20      Pre-data      Amendment v2 replaced the failed signed mean-difference score
+632       18:09                         with the min–max estimator and registered the detection rule.
+633       2026-08-20      Treatment     Both treatment arms ran (0.73 GPU-h).
+          23:07
+634
+          2026-08-21      Post-data     Amendment v3 withdrew the model-intrinsic branch.
+635       17:36
+636       2026-08-21      Pre-data      Non-nested canvas-96 probe registration and amendments preceded
+637                       (probe)       its own run (0.38 GPU-h).
+638
+639   Table 10: Registration and amendment chronology. The estimator and detection rule were ﬁxed
+640   before treatment; the model-intrinsic decision branch was withdrawn after treatment data were ob-
+641   served, so the chronology documents a scope change rather than a pre-treatment mechanism verdict.
+642
+643
+644
+645
+646
+647
+
+
+
+                                                      12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+      A.2   A RTIFACT INDEX
+649
+                      Table 11: Claim-to-artifact map. This is the sole table that prints workspace-
+650
+                      relative artifact paths; all narrative references point here. Full provenance contin-
+651                   ues in evidence/claim_evidence_map.tsv, evidence/method_
+652                   provenance.tsv, and evidence/experiment_registry.json.
+653
+654    Claim / role          Workspace-relative artifact                                    SHA-16
+655    L32 development results/blocklen_probe/G0_VERDICT_r3.       984b4ff92fe462ad
+656    control             json
+657    L16/L64 period      results/r29_l16l64_sawtooth.json        d462dff346604321
+       Cross-arm           results/r295_joint_bootstrap_extremum_ 9a40c56c7c7a8243
+658
+       bootstrap,          robust.json
+659    rank-sum, stability
+660    bands
+661    Within-block        results/decomposition_control_r314/     f623432c139e440c;
+662    selectivity gate    r316_sep_withinblock_permnull.json;     e7d1c3115253589e
+       and size audit      results/decomposition_control_r314/
+663
+                           r320_margin_selectivity.json
+664    Boundary/interior results/decomposition_control_r314/       e3a1c7b2b3c6915a
+665    cardinalities       r316_bcardinality_per_arm.json
+666    Content statistic results/r10_poslevel_gates/r10_           0af4f3c03e6c6f6d
+667    and interval        poslevel_gates_v2.json
+       Content null        results/r274_bin1632_null_ext.json      b5d91fdc0b827018
+668
+       ladder
+669    Per-permutation results/r259_beta_recompute/r259_beta_ d3b27b3c87c924ce
+670    nuisance reﬁt       recompute.json
+671    Bit-exact           results/r259_replay_B/r259_replay_B.    85b875d858d0db19
+672    nuisance-reﬁt       json
+       replay
+673
+       One-ﬂip             results/r311_oneflip/r311_oneflip.json 47735637e3777a3d
+674    three-bucket
+675    classiﬁcation
+676    Position-fake       results/r14_margin_sweep/r14_margin_    91da8f8b91a6b6b9
+677    control             sweep.json
+       L16 measured        results/r58_z1b_L16_truepair.json       10530a1b478ff492
+678
+       nested-candidate
+679    check
+680    L64 mid-block       results/r58_z2b_l64_neg_evidence.json   470908f1400e7a1c
+681    comparison
+682    Reachability table results/r147_reachability_table/r147_    52a983b1c2fade9e
+                           reachability_table.json
+683
+       Strict-support      results/r147_entailment_demo/r147_      ee4f1ad85d5492a2
+684    synthetic           entailment_demo.json
+685    diagnostic
+686    Spectral family     results/r259_non_nesting_spectral/r259_ a1b52a418ace4e07;
+687    and power grid      non_nesting_spectral.json;              33768616bfa41ecc
+                           results/r267_spectral_power_table.json
+688
+       Rank-transform      results/r265_rank_transform_invariance. f1760ce13789a67d;
+689    sensitivity         json; results/r299_orthogonal_          d90a4d56635f3771
+690                        separation_r299.json
+691    Figure 2 manifest results/r265_fig_dprofile_manifest.json 40079e3c19996a01
+692    Control subset and results/r269_l32_control_subset_checks. e5455d953fad8367
+       row checks          json
+693
+       Cross-              results/r269_estimator_byte_and_arm_    2c5f824c0ef215db
+694    environment         recheck.json
+695    reproduction
+696    Image-generation build/image_generation_record.json         c019dbf2309f460b
+697    audit
+698
+699
+700
+701
+
+
+
+                                                               13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+      A.3   M EASUREMENT CANON
+703
+704   For blockwise decoding observed through an active-block recorder, a position-resolved analysis
+705   should:
+706
+707         1. record block length, per-block steps, and generated-canvas coordinates;
+708         2. calibrate within-block windows to the generating run rather than a ﬁxed model constant;
+709         3. report reachability twice: a priori, what estimator algebra and boundary-set composition
+710            imply; from events, what the measured magnitude ordering implies. In particular, B32 ⊂
+711            B16 does not force sep(32) ≤ 0;
+712
+            4. perturb the schedule when attributing a position-resolved diagnostic;
+713
+714
+            5. test content claims against a structure-preserving null and report its granularity; and
+715         6. mark cross-bed relationships unmeasured until the corresponding intervention is run.
+716
+717
+      This is a measurement canon, not a mechanism claim. The registered estimator returns P ∗ = L on
+      the displayed strictly L-supported proﬁles: non-degenerate jumps occur on all L boundaries and no
+718
+      L-multiple’s exclusive-boundary residual outscores the L-boundary minimum. It is not a guarantee
+719
+      for arbitrary residual proﬁles, and identifying commit internals would require instrumentation of
+720   sampler-state transfer.
+721
+722
+      A.4   S ELECTIVITY DISCLOSURE ( PERMUTATION - GATE SIZE AUDIT )
+723
+724   Original-gate size. The original within-block threshold was anti-conservative. Across the ﬁve
+725   arms, 10/25 = 40% of wrong candidates (non-true-L grid points) were ﬂagged as detected, so
+726   the nominal family-wise error of at most 5% was not realized. Table 12 gives the per-arm audit.
+727   The cause is that edge-including within-block permutation destroys the non-target global level/trend
+728   structure of d(r), shifting the null downward and loosening the threshold.
+729
+730   Corrected margin and cross-condition red-team. Table 5 replaces that level gate with the top-
+731
+      minus-second separation margin and a discrete exact p. As a known-clean red-team, globally (cross-
+      block) shufﬂing the same d(r) constructs a structureless reference. The corresponding probabilities
+732
+      are consolidated in Table 12: four of ﬁve cross-condition checks are below 5% and L24 is again
+733
+      marginal. This supports genuine schedule-aligned structure rather than within-proﬁle jitter. A gen-
+734   uinely clean arm has no blocks to permute, however, so this red-team is a cross-condition compari-
+735   son, not a per-arm data-shufﬂe false-positive rate.
+736
+737
+                      Arm           Original-gate wrong candidates   Cross-condition pmargin
+738
+739                   L16                        4/5                      5.0 × 10−4
+                      L64                        3/5                      2.0 × 10−3
+740
+                      L24                        0/5                      5.5 × 10−2
+741
+                      L48                        0/5                      1.8 × 10−2
+742                   L32 control                3/5                      1.5 × 10−3
+743
+                      Aggregate             10/25 (40%)                  4/5 below 5%
+744
+745
+      Table 12: Selectivity-gate audit by arm. The original threshold ﬂags 10/25 wrong candidates,
+746
+      whereas the cross-condition margin red-team is below 5% in four of ﬁve arms; L24 is marginal.
+747   These cross-condition probabilities are not per-arm data-shufﬂe false-positive rates.
+748
+749
+750   Reporting rule. Any threshold-type permutation gate used here for selectivity reports three quan-
+751   tities together: the wrong-candidate hit rate, a known-clean-arm or explicit cross-condition check,
+752   and the discrete exact p. The 10/25 audit and the margin correction therefore accompany every
+753   selectivity claim based on this within-block gate.
+754
+755
+
+
+
+                                                       14
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+756
+      A.5    T HREE - PART EVIDENCE DECOMPOSITION
+757
+758   For auditability, we separate the recorder-relative object d(r), the pre-treatment min–max decision
+759   procedure, and the scoped empirical ﬁnding that P ∗ follows L on the tested recorder beds. The
+760   shared-cluster bootstrap and rank-sum check support the decision procedure; the non-nested canvas-
+761   96 probes bound the empirical ﬁnding. Table 11 maps each component to its veriﬁer. This decom-
+762   position is a falsiﬁcation aid, not three independent novelty claims or a mechanism attribution.
+763
+764   A.6    C ONTENT ACCOUNTING AND NULL GRANULARITY
+765
+766     Accounting / sensitivity check          Recorded value                Interpretation
+767
+        Content-resolved block-units            6,178 of 6,274 candidates     Terminal-resolved units excluded
+768     Resolved comparable pairs               1,571,854                     Both positions resolve
+769     Within-unit support                     Median 4 distinct locks;      Unit-level order is observed
+770                                             median resolved-pair
+771                                             fraction 0.575
+        Resampling                              n_boot=500;                   Decode-cluster interval and
+772
+                                                R_null=2000                   restricted null
+773     K-ladder restricted-null q95            K=1: 0.00486; BIN4            With τres =0.2722, margins at
+774                                             0.09276; BIN8 0.14384;        K=1, BIN4, BIN8, and BIN16 are
+775                                             BIN16 0.20235; BIN32          0.26735; 0.17945; 0.12837;
+776                                             0.27221 (point mass)          0.06986; BIN32 is zero-power by
+                                                                              construction and carries no
+777
+                                                                              lower-bound reading
+778
+        Nuisance-β̂ sensitivity                 Reﬁt inside each BIN8         0/2000 exceedances; bit-exact
+779                                             replicate: q95 =0.13545;      replay. BIN16 remains the
+780                                             ﬁxed-ﬁt BIN8                  load-bearing conservative
+781                                             q95 =0.14384                  non-degenerate arm
+782     One-ﬂip sensitivity (1/nselected )      nselected =6178; all 6178     DEGENERATE , by construction; no
+                                                residual-sign ﬂips give       pass claim. The null-speciﬁcation
+783
+                                                ∆=0                           ladder, not this identity arm, carries
+784                                                                           the sensitivity conclusion
+785
+786   Table 13: Unit accounting and restricted-null sensitivity for Table 8. A block-unit is rooted in its
+787   decode cluster; decodes are resampled with multiplicity. The registered line ﬁts the nuisance slope
+788   once; the displayed sensitivity reﬁts it inside each replicate. One-ﬂip granularity is 1/nselected , not
+789   permutation spacing 1/R. Under the three-bucket contract, maximum single-point effect ϕ = 0 is
+790   DEGENERATE (by construction) and carries no pass/fail claim; 0 < ϕ ≤ margin would pass and ϕ >
+791   margin would fail. BIN32 is likewise zero-power by construction. The full sweep therefore limits
+792   the positive ﬁnding to moderate granularity. Provenance is in Table 11.
+793
+794   A.7    C LOSEST- WORK SETUP COMPARISON
+795
+      Table 14: Row-wise setup comparison for the cited nearest work. Entries state the object and observation
+796   window, the schedule/measurement action, and the resulting contrast with this recorder audit, including whether
+797   each reports both layers of our two-layer rule (a-priori reachability and from-events magnitude). These scoped
+798   contrasts do not assert that an entire research area lacks schedule diagnostics or mechanism analysis.
+799
+800     Work             Object and observation        Schedule action /    Measurement-layer contrast used here
+                         window                        measurement
+801
+802     Austin et al.    Structured discrete-state     Schedule belongs Background; reports neither a-priori
+803     (2021)           denoising; model/sampler      to the formulation reachability nor from-events
+                         trajectory                                       magnitude
+804
+        Zheng et al.     Reparameterized text          Reparameterizes a Changes model parameterization; we
+805     (2024)           diffusion; generated          ﬁxed generative    hold the model ﬁxed and perturb the
+806                      trajectory                    process            recorder-facing partition
+807     Lou et al.       Distribution-ratio estimation Schedule supports Targets modeling/likelihood, not
+808     (2024)           for discrete diffusion;       the generative     boundary-set reachability
+                         likelihood/generation         objective
+809
+                                                                                           Continued on next page
+
+
+                                                            15
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+810     Table 14 continued
+811     Work            Object and observation         Schedule action /   Measurement-layer contrast used here
+812                     window                         measurement
+813
+        Shi et al.       Simpliﬁed masked              Simpliﬁes the       Supplies the masked-diffusion setup,
+814     (2024)           diffusion; model/sampler      diffusion           not the two-layer recorder audit
+815                      output                        formulation
+816     Li et al. (2025) Variable-length inference;    Changes             Schedule change used for decoding;
+817                      whole-decode outcomes         denoising length    ours ﬁxes total NFE over a
+                         across lengths                                    block-partition co-movement
+818
+        Sun et al.       Bayesian dynamically          Adapts decoding     Schedule is the method’s action; ours
+819     (2026)           structured decoding;          structure           treats it as a diagnostic perturbation
+820                      evolving decode
+821     Wang et al.      Reversible diffusion          Permits decisions Reversibility changes the trajectory;
+822     (2026)           decoding; revisable           to be revisited     ours audits masked active-block
+                         trajectory                                        events
+823
+        Sahoo et al.     Hidden-state linear probe;    Deconfounds         Warns instrumentation confounds can
+824     (2026)           language-model                measurement         induce a readout; reports measured
+825                      input/activations             from format         magnitudes, not a-priori set
+826                                                                        composition
+827     Jiang et al.    Prompt query of LM             Optimizes           Frames any measurement as a lower
+        (2020)          knowledge; output              prompts             bound; distinguishes reachability from
+828
+                        distribution                                       measured magnitude for facts
+829     Belinkov &      Analysis/probing methods       Chooses analysis Choice of method changes what is
+830     Glass (2019)    for representations;           method              measured; no recorder-window
+831                     activations                                        partition perturbation
+832     Feng et al.     Propositional probes of        Monitors via        Shows recorded layer can diverge
+        (2024)          latent world states;           probes              from behavior; does not perturb the
+833
+                        activations                                        recording window
+834     Stolfo et al.   Causal-mediation               Intervenes on       Attributes mechanism; we do not and
+835     (2023)          attribution; internal states   internal states     report only recorder-level reachability
+836     This work       Identity-lock adjacent         Matched             Separates a-priori set composition
+837                     difference; active-block       block-length        from from-events magnitude; does not
+                        event window                   intervention plus claim mechanism
+838
+                                                       required allocation
+839
+840   Table 15: Nearest-neighbor positioning against the closest conceptual measurement works. Each prior op-
+841   erates on a different measured dimension; the table states that relation and the checks already run on the
+842   recorder-window period-separation dimension. Artifact paths and SHA-16 preﬁxes are in Table 11; this is not
+843   a mechanism attribution.
+844
+      Closest             Their measured dimension           Same dim.       Testable gap this recorder audit runs
+845   conceptual work     (claim)                            here?           (already run)
+846
+      Jiang et al. (2020) Prompt-level QA recall/accuracy   No —             Differential separator, non-nested
+847                       on factual knowledge;             conceptual       canvas-96 probes, and ﬁve-arm
+848                       measurement as a lower bound      source of our    rank-transform invariance (Table 11)
+849                       on stored facts                   two-layer
+850                                                         split; their
+851
+                                                            scale is
+                                                            knowledge
+852                                                         retrieval
+853   Sahoo et al.        Hidden-state probe                No —             Matched composite partition
+854   (2026)              AUROC/accuracy; confound          deconfounds      intervention plus a non-nested
+855                       driven by task format, collapsing task format,     canvas-96 instrumentation self-check
+856
+                          after deconfounding               not the          (Table 11)
+                                                            recorder
+857                                                         partition
+858
+                                                                                            Continued on next page
+859
+860
+861
+862
+863
+
+
+
+                                                           16
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+864   Table 15 continued
+865   Closest              Their measured dimension       Same dim.    Testable gap this recorder audit runs
+866   conceptual work      (claim)                        here?        (already run)
+867
+      Feng et al. (2024)   Propositional-probe AUROC for No —          Fixed model/NFE recorder-window
+868                        latent world states; recorded compares      perturbation, paired bootstrap, and
+869                        layer vs behavior divergence  layer to      rank-sum separation (Table 11)
+870                                                      behavior,
+871                                                      does not
+                                                         perturb the
+872
+                                                         recording
+873                                                      window
+874
+875
+876   B    R EPRODUCIBILITY AND A RTIFACT M AP
+877
+878   Execution cost, shard completion, and event-row validation are reported in Table 16, separately
+879   from provenance, so that spend is never conﬂated with a completeness check. Every quantitative
+880   statement in the main text traces to the on-disk artifacts in Table 11; hashes are whole-ﬁle SHA-256
+881   preﬁxes computed from the current workspace.
+882   Determinism. Decoding uses temperature 0 with remasking=low_conﬁdence; under the ﬁxed de-
+883   coding rule and ﬁxed NFE schedule, token selection is deterministic on a ﬁxed canvas, so the
+884   identity-lock proﬁle m(r) and its adjacent difference d(r) are deterministic functions of (model,
+885   checkpoint, seed, question set, NFE schedule). Min–max separation sep(P ), period selection, and
+886   every reported spectral value are deterministic properties of these recorded proﬁles (only the boot-
+887   strap / permutation-replicate quantities carry sampling randomness). Determinism is scoped per
+888   (checkpoint, seed, question assignment, NFE schedule); cross-seed variance is not the pre-registered
+889
+      estimand.
+890   Environment. The registered analyses ran under Python 3.11.13, NumPy 2.4.6, pandas 2.3.1,
+891   PyArrow 21.0.0, PyTorch 2.7.1; the model is a locally registered LLaDA-8B-Instruct-scale masked
+892   dLLM, blockwise decoded over GSM8K (Cobbe et al. 2021), a ﬁxed 300-question canvas at 256
+893   positions and 48 total NFE per arm. The checkpoint is a private local artifact (registry per the
+894   project evaluation ledger) and is not byte-identical to the public LLaDA-8B-Instruct release; we
+895
+      verify its magnitude is at the same scale but do not assert release equivalence. The full manifest and
+      core-script index are in Table 11.
+896
+897   Cross-environment reproduction. The estimator source was touched after the submission mani-
+898   fest recorded its hash, so rather than assert equivalence we re-derived every arm from raw events
+899   with the current bytes in a second software environment (Python 3.12.3, NumPy 2.5.2, pandas
+900   3.0.5). All three arms reproduce their sealed sep vectors and selected periods exactly, so the second-
+901
+      environment Table 3 values equal the ﬁrst-environment values bit-for-bit and are not restated as a
+      duplicate column. The complete arm-by-candidate values and both estimator hashes are indexed in
+902
+      Table 11.
+903
+904   Repro kit. Seeds, question identities, the event schema, and a one-command rebuild are pro-
+905   vided for the off-GPU parts. Decode uses seed=20260820 and the frozen question subset
+906   decode_id ∈ [345, 645). Every numeric readout can be regenerated from the recorded-event
+907
+      schema with the indexed estimator and one-shot re-derivation (Table 11). The model checkpoint
+      cannot be re-released without authorization; an anonymous supplement of releasable events, scripts,
+908
+      and hashes remains subject to provenance approval.
+909
+910
+911
+912
+913
+914
+915
+916
+917
+
+
+
+                                                        17
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+918
+       Execution                 Recorded value
+919    accounting
+920
+       Hardware                  eight GPUs
+921
+       Timing                    330 running s = 0.73 GPU-h; 130 queueing s reported separately and excluded
+922    Shard completion          L = 16: 4/4; L = 64: 4/4
+923    Event-row check           L = 16: 153,600 = 300 × 512; L = 64: 499,200 = 300 × 1664; L = 32 control:
+924                              268,800 = 300 × 896 rows for decode_id ∈ [345, 645) of the frozen NFE-48
+925                              pool
+926
+927
+      Table 16: Execution cost and completion checks for the two new treatment arms and the frozen
+      control subset. Cost is reported for the GPU submission that produced the L=16 and L=64 arms;
+928
+      shard and event-row checks establish completion, whereas the control arm reuses a pre-existing
+929
+      pool.
+930
+931
+932   AI-assisted preparation disclosure. Image generation produced qualitative Figure 1; the selected
+933   candidate passed an element-level semantic audit and carries no measurements. Figure 2 remains
+934   data-derived. An AI assistant edited prose and LaTeX; all claims, numbers, citations, and hashes
+935   were checked against the listed evidence.
+936
+937   C      N OTATION AND T ERMINOLOGY
+938
+939   Table 17 collects the estimator notation and verdict vocabulary; Table 18 collects the bed names, the
+940   treatment variable, and the content-layer terms. Each entry names the section that deﬁnes it.
+941                      Table 17: Estimator notation and legacy decision-table vocabulary; terms point
+942                      to their operative deﬁnition and do not attribute mechanism.
+943
+944       Term                       Meaning (deﬁning location)
+945       ℓi,r                       Identity-lock time: earliest recorded step after which decode i’s token at
+946                                  relative position r never changes again (Eq. (1)).
+947       m(r), d(r)                 Per-position median lock time over decodes, and its adjacent difference
+                                     m(r+1) − m(r) (Section 2).
+948
+          BP , IP                    Candidate-P boundary set {r : r mod P = P − 1} and its complement, the
+949                                  candidate interior (Section 2).
+950       sep(P ), P ∗               Min–max period separation minBP d − maxIP d, and its maximizing
+951                                  candidate (Eq. (2)).
+952       DETECTED                   sep(P ∗ ) > 0, bootstrap modal period = P ∗ , mode fraction ≥ 0.95 (registered
+                                     rule, Section 2).
+953
+          REFUTED /                  Measured sep(P ) < 0 for a candidate that the decision table treated as
+954       NOT- SUPPORTED             refutable / for the originally registered intrinsic-32 conjunct, whose branch was
+955                                  withdrawn post-data (Table 6).
+956       A - PRIORI layer           What follows from the estimator’s algebra alone, before data — e.g.
+957                                  boundary-set nesting (Section 2).
+          FROM - EVENTS layer        What follows only once measured magnitudes exist — e.g. the sign of sep(32)
+958
+                                     (Section 2).
+959       Strictly L-supported       Recorded proﬁle with non-degenerate jumps on all L-block boundaries such
+960                                  that no L-multiple’s exclusive-boundary residual outscores L’s boundary
+961                                  minimum (Section 3.1).
+962       G(P ), perm. q95 , fam.    Normalized DFT magnitude of d(r) at frequency 1/P ; its per-candidate
+          q95                        permutation 95th percentile; the family-wise version over all candidates
+963
+                                     (Section 3.3).
+964
+965
+966
+967
+968
+969
+970
+971
+
+
+
+                                                              18
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+972
+         Term                     Meaning (deﬁning location)
+973
+974      L16 arm, L64 arm        The two new matched treatment arms at block length 16 and 64, NFE 48
+                                 (Table 1).
+975
+         L32/NFE48 control       Frozen matched positive control at block length 32, NFE 48: the registered
+976                              decode_id ∈ [345, 645) subset, n=300 (Sections 2 and 3.1).
+977      L32/NFE32 content bed Separate, differently budgeted bed used only for the content-association
+978                              diagnostic (Section 3.4).
+979      Partition-plus-required The composite treatment: changing the block partition necessarily changes the
+         allocation              per-block step allocation at ﬁxed total NFE (Table 1).
+980
+         Measurement-class       P ERIOD -F OLLOWS -B LOCK -L ENGTH: a post-data label stating that the
+981      label                   detected boundary period follows block length on the tested bed under the
+982                              active-block recording window; not a mechanism attribution (Sections 1
+983                              and 3.1).
+984      BIN8                    Restricted null that permutes residualized conﬁdence within 8 equally
+                                 populated offset-rank bins, preserving offset structure to 4-position granularity
+985
+                                 (Sections 2 and 3.4).
+986      conf0                   Position-r initial conﬁdence at block-commit: the model’s conﬁdence for r at
+987                              the ﬁrst recorded step of its block (Section 2).
+988      Block-unit; resolved    One decode-block of the content bed; a position whose lock time is deﬁned and
+989      position                that never ﬂips after lock. Terminal-resolved units, which present no
+                                 within-block pairwise order, are excluded (Table 8).
+990
+         τ , τres                Median over units of the per-unit rank association between lock time and
+991                              conﬁdence; the offset-residualized (content-layer) version (Eq. (3)).
+992
+993    Table 18: Bed, treatment, and content-layer terms; the matched setting and separate content bed
+994    remain distinct.
+995
+996
+997
+998
+999
+1000
+1001
+1002
+1003
+1004
+1005
+1006
+1007
+1008
+1009
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+1017
+1018
+1019
+1020
+1021
+1022
+1023
+1024
+1025
+
+
+
+                                                            19
+

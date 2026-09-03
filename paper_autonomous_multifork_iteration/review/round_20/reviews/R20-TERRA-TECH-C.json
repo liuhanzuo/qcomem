@@ -1,0 +1,117 @@
+{
+  "reviewer_id": "R20-TERRA-TECH-C",
+  "round": 20,
+  "snapshot_sha256": "802c99cf2ec462e41b5343dd204c463b3f4d27d0eb3c601e6489d2765e1e7a27",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within its explicitly narrow reference-stack scope, the protocol is technically coherent: it distinguishes ownership classes, records lifecycle transitions, uses range-based disjointness predicates, and avoids conflating allocator counters with process memory (pp. 4-9). The paper is also candid that cross-arm equality is relational, numerical oracles are sampled/captured-input checks, and execution evidence has a limited trust boundary (pp. 8-9, 19). Those gaps prevent an excellent score, but the claims are mostly calibrated to them.",
+    "presentation": "Excellent. The paper is unusually clear about the protocol, evidence classes, authorized cohort-to-claim mappings, and what the measurements do not establish. Figures and tables are legible, and the distinction among logical state, page allocation, allocator counters, and service capacity is consistently maintained (pp. 2, 7-9, 14-16).",
+    "contribution": "The phase-aware integration of KV and recurrent-state ownership witnesses, explicit denominators, and fault-gated replay is useful systems methodology. However, the paper itself appropriately positions the individual ingredients as prior art and validates the integration only on one model/runtime, one sequential schedule, and narrow operator samples (pp. 17-19), making the broader contribution incremental."
+  },
+  "paper_summary": "ForkAudit is an executable audit protocol for forking hybrid LLM state. It separates immutable document KV and persistent GDN base state from private append and post-transition recurrent state, then evaluates four KV-by-GDN ownership policies on one Qwen3.5-35B-A3B reference stack. The reported evidence includes canonical cross-cell equality, storage-range witnesses, sampled independent attention and GDN recurrence checks, targeted live-fault gate reachability, and carefully bounded allocator measurements.",
+  "strongest_verified_contribution": "A well-specified, phase-aware audit contract for heterogeneous hybrid-LLM state that makes ownership, append behavior, execution provenance, fault gates, and memory denominators explicit and separately checkable (Sections 3-4, pp. 4-7).",
+  "strengths": [
+    "The paper clearly explains why token equality alone cannot establish request isolation and why KV and recurrent state require different ownership rules (pp. 1-5).",
+    "The storage witness schema is concrete: it specifies phase records, normalized intervals, alias/disjointness predicates, and first-transition conditions rather than relying on informal claims (Appendix D, pp. 14-15).",
+    "The experimental claims are carefully delimited. The paper does not claim throughput, scheduler behavior, process memory, capacity, or broad runtime transfer from this experiment (pp. 2, 7, 9, 19).",
+    "Memory reporting is more rigorous than usual: source-retaining controls, allocator endpoints, phase resets, and unmeasured quantities are separated (Table 2, p. 9; Table 6, p. 16).",
+    "The authors disclose that the numerical oracles are conditional on captured inputs and that fault results demonstrate intended-gate reachability rather than completeness (p. 8; pp. 18-19)."
+  ],
+  "questions": [
+    "What is the precise trust model for producer-generated storage IDs and captured receipts? Can an independent capture layer establish that distinct assigned storage IDs cannot conceal a shared underlying allocation (Appendix D, pp. 14-15; Appendix I, p. 19)?",
+    "Can the authors provide a fully closed GPU execution artifact or a clean independent rerun, rather than a replay derivative after the stated original code-closure failure (Section 7, p. 9)?",
+    "Can the authors add a pre-specified wider validation subset, especially for upstream normalization/projection and untested GDN layers, to assess common-mode errors shared by all ownership arms (Section 5.2-5.3, p. 8; Table 12, p. 18)?",
+    "Can the authors expand the mutation corpus beyond one intended positive control per listed gate and report escaped, wrong-gate, and clean-control outcomes (Table 7, p. 16; Appendix H, pp. 18-19)?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R20-TERRA-TECH-C1",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "Section 3 decision rule, p. 4; Section 7, p. 9; Appendix I, p. 19",
+      "claim_ids": ["fully witnessed ownership", "independent replay", "frozen execution evidence"],
+      "evidence_ids": ["Table 1", "Section 7 reproducibility statement", "Appendix I limitations"],
+      "observed_evidence": "The paper calls a target fully witnessed when mandatory records and a replay predicate are available (p. 4), but states that terminal recursive closure of the primary GPU code failed and that the derivative package binds a raw aggregate and offline replay rather than a closed original run (p. 9). It further states that pointer-free intervals and raw-byte hashes make captured evidence replayable but do not prove correctness against a malicious producer before capture (p. 19).",
+      "why_it_matters": "Replay of receipts establishes internal consistency conditional on trustworthy collection. Without a stated trust boundary or closed execution provenance, the evidence cannot by itself establish that the runtime state being audited was faithfully captured.",
+      "required_fix": "State the producer and capture trust model explicitly and phrase the guarantee as conditional on it. Release a fully pinned execution closure and, if feasible, an independently rerunnable capture path that binds storage identity and lifecycle events before aggregation.",
+      "verification_test": "Perform a clean independent execution and compare its raw receipt set and aggregate. Add adversarial tests that attempt storage-ID relabeling or pre-capture aliasing while preserving ordinary content hashes; the trusted capture or verifier should reject them.",
+      "evidence_needed": "A complete execution closure, an independent rerun, and explicit evidence that the collection layer detects aliasing or relabeling not represented by the current receipts.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-TERRA-TECH-C2",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor"],
+      "location": "Section 5.1-5.3, pp. 7-8; Table 5, p. 14; Appendix I, p. 19",
+      "claim_ids": ["cross-arm equivalence", "independent attention oracle", "independent GDN oracle"],
+      "evidence_ids": ["Figure 3", "Table 5", "Table 12"],
+      "observed_evidence": "Cross-arm equivalence is based on canonical results from the same fixed backend. The independent attention check covers eight selected rows conditional on captured post-RoPE inputs (p. 8), while the GDN oracle covers four transitions at layers 0, 10, 20, and 38 conditional on post-normalization inputs (pp. 8, 18). The paper explicitly excludes upstream construction, normalization, most GDN layers, and end-to-end semantics (pp. 8, 19).",
+      "why_it_matters": "The current checks strongly support bounded consistency but do not rule out a common-mode implementation error shared by all four ownership arms. This limits the evidence for general implementation correctness even within the reference stack.",
+      "required_fix": "Keep the current bounded wording, but add a pre-specified wider validation subset: stratified attention/GDN samples across layers, decoding positions, requests, and tail geometries, plus an independent end-to-end reference for a representative small subset.",
+      "verification_test": "Report per-stratum errors and decisions against an independently implemented or separately validated reference, including cases designed to perturb upstream normalization, projections, and append handling.",
+      "evidence_needed": "Broader pre-specified operator coverage and representative independent end-to-end comparisons.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-TERRA-TECH-C3",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims"],
+      "location": "Section 5.3, p. 8; Table 7, p. 16; Appendix H, pp. 18-19",
+      "claim_ids": ["live fault sensitivity", "gate reachability"],
+      "evidence_ids": ["Figure 3c", "Table 7", "M8/M9 local detector debug"],
+      "observed_evidence": "The nine mutations are targeted positive controls with one intended gate each. The paper appropriately describes this as intended-gate reachability rather than completeness or a detector rate (p. 8). After suppression, M9 reaches one ordinary paired-view assertion whereas M8 reaches only an injected sentinel; both paths abort before semantic outputs are produced (pp. 18-19).",
+      "why_it_matters": "The evidence supports sensitivity to these selected faults but gives limited information about false negatives, wrong-gate behavior, or unanticipated real faults.",
+      "required_fix": "Describe this result consistently as targeted positive-control validation and add a broader frozen mutation matrix if fault coverage is to be a central contribution.",
+      "verification_test": "Report clean controls, multiple independently implemented faults per target, wrong-gate outcomes, escapes, and downstream semantic divergences in a preregistered fault corpus.",
+      "evidence_needed": "A broader mutation campaign not mechanically coupled to the assertion it is intended to trigger.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-TERRA-TECH-C4",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "clarity"],
+      "location": "Table 2, p. 9; Table 6, p. 16",
+      "claim_ids": ["allocator deltas", "median across eight ranks"],
+      "evidence_ids": ["Table 2", "Table 6"],
+      "observed_evidence": "Table 2 reports rounded medians across eight ranks while stating rank values coincide. Table 6 similarly says the deterministic values were identical across all ranks, but the PDF does not show unrounded per-rank values or a receipt-derived equality listing.",
+      "why_it_matters": "The bounded allocator comparison remains plausible and clearly scoped, but exact per-rank reporting would make the claim easier to audit and remove ambiguity between exact and rounded equality.",
+      "required_fix": "Provide unrounded per-rank endpoints and exact baseline/reset definitions in a machine-readable summary, or state that the displayed value is a deterministic endpoint with a receipt hash proving rank equality.",
+      "verification_test": "Recompute Tables 2 and 6 from synchronized raw allocator snapshots and verify units, reset boundaries, aggregation, and claimed rank equality.",
+      "evidence_needed": "Exact per-rank allocator values or raw snapshot receipts with aggregation code.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct human-subject, privacy, or safety concern is apparent from this bounded systems evaluation. The manuscript includes an appropriate ethics statement on p. 13.",
+  "llm_usage_disclosure": "This internal review was produced with LLM assistance and is based only on the supplied PDF, the supplied rubric/schema, and the assignment-provided snapshot/PDF identity clarification. No repository, evidence package, prior review, author plan, score, or revision history was inspected.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A complete, independently rerunnable GPU execution/capture artifact with an explicit trust model for storage and receipt collection.",
+    "A clean independent rerun that reproduces the reported raw receipts and aggregate decisions.",
+    "Pre-specified broader oracle coverage and representative independent end-to-end checks showing no common-mode semantic errors.",
+    "A broader mutation corpus that quantifies escapes, wrong-gate behavior, clean controls, and downstream consequences."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of an independent rerun to reproduce the reported receipt collection or aggregate.",
+    "Evidence that distinct producer-assigned storage IDs can conceal a shared allocation without rejection.",
+    "Independent end-to-end comparisons that reveal semantic divergence despite the reported cross-arm digest equality.",
+    "Evidence that the reported fault outcomes depend only on injected sentinels or assertions rather than detecting corresponding runtime defects."
+  ],
+  "review_limitations": [
+    "This was a PDF-only blind review. I did not inspect source code, raw receipts, supplementary artifacts, prior reviews, scores, author plans, or revision history.",
+    "The assessment evaluates the manuscript's stated evidence and scope, not an artifact replay."
+  ]
+}

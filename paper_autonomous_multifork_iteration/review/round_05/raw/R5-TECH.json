@@ -1,0 +1,116 @@
+{
+  "reviewer_id": "R5-TECH",
+  "round": 5,
+  "snapshot_sha256": "90c20e84de6080c96e38e7bd0f95323159f71e6607a951504b9b938bbe89b60f",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The core ownership design is plausible, the frozen rows support the reported outcome, and the attention and GDN checks are carefully bounded. However, the shipped one-command reviewer replay does not enforce the paper's all-tensor GDN disjointness predicate: it compares only matching coordinates across owners. This is a substantive defect in the executable verifier that constitutes the primary contribution. The manuscript also inaccurately describes its full-logit comparison as a pre-copy torch.equal check when the formal path hashes a CPU FP32 conversion.",
+    "presentation": "The manuscript is unusually explicit about estimands, lifecycle phases, oracle boundaries, and negative results. Figures and tables are legible, and the main text fits within eight pages before references. Some audit claims are difficult to verify because the prose, claim map, and actual formal-run implementation disagree on the full-logit comparison, but the overall exposition remains clear.",
+    "contribution": "A phase-aware ownership, dispatch, mutation, and memory-denominator audit is useful, and the packaged case study is extensive. Nevertheless, most components are integrations of established testing, storage-witness, and accounting ideas, while validation remains confined to one model, one adapter, one sequential schedule, and closely related lifecycle geometries. The claimed runtime-independent contract has not been demonstrated through an independently implemented second adapter."
+  },
+  "paper_summary": "ForkAudit specifies an executable audit contract for hybrid LLM request state containing paged attention KV and recurrent GDN state. Its Qwen3.5-35B-A3B case study crosses full-copy versus shared-document KV with materialized versus borrowed-immutable GDN setup at three fan-outs, checks cross-cell semantic equality, records phase-aware storage ownership, evaluates selected attention and recurrent transitions against FP32 references, injects nine targeted live faults, exercises one cancellation/reclamation lifecycle, and separates logical, allocator, and unmeasured service-memory denominators.",
+  "strongest_verified_contribution": "The strongest contribution is the unusually detailed, raw-bound phase record for heterogeneous KV/GDN ownership. The 288 frozen phase artifacts contain sufficient storage metadata to establish that the recorded run has no cross-coordinate request/base or request/peer overlap, and the selected attention and GDN sidecars provide bounded numerical checks beyond cross-arm self-consistency.",
+  "strengths": [
+    "The paper carefully distinguishes immutable document state, request-private append state, borrowed recurrent bases, and post-transition mutable state.",
+    "Claims about attention and recurrent correctness are explicitly conditional on captured internal inputs and do not overstate end-to-end independence.",
+    "The four-cell factorial, fixed-axis projections, matched-clean mutation controls, and separate lifecycle cohort address several plausible common implementation errors.",
+    "Memory results keep page-pool arithmetic, PyTorch allocator windows, and unmeasured process or service capacity separate.",
+    "Limitations are unusually candid: the paper disclaims speedup, scheduler, production-capacity, compiled-binary identity, cross-runtime, and completeness claims."
+  ],
+  "questions": [
+    "Is the intended completed-request ownership predicate all-to-all disjointness across every one of the 60 request tensors and every base or peer tensor? If so, why does the shipped independent replay compare only equal layer/state coordinates?",
+    "Can the authors add a replay adversary in which a request tensor aliases a nonmatching base or peer coordinate and demonstrate rejection at the appropriate ownership gate?",
+    "Where in the frozen formal-run source is the claimed pre-copy torch.equal comparison of full-vocabulary logits performed? The reviewed path appears to clone logits to CPU FP32, hash them, and compare hashes.",
+    "What evidence supports calling the decision rule runtime-independent beyond its specification? Has any independent implementer instantiated the typed records and reached the same decisions on another adapter?",
+    "Should the method-provenance paths be rooted at the included executed-source package rather than the absent supplement_anonymous/code tree?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R5-TECH-01",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility"],
+      "location": "Section 3, runtime-independent decision rule and private-ownership target (pages 3–4); Appendix E, Pointer-Free Storage Witness Schema (page 14); evidence/round_04_rr2_package/replay/replay_rr2.py, validate_storage_phase, lines 270–291",
+      "claim_ids": ["C-OWN-01", "C-RR2-GDN-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "M-RR2-STORAGE", "M-RR2-STORAGE-SPEC"],
+      "observed_evidence": "The paper requires every completed request's 60 mutable tensors to be disjoint from the entire persistent base and every peer. The shipped independent replay instead pairs each request row only with the persistent or peer row having the same layer/state coordinate. A request tensor that aliases a different coordinate can therefore escape this replay. The executed producer source contains a correct nested all-pairs helper, but the advertised one-command reviewer replay does not use it, and its seven adversarial tests contain no cross-coordinate alias. A read-only all-pairs scan of all 288 frozen phase files found no cross-coordinate overlaps, so this is a verifier defect rather than evidence that the recorded clean run actually aliases.",
+      "why_it_matters": "The central contribution is an executable audit whose independent aggregate is claimed to recompute each mandatory predicate blindly. Omitting a class of cross-owner overlaps makes that aggregate unsound for the stated ownership contract and leaves a targeted fault class undetectable.",
+      "required_fix": "Replace the coordinate-aligned disjointness loops in the reviewer replay with all-pairs comparisons between each completed or materialized request tensor set and the full persistent and peer tensor sets. Add a cross-coordinate alias adversary, rerun all 288 phase artifacts, and regenerate the bound derived summary.",
+      "verification_test": "Modify a synthetic witness so request layer 0 convolution state reuses the storage ID and interval of a nonmatching persistent or peer recurrent-state coordinate while all same-coordinate pairs remain disjoint. The one-command replay must reject it at the appropriate request-base or request-peer gate, while the unmodified 288 phase artifacts must still pass.",
+      "evidence_needed": "An updated manifest-bound replay, a cross-coordinate alias regression test, and regenerated storage-validation output covering every frozen phase.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-TECH-02",
+      "severity": "minor",
+      "dimensions": ["technical_soundness", "reproducibility", "clarity"],
+      "location": "Section 4.3, Controls, schedule, and oracles (page 6); Section 5.1 (pages 6–7); claim C-EXACT-01; executed formal runner _gpu_round_robin_generate, lines 2852–2860 and aggregate comparison around lines 10385–10400",
+      "claim_ids": ["C-EXACT-01", "C-RR2-FACT-01"],
+      "evidence_ids": ["E-MF-SUMMARY", "E-MF-SHARDS", "E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "The manuscript states that full-vocabulary tensors are compared with torch.equal before CPU copying and that equality booleans plus hashes are persisted. In the formal runner, logits are detached, copied to CPU, converted to FP32, and hashed; cross-cell equality is then inferred by equality of semantic dictionaries containing those hashes. No torch.equal operation appears in this formal logit path, and the raw semantic records contain hashes rather than a tensor-equality boolean.",
+      "why_it_matters": "Hash equality of a normalized CPU representation is strong evidence, but it is not the execution procedure described in the paper. The distinction affects the exact meaning of bitwise full-logit equality and the audit's method provenance.",
+      "required_fix": "Either revise the manuscript and claim map to state precisely that CPU-FP32 logit byte hashes are compared, including dtype and shape guarantees, or add and archive the claimed pre-copy device-side torch.equal comparisons and booleans.",
+      "verification_test": "Trace the final manuscript statement to a manifest-bound source path and confirm that every semantic row contains the stated dtype, shape, comparison operation, and result.",
+      "evidence_needed": "Corrected prose and provenance, or new bound equality receipts from the formal execution path.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-TECH-03",
+      "severity": "major",
+      "dimensions": ["significance", "experimental_rigor", "novelty"],
+      "location": "Introduction, claimed primary contribution (page 2); Section 3, runtime-independent decision rule (page 4); Section 6 and Appendix J limitations (pages 8 and 17–18)",
+      "claim_ids": ["C-OWN-01", "C-RR4-LIFECYCLE-01", "C-UNSUPPORTED-GENERAL"],
+      "evidence_ids": ["M-RR2-FACTOR", "M-RR4-LIFECYCLE-PROTOCOL", "M-RR4-LIFECYCLE-VALIDATION"],
+      "observed_evidence": "Every primary and lifecycle result uses the same Qwen3.5/vLLM Q16 adapter and closely related code. The paper explicitly acknowledges that the evidence does not show transfer to another runtime, model, recurrent backend, scheduler, or concurrent execution regime. Thus the runtime-independent decision rule is currently a specification illustrated by one implementation rather than a validated portable audit interface.",
+      "why_it_matters": "Because ForkAudit is not a new cache policy or kernel, its ICLR-level significance depends heavily on whether the contract generalizes beyond the bespoke reference adapter and provides reproducible value to independent implementations. The current single-adapter evidence leaves that central utility uncertain.",
+      "required_fix": "Either consistently frame the contribution as a deeply audited single-adapter reference case, or instantiate the typed record and decision interface independently on a materially different hybrid model or runtime and report where the contract transfers or must change.",
+      "verification_test": "An implementation not sharing the current adapter's ownership helpers must emit the specified records, pass clean controls, reject predeclared ownership faults, and reproduce the decision predicates from its frozen artifacts without adapter-specific logic.",
+      "evidence_needed": "A second independently implemented adapter/runtime or a narrower contribution claim that removes unsupported portability implications.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-TECH-04",
+      "severity": "minor",
+      "dimensions": ["reproducibility", "clarity"],
+      "location": "Appendix K, Artifact and Claim Map (page 18); evidence/method_provenance.tsv entries M-KV-ARENA through M-EXACT",
+      "claim_ids": ["C-OWN-01", "C-EXACT-01"],
+      "evidence_ids": ["M-KV-ARENA", "M-KV-FORK", "M-TAIL-COW", "M-HYBRID-FRESH", "M-HYBRID-REUSE", "M-GDN", "M-KERNEL", "M-SCHEDULE", "M-EXACT"],
+      "observed_evidence": "Several method-provenance rows point to supplement_anonymous/code paths that are absent from the frozen snapshot, while related frozen source exists under evidence/round_04_rr2_package/executed_source/gpu. The manuscript's artifact table uses the included package path, so the machine-readable map and paper are inconsistent.",
+      "why_it_matters": "Broken package-relative provenance prevents automatic resolution of several core method statements and makes it harder to verify that the mapped symbols correspond exactly to executed code.",
+      "required_fix": "Rewrite every provenance source path to an included manifest-bound file and confirm each named symbol exists at that path.",
+      "verification_test": "Resolve every method_provenance.tsv source_path relative to the snapshot, require that the file exists, and search for the declared symbol or line anchor.",
+      "evidence_needed": "A corrected method-provenance table with a passing path and symbol-resolution audit.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific ethics concern is apparent. The study uses an existing language-model checkpoint and PG-19 text for systems measurements, makes no downstream safety or quality claims, and includes a proportionate discussion of deployment-scale externalities.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A corrected all-pairs independent storage replay with a cross-coordinate alias regression test and a clean rerun over all 288 phase artifacts.",
+    "Exact, manifest-bound provenance for the full-logit comparison, with either accurate CPU-FP32 hash wording or archived device-side equality receipts.",
+    "A successful independently implemented second adapter or runtime that exercises the same typed contract and predeclared fault gates.",
+    "Evidence that the audit remains valid under at least one materially different lifecycle or concurrent serving schedule, if broader practical relevance is claimed."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any cross-coordinate overlap discovered in the frozen request/base or request/peer storage rows.",
+    "Evidence that the producer-side all-pairs replay was not actually exercised before accepting the formal shards.",
+    "Failure of an independently implemented attention or recurrent reference at the stated captured-input boundaries.",
+    "A demonstration that equality of the stored CPU-FP32 hashes can occur despite materially different native full-logit tensors under the formal path."
+  ],
+  "review_limitations": [
+    "The review was confined to the frozen snapshot and did not inspect prior rounds, author plans, or external repository history.",
+    "No live GPU regeneration was performed; technical checks used frozen source, manifests, raw rows, and read-only recomputation.",
+    "Most full logits, KV tensors, and recurrent tensors are represented by runtime hashes rather than archived values, so their numerical equality cannot be independently recomputed from full tensors.",
+    "Novelty and citation coverage were assessed only from the literature included in the frozen submission."
+  ]
+}

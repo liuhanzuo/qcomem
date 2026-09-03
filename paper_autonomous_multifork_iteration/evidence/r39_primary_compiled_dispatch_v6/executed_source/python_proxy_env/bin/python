@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Transparent for every RR2 launcher phase except the eight immutable shard
+# commands.  The old launcher remains byte-identical and continues to audit its
+# own code/inputs; only shard execution is routed through the mandatory hook.
+
+REAL_PYTHON=${R39_PRIMARY_REAL_PYTHON:?set R39_PRIMARY_REAL_PYTHON}
+EXPECTED_RUNNER=${R39_PRIMARY_EXPECTED_RUNNER:?set R39_PRIMARY_EXPECTED_RUNNER}
+WRAPPER=${R39_PRIMARY_RANK_WRAPPER:?set R39_PRIMARY_RANK_WRAPPER}
+CODE_ROOT=${R39_PRIMARY_CODE_ROOT:?set R39_PRIMARY_CODE_ROOT}
+RUNTIME_ROOT=${R39_PRIMARY_RUNTIME_ROOT:?set R39_PRIMARY_RUNTIME_ROOT}
+BASE_ROOT=${R39_PRIMARY_BASE_ROOT:?set R39_PRIMARY_BASE_ROOT}
+SOURCE_ROOT=${R39_PRIMARY_SOURCE_ROOT:?set R39_PRIMARY_SOURCE_ROOT}
+CAPTURE_ROOT=${R39_PRIMARY_CAPTURE_ROOT:?set R39_PRIMARY_CAPTURE_ROOT}
+
+route=false
+if [[ $# -ge 3 && "$1" == "$EXPECTED_RUNNER" ]]; then
+  previous=""
+  for value in "$@"; do
+    if [[ "$previous" == "--stage" && "$value" == "shard" ]]; then
+      route=true
+      break
+    fi
+    previous=$value
+  done
+fi
+
+if [[ "$route" == true ]]; then
+  runner=$1
+  shift
+  exec "$REAL_PYTHON" -I -B "$WRAPPER" \
+    --code-root "$CODE_ROOT" \
+    --runtime-root "$RUNTIME_ROOT" \
+    --r39-base-root "$BASE_ROOT" \
+    --primary-source-root "$SOURCE_ROOT" \
+    --runner "$runner" \
+    --capture-root "$CAPTURE_ROOT" \
+    -- "$@"
+fi
+
+exec "$REAL_PYTHON" "$@"

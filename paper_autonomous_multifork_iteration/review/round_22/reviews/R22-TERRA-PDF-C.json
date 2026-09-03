@@ -1,0 +1,95 @@
+{
+  "reviewer_id": "R22-TERRA-PDF-C",
+  "round": 22,
+  "snapshot_sha256": "308f9d22f4f2f1687cd49017578c38b16f53b6b9cabddd2acec4152d3842754a",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 3},
+  "dimension_justifications": {
+    "soundness": "The paper carefully limits its claims and supplies a coherent ownership predicate, 96 factorial configurations, selected FP32 operator checks, and nine live fault injections (Sections 3-5, pp. 3-8; Figure 3, p. 7). However, its main evidence remains conditionally self-reported: it explicitly cannot independently recapture the producer, has only digest-level representations for most tensors, and admits broken terminal source-tree closure (Sections 4.3 and 6, pp. 6, 8; Section 7, p. 8; Table 5, p. 13). The numerical checks cover only eight attention rows and four post-normalization GDN transitions, not end-to-end behavior (Sections 5.4-5.5, p. 7; Table 17, p. 19).",
+    "presentation": "The paper is unusually explicit about claim boundaries, separates heterogeneous cohorts rather than pooling them, and makes its main contract and memory denominators easy to locate (Sections 3-4, pp. 3-6; Tables 4-6, pp. 12-15). It is nevertheless dense, with many receipt-specific terms, qualification clauses, and appendix tables needed to interpret the central result; this materially raises the effort needed to distinguish validated properties from the supporting controls.",
+    "contribution": "A phase-aware receipt contract for jointly auditing paged KV and mutable recurrent state is a clear and potentially useful systems-evaluation contribution. The paper positions it as an integration of known primitives rather than a new cache policy or scheduler (Tables 9-10, pp. 16-17), which is appropriately modest. Its practical significance is still uncertain because validation is limited to one sequential Qwen configuration and lacks independent capture or a concurrent-serving demonstration."
+  },
+  "paper_summary": "ForkAudit proposes a receipt-bound audit contract for hybrid LLM request state, distinguishing immutable shared document KV and recurrent bases from request-private append/state. It evaluates four KV-by-GDN ownership configurations on one Qwen3.5-35B-A3B setup, checks canonical output/state equality, storage-range lifecycle predicates, selected independent attention/GDN numerical oracles, nine injected faults, and named memory denominators. Separate Mac, LongBench deployment, and vLLM/SGLang controls are presented as contextual rather than pooled evidence (Abstract, p. 1; Sections 4-6, pp. 5-8).",
+  "strongest_verified_contribution": "Within the stated trusted-capture boundary, the strongest verified result is a well-specified lifecycle witness showing that, across the 96 sequential factorial configurations, document KV and borrowed GDN bases remain immutable while post-transition mutable GDN ranges are disjoint from bases and peers, with registered cross-arm and cross-fan-out observables matching (Section 5.3, p. 7; Table 5, p. 13).",
+  "strengths": [
+    "The paper sharply distinguishes logical cache state, allocated pages, allocator counters, and unmeasured process/service capacity, preventing misleading memory comparisons (Section 4.4, p. 6; Table 6, p. 15).",
+    "The factorial design separates KV ownership from GDN setup ownership and includes a partial-tail geometry, explicit lifecycle phases, and non-vacuous request-base testing at N=1 (Sections 4.1-4.2, p. 5; Section 5.3, p. 7).",
+    "It is commendably candid that cross-arm equality is relational, the operator oracles are selected captured-input checks, and targeted mutations do not establish detector completeness (Sections 3 and 6, pp. 3-4, 8; Figure 3, p. 7).",
+    "The manuscript preserves an appropriate boundary between its primary audit and its contextual deployment/framework results (Table 4, pp. 12-13; Tables 11-13, pp. 17-18)."
+  ],
+  "questions": [
+    "Can the authors supply a terminally closed, independently executable source/environment identity for the primary run, and explain how the post-ledger pycache issue in Section 7 is prevented from recurring?",
+    "Can an independent party recapture at least one full primary receipt bundle from the declared model/data environment and reproduce the storage, semantic, and oracle predicates rather than only replaying captured bytes?",
+    "How does the ownership contract behave under actual concurrent kernels, continuous/ragged batching, cancellation interleavings, and scheduler-managed reuse, which are excluded by the one-stream schedule?",
+    "What evidence can calibrate the nine hand-targeted mutation checks on withheld or naturally occurring faults, particularly given that M8 reaches an injected sentinel rather than a production assertion (Appendix F, p. 15; Appendix H, p. 19)?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R22C-1",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility", "citation_integrity"],
+      "location": "Section 4.3 (p. 6), Section 6 (p. 8), Section 7 (p. 8), Table 5 (p. 13), and Appendix I (p. 20)",
+      "claim_ids": ["frozen-identity", "receipt-replayable-audit", "full-lifecycle-witness"],
+      "evidence_ids": ["section-4.3", "section-7", "table-5", "appendix-I"],
+      "observed_evidence": "The manuscript states that replay cannot independently recapture the producer or reconstruct unarchived device tensors; most tensors are digests; frozen identity is only partial because post-ledger pycache files broke terminal code-tree closure; and the evidence is conditional on honest capture.",
+      "why_it_matters": "The paper's central value proposition is auditable ownership evidence. Without a closed executable identity and at least one independent recapture, replay demonstrates consistency of captured receipts but cannot rule out capture-time or provenance errors that would invalidate the claimed audit assurance.",
+      "required_fix": "Provide a cryptographically bound terminal source/environment snapshot for the primary run, resolve the post-ledger-tree exception, and add an independently performed clean recapture or clearly lower the central claim to captured-receipt consistency.",
+      "verification_test": "A reviewer with the released environment should independently regenerate a primary-cell receipt bundle and recover the registered semantic, storage, oracle, and aggregate predicates from newly produced artifacts.",
+      "evidence_needed": "A closed manifest/container and independent recapture report with byte bindings and replay results for at least one primary factorial arm.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R22C-2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "Sections 4.1-4.3 (pp. 5-6), Section 6 (p. 8), Table 3 (p. 12), and Appendix I (p. 20)",
+      "claim_ids": ["hybrid-request-isolation", "fork-audit-validation", "memory-accounting"],
+      "evidence_ids": ["table-3", "section-6-limitations", "appendix-I"],
+      "observed_evidence": "All requests are resident but execute sequentially in round-major order on one CUDA stream, on one model/hardware family with N<=32 and one partial-tail geometry. The authors explicitly exclude continuous batching, scheduler behavior, arbitrary cancellation, multi-document serving, NVML capacity, and production throughput.",
+      "why_it_matters": "The central motivating setting is many continuations in serving systems, but the tested execution excludes the scheduling and concurrent interleavings where ownership/lifetime defects and useful memory behavior are most consequential. The disclosed limitation appropriately narrows the claim, but leaves practical generality unresolved.",
+      "required_fix": "Add at least one concurrent/scheduler-managed evaluation with interleaved requests and cancellation/reclamation, plus a small geometry/model sweep, or further frame the work as a single-stack audit case study rather than evidence for hybrid serving broadly.",
+      "verification_test": "Run the same storage and semantic predicates under continuous or ragged batching with forced interleavings, cancellation, and page-boundary variations; report any failures and retain the existing denominator separation.",
+      "evidence_needed": "Receipt bundles and mutation results for a concurrent execution regime and at least one additional model or hybrid runtime configuration.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R22C-3",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims"],
+      "location": "Section 5.5 (p. 7), Table 7 (p. 15), and Appendix H (p. 19)",
+      "claim_ids": ["fault-sensitivity", "dispatch-provenance"],
+      "evidence_ids": ["figure-3", "table-7", "appendix-H"],
+      "observed_evidence": "The nine injected mutations each reach their prespecified gates, but the paper acknowledges these are positive controls rather than a detection-rate estimate. For M8, the follow-up debug run reaches an injected sentinel instead of a production runtime assertion.",
+      "why_it_matters": "The campaign establishes that specific tailored predicates can fire, but offers limited evidence that the contract detects unanticipated implementation defects or that all named gates have comparable operational strength.",
+      "required_fix": "Separate production checks from injected sentinels in the headline evidence and evaluate a preregistered held-out mutation set or historical defects.",
+      "verification_test": "Report recall and failure localization for held-out faults whose gate mapping is not chosen after observing the implementation.",
+      "evidence_needed": "A blind fault suite with raw outcomes, including production-path rather than sentinel-only detection.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific ethics violation is evident. The paper includes a concise systems-oriented ethics statement (Appendix A, p. 11); its potential deployment-scale implications are acknowledged but do not create a distinct ethics concern for this submission.",
+  "llm_usage_disclosure": "This is an internal automated review produced with LLM assistance. It was conducted only from the specified frozen PDF snapshot and accompanying rubric/schema; no repository, source, artifact, prior-review, or external-web inspection was used.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A terminally closed primary-run source/environment manifest plus independent clean recapture of a receipt bundle.",
+    "Concurrent/scheduler-managed hybrid-serving experiments that preserve the storage, semantic, and accounting predicates under interleavings and cancellation.",
+    "A preregistered held-out fault campaign and broader operator/end-to-end validation beyond the selected eight attention rows and four GDN transitions."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any independent replay or recapture discrepancy in the registered cross-arm outputs, storage ranges, lifecycle digests, or oracle sidecars.",
+    "Evidence that terminal source-tree incompleteness or unbound artifacts can alter a primary receipt without invalidating the current identity gate.",
+    "Failures of immutable-base/private-state guarantees under genuinely concurrent scheduling or ordinary cancellation/reclamation paths."
+  ],
+  "review_limitations": [
+    "This review was restricted to the supplied frozen PDF-only snapshot; cited artifacts, raw receipts, code, supplementary package, and external references were not inspected.",
+    "The schema lacks a holistic_pdf_only role; technical_soundness is used solely for schema conformance although the assignment was holistic."
+  ]
+}

@@ -1,0 +1,208 @@
+{
+  "reviewer_id": "r00-experiments",
+  "round": 0,
+  "snapshot_sha256": "691d902c895efbc2a85bc13d08b072d02cf33b81aa967c3c6fd5e9fa0f7cec58",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The frozen run credibly supports a narrow same-kernel KV-ownership equivalence result and deterministic memory accounting. However, both arms use the same recurrent-state strategy, half of the unique queries receive no non-vacuous cross-fan-out comparison, and missing implementation dependencies prevent independent verification of the critical model integration.",
+    "presentation": "The manuscript is unusually explicit about denominators, serial execution, lack of uncertainty estimates, and unsupported performance claims. It is generally clear, but statements that every request is isolated and that all nested requests are checked overstate actual cross-N coverage, while artifact paths and evidence identifiers are inconsistent with the supplied package.",
+    "contribution": "An executable ownership contract and denominator-aware audit could be useful to inference-systems researchers. Current evidence is nevertheless limited to one bespoke serial runner, one model and geometry, no materialized recurrent control, and no end-to-end runtime fault-injection study, leaving the practical and scientific significance below the acceptance threshold."
+  },
+  "paper_summary": "ForkAudit proposes seven observable invariants for auditing shared-prefix ownership in hybrid LLM inference, including immutable prefix state, disjoint request-private state, partial-tail copy-on-write, fixed kernel provenance, cross-arm equivalence, and cross-fan-out invariance. A Qwen3.5-35B-A3B case study compares source-retaining materialized-KV and shared-KV arms for six fan-outs on eight H20 GPUs. The artifacts report exact token, logit-digest, logical-KV, and GDN-state agreement and contrast controlled KV-pool accounting with PyTorch allocated-memory peaks.",
+  "strongest_verified_contribution": "Within the stated one-model, one-stream scope, the supplied shards consistently record exact behavior between copied and shared full-attention KV layouts while checking source immutability, private KV reservation disjointness, final recurrent-state storage disjointness, and identical fused-attention dispatch; the deterministic page and allocator arithmetic also matches the reported headline values.",
+  "strengths": [
+    "The paper sharply distinguishes logical payload, allocated page pools, PyTorch allocator counters, and unmeasured NVML or service capacity.",
+    "The primary comparison holds the attention callable fixed and checks full-vocabulary logits rather than only generated tokens.",
+    "The authors clearly disclose that the eight ranks are different workloads rather than stochastic replicates and avoid confidence intervals or speed claims unsupported by the design.",
+    "The negative cross-backend gate is reported rather than hidden, and its numerical discrepancy is not misrepresented as an ownership failure.",
+    "Raw primary shards contain detailed trajectories, storage equations, allocator snapshots, kernel-call ledgers, and integrity hashes."
+  ],
+  "questions": [
+    "Can the authors provide a 2x2 KV-share versus GDN-share experiment, including a genuinely materialized recurrent-prefix arm and an independent semantic reference?",
+    "Do the authors agree that queries 16-31 on each rank occur only at N=32 and therefore have no cross-N comparison? How will every unique request receive at least one non-vacuous larger-fan-out test?",
+    "Which actual runtime ownership faults have been injected end to end, and which specific ForkAudit invariant detects each one before aggregation?",
+    "Can the complete transitive code dependency set and all registered E-CODE evidence objects be included so the runner imports and governance tests execute in a clean environment?",
+    "How do the 12.33x pool ratio and 3.83% allocator difference change under a materialized baseline that does not retain unused N-scaled private reservations in the common source arena?",
+    "Will all personal usernames, internal cluster paths, and organization-specific URLs be removed from the anonymous supplementary package?"
+  ],
+  "issues": [
+    {
+      "issue_id": "EXP-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "main.tex lines 175-200 and 404-422; qcomem_vllm_paged_multifork_resident.py lines 335-383",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The fresh and reuse constructors differ in full-attention KV materialization, but both seed the recurrent tensors from the same persistent cache and call install_native_functional_linear_cache. The manuscript explicitly acknowledges that both arms use the same GDN strategy. Thus equal final GDN digests compare two instances of the same treatment rather than shared versus materialized recurrent ownership.",
+      "why_it_matters": "A request-local but semantically wrong recurrent implementation, such as dropping or misbinding the prefix state, can remain equal across arms and invariant across N. The experiment therefore validates KV-layout equivalence and some GDN non-aliasing properties, but not semantic correctness of hybrid materialized-versus-shared ownership as a whole.",
+      "required_fix": "Run a factorial control separating KV copied/shared and GDN materialized/shared, and compare every arm with an independent full-prefill or otherwise justified semantic reference. Report state, output, and memory results per factor rather than treating the current two-arm equality as a hybrid-state oracle.",
+      "verification_test": "For each workload, all four ownership combinations must use frozen inputs and kernel provenance; the materialized-GDN reference must be storage-disjoint from the persistent base; shared-GDN outputs and final states must match that reference; and factor-specific memory differences must reconstruct from raw ledgers.",
+      "evidence_needed": "New raw GPU shards and aggregate results for the factorial controls, including an independent recurrent-state semantic reference.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "EXP-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "main.tex lines 218-224, 292-331, and 404-408; run_qcomem_qwen35_vllm_paged_multifork_resident.py lines 1819-1848",
+      "claim_ids": [
+        "C-ISOLATE-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SHARDS",
+        "E-MF-SUMMARY"
+      ],
+      "observed_evidence": "The sets are nested prefixes for N={1,2,4,8,16,32}. Consequently, request indices 16-31 on each rank appear only at N=32 and cannot be compared with any larger fan-out. Only 16 of 32 queries per rank, or 128 of 256 unique queries overall, receive a non-vacuous cross-N test. The validator checks only that prefix_reference contains 32 identities, not that each identity occurs at two distinct N values.",
+      "why_it_matters": "Cross-N isolation is one of two headline metamorphic oracles, yet the manuscript states that every request is isolated and Table 2 reports all nested requests without disclosing that half the unique identities have singleton coverage.",
+      "required_fix": "Use balanced or rotated subset chains so every unique request appears at two or more fan-outs, or narrow the claim and table to the exact non-vacuous coverage. The validator should reject singleton-only identities.",
+      "verification_test": "Emit a per-request fan-out coverage ledger and require at least two distinct N values, including one strict increase, for every identity claimed as cross-N tested; replay equality for all such pairs.",
+      "evidence_needed": "New rotated-subset runs or a revised claim supported by an explicit coverage histogram and exact comparison count.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "EXP-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "significance"
+      ],
+      "location": "main.tex lines 278-287, 424-433, and Appendix B lines 490-508; evidence/local_governance_tests.log",
+      "claim_ids": [
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "The 17 governance tests exercise helpers, validators, launcher behavior, and 28 serialized-artifact tamper cases. The paper itself states that these are not runtime scheduler fault injections. No end-to-end mutation demonstrates that the metamorphic oracles detect representative live failures such as missed tail COW, in-place persistent-GDN mutation, wrong request rebinding, overlapping reservations during execution, or an unintended kernel path.",
+      "why_it_matters": "Falsifiability and detection of common-mode ownership bugs are central contributions. Rejecting inconsistent serialized records does not establish that the proposed observables are sensitive to the runtime faults they are meant to audit.",
+      "required_fix": "Add an end-to-end mutation study covering at least one representative fault for every central invariant, including recurrent and KV faults, while retaining a clean control.",
+      "verification_test": "Each injected fault must deterministically trigger its predicted invariant or oracle, no unrelated invariant should be required to catch it, and the unmodified run must pass under the identical workload.",
+      "evidence_needed": "Mutation definitions, pinned code diffs or switches, raw failing ledgers, expected-versus-observed invariant outcomes, and clean-control results.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "EXP-04",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness",
+        "citation_integrity"
+      ],
+      "location": "main.tex lines 447-455 and 532-557; run_qcomem_qwen35_vllm_paged_multifork_resident.py lines 25-55; evidence/claim_evidence_map.tsv row C-OWN-01; evidence/experiment_registry.json",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The included runner imports qcomem_joint_policy, qcomem_qwen35_functional_stack, qcomem_qwen35_vllm_paged_integration, qcomem_vllm_paged_fair_control, and run_downstream, none of which is present in the frozen package. The code ledger supplies hashes for those absent files, but hashes do not expose behavior. C-OWN-01 also cites E-CODE-KERNEL, E-CODE-MF, and E-CODE-GDN, which are not registered in experiment_registry.json. Full tensors are unavailable, so numerical equality cannot be recomputed offline either.",
+      "why_it_matters": "The missing integration and backend-control modules are precisely where model layers are converted and execution hooks are installed. Without them, neither the core runner nor the supplied tests are runnable, and the most important implementation claims cannot be independently inspected.",
+      "required_fix": "Include every transitive source and test dependency used by the frozen run, register all E-CODE evidence identifiers, replace non-resolving artifact paths, and provide a clean-environment reproduction command. Include compact raw tensor samples or a reduced deterministic rerun fixture for independent equality verification.",
+      "verification_test": "From only the anonymous package and documented external model/data prerequisites, a clean environment must import the runner, execute all governance tests, reconstruct every table value, resolve every claim/evidence identifier, and complete a reduced end-to-end parity run.",
+      "evidence_needed": "Complete pinned source archive, dependency lock or environment specification, corrected registry, runnable commands, and reduced raw/recomputed numerical evidence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "EXP-05",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "main.tex lines 183-188, 333-365, and 418-420",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The materialized arm retains the common 80 MiB document arena with N-scaled 5 MiB-per-request reservations and additionally allocates an 85 MiB arena per request, yielding 80+90N rather than a production-oriented materialized topology. At N=32, a simple source-free materialized pool would be 85N=2720 MiB rather than 2960 MiB, while the shared pool remains 240 MiB. The paper discloses this, but the 12.33x and 3.83% values remain headline results.",
+      "why_it_matters": "The values are valid descriptions of the instrumented topology but not baseline-fair estimates of sharing benefit. Retained unused capacity inflates both the local pool contrast and the measured allocator contrast.",
+      "required_fix": "Add an optimized materialized baseline that does not retain unused source reservations, or make the controlled topology merely a validation diagnostic and provide an explicit counterfactual decomposition in the abstract, figure, and results.",
+      "verification_test": "The baseline must preserve identical model, GDN semantics, kernel, query schedule, and private capacity while eliminating storage not required by the materialized policy; recompute both page and allocator comparisons from raw ledgers.",
+      "evidence_needed": "A fair-baseline run or a clearly labeled analytic counterfactual with every retained allocation itemized.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "EXP-06",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "MANIFEST.json source_path fields; generated/artifact_metrics.json lines 195-231; static-dry-run.json environment paths; evidence/local_governance_tests.log lines 2-3; failure-summary.json web_ui_url",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The anonymous package repeatedly embeds a personal-looking username in local and cluster paths and includes an organization-specific internal job URL and infrastructure identifiers.",
+      "why_it_matters": "These fields can reveal author identity or affiliation and violate the double-blind submission requirement even though the manuscript author block is anonymous.",
+      "required_fix": "Regenerate every supplementary artifact with sanitized relative paths and remove private service URLs, usernames, queue identifiers, and other affiliation-revealing metadata.",
+      "verification_test": "Run a recursive anonymization audit over text, JSON, logs, PDF metadata, and archives; no personal names, usernames, internal domains, absolute home paths, or institution-specific infrastructure identifiers may remain.",
+      "evidence_needed": "A rebuilt anonymous supplementary archive and a clean anonymization-audit report.",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No substantive research-ethics concern is apparent for this systems study. The supplementary identity and affiliation leakage is a double-blind compliance and privacy-hygiene problem recorded as EXP-06.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A 2x2 KV-share/GDN-share study with a genuinely independent recurrent semantic reference.",
+    "Balanced cross-N subsets giving every unique request at least one non-vacuous larger-fan-out comparison.",
+    "End-to-end runtime mutations demonstrating sensitivity of each central invariant and metamorphic oracle.",
+    "Evaluation inside a real scheduler with lifecycle events such as cancellation, reclamation, and ragged or continuous batching.",
+    "A complete, anonymous, clean-environment-runnable artifact package with all claim identifiers resolved.",
+    "A baseline-fair memory comparison plus repeated allocator and process-level measurements."
+  ],
+  "evidence_that_would_lower_score": [
+    "A complete rerun showing any token, full-logit, logical-KV, recurrent-state, or source-immutability mismatch.",
+    "A materialized recurrent reference demonstrating that both current arms share the same semantic error.",
+    "Rotated cross-N subsets revealing request dependence that the nested-prefix design missed.",
+    "Runtime ownership mutants that pass the proposed audit undetected.",
+    "An optimized materialized baseline substantially changing the headline allocator conclusion.",
+    "Evidence that identifying supplementary metadata cannot be removed before submission."
+  ],
+  "review_limitations": [
+    "I reviewed only the frozen snapshot and permitted rubric files, without external repository, author-state, or prior-review access.",
+    "I could not independently rerun the experiment because model weights, data, and several critical imported modules are absent.",
+    "The archived full tensors are unavailable, so numerical equality was assessed through supplied runtime booleans, digests, code, and replay logic.",
+    "Broader novelty and literature completeness were not independently verified; the contribution assessment primarily reflects experimental scope."
+  ]
+}

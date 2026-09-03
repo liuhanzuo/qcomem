@@ -1,0 +1,100 @@
+{
+  "reviewer_id": "a11-r3-repro",
+  "round": 3,
+  "snapshot_sha256": "683d2d58f3eead73dba6344efefe02a17d9904f9170b77fb6364a6e1735dc6ee",
+  "role": "reproducibility_provenance",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "The central replay-model argument is stated precisely, with an exact-rational monotonicity check and a FIT-frozen/CAL selection formulation. However, the empirical support cannot be independently reconstructed from this snapshot because the core inputs, exact main-experiment programs, and original selection provenance are absent.",
+    "presentation": "The scope boundary is unusually clear: replay disagreement, rather than online correctness or operational cost, is consistently distinguished. The manuscript, source, result excerpts, and static audits are easy to navigate, though the very brief reproducibility statement overstates what the supplied bundle permits a reader to reproduce end-to-end.",
+    "contribution": "The posterior certificate for the explicitly count-exchangeable replay endpoint is a coherent and potentially useful contribution, supported by several supplied result summaries and careful limitations. Its practical empirical value remains less persuasive until the headline results and their FIT/CAL/TEST selection chain are independently reproducible."
+  },
+  "paper_summary": "The paper studies adaptive stopping for a binary pass-count replay model. BAYES-H uses a FIT-frozen mixture over final pass counts to compute a posterior probability that the current prefix decision will disagree with the corresponding full-N pass-count decision, and stops when that value is at most alpha. It gives a tower-property result under the stated count-exchangeable replay assumptions, uses empirical-Bernstein plus Bonferroni selection on CAL, and reports replay count-reduction/flip results on OMR, a second OMR shard, OpenR1, and RLVE while explicitly excluding claims about ordered online correctness and measured operational cost.",
+  "strongest_verified_contribution": "Within the frozen snapshot, the strongest verifiable contribution is a carefully scoped count-exchangeable replay formulation with a hash-bound manuscript/source package: the supplied exact-rational audit passes 21,824 monotonicity cases, the current-manuscript audit passes 36 checks, and the paper consistently limits the theorem and reported endpoints to replay full-vote disagreement.",
+  "strengths": [
+    "The snapshot itself is integrity-bound: VERIFY_SNAPSHOT.py reports the declared root hash, and the source-local claim audit verifies hashes and stated scope boundaries.",
+    "Reported headline quantities are traceable to named frozen JSON result excerpts, with deterministic seeds, carrier checksum records, a FIT/CAL/TEST description, and explicit distinctions between CAL certification and descriptive TEST readouts.",
+    "The paper documents material limitations rather than treating replay agreement, rollout-count reduction, synthetic drift, or fitted-mixture TV sensitivity as online correctness, measured cost, or population-transfer certification.",
+    "The theory and implementation descriptions expose enough detail to audit the replay-model computation conceptually, including the terminal-state convention and dynamic-program recurrence."
+  ],
+  "questions": [
+    "Will the anonymous supplement release the exact source for the core OMR FIT/CAL/TEST, drift, source-transfer, and shard-replication runs, rather than only their output JSONs and references to upstream workspace paths?",
+    "Can the authors provide a self-contained or deterministically downloadable input manifest with raw-data checksums, split membership or split hashes, deduplication outputs, preprocessing instructions, and the exact commands/logs that establish that TEST was not used in selection?",
+    "What environment lock (Python version and package versions, especially pandas/pyarrow/scientific solvers) reproduces the reported artifacts from a clean machine, and which output hashes should a reproducer obtain?",
+    "Why does literature/citation_requests.json retain four entries as open while literature/citation_lock.json declares all active citations locked, and which status is authoritative?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R3-RP-01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Reproducibility statement (PDF p. 18); source/claim_audit_manifest.json residual_blocker; evidence/repository_inventory.md; evidence/experiment_registry.json; artifacts/REPRO_README.md.",
+      "claim_ids": [
+        "C02",
+        "C03",
+        "C06"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-DRIFT-R469",
+        "EV-OMR-OTHER"
+      ],
+      "observed_evidence": "The snapshot contains result JSONs, checksum text files, selected downstream analysis scripts, and static/hash audits, but no raw carrier files, FIT/CAL/TEST membership, duplicate-check outputs, raw predictions, original selection timestamps/logs, environment lock, or the core OMR/drift/shard/source-transfer programs. experiment_registry labels the core experiments supplied_artifact_not_rerun, and the local claim-audit manifest expressly says these omissions block independent end-to-end replay. The README's reproduction commands point to upstream workspace paths that are not in the snapshot.",
+      "why_it_matters": "A reviewer can check internal consistency of frozen outputs but cannot independently establish the headline numerical results, the claimed pre-selection separation, or whether deduplication and preprocessing produced the declared data. This is a material reproducibility/provenance gap for the main empirical evidence, even though it is candidly documented and does not by itself refute the stated replay-model theorem.",
+      "required_fix": "Provide an anonymous, self-contained reproduction archive or a deterministic acquisition manifest with immutable input checksums, exact core-run source code, split membership or cryptographic split manifests, preprocessing/deduplication records, configuration and package lock, commands, and machine-readable expected output hashes. Include immutable FIT/CAL freeze and TEST-readout logs sufficient to audit selection provenance.",
+      "verification_test": "On a clean environment, obtain the pinned inputs, run the supplied core OMR, drift, shard, OpenR1, and RLVE commands without manual intervention, verify input/split/output hashes, and reproduce the named JSON fields and CAL-selection decisions at the reported precision. Independently confirm that TEST IDs are disjoint from FIT/CAL and that no duplicated task IDs survive preprocessing.",
+      "evidence_needed": "Raw or deterministically retrievable licensed inputs; exact experiment programs; dependency/environment lock; split and deduplication manifests; frozen CAL-selection and single-TEST-readout logs; reproducible output hashes.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-RP-02",
+      "severity": "minor",
+      "dimensions": [
+        "citation_integrity",
+        "reproducibility"
+      ],
+      "location": "literature/citation_lock.json, literature/citation_requests.json, and source/references.bib.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "citation_lock.json states that all active manuscript citations are locked with metadata and local-support verification, whereas citation_requests.json still marks the Vovk, Howard, Kish, and Skellam requests open. No archived source excerpts or local verification records resolve the discrepancy inside the frozen package.",
+      "why_it_matters": "These are background citations rather than support for the central theorem or headline results, so this does not invalidate the paper. Nevertheless, contradictory provenance records prevent a reader from determining the actual verification status of several active references.",
+      "required_fix": "Reconcile the two citation records and include a concise, snapshot-local verification record for every active citation, identifying the authoritative source, checked metadata, and the exact local claim supported.",
+      "verification_test": "Check that every citekey used by source/paper.tex has one consistent final status across the citation lock and request ledger, with a matching local verification record and bibliography entry.",
+      "evidence_needed": "Corrected citation ledger and per-citation metadata/support verification records.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No distinct ethics violation is evident in the frozen snapshot. Dataset licenses and the non-deployment scope are disclosed; the main concern is reproducibility/provenance rather than human-subject, privacy, or misuse evidence.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean-room reproduction of the reported core JSONs from released code, pinned inputs, split/deduplication manifests, and an environment lock.",
+    "Immutable FIT/CAL freeze and TEST-readout provenance demonstrating the declared selection separation.",
+    "A reconciled, snapshot-local citation verification ledger for every active citekey."
+  ],
+  "evidence_that_would_lower_score": [
+    "A clean reproduction that fails to recover the CAL-selected rules or headline replay flip/count-reduction values.",
+    "Evidence that FIT, CAL, and TEST overlap, selection used TEST information, or reported carrier checksums/splits do not match the data used.",
+    "Discovery that the cited output JSONs cannot be traced to the stated input data and executable configurations."
+  ],
+  "review_limitations": [
+    "This assessment was confined to the frozen submission snapshot and used no network access.",
+    "Because raw carriers, original core-run code, and execution logs are absent by design, I can verify internal consistency and documented boundaries but cannot independently reproduce or authenticate the underlying empirical runs.",
+    "Citation-source content was not independently retrieved; the citation finding is limited to the inconsistency between the bundle's own provenance ledgers."
+  ]
+}

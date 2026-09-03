@@ -1,0 +1,169 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "61cb32cfc2143449d9d418c67ae71814cbca1a9fda188facac641abe0285f565",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "对论文实际声明的窄范围而言，时间冲击在第9-11轮才激活、FIT/hold-out 种子分离、逐运行配对外层损失和精确二项界等做法基本正确，且论文没有把 64/64 检出夸大为一般部署结论。主要问题不是结果算错，而是阈值用同一合成冲击机制的极少 FIT 种子校准，健康轨迹又按设计令 m 恒为零，因此中心 operating point 几乎不包含真实告警难度。",
+    "presentation": "因果时间顺序、门控定义、正对照和结论边界都较清楚，三幅图展示了完整运行分布。基线选择器和 rollback 的定义不完整，且多个页面可见红/绿超链接边框，降低了成稿质量。",
+    "contribution": "论文诚实证明了一个末端标签翻转会抬高最终校准损失，last-margin 能发出告警并回滚到已存在的最佳验证检查点；但门控在全部观测运行上与 best-val/early-stop 完全等价，健康臂排除了非单调性，因而新增科学知识和部署价值都较窄。"
+  },
+  "paper_summary": "论文在一个小型五分类 Transformer 合成任务中构造最终四分之一训练轮次才发生的标签翻转。告警量 m 是最终校准损失减去历次最小校准损失；阈值由健康/冲击各四个 FIT 种子的间隔中点确定。64 个冲击 hold-out 运行全部越过阈值，64 个健康运行均未触发；相对部署 last，门控把平均外层损失降低 0.3395。但所有冲击运行的最优验证点都恰在冲击前一轮，门控、best-val 和 early-stop 因而在 64/64 运行上完全相同。论文将结果限制为检测加相对 last 的回滚，而非优于已有检查点选择器。",
+  "strongest_verified_contribution": "在所给合成协议内，论文清楚验证了时间顺序：冲击前存在干净候选、冲击只在最后三轮生效、最终检查点被损坏；FIT 冻结阈值在独立的 128 个 hold-out 运行上得到 64/64 检出和 0/64 健康误报，并用逐运行配对外层损失量化了相对 last 的回滚收益。",
+  "strengths": [
+    "冲击不是从训练开始就存在，而是有明确干净前缀，能够验证“先有可用检查点、后发生末端损坏”的时间顺序。",
+    "阈值校准种子与结算种子分离，并为召回率和 FAR 给出保守方向的一侧 Clopper-Pearson 界。",
+    "完整披露 gate、best-val 和 early-stop 在全部冲击运行上完全相同，没有把告警包装为新的优化器或更优选择器。",
+    "明确把 m恒为0 归因于健康轨迹严格单调，并把真实非单调健康数据列为未测量边界。"
+  ],
+  "questions": [
+    "四个 FIT 冲击种子和四个健康种子是否足以稳定确定 τ？若逐个删除 FIT 种子或改变冲击强度/时间，阈值和 hold-out 决策如何变化？",
+    "第一个 hold-out 种子完成后才冻结预注册时，作者是否看过该种子的轨迹或结果？哪些设计、阈值和通过条件在它完成之前已经不可变地登记？",
+    "Table 2 中 rollback 与 margin-gate 的算法差异是什么，为什么冲击外层损失分别为 0.00106 和 0.00092？SWA、EMA、soup、early-stop 的精确定义与超参数是什么？",
+    "在校准损失自然非单调、冲击类型与 FIT 不同且 best-val 不再等于理想回滚点时，告警能否仍保持低 FAR 并提供超越 best-val 的决策价值？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P5-R2-001",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第1页摘要与§1、第4页表2-3及§5.1-5.2、第5页§5.5.1、第7页表6与结论",
+      "claim_ids": [
+        "alarm-detection-and-rollback",
+        "endpoint-value"
+      ],
+      "evidence_ids": [
+        "表2",
+        "表3",
+        "表6"
+      ],
+      "observed_evidence": "所有 64 个冲击运行的校准最小点都在 epoch 8，gate、best-val 和 early-stop 的外层损失与准确率逐记录完全相同；健康运行中 last 也是最优点。门控的动作集合本来就只有 {last,best-val}。",
+      "why_it_matters": "相对 last 的 0.3395 改善等价于在一个已知最佳验证点仍可用的构造中启用 best-val，不能证明新检查点选择能力或告警对已有选择器的增量部署价值。作为 ICLR 贡献，当前实验主要确认了一个预期的合成失败模式。",
+      "required_fix": "增加预注册的非共延构造：使冲击覆盖、提前或扰动验证 argmin，或者让告警在尚未观察完整轨迹时做真正前瞻决策；以 best-val、early-stop 和成本匹配的回滚策略为主要对照，而非只对 last。",
+      "verification_test": "在冻结阈值下，报告 gate 与 best-val/early-stop 选择不同检查点的比例，并在独立种子上用配对外层指标检验增量收益；若始终共延，应把贡献严格限定为冲击标签而非检查点政策。",
+      "evidence_needed": "不同冲击时刻/强度/类型的独立 hold-out 运行和逐运行选择器身份。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R2-002",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第3页§3.3与表1、第4-6页§5.3-5.4、图3和表4-5、第7页局限2与4",
+      "claim_ids": [
+        "alarm-operating-point",
+        "healthy-far"
+      ],
+      "evidence_ids": [
+        "表4",
+        "表5",
+        "图3"
+      ],
+      "observed_evidence": "阈值取自同一标签翻转机制下仅 4 个健康和 4 个冲击 FIT 种子的 max/min 中点；所有健康 hold-out 轨迹 704/704 相邻转移严格下降，因此 m 恒为0，而所有冲击 margin 与其完全分离。",
+      "why_it_matters": "这种设计把最困难的误报来源排除掉，并用与测试冲击同分布的正例校准阈值。64/64 与 0/64 主要反映构造分离度，不能支持阈值稳定性、未知冲击检测或实际部署 FAR。",
+      "required_fix": "加入自然非单调健康轨迹、不同于 FIT 的冲击族及阈值敏感性分析；采用嵌套或更充分的校准，预先规定阈值选择和跨机制评估。",
+      "verification_test": "在完全未用于阈值选择的健康/冲击家族上报告 ROC/PR、固定 FAR 下召回、校准集 leave-one-out 阈值范围以及按冲击类型分层的置信区间。",
+      "evidence_needed": "现实或至少多机制、非单调的校准与独立测试轨迹。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R2-003",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "clarity"
+      ],
+      "location": "第3页表1与§3.3-4.1、第4页表2、第6页讨论、第9页附录A",
+      "claim_ids": [
+        "registered-selector-comparison"
+      ],
+      "evidence_ids": [
+        "表1",
+        "表2",
+        "表7"
+      ],
+      "observed_evidence": "论文只列出 last、best-val、early-stop、SWA、EMA、soup、rollback、margin-gate 的名称，没有定义 early-stop 规则、SWA/EMA 窗口或衰减、soup 成员/权重、rollback 触发条件。表2 中 rollback 与 gate 的结果不同，但正文未解释算法差异。",
+      "why_it_matters": "这些基线被用于论证替代政策也能吸收末端冲击；缺乏定义使公平性和数值无法独立重建，也无法判断 gate 的比较对象是否成本匹配。",
+      "required_fix": "为每个选择器给出公式、可观察信息集、超参数、检查点存储成本及确定性实现，并解释 rollback 与 gate 的差异。",
+      "verification_test": "从逐 epoch 检查点和冻结配置独立重放所有选择器，逐记录复现表2，并核对 gate/best-val/early-stop 的 64/64 身份。",
+      "evidence_needed": "选择器配置、逐运行检查点索引和重放脚本。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R2-004",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第3页§4.2（行157-161）",
+      "claim_ids": [
+        "preregistered-settlement"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "预注册是在第一个 hold-out 种子已经完成时冻结，而论文只说明没有用 hold-out 轨迹调整阈值，没有说明该结果是否已被查看或是否影响通过条件和分析。",
+      "why_it_matters": "若首个 hold-out 结果已被观察，预注册对完全前瞻性的保护会弱于通常理解，尤其本研究的主要通过条件与单一机制高度相关。",
+      "required_fix": "提供带时间戳的预注册时间线，明确首个 hold-out 结果是否可见、此前已冻结哪些项目，并把任何事后决定标注为探索性。",
+      "verification_test": "核对预注册哈希/时间戳、seed 1 完成时间和访问日志；确认阈值、终点、CI 方向及通过条件均早于结果查看。",
+      "evidence_needed": "不可变预注册记录和运行时间线。",
+      "expected_impact": "low",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "P5-R2-005",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "PDF第1、3-7、9-10页的内部引用与文献链接",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "渲染后的 PDF 中，多处表/图引用带红色矩形边框，文献引用带绿色矩形边框。",
+      "why_it_matters": "可见链接边框持续打断阅读，并使提交稿显得未完成最终排版检查。",
+      "required_fix": "按 ICLR 模板设置隐藏或统一的链接样式，并重新渲染全稿检查。",
+      "verification_test": "逐页视觉检查最终 PDF，确认所有链接仍可点击但不再显示彩色边框，也没有交叉引用错误。",
+      "evidence_needed": "修复后的最终 PDF。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "实验为程序生成的合成序列分类任务，不含人体参与者或个人数据；当前材料未显示额外伦理风险。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；子代理只接收冻结 PDF、指定的 ICLR 2026 量表与输出 schema，未与任何其他评审通信，也未查看作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在自然非单调健康轨迹和未用于 FIT 的多种末端冲击上仍能保持预先规定的 FAR/召回。",
+    "一个让 gate 与 best-val/early-stop 非共延的预注册实验，显示成本匹配的增量外层收益。",
+    "阈值对 FIT 种子、冲击强度和时间的稳定性分析，以及透明的预注册时间线。",
+    "完整定义并可逐记录重放所有基线选择器。"
+  ],
+  "evidence_that_would_lower_score": [
+    "加入健康非单调性后 FAR 明显上升，或跨冲击机制阈值失效。",
+    "揭示首个 hold-out 结果曾影响阈值、终点或通过条件。",
+    "成本匹配比较显示 gate 从不优于 best-val/early-stop，且告警标签没有独立操作价值。"
+  ],
+  "review_limitations": [
+    "仅审阅了指定冻结 PDF；未访问文中所称匿名 workspace、原始 128 条记录、预注册文件或代码，因此不能独立核验运行时间线和逐记录相等性。",
+    "按任务要求未联网，未核验引用元数据或与现有末端漂移/检查点告警工作的完整新颖性边界。"
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "schema_version": "forkaudit-r29-heldout-fault-suite-v1",
+  "workstream_id": "E-R29-HELDOUT-REALISTIC-PATTERN-FAULTS",
+  "created_at_utc": "2026-08-25T03:38:59Z",
+  "created_before_candidate_outputs": true,
+  "candidate_outputs_seen_by_fault_author": false,
+  "suite_status": "frozen_fault_definitions_awaiting_cross_execution",
+  "author_role": "independent held-out fault author; not executor or outcome scorer",
+  "fault_label_policy": {
+    "label": "historical-pattern-inspired independently authored held-out mutations",
+    "naturally_occurring_claimed": false,
+    "exact_upstream_bug_reproduction_claimed": false,
+    "reason": "The mutations instantiate reported serving failure patterns on the fixed ForkAudit stack; they do not run the upstream servers, allocators, offload connectors, or sliding-window paths from those reports."
+  },
+  "author_executor_separation": {
+    "executor_must_not_edit_suite": true,
+    "executor_must_bind_suite_sha256_before_outputs": true,
+    "executor_may_implement_only_the_frozen_context_adapter": true,
+    "scorer_must_use_uniform_preregistered_decision_rules": true,
+    "fault_author_must_not_run_candidate_cases": true
+  },
+  "fixed_stack": {
+    "model": "Qwen3.5-35B-A3B",
+    "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "hardware": "three distinct NVIDIA H20-3e devices drawn from the existing eight-device node",
+    "software": "the same pinned Torch 2.11.0+cu129 / Transformers 5.14.1 / vLLM 0.26 environment as R28",
+    "document_tokens": 4095,
+    "page_size": 128,
+    "resident_count": 2,
+    "input_token_coordinate": "frozen_query_bank[rank][0][31]",
+    "advertised_horizon_tokens": 1,
+    "request_policy": "vllm-q16-shared-document-reuse",
+    "gdn_policy": "borrow-immutable-base-functional-rebind",
+    "execution_scope": "fresh sequential disposable cases; this workstream is not the separate concurrency experiment"
+  },
+  "rank_assignment": {
+    "0": "H01",
+    "1": "H02",
+    "2": "H03"
+  },
+  "lanes": [
+    {
+      "lane": "clean",
+      "fresh_case": true,
+      "fault_active": false,
+      "forkaudit_receipts_enabled": true
+    },
+    {
+      "lane": "fault_conventional",
+      "fresh_case": true,
+      "fault_active": true,
+      "forkaudit_receipt_verdicts_withheld": true,
+      "purpose": "measure what completion, production assertions, token equality, and full-logit equality reveal without using receipt verdicts"
+    },
+    {
+      "lane": "fault_forkaudit",
+      "fresh_case": true,
+      "fault_active": true,
+      "forkaudit_receipts_enabled": true,
+      "purpose": "apply the same fault and the same advertised horizon, then run the uniform receipt battery"
+    }
+  ],
+  "faults": [
+    {
+      "fault_id": "H01",
+      "short_name": "stale-prefix-identity-routes-wrong-page-order",
+      "class": "prefix-cache identity/content mismatch after a non-append history change",
+      "frozen_intervention": "For request 0 at the first full-attention layer, exchange immutable document-page entries 1 and 2 in the request-local live block table. Do not change pool bytes, table geometry, dtype/device, request identity, reservations, or any other layer.",
+      "injection_stage": "after fresh resident construction and before the one-token model invocation",
+      "guaranteed_target_symptom": "the request-local route order no longer represents the frozen prefix while every basic tensor-shape and dtype/device check remains valid",
+      "external_symptom_hypothesis": "the model may complete but its deterministic full logits or token may differ from the clean prefix; this is measured, not required for scientific validity",
+      "source_provenance": [
+        {
+          "type": "upstream issue report pattern",
+          "url": "https://github.com/vllm-project/vllm/issues/49377",
+          "title": "Token truncation leaves stale Request.block_hashes and can cause incorrect KV cache hits",
+          "upstream_revision_reported": "main at f25953cc5",
+          "pattern_used": "a live token history changes non-append-only while its reusable prefix identity remains stale"
+        },
+        {
+          "type": "upstream design documentation",
+          "url": "https://github.com/vllm-project/vllm/blob/main/docs/design/prefix_caching.md",
+          "pattern_used": "a reusable block identity must bind parent prefix, exact block tokens, and relevant extra hashes"
+        }
+      ],
+      "transfer_limit": "The fixed stack has no vLLM V1 Request.block_hashes lookup in this case; H01 injects the reported consequence at the live page-routing boundary and is not an exact reproduction of issue 49377.",
+      "restoration_policy": "restore both selected route entries exactly; require restored descriptor SHA-256 to equal pre-intervention SHA-256"
+    },
+    {
+      "fault_id": "H02",
+      "short_name": "exact-boundary-recurrent-state-double-apply",
+      "class": "hybrid attention/recurrent resume-boundary skew",
+      "frozen_intervention": "Run the same frozen one-token input twice for request 0 without rewinding recurrent state, while the advertised logical history advances by only one token. The second invocation is a hidden resume retry of the already-applied boundary token.",
+      "injection_stage": "model action sequence at an advertised one-token resume boundary",
+      "guaranteed_target_symptom": "actual model invocations equal two while the externally advertised logical advance equals one and both invocations use the identical frozen token coordinate",
+      "external_symptom_hypothesis": "the model is expected to complete and may return different deterministic full logits or token at the advertised history; divergence is measured rather than assumed",
+      "source_provenance": [
+        {
+          "type": "upstream fixed issue pattern",
+          "url": "https://github.com/vllm-project/vllm/issues/51094",
+          "fix_pull_request": "https://github.com/vllm-project/vllm/pull/51100",
+          "title": "OffloadingConnector can silently return wrong output at exact chunk boundaries with mamba_cache_mode=all",
+          "reproduced_upstream_revision_reported": "v0.25.1 nightly at 752a3a504",
+          "also_reported_present_at": "v0.26.0 / main 43c4bdcae9e589fde99984d1d5d03cbdeecf716b before the fix",
+          "pattern_used": "restored recurrent state already contains boundary token N while the scheduler recomputes N"
+        }
+      ],
+      "transfer_limit": "The fixed stack does not enable the upstream OffloadingConnector or Mamba cache mode. H02 recreates only the double-apply consequence on GDN state and is not an exact reproduction of issue 51094.",
+      "restoration_policy": "no in-place target restoration; every lane uses a fresh disposable cache/model case and the action-sequence receipt is immutable"
+    },
+    {
+      "fault_id": "H03",
+      "short_name": "latent-future-reservation-rebound-to-peer",
+      "class": "allocator ownership becomes stale before the bad route is consumed",
+      "frozen_intervention": "For request 0 at the first full-attention layer, replace only private reservation index 1 with request 1's corresponding physical block id. Preserve reservation index 0. With a 4095-token prefix and one appended token, index 1 must remain inactive over the measured horizon.",
+      "injection_stage": "after fresh resident construction and before the one-token model invocation",
+      "guaranteed_target_symptom": "one future reservation is multiply owned but remains outside the active block table for the preregistered one-token horizon",
+      "external_symptom_hypothesis": "clean and faulty tokens/full logits are expected to remain exact through the short horizon because the bad future reservation is not consumed; equality is measured and a divergence does not invalidate the run",
+      "source_provenance": [
+        {
+          "type": "upstream robustness issue pattern",
+          "url": "https://github.com/vllm-project/vllm/issues/42273",
+          "title": "SWA eviction leaves stale block table entries",
+          "pattern_used": "a freed or reusable physical block id can remain reachable in stale worker/GPU routing metadata while current masking keeps it semantically inactive"
+        },
+        {
+          "type": "upstream black-box issue report pattern",
+          "url": "https://github.com/vllm-project/vllm/issues/37076",
+          "title": "Potential use-after-free in KV block allocator under eviction pressure",
+          "pattern_used": "a physical block owned by another request can bleed into a victim after allocator reuse"
+        }
+      ],
+      "transfer_limit": "The fixed stack does not run sliding-window eviction or vLLM's production block allocator. H03 is a latent consequence-level reservation fault, not a reproduction or confirmation of either upstream report.",
+      "restoration_policy": "restore the single future reservation exactly; require restored descriptor SHA-256 to equal pre-intervention SHA-256"
+    }
+  ],
+  "uniform_conventional_baselines": {
+    "applied_to_every_fault": true,
+    "checks": [
+      "fault target precondition and non-no-op intervention receipt",
+      "unchanged target tensor rank, shape, stride, dtype, and device",
+      "model invocation completion versus an exact allowlisted production assertion",
+      "finite FP32 final logits",
+      "greedy token equality against the matched clean advertised horizon",
+      "full FP32 logit byte-SHA equality, max-absolute difference, and relative-L2 against the matched clean advertised horizon"
+    ],
+    "generic_crash_counts_as_detection": false,
+    "missing_output_counts_as_not_caught": false
+  },
+  "uniform_forkaudit_receipt_battery": {
+    "applied_to_every_fault": true,
+    "outcome_mapping_frozen_in_suite": false,
+    "ordered_checks": [
+      "frozen input and request provenance",
+      "live KV ownership and construction binding after the advertised horizon",
+      "GDN phase/storage snapshot and pointer-free replay after the advertised horizon",
+      "advertised scheduler action sequence replay",
+      "persistent KV and GDN immutability guards",
+      "mutation restoration or fresh-case disposal receipt"
+    ],
+    "classification_rule": "A ForkAudit catch requires an authenticated receipt predicate rejection or replay rejection from the registered audit modules. No fault has a preregistered target detector, and an arbitrary exception never counts.",
+    "first_rejection_and_all_completed_receipts_retained": true
+  },
+  "comparison_definitions": {
+    "token_only": {
+      "evaluated_only_if": "clean and faulty lanes both reach the preregistered advertised semantic horizon",
+      "caught": "greedy token integers differ",
+      "not_evaluated_is_not_not_caught": true
+    },
+    "full_logit": {
+      "evaluated_only_if": "clean and faulty lanes both persist finite FP32 logits with shape [1,248320] at the advertised semantic horizon",
+      "exact": "byte SHA-256 values are equal",
+      "caught": "byte SHA-256 values differ",
+      "additional_metrics": [
+        "argmax equality",
+        "maximum absolute element difference",
+        "L2(fault-clean)/max(L2(clean),1e-30)"
+      ],
+      "not_evaluated_is_not_not_caught": true
+    }
+  },
+  "operational_validity": {
+    "clean_case_must_complete": true,
+    "fault_intervention_must_be_non_noop": true,
+    "all_state_mutations_must_restore": true,
+    "fresh_case_per_lane": true,
+    "no_case_state_reuse": true,
+    "registered_backends_and_hooks_must_restore": true,
+    "post_warmup_allocator_baseline_must_restore": true,
+    "invalid_case_never_counts_as_scientific_outcome": true,
+    "valid_negative_results_retained": true
+  },
+  "reporting_policy": {
+    "per_fault_rows_only": true,
+    "no_aggregate_sensitivity_claim": true,
+    "no_naturally_occurring_bug_claim": true,
+    "no_upstream_implementation_evaluation_claim": true,
+    "negative_or_escaped_faults_must_remain_in_raw_and_summary_artifacts": true
+  },
+  "detection_rate_reported": false,
+  "implementation_bindings": {
+    "H01": {
+      "module": "r29_heldout_fault_suite",
+      "qualname": "apply_h01_stale_prefix_page_order",
+      "source_sha256": "f79d5b690e67d204987f4e355dfe7b5e67b9a39796989c61cd2825ef3a913fb8"
+    },
+    "H02": {
+      "module": "r29_heldout_fault_suite",
+      "qualname": "h02_action_sequence",
+      "source_sha256": "6811d8846a235b83a4e2594616f95625a3c25483a0f0182ee7b0a5b4906a48ba"
+    },
+    "H03": {
+      "module": "r29_heldout_fault_suite",
+      "qualname": "apply_h03_future_reservation_reuse",
+      "source_sha256": "780ebd316147d26aacbde68dca32a78b90411b1247697f308f82fe2a1f296626"
+    }
+  }
+}

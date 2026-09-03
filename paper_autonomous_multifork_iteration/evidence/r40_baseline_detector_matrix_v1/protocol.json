@@ -1,0 +1,92 @@
+{
+  "schema_version": "forkaudit-r40-baseline-protocol-v1",
+  "analysis_id": "R40-BASELINE-DETECTOR-MATRIX-V1",
+  "analysis_date": "2026-08-27",
+  "retrospective": true,
+  "outcome_blinded": false,
+  "outcome_access_disclosure": "Schemas and a subset of archived outcomes were inspected for computability before this retrospective freeze; detector families came from the requested conventional suite and are frozen before matrix generation.",
+  "new_model_execution": false,
+  "gpu_or_qs_access_authorized": false,
+  "fault_population_estimate_authorized": false,
+  "detectors": [
+    {
+      "id": "B1_RUNTIME_ASSERTION",
+      "definition": "built-in production assertion or unexpected non-assertion runtime failure; deliberate fault-payload abort excluded",
+      "default_stage": "dispatch_or_transition"
+    },
+    {
+      "id": "B2_TOKEN_EQUALITY",
+      "definition": "exact generated-token equality to matched clean or materialized control",
+      "default_stage": "terminal_token"
+    },
+    {
+      "id": "B3_FULL_LOGIT_EQUALITY",
+      "definition": "byte-exact full-vocabulary CPU-FP32 logits when call cardinality is comparable",
+      "default_stage": "terminal_logit"
+    },
+    {
+      "id": "B4_STRUCTURAL_SEQUENCE_ARGUMENT",
+      "definition": "plain sequence-binding, canonical-position, mask representation/shape, and fixed scalar argument assertions",
+      "default_stage": "dispatch_or_transition"
+    },
+    {
+      "id": "B5_PERSISTENT_BASE_IMMUTABILITY",
+      "definition": "persistent KV/GDN content digest unchanged from setup to transition/final",
+      "default_stage": "post_transition_state"
+    },
+    {
+      "id": "B6_SIMPLE_ALIAS_OVERLAP",
+      "definition": "write-ready/completed mutable request reservation or storage range does not overlap persistent base or peer request",
+      "default_stage": "post_transition_state"
+    },
+    {
+      "id": "B7_BASIC_LIFECYCLE_CARDINALITY",
+      "definition": "tail detach precedes append, committed call count matches, and rebinding generation/token advances",
+      "default_stage": "dispatch_or_transition"
+    }
+  ],
+  "stage_order": {
+    "pre_model_validation": 0,
+    "dispatch_or_transition": 1,
+    "post_transition_state": 2,
+    "terminal_token": 3,
+    "terminal_logit": 4
+  },
+  "detector_tie_break": [
+    "B1_RUNTIME_ASSERTION",
+    "B4_STRUCTURAL_SEQUENCE_ARGUMENT",
+    "B6_SIMPLE_ALIAS_OVERLAP",
+    "B7_BASIC_LIFECYCLE_CARDINALITY",
+    "B5_PERSISTENT_BASE_IMMUTABILITY",
+    "B2_TOKEN_EQUALITY",
+    "B3_FULL_LOGIT_EQUALITY"
+  ],
+  "primary_projected_gate_map": {
+    "KV_SEQUENCE_ID": "B4_STRUCTURAL_SEQUENCE_ARGUMENT",
+    "POSITION_CANONICAL_VALUES": "B4_STRUCTURAL_SEQUENCE_ARGUMENT",
+    "MASK_CONTRACT": "B4_STRUCTURAL_SEQUENCE_ARGUMENT",
+    "KV_RESERVATION_DISJOINT": "B6_SIMPLE_ALIAS_OVERLAP",
+    "gdn_completed_vs_base_disjoint": "B6_SIMPLE_ALIAS_OVERLAP",
+    "gdn_completed_vs_peers_disjoint": "B6_SIMPLE_ALIAS_OVERLAP",
+    "KV_TAIL_COW": "B7_BASIC_LIFECYCLE_CARDINALITY"
+  },
+  "excluded_from_conventional_projection": [
+    "KERNEL_CALLABLE_ID",
+    "KV_PAGED_VIEW"
+  ],
+  "case_cardinality": {
+    "primary_fault": 9,
+    "primary_clean": 9,
+    "designer_executor_fault": 5,
+    "designer_executor_clean": 5,
+    "historical_defect_coordinate": 8,
+    "historical_clean": 16
+  },
+  "claim_boundary": [
+    "fixed-case sensitivity and localization only",
+    "not a defect-population estimate",
+    "not unseen-fault recall or precision",
+    "projected primary assertions are not independent detector executions",
+    "eight historical rows are coordinates of one defect mechanism, not eight defects"
+  ]
+}

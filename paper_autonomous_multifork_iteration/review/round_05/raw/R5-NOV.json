@@ -1,0 +1,118 @@
+{
+  "reviewer_id": "R5-NOV",
+  "round": 5,
+  "snapshot_sha256": "90c20e84de6080c96e38e7bd0f95323159f71e6607a951504b9b938bbe89b60f",
+  "role": "novelty_positioning",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The deliberately bounded case-study claims are supported by a carefully frozen factorial, phase-aware storage witnesses, exact cross-arm comparisons, selected independent FP32 operator oracles, matched live faults, and manifest-bound replay artifacts. The paper appropriately avoids converting these results into end-to-end correctness, concurrency, performance, or generality claims. Confidence remains short of excellent because the numerical oracles cover selected captured-input boundaries, most evidence originates from the instrumented candidate producer, and the mutation campaign primarily confirms gates against faults designed for those gates.",
+    "presentation": "The paper is clear, visually polished, and unusually precise about denominators, sampling units, witness strength, and exclusions. Figures 1–3 and Tables 3–4 make the contract and evidence boundary easy to reconstruct. Dense internal labels such as RR2/RR4 and stale manuscript locations in the packaged claim-evidence map modestly hinder verification.",
+    "contribution": "ForkAudit is a useful integration of heterogeneous-state ownership witnesses, metamorphic equivalence, bounded numerical oracles, mutation-tested gates, and explicit memory denominators. The manuscript itself establishes that nearly every ingredient is prior art. With validation confined to one Qwen3.5/vLLM adapter and synthetic gate-matched faults, the evidence does not yet establish that the integrated contract transfers, discovers otherwise missed defects, or constitutes substantial new knowledge beyond a meticulous reference audit."
+  },
+  "paper_summary": "ForkAudit proposes an executable audit contract for forks of hybrid LLM state containing token-indexed attention KV and recurrent GDN state. A Qwen3.5-35B-A3B case study crosses full-copy versus shared-document KV with materialized versus borrowed GDN bases, records phase-aware ownership and dispatch receipts, checks exact cross-arm and cross-fan-out behavior, compares selected attention and recurrent transitions to independent FP32 calculations, injects nine live faults, and separates logical, page-pool, and allocator memory denominators. A same-adapter cohort additionally exercises one aligned cancellation, scrub, reclamation, and stale-handle lifecycle.",
+  "strongest_verified_contribution": "The strongest contribution is the phase-aware, pointer-free ownership witness for heterogeneous KV/GDN state, validated across 96 frozen factorial configurations and complemented by selected independent numerical checks and replayable mutation receipts. Within the stated one-model, one-runtime scope, it provides unusually auditable evidence that borrowed recurrent bases become request-private after first transition while shared document KV retains private append ownership.",
+  "strengths": [
+    "The novelty boundary is notably honest: Sections 2 and 6 and Appendix H explicitly identify block sharing, hybrid caching, metamorphic testing, and denominator accounting as prior art.",
+    "The contract distinguishes setup aliases from post-transition mutable ownership, including a non-vacuous request-to-base check at N = 1.",
+    "The evidence package separates candidate execution, offline replay, selected independent attention/GDN calculations, and explicit unresolved boundaries.",
+    "Memory claims use named estimands and avoid equating allocator counters with process memory, service capacity, or speed.",
+    "The manuscript reports negative and incomplete evidence, including the nonformal M8/M9 debug and failed terminal recursive closure, rather than silently promoting it to a pass."
+  ],
+  "questions": [
+    "What is the closest previously published integrated serving-correctness or state-ownership audit framework, and which concrete ForkAudit obligations are absent from it?",
+    "Which parts of the four-record runtime-independent decision rule have been instantiated unchanged by an implementation independent of the Qwen3.5/vLLM adapter?",
+    "Can the authors provide a preregistered detector matrix showing which ForkAudit gates, ordinary runtime assertions, and output-only comparisons catch each fault when the intended gate is suppressed?",
+    "Were any real implementation defects discovered while developing ForkAudit, and if so, can they be reported separately from the gate-designed positive controls?",
+    "How much producer and replay logic is independently implemented beyond the two bounded numerical oracles, and which common-mode errors remain possible in the ownership receipts?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R5-NOV-01",
+      "severity": "major",
+      "dimensions": ["novelty", "significance", "experimental_rigor"],
+      "location": "Section 3, especially the runtime-independent decision rule on pp. 4–5; Sections 5.3 and 6 on pp. 7–8; Appendix H, Tables 8–9; Appendix J",
+      "claim_ids": ["C-OWN-01", "C-RR2-FACT-01", "C-RR4-LIFECYCLE-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-LIFECYCLE-TRANSFER"],
+      "observed_evidence": "The complete factorial and lifecycle transfer both use the same Qwen3.5/vLLM Q16 adapter, model family, recurrent implementation, and hardware family. The lifecycle cohort changes alignment and exercises cancellation/reclamation but is explicitly not a second runtime, model, scheduler, or backend. Only the storage-row portion of the abstract contract is formalized in detail in the paper.",
+      "why_it_matters": "The primary contribution is presented as an executable audit contract rather than a one-off implementation check. Without an independent instantiation, it is unclear which obligations are genuinely runtime-independent, which are adapter-specific engineering, and whether the contract provides reusable ICLR-level knowledge.",
+      "required_fix": "Instantiate the contract on at least one independently implemented hybrid model adapter or runtime, freezing the same core obligations before execution and documenting every required adaptation. If this is infeasible, narrow the contribution explicitly to a Qwen3.5/vLLM reference audit and avoid implying validated runtime independence.",
+      "verification_test": "A fresh implementation should emit the four required record classes and pass or fail the unchanged core predicates without importing the current adapter's producer logic; the paper should report unchanged obligations, necessary adaptations, failures, and unsupported targets.",
+      "evidence_needed": "A preregistered second-adapter or second-runtime execution package with source provenance, raw receipts, independent replay, and a transfer analysis.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-NOV-02",
+      "severity": "major",
+      "dimensions": ["novelty", "significance", "citation_integrity"],
+      "location": "Section 2, pp. 3–4, especially lines 135–153; Appendix H, Tables 8–9 on p. 16",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The positioning matrix decomposes ForkAudit into components and assigns each component an established precedent. Marconi is identified as the closest hybrid-cache system, but the comparison stops at policy-level versus audit-level framing. The snapshot does not identify or systematically compare against a closest integrated serving-correctness, invariant-checking, property-based-testing, or ownership-audit framework.",
+      "why_it_matters": "Because the paper claims novelty mainly in the integration, component-wise novelty accounting cannot by itself demonstrate that the combination is distinct. The current evidence leaves open whether ForkAudit is a new research method or a careful assembly of established testing practices around one adapter.",
+      "required_fix": "Add a systematic closest-work comparison against integrated correctness and verification tools for serving systems, stateful runtimes, and ML systems. State the genuinely new obligations or decision procedure relative to each closest framework, and separate conceptual novelty from implementation and artifact novelty.",
+      "verification_test": "For every headline novelty claim, a verified feature-level matrix should identify the closest complete precedent, cite primary evidence, and show at least one substantive obligation or inference that the precedent does not already provide.",
+      "evidence_needed": "A broader primary-source literature audit and revised novelty matrix centered on complete competing audit frameworks rather than only component precedents.",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R5-NOV-03",
+      "severity": "major",
+      "dimensions": ["significance", "experimental_rigor", "technical_soundness"],
+      "location": "Section 4.5 on p. 6; Section 5.3 on pp. 7–8; Appendix G, Tables 6–7; Appendix I, M8/M9 local detector debug on p. 17",
+      "claim_ids": ["C-RR2-MUT-01", "C-RR4-DETECTOR-LOCAL-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-DETECTOR-TWO-FAULT-DEBUG-D"],
+      "observed_evidence": "Nine faults were fixed with intended gates and all reached those gates under passing controls. The paper correctly acknowledges that this is not a completeness or incremental-value result. When intended gates were suppressed for M8/M9, M9 reached an ordinary assertion while M8 reached only an experiment-injected sentinel; M1–M7 were not evaluated in such a matrix.",
+      "why_it_matters": "This validates gate plumbing but provides limited evidence that the audit finds defects that output equality, existing assertions, or simpler invariants would miss. The practical significance of the integrated audit is therefore unresolved.",
+      "required_fix": "Run a preregistered independent fault suite or full gate-suppression matrix across all faults, recording detection by each ForkAudit gate, existing runtime assertions, full-logit comparisons, and cross-arm/cross-N checks. Retain escapes and wrong-gate outcomes. Real historical faults would provide stronger evidence than additional gate-designed mutants.",
+      "verification_test": "The released matrix must contain every fault-by-detector cell, matched controls, first-failure location, output availability, and raw receipts, and must demonstrate at least one nontrivial defect detected uniquely or materially earlier by the proposed contract.",
+      "evidence_needed": "New live executions with independently selected faults and complete detector-baseline outcomes.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-NOV-04",
+      "severity": "minor",
+      "dimensions": ["reproducibility", "clarity"],
+      "location": "evidence/claim_evidence_map.tsv entries C-POOL-01, C-MEM-01, and C-DENOM-01 versus manuscript Section 5.4 and Appendices C/F",
+      "claim_ids": ["C-POOL-01", "C-MEM-01", "C-DENOM-01"],
+      "evidence_ids": ["E-MF-SUMMARY", "E-MF-SHARDS"],
+      "observed_evidence": "The claim map directs capacity and denominator claims to Section 5.5, Appendix C, and Table 6, while the rendered manuscript has no Section 5.5 and places the complete capacity ledger in Appendix F, Table 5; the primary allocator endpoints are in Section 5.4, Table 1.",
+      "why_it_matters": "The paper presents traceability as a core contribution, so stale locations in the claim map directly weaken the advertised auditability even though the numerical evidence identifiers remain resolvable.",
+      "required_fix": "Regenerate or manually correct all manuscript locations in the claim-evidence and method-provenance maps against the final PDF.",
+      "verification_test": "An automated cross-reference audit should resolve every mapped section, appendix, table, and figure to an existing final-manuscript target with the claimed content.",
+      "evidence_needed": "Corrected maps and a passing final cross-reference audit.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is evident for this systems audit. The manuscript appropriately limits its claims and notes that it does not evaluate safety, bias, privacy, or deployment quality.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A preregistered independent instantiation on another hybrid model adapter or runtime that preserves the core contract and reveals which obligations transfer unchanged.",
+    "A complete live fault-by-detector matrix demonstrating added detection value over ordinary assertions, output equality, and existing runtime checks.",
+    "A verified comparison against the closest integrated serving-correctness and systems-auditing frameworks that establishes a precise non-compositional novelty boundary.",
+    "Independent third-party replay or reproduction of the core ownership and lifecycle findings."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of the supplied manifest-first replays or discovery of mismatches between raw receipts and reported aggregates.",
+    "Evidence that a prior integrated framework already provides substantially the same heterogeneous-state ownership, provenance, mutation, and denominator contract.",
+    "A second implementation requiring extensive ad hoc changes that undermine the claimed runtime-independent decision rule.",
+    "Additional independently sampled operator rows or lifecycles exceeding the preregistered tolerances or violating ownership predicates."
+  ],
+  "review_limitations": [
+    "The snapshot-only protocol precluded a broader external literature search; novelty was assessed from the frozen citation lock, cited primary works, and supplied ICLR KV-cache calibration set.",
+    "The large primary replay was inspected through its frozen manifests, source, summaries, and validation records but was not executed because the reviewer was required to remain read-only."
+  ]
+}

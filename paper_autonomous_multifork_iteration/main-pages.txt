@@ -1,0 +1,790 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      F ORK AUDIT: A R ECEIPT-B OUND OWNERSHIP AUDIT
+002   OF O NE S EQUENTIAL H YBRID LLM S TACK
+003
+004
+005    Anonymous authors
+006    Paper under double-blind review
+007
+008
+009
+                                                   A BSTRACT
+010
+011            Forking many continuations from one long prefix creates an ownership question
+012            that output equality alone cannot resolve: branches may agree while aliasing
+013            mutable recurrent state, and compared paths may share a defect. We present
+014            F ORK AUDIT, a receipt-bound ownership audit, and evaluate it as a fixed sequential
+015            case study on one Qwen3.5-35B-A3B configuration. The runtime under test may
+016            violate ownership, lifecycle, or call contracts; the capture producer is assumed
+017            to faithfully emit every mandatory record and bind referenced bytes to archived
+018
+               artifacts. Under this assumption, offline replay checks prefix immutability, re-
+               quest/base and request/peer disjointness, tail copy-on-write, first-transition GDN
+019
+               rebinding, recorded Python-level call contracts, and cross-arm/cross-N consis-
+020
+               tency. It cannot detect omitted or fabricated producer records or independently
+021            attest compiled dispatch. Across eight pre-specified books, 96 configurations
+022            cross full-copy/shared-document KV with materialized/borrowed GDN bases at
+023            N ∈ {1, 8, 32}. Registered token, canonical full-logit, logical-KV, and final-GDN
+024            digests match across all cells and 288 adjacent-fan-out comparisons, while phase
+025            receipts witness post-transition GDN disjointness. Eight selected attention rows
+026            pass a dense-FP32 oracle, four preregistered GDN transitions pass a NumPy recur-
+027            rence, and nine designed faults reach their predeclared first gates before producing
+028            post-injection semantics. The latter is localization, not a baseline miss or detection-
+029
+               rate estimate. A same-stack, two-geometry cancellation/reclamation extension
+               preserves clean semantics and storage in 16/16 cells and reaches the expected
+030
+               gate in 48/48 preregistered schedule-fault trials. At N = 32, shared KV reduces
+031
+               median final allocated delta from 4.90 to 2.23 GiB. The case study establishes
+032            feasibility on the specified stack, not independent recapture, concurrent-kernel
+033            safety, end-to-end verification, or capacity.
+034
+035
+036   1    I NTRODUCTION
+037
+038   Best-of-N decoding, agents, tree search, and document question answering create many continuations
+039   from a common prefix. Modern serving systems exploit this structure through paged KV caches,
+040   prefix trees, and scheduling policies (Kwon et al., 2023; Zheng et al., 2024; Gim et al., 2024; Srivatsa
+041   et al., 2025). For a Transformer, “sharing the prefix” can often be described as sharing read-only KV
+042   blocks and giving each continuation private append blocks. Hybrid models complicate this picture:
+043   full-attention layers coexist with recurrent or linear-attention layers whose compact state is updated
+044
+      in place unless the runtime installs an explicit request-local view (Yang et al., 2025; Lenz et al., 2025;
+      Pan et al., 2025).
+045
+046   This creates two evaluation hazards. First, output equality is only a relational observation: branches
+047   can agree while sharing mutable state, and compared implementations can share a defect. An owner-
+048   ship audit must additionally witness prefix immutability, request/base and request/peer disjointness,
+049   tail copy-on-write, first-transition recurrent rebinding, and the call contract that produced the re-
+050
+      sult. Second, “memory saving” may refer to logical payload, allocated cache pages, framework
+      allocator peaks, process-level device memory, or admitted service capacity. Those quantities are not
+051
+      interchangeable.
+052
+053   We propose F ORK AUDIT, a correctness-first receipt contract for this setting. The audited runtime may
+      contain implementation faults, but the capture producer is assumed to record mandatory objects and
+
+
+                                                          1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069   Figure 1: F ORK AUDIT in one view. A common prefix forks into requests whose token-indexed
+070   KV and recurrent GDN state obey different lifetime rules. The contract crosses four setup policies,
+071   requires private append pages and post-write recurrent rebinding, and exposes three non-equivalent
+072   levels: trusted-capture receipt completeness, selected independent operator checks, and positive-
+073   control gate reachability. The primary audit evidence shown here comprises 96 factor configurations,
+074   eight checked attention rows, nine targeted faults, and the N = 32 allocation endpoint; per-call
+075   compiled dispatch remains open. These are bounded one-model, one-schedule results, not speedup or
+076   independent recapture claims. This explanatory schematic is not experimental evidence; the registered
+077
+      tables and artifacts authorize the numerical claims.
+078
+079   events faithfully and preserve their detached byte bindings. Replay can reject violations represented
+080   in those records and post-capture tampering; it cannot expose producer omission or fabrication, attest
+081   the machine or compiled binary, or establish unrecorded end-to-end semantics. Within this boundary,
+082   F ORK AUDIT partitions document and request state, records page reservations and phase-aware
+083   recurrent-state rebinding, fingerprints the Python attention callable, and combines a 2 × 2 ownership
+084   factorial with relational and selected numerical checks. It is an audit contract, not a cache policy,
+085
+      kernel, or scheduler.
+086   The primary contribution is a replayable ownership-assurance boundary, evaluated by one fixed case
+087   study:
+088
+089          • Typed ownership and lifecycle obligations. Mandatory records cover immutable document
+090
+               KV, private append pages, materialized or borrowed GDN bases, first-transition rebinding,
+               tail COW, and recorded call contracts. Receipt completeness is defined only within the
+091
+               honest-producer boundary.
+092
+093          • Evidence beyond output equality, with explicit limits. A run must close lifecycle, storage,
+094
+               and call predicates in addition to token, logit, logical-KV, and GDN relations. For nine
+               designed mutants, these receipts expose the predeclared first violation class before post-
+095
+               injection semantics. This is localization, not held-out-fault coverage, a detection-rate
+096
+               estimate, or a claim that conventional tests cannot catch the same faults.
+097
+098
+             • Fixed-case validation and denominator discipline. The sequential Qwen3.5 study evalu-
+               ates 96 ownership configurations, 288 cross-N comparisons, selected attention and recurrent
+099
+               checks, and separately labeled page-pool and allocator measurements. A same-stack life-
+100
+               cycle extension adds two page/tail geometries and deterministic cancellation/reclamation
+101            interleaving.
+102
+103   The empirical claim is deliberately case-specific. The primary audit uses one Qwen3.5 model, one
+104   H20 hardware family, 16-bit KV, one partial-tail geometry, batch size one per request, and sequential
+105   round-major steps on one CUDA stream. It demonstrates that the contract can be instantiated and
+106   replayed in that configuration. Selected operator oracles remain conditional on captured internal
+107   inputs. Separate Mac, deployment, HYPIC, and serving-framework cohorts provide unpooled
+      motivation or deployment context and do not broaden the ownership-audit claim.
+
+
+                                                        2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      2    BACKGROUND AND R ELATED W ORK
+109
+110
+      Paged and prefix-aware inference. PagedAttention, Prompt Cache, RadixAttention, ChunkAt-
+111   tention, Hydragen, and Preble establish block sharing, prefix reuse, shared-prefix computation, and
+112   scheduling as prior art (Kwon et al., 2023; Gim et al., 2024; Zheng et al., 2024; Ye et al., 2024;
+113   Juravsky et al., 2024; Srivatsa et al., 2025). Our narrower question is what execution evidence
+114   demonstrates isolation when several state types coexist.
+115
+116   Hybrid state and cache management. Gated Delta Networks maintain mutable compact state
+117   unlike token-indexed KV (Yang et al., 2025); Jamba is a hybrid architecture and Marconi manages
+118   hybrid-model prefixes (Lenz et al., 2025; Pan et al., 2025). HYPIC caches segment transition
+119   operators plus zero-start end states and recomputes a small seam to enable position-independent
+120   reuse in hybrid stacks (Liu et al., 2026c). Palu, SqueezeAttention, and HeadKV instead study KV
+121
+      compression or budgeting (Chang et al., 2025; Wang et al., 2025; Fu et al., 2025). F ORK AUDIT
+      does not replace these policies: it audits their ownership boundary. Appendix Table 12 keeps their
+122
+      original-protocol numbers separate from our common-model controls.
+123
+124
+      Persistent intermediate residual reuse. CoMem makes decoder split depth j a reusable-context
+125   axis (Liu et al., 2026a;b). Its W RITE stage persists a depth-j residual per document token, S ELECT
+126   retrieves bounded chunks, and R EAD executes the query and suffix layers. This motivates our
+127   persistent document object. A bounded depth-7 deployment slice places Q8/Q4/mixed state beside
+128   vanilla dense and full-prefix reuse, but F ORK AUDIT claims neither a new selector nor a new quality–
+129   latency frontier.
+130
+131   Evaluation and metamorphic testing. SCBench emphasizes cache lifecycles (Li et al., 2025);
+132   metamorphic testing, MT-DLComp, and CRADLE motivate preserved relations and independent
+133   checks (Chen et al., 2018; Xiao et al., 2022; Pham et al., 2019); DNNMem motivates separate memory
+134   denominators (Gao et al., 2020). We combine these established ideas into a heterogeneous-state audit:
+135
+      adding resident branches must preserve registered observables, selected captured-input operators
+      receive independent FP32 checks, and page-pool and allocator quantities remain distinct. Appendix
+136
+      Table 10 gives the component-by-component novelty boundary.
+137
+138
+139   3    T HE F ORK AUDIT C ONTRACT AND A SSURANCE B OUNDARY
+140
+141   Consider a document prefix D and resident requests r ∈ {1, . . . , N }. Let A be the full-attention
+142   layers and G the recurrent linear-attention layers. For ℓ ∈ A, the state is a read-only set of document
+143   pages KℓD plus a request-private reservation Kℓr . For ℓ ∈ G, it is a persistent prefix base GD
+                                                                                                    ℓ plus the
+144
+      request-local recurrent state Grℓ . A logical fork is
+                                   Fr (D) = {KℓD , Kℓr }ℓ∈A , {GD        r
+                                                                                
+145
+                                                                   ℓ , Gℓ }ℓ∈G .                           (1)
+146
+147   Threat model and assurance boundary. The audited runtime may contain implementation faults
+148   that violate registered ownership, lifecycle, storage-view, or Python-level call contracts. We trust the
+149   capture producer to record every mandatory event faithfully and to bind each referenced byte object
+150   to an archived artifact. Detached SHA-256 ledgers and schema replay detect missing, inconsistent, or
+151   post-capture modified records; they are integrity bindings, not a second live observer. Replay can
+152   therefore reject recorded aliasing, mutation, missing COW or rebinding, call-contract divergence,
+153   and inconsistent byte bindings. It cannot detect a producer that omits or fabricates a coherent trace,
+154
+      attest the host or compiled kernel/autotuning choice, or establish unrecorded end-to-end semantics.
+      Receipt-complete below means complete only for mandatory records and predicates inside this
+155
+      boundary.
+156
+157   The checklist has seven audit targets. A target may be fully witnessed, partially witnessed, or left
+158   open; passing the case study must not silently upgrade a partial witness into a proof.
+159
+160
+            1. Frozen identity. Model, data, query bank, layer geometry, kernel descriptor, and protocol
+               hashes are fixed before execution.
+161
+            2. Prefix immutability. KℓD and GD  ℓ have identical digests before and after all continuations.
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+            3. Private ownership. KV reservations of distinct shared-document requests are disjoint in
+163            the common arena; independent materialized arenas have disjoint storage. At setup, a GDN
+164            request either owns a materialized base or holds an explicitly read-only persistent-base alias.
+165            After its first transition, all 60 mutable tensors must occupy ranges disjoint from the base
+166            and every peer.
+167         4. Tail-safe append. If the last document page is partial, its valid tokens are copied once to a
+168            private page before a request appends.
+169
+            5. Dispatch provenance. Both controls invoke the same recorded attention Python callable
+170
+               with the same query, mask, position, and append contracts; fallback and full-KV concate-
+171            nation are forbidden. This does not fingerprint a compiled Triton binary or autotuning
+172            choice.
+173
+            6. Cross-arm equivalence. For the same query and schedule, the materialized and shared
+174
+               ownership arms must have exactly equal generated tokens, full-vocabulary logits, final
+175            logical KV, and request recurrent state.
+176
+            7. Cross-N prefix consistency. For each query observed at two or more fan-outs, its result at
+177
+               every larger fan-out must match its smallest-N result.
+178
+179   Targets 2–5 are pre-output ownership and trace obligations, whereas targets 6–7 are relational
+180   semantic checks. Matching tokens or logits is therefore insufficient for a passing audit. In the nine
+181   executed positive controls, lifecycle/ownership/storage receipts supply the observed first gate for M1
+182   and M3–M5, while request-binding/call receipts supply it for M2 and M6–M9. All nine injected
+183   paths stop before post-injection semantics; this is bounded first-gate localization, not evidence about
+184   unseen-fault coverage.
+185
+186   Minimal adoption workflow and decision rule (normative). Applying F ORK AUDIT to a sequen-
+187   tial hybrid runtime requires four steps. (1) Freeze and assign roles: bind code, model, data, protocol,
+188   and the mapping from runtime objects to document, base, request, and private-reservation roles before
+189
+      candidate outputs. (2) Capture mandatory records: emit setup, first-transition, and final lifecycle
+      events together with canonical content digests, normalized storage ranges, ordered append/dispatch
+190
+      receipts, semantic outputs, and named allocator snapshots. (3) Replay the seven targets blindly:
+191
+      an independent aggregate recomputes every applicable predicate from frozen records; a target is
+192   receipt-complete (RC) only when all mandatory records exist, partial when evidence is sampled
+193   or proxy-level, and open when a mandatory record is absent or replay fails. (4) Add fault records
+194   only for fault-sensitivity claims: freeze the target-to-gate map before outputs and retain clean false
+195   positives, wrong-gate detections, and escapes as valid negatives. The RC label uses the threat model
+196   above. In the primary run, terminal identity is RC, while per-call compiled dispatch and autotuning
+197   provenance remain partial. We evaluate this workflow on the fixed Qwen runtime below. Appendix D
+198   gives the exhaustive target-to-record dependency matrix and the pointer-free storage schema used by
+199   this audit.
+200   Appendix Table 16 gives the four normative record classes and their replay obligations.
+201
+      Here and below, “exact” for a registered tensor-valued observable means equality of a canonical
+202
+      serialization: contiguous CPU-FP32 bytes with shape and dtype bound into the record, or the
+203
+      correspondingly specified logical-KV or GDN byte digest. It is not a claim that an unarchived device
+204   tensor was compared bit-for-bit before canonicalization.
+205
+206   Targets 6 and 7 are relational self-consistency oracles. They can reveal a layout-specific error or
+207
+      an N -dependent change in recorded observables, respectively. The primary factorial additionally
+      captures the same post-RoPE query, logical K/V, position values, mask, and effective scale for one
+208
+      rank-specific full-attention row selected by the pre-execution static plan and compares the fused result
+209
+      with dense IEEE-FP32 attention. A separate recurrent oracle captures four transitions originally
+210   selected at layers 0, 10, 20, and 38 after the native BF16 q/k normalizer, then evaluates the transition
+211   with a candidate-import-free NumPy FP32 token recurrence. A fresh single preregistration, frozen
+212   before
+        √ the successful run, binds this post-native-normalization boundary, the implicit query scale
+213   1/ 128, the four rows, tolerances, and seeded faults. These are independent numerical checks for
+214   selected operator boundaries, not for upstream activation construction, q/k normalization itself, every
+215   GDN layer, or the complete end-to-end model.
+
+
+                                                         4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+      Figure 2: ForkAudit’s ownership-factorial architecture. The two left-hand axes select setup ownership
+236
+      for the entire request group; they never assign different policies to individual requests. KV document
+237
+      ownership remains policy-dependent while append tails are private. A borrowed GDN base may alias
+238   the persistent base only at setup; after a request’s first transition, its mutable GDN state is private and
+239   disjoint from the base and peers. The audit spine denotes replay classes, not additional execution
+240   stages or numerical results. The bracketed bottom row is the evidence bundle recorded by that audit.
+241   From left to right it contains the document-KV snapshot, private-append snapshot, persistent-GDN
+242   base, request-private GDN state, storage-binding graph, call/semantic receipt, and fault-to-gate
+243   map. Offline replay validates this bundle. Within the trusted-capture boundary, lifecycle/storage
+244   targets are complete, dispatch is partial, and numerical/fault checks are selected support. The bitmap
+245   is an explanatory schematic, not experimental evidence; its technical labels and relations were
+246
+      deterministically overlaid and checked against the contract.
+247
+248   Figure 2 shows the four primary-factorial cells and the lifecycle they share. The KV axis contrasts
+249   one document-plus-private arena per request with a shared document and disjoint private tail/append
+250   pages. The GDN axis contrasts per-request setup materialization with a borrowed immutable base
+251   followed by the same functional rebind. Memory and witness cells are rebuilt separately so storage
+252   guards do not retain tensors during allocator measurement.
+253
+254
+      4     R ECEIPT-B OUND AUDIT P ROTOCOL
+255
+256
+      4.1   F ROZEN CASE - STUDY GEOMETRY
+257
+258   We instantiate the contract as a feasibility case study in one deliberately fixed runtime configuration:
+259   Qwen3.5-35B-A3B (Qwen Team, 2026a;b): ten vLLM-0.26 Triton full-attention layers with BF16
+260   (artifact “Q16”) KV, 128-token pages, and thirty Transformers-torch GDN layers, run sequentially on
+261   eight H20-3e GPUs. The ledger binds the Python attention callable but not the compiled binary; each
+262   request’s GDN digest covers 60 tensors. Every ForkAudit correctness claim is conditioned on this
+263
+      stack and schedule.
+264   Eight ranks use distinct PG-19 training books (Rae et al., 2020), each with one 4,095-token document
+265   and 32 non-overlapping queries. The four-cell factorial evaluates N ∈ {1, 8, 32} and eight argmax
+266   steps; 39 query/generated tokens enter KV, so the 127-token final document page exercises tail COW.
+267   Appendix Table 5 separates this run from all context cohorts.
+268
+269
+
+
+
+                                                          5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      4.2   AUDIT SEQUENCE
+271
+272   Each cell hashes its frozen identity, builds document KV and persistent GDN state, separately rebuilds
+273   allocator and witness cells, records setup–first transition–final ownership, and executes one query
+274   plus seven continuation steps. It then compares registered tokens, logits, logical KV, and GDN state;
+275   replays fixed-axis projections and one dense-FP32 sidecar per rank; and runs matched-clean/live-fault
+276   pairs from fresh state. Aggregation requires every raw-byte binding. Appendix Table 6 states target
+277   strength; the request–base predicate is directly exercised at N = 1.
+278
+279   4.3   C ONTROLS , SCHEDULE , AND ORACLES
+280
+      All requests are resident before sequential round-major steps on one CUDA stream; this is not
+281
+      concurrent-kernel evidence. Full logits are canonicalized as shape/dtype-bound contiguous CPU-
+282   FP32 bytes, while logical KV, 60 GDN tensors, immutable bases, call positions/masks/scales, storage,
+283   and allocator records receive typed digests. Replay closes these records, factor projections, oracle
+284   math, and fault receipts, but cannot reconstruct unarchived device tensors or independently recapture
+285   the producer.
+286
+      The GDN oracle was preregistered before its successful
+                                                       √         execution with one window, four layers, a
+287
+      post-native-q/k-normalization boundary, scale 1/ 128, tolerances, and four wrong recurrences. A
+288
+      prior discarded diagnostic informed that boundary; it is chronology, not evidence from the successful
+289
+      run.
+290
+291
+      4.4   M EMORY DENOMINATORS
+292
+293   For the primary ForkAudit experiment, we keep logical state, allocated pages, synchronized PyTorch
+294   current/peak allocated/reserved bytes, and unmeasured process/service capacity distinct; only pages
+295   and allocator bytes support its quantitative memory claims, and phase-reset peaks are labeled by their
+296   measurement window. The deployment comparison uses a separate Store estimand: the union of
+297   physical tensor byte ranges owned by the retained document entry at its measurement boundary. It
+298   excludes Python metadata, preallocated pools, NVML deltas, and admission capacity.
+299
+300   4.5   G OVERNANCE AND LIVE MUTATION CHECKS
+301
+      Pre-output ledgers bind code, model, data, queries, and protocol; the formal primary rerun also
+302
+      verifies matching terminal source/model identity. Nine live mutations cover allocation/binding, tail
+303
+      COW, GDN aliasing, positions, masks, callable identity, and paged-view type; each has a fresh
+304   matched control and cleanup receipt. Each injected path stops at its predeclared first gate before
+305   post-injection token/logit/state receipts exist. These tests establish first-gate localization, not baseline
+306   misses, detection rate, or completeness.
+307
+308
+309
+      5     R ESULTS
+310
+      5.1   U NPOOLED M AC MOTIVATION CONTEXT EXPOSES COMMON - MODE AGREEMENT
+311
+312   Before the H20 audit, an archival Apple-M4-Pro control provides a compact counterexample to
+313   treating implementation agreement as an independent oracle. On the same six-document/six-query
+314   selected packs, vanilla dense MLX is the external reference, while CoMem (Liu et al., 2026a;b)
+315   reuses a depth-7 split residual in BF16, Q8, or Q4. Across five fresh processes, both quantized
+316   variants retain every answer-position top-1 decision of the BF16 split path, yet that entire split family
+317   agrees with vanilla dense on only 71.89% of answer positions. Table 1 therefore motivates the later
+318   independent attention/GDN oracles; it is a small teacher-forced mechanism control, not primary
+319
+      ForkAudit evidence, a second ForkAudit deployment, or a cross-hardware performance comparison.
+320
+321   5.2   U NPOOLED SAME - CHECKPOINT DEPLOYMENT AND NEAREST- WORK CONTEXT
+322
+      Table 2 combines two separate conventional end-to-end timing/quality blocks with an independent
+323
+      retained-state receipt cohort; no ForkAudit ownership conclusion depends on them. All use the same
+
+
+                                                           6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+325   Table 1: Unpooled Mac motivation context (Apple M4 Pro, five fresh MLX processes; median over
+326   30 query executions at split depth 7). Vanilla dense is the external reference. CoMem BF16/Q8/Q4
+327   variants use the same selected documents. Store size is the six-document residual corpus; online time
+328   includes query Write, dequantization, and suffix Read. This small teacher-forced demonstration set is
+329
+      not primary ForkAudit evidence and supports no cross-hardware or production-speed claim.
+                                     Method                  Store (MiB) Online (ms) Speedup Top-1 vs. dense
+330
+331                                  Vanilla dense prompt               –          194.70   1.00×           100.00%
+                                     CoMem BF16 split               1.998          168.88   1.15×            71.89%
+332                                  CoMem Q8 split                 1.061          169.17   1.15×            71.89%
+333                                  CoMem Q4 split                 0.562          169.25   1.15×            71.89%
+       Q8/Q4 retain 100% top-1 agreement with the BF16 split path, yet all split rows inherit only 71.89% agreement with vanilla dense. The speed
+334    column is a small teacher-forced mechanism benchmark, not production RAG throughput.
+335
+336
+337   Qwen3.5 checkpoint, the same eight LongBench validation items, one H20-3e per item, a 4,096-token
+338   cap, greedy decoding, and at most 32 generated tokens. The first timing block uses our in-process
+339   Transformers deployment harness for vanilla dense, a full-prefix KV reuse baseline, and CoMem’s
+340   Q8/Q4/mixed state variants. The second uses the HYPIC authors’ official commit on SGLang 0.5.14.
+341   Because the runtimes and timing harnesses differ, latency and throughput are compared within blocks;
+342
+      we do not compute a cross-block speedup.
+343   The rows expose tradeoffs, not a universal win. Full-prefix reuse is fastest (13.38 tokens/s, 0.163 s
+344   TTFT) but retains 140.34 MiB/document. CoMem Q8 keeps 39.14 mean F1 with 15.89 MiB at 7.15
+345   tokens/s; mixed Q4/Q8 keeps 39.01 F1 with 10.01 MiB, while all-Q4 reaches 36.09 F1 with 8.41
+346   MiB. These eight workloads are context, not a complete LongBench or robustness result.
+347   HYPIC (Liu et al., 2026c), the closest executable hybrid-cache baseline, uses the released Full
+348   Recompute, Prefix Cache, and transition rope recompute arms with its eight-token seam.
+349   In this TP=1 block, Full Recompute gives 39.14 F1/0.217 s TTFT/14.77 tokens/s; Prefix Cache
+350   gives 39.14/0.072/19.07; HYPIC gives 39.63, 0.101 s, and 17.67. Published Qwen3.5 panels use
+351   TP=2, so our rows are a protocol-matched adaptation, not a latency/QPS reproduction. Separately, a
+352   receipt-instrumented 8+8-cell cohort measures the retained-document tensor payload after the first
+353   request boundary for Prefix Cache and HYPIC under the same fixed model, workloads, and TP=1
+354
+      configuration.
+355
+356   Table 2: Unpooled same-checkpoint H20 context on the eight-item Qasper/2WikiMQA slice. The
+357   first block is an in-process Transformers deployment cohort with three timing repeats per item.
+358   HYPIC (Liu et al., 2026c) timing/F1 comes from a separate 24-cell TP=1 official-code cohort; its
+359   Store values come from an independent receipt-instrumented 8+8-cell cohort. All use Qwen3.5-35B-
+360   A3B, one H20-3e per item, a 4,096-token cap, greedy decoding, and at most 32 generated tokens.
+361   Timing is interpreted within block; no cross-block speedup, production-capacity, broad-quality, or
+362   ForkAudit-ownership claim is made.
+363                Method                                   Persistent state       Store (MiB) TTFT (s) TPOT (ms)      tok/s     F1
+
+364                Transformers 5.14.1 in-process deployment cohort
+                   Vanilla dense                         –                                  –       0.649      648.75 1.36 39.42
+365                Full-prefix KV cache                  Q16                           140.34       0.163       54.11 13.38 39.14
+366                CoMem state                           Q8                             15.89       0.673       55.44 7.15 39.14
+                   CoMem mixed state                     Q4/Q4/Q8                       10.01       0.674       54.97 7.19 39.01
+367                CoMem per-layer mixed                 mixed                           9.74       0.673       55.07 7.19 39.11
+368                CoMem state                           Q4                              8.41       0.674       55.02 7.19 36.09
+369                HYPIC commit 98147c0 timing/F1; receipt-instrumented Store; SGLang 0.5.14, TP=1
+                   Official HYPIC code: full recompute –                             –     0.217                49.21 14.77 39.14
+370                Official HYPIC code: prefix cache   Radix prefix             139.53     0.072                50.15 19.07 39.14
+371                HYPIC (transition + seam 8)         segment transition       324.09     0.101                52.13 17.67 39.63
+372    Store is the median retained-document tensor payload: persistent document bytes for CoMem/full-prefix
+373    reuse and the union of target-entry-owned physical tensor byte ranges for Prefix Cache/HYPIC. It excludes
+374
+       Python metadata, preallocated pools, NVML/process deltas, and admission capacity. HYPIC timing/F1 uses
+       streaming-client wall-clock from 24 cells; HYPIC Store uses a separate 16-cell externally replayed receipt
+375    cohort. Published Qwen3.5 HYPIC panels use TP=2, whereas this fixed same-slice adaptation uses TP=1.
+376
+377
+
+
+
+                                                                               7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Across the independent Store cells, Prefix Cache retains a median 139.53 MiB and HYPIC retains
+379   324.09 MiB under the same target-owned physical-tensor-range denominator, so HYPIC retains
+380   2.32× the Prefix Cache payload. CoMem Q8’s 15.89 MiB is 8.78× smaller than Prefix Cache
+381   and 20.39× smaller than HYPIC under that Store estimand. This comparison excludes metadata,
+382   preallocated pools, and NVML/process deltas; it is a retained-state result, not a capacity or cross-
+383   runtime speedup claim, and it does not measure continuous batching. HYPIC remains faster within
+384   its own timing cohort, while CoMem supplies the smaller explicit state–quality surface.
+385
+386   Further unpooled context. vLLM and SGLang each record 8/8 prefix hits and preserve 8/8
+387   cache-off predictions; timings remain within framework (Table 14). Hydragen matches one dense
+388   layer-3 family within relative ℓ2 < 0.0027 at N = 8/32, while Palu whitening improves held-out
+389
+      K/V projection error over SVD at ranks 64/128/192. Table 13 treats these as bounded operator
+      compatibility, not a leaderboard, all-layer result, or combined system.
+390
+391   Primary result status and evidence hierarchy. In the seven-target workflow, frozen identity, prefix
+392   immutability, private ownership, tail-safe append, cross-arm equivalence, and cross-N consistency
+393   (targets 1–4 and 6–7) are RC only within trusted capture; dispatch provenance (target 5) is partial
+394   because no per-call compiled-binary or explicit autotuning-choice binding is available. Selected
+395
+      oracles provide numerical corroboration, mutations provide gate reachability, and all other tables are
+      unpooled context. Independent producer recapture and end-to-end correctness remain outside the
+396
+      claim.
+397
+398
+      5.3   R ELATIONAL EQUALITY HOLDS FOR EVERY REGISTERED OBSERVABLE
+399
+400   The primary factorial executes 8 × 3 × 4 = 96 rank–fan-out–factor configurations. Each configuration
+401   is rebuilt once for allocator measurement and once for ownership/semantic witnesses, for 192 live
+402   cells total. The blind aggregate reports exact token trajectories, full-vocabulary logits, final logical
+403   KV, and final GDN values across all four cells. Fixed-axis projections also match: changing only
+404   GDN setup ownership leaves the KV lifecycle/source/query/call schedule unchanged, while changing
+405   only KV ownership leaves the GDN base values and transition trajectory unchanged. The offline
+406   replay additionally reconstructs all 288 adjacent-fan-out comparisons—N = 1 → 8 and 8 → 32
+407   for every arm, rank, and shared query identity—with no mismatch. These are relational equalities
+408
+      among the registered cells: they support the receipt-level ownership witness but cannot by themselves
+      exclude a defect shared by every arm.
+409
+410   The range witnesses explain where that equality comes from. A borrowed GDN cell begins with
+411   exactly 60 immutable persistent-base aliases per request; a materialized cell begins request–base
+412   and request–request disjoint. After a request’s first model transition, both policies bind 60 request-
+413   private mutable tensors whose byte ranges are disjoint from the persistent base and all completed
+414
+      peers. Incomplete borrowed requests remain exact read-only aliases until their own transition.
+      These predicates pass at setup, first transition, and post-generation for every factor configuration.
+415
+      In particular, the N = 1 cells directly exercise request–base disjointness rather than relying on a
+416
+      vacuous peer comparison.
+417
+418
+      5.4   I NDEPENDENT ATTENTION ROWS PASS THE PRE - FIXED TOLERANCE
+419
+420   From physical BF16 blocks, the frozen table, ordered append shadows, and live call metadata, the
+421   independent dense-FP32 oracle obtains relative-L2 0.001484–0.001743, below the pre-fixed 0.005
+422   tolerance on all eight selected rows. This is conditional on captured post-RoPE inputs, not an
+423   independent upstream or end-to-end implementation.
+424
+425   5.5   S ELECTED RECURRENT CHECKS AND TARGETED POSITIVE CONTROLS
+426
+427   At layers 0, 10, 20, and 38, the fully preregistered candidate-import-free NumPy recurrence matches
+428
+      clean outputs and states (maximum relative L2 0.001652 and 1.40 × 10−7 ) and rejects four seeded
+      wrong recurrences. Appendix Table 21 states the captured boundary.
+429
+430   Table 3 makes the positive-control comparison explicit without turning unavailable outputs into
+431   baseline misses. Every matched-clean control passes and every mutant reaches its predeclared gate,
+
+
+
+                                                         8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432                         a Independent FP32 oracle                   b Cross-cell equivalence          c Intended-gate reachability
+433                                                                             Full-copyShared-doc
+                                    fixed tolerance 0.005                          KV       KV
+                                                                                                           KV OWNERSHIP
+                    0.005                                                                                  M1 reservation alias
+434                         8 / 8 pass                             Materialized
+                                                                                 tokens tokens             M2 sequence swap
+                                                                                  logits   logits          M3 omit append COW
+435                 0.004                                                 GDN KV / GDNKV / GDN
+                                                                                                           GDN ISOLATION
+
+      relative L2
+                                                                                MATCH MATCH
+                                                                                                           M4 base alias
+436                 0.003                                                                                  M5 peer alias
+                        max 0.001743
+                                                                               tokens tokens               CALL / SEMANTIC
+437                 0.002
+                                                                      Borrowed  logits  logits             M6 position +1
+                                                                          GDN KV / GDNKV / GDN             M7 materialized mask
+438                                                                             MATCH MATCH                M8 wrong callable
+                    0.001
+                                                                                                           M9 dense KV view
+439                                                                                                          intended gate reached (9 / 9); controls pass (9 / 9)
+                    0.000
+440                         0   1   2    3   4   5   6   7             4 cells x 3 fan-outs x 8 books
+
+441                         pre-specified rank / window
+
+442
+443   Figure 3: Primary-factorial validation. Left: every pre-specified full-attention row is below the
+444   independently pre-fixed 0.005 relative-L2 tolerance. Center: all four KV-by-GDN ownership cells
+445   have identical registered canonical observables at all three fan-outs. Right: each live fault reaches
+446
+      its intended gate under a passing matched control; this is intended-gate reachability, not detector
+      completeness or rate. The panels are, respectively, selected numerical evidence, relational equality,
+447
+      and targeted positive controls—not equivalent assurance levels.
+448
+449
+450   Table 3: Observed first-gate localization. “N/O” means the gate fired before post-injection outputs
+451   or semantic digests existed, not that a baseline missed the fault. This is not a detector ablation or
+452   unseen-fault study.
+453                                 Controls                 Output     Digests        Observed first receipt family       Result
+454                                 M1, M3–M5                N/O        N/O            lifecycle/ownership/storage         direct, 4/4
+455                                 M2, M6–M9                N/O        N/O            request binding/call contract       direct, 5/5
+456
+457
+458   but none continues far enough to produce a post-injection output or semantic digest. Appendix
+459   Table 8 gives the individual gates.
+460
+      Separate lifecycle and deterministic request-step checks preserve clean outputs/state through cancel–
+461   scrub–reclaim/replacement across two page/tail geometries: all 16 clean rank–geometry cells match
+462   and all 48 preregistered schedule-fault trials reach their expected gate (Tables 18–19). This same-stack
+463   extension broadens lifecycle geometry and ordering, but it still does not measure concurrent CUDA
+464   kernels, continuous batching, or detection completeness.
+465
+466   5.6               OWNERSHIP FACTORS MOVE DIFFERENT MEMORY COMPONENTS
+467
+468   At N = 32, switching full-copy to shared-document KV reduces the final allocated delta by
+469   2.672 GiB with materialized GDN setup and 2.661 GiB with borrowed setup. Borrowing changes
+470   allocation timing, not the shared-KV end state: both GDN policies finish at 2.229 GiB. Appendix
+471
+      Table 17 gives the four endpoints and keeps the earlier 12.33× pool versus 1.0398× model-inclusive
+      capacity cohort separate.
+472
+473
+474   6               D ISCUSSION AND L IMITATIONS
+475
+476   What the experiment establishes. Conditional on honest capture and the registered byte bindings,
+477   receipts from one frozen stack witness request/base and request/peer relations across ten attention
+478   and thirty GDN layers. Cross-cell equality, selected FP32 checks, and positive controls are bounded
+479
+      levels, not closure of every common-mode path.
+480
+481
+      What it does not establish. Positive ForkAudit evidence remains one model/H20 family, 16-bit
+      KV, one sequential partial-tail factorial, and bounded same-adapter lifecycle paths— not concur-
+482
+      rent kernels, continuous batching, lower-precision KV, or binary identity. CoMem deployment,
+483
+      vLLM/SGLang, the 24-cell TP=1 HYPIC timing/quality cohort, and the separate 16-cell HYPIC
+484   Store cohort are unpooled context.
+485
+
+
+
+                                                                                          9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Evidence limitations. Ranks are workloads, not replicates; most tensors ship as digests; replay
+487   assumes honest capture; and neither oracle is end-to-end. Appendix I gives the full boundary.
+488
+489
+490   7   R EPRODUCIBILITY S TATEMENT
+491
+492   Manifest-first CPU replays cover RR2, lifecycle/GDN, serving, scheduler, and operator/policy
+493
+      transfers. RR2 rechecks 536 artifacts, 96 factorial cells, 288 cross-N comparisons, eight attention
+      rows, and nine fault pairs. HYPIC’s 24 timing/quality cells bind a 4,404-entry terminal artifact ledger
+494
+      and reaggregate byte-identically; independently, all 16 retained-state cells have raw, pre-measurement,
+495
+      and terminal receipts and pass the hash-bound external replay. The terminal rerun closes source
+496   ledgers, 14 model rehashes, and aggregate replay for that run only, not producer recapture; dispatch
+497   and autotuning remain unbound. Appendix J maps every package.
+498
+499   Artifact footprint. The source-complete RR2 release contains 628 files totaling 892,144,066 un-
+500   compressed file bytes (850.81 MiB); its verified raw ledger accounts for 536 artifacts and 888,785,811
+501   bytes (847.61 MiB). One offline command verifies the package and reconstructs 96 ownership time-
+502   lines (288 phase captures), eight selected attention-oracle rows, and nine matched fault pairs without
+503   network or GPU. We did not separately time producer capture or the complete replay, and no paired
+504   uninstrumented run was preregistered. These byte counts therefore characterize archival footprint,
+505   not online latency, device memory, traffic, or integration cost.
+506
+507   8   C ONCLUSION
+508
+509   For one fixed sequential Qwen3.5 stack, F ORK AUDIT turns output agreement into a stricter replayable
+510   ownership claim. Under honest producer capture, a run passes only when registered outputs agree and
+511   the receipt ledger witnesses immutable document state, disjoint request/base and request/peer storage,
+512   tail-safe append, first-transition recurrent rebinding, and recorded call contracts. Selected operator
+513   oracles reduce, but do not eliminate, common-mode risk, while designed mutants demonstrate
+514
+      bounded first-gate localization. The case study therefore establishes the feasibility and diagnostic
+      value of this audit boundary in the specified stack. Independent producer recapture, compiled-dispatch
+515
+      attestation, concurrent execution, and end-to-end correctness remain outside that result.
+516
+517
+518   R EFERENCES
+519
+      Chi-Chih Chang, Wei-Cheng Lin, Chien-Yu Lin, Chong-Yan Chen, Yu-Fang Hu, Pei-
+520     Shuo Wang, Ning-Chi Huang, Luis Ceze, Mohamed Abdelfattah, and Kai-Chiang
+521     Wu.     Palu: KV-cache compression with low-rank projection. In International
+522     Conference on Learning Representations, volume 2025, pp. 50222–50249, 2025.
+523     URL        https://proceedings.iclr.cc/paper_files/paper/2025/hash/
+524     7da6e0e00702c60607a6ae05c802ef85-Abstract-Conference.html.
+525
+      Tsong Yueh Chen, Fei-Ching Kuo, Huai Liu, Pak-Lok Poon, Dave Towey, T. H. Tse, and Zhi Quan
+526
+        Zhou. Metamorphic testing: A review of challenges and opportunities. ACM Computing Surveys, 51
+527
+        (1):4:1–4:27, 2018. doi: 10.1145/3143561. URL https://doi.org/10.1145/3143561.
+528
+529   Yu Fu, Zefan Cai, Abedelkadir Asi, Wayne Xiong, Yue Dong, and Wen Xiao. Not all heads
+530     matter: A head-level KV cache compression method with integrated retrieval and reasoning.
+531     In International Conference on Learning Representations, volume 2025, pp. 99269–99290,
+532     2025. URL https://proceedings.iclr.cc/paper_files/paper/2025/hash/
+533
+        f649556471416b35e60ae0de7c1e3619-Abstract-Conference.html.
+534   Yanjie Gao, Yu Liu, Hongyu Zhang, Zhengxian Li, Yonghao Zhu, Haoxiang Lin, and Mao Yang.
+535     Estimating GPU memory consumption of deep learning models. In Proceedings of the 28th
+536     ACM Joint European Software Engineering Conference and Symposium on the Foundations
+537     of Software Engineering, pp. 1342–1352. Association for Computing Machinery, 2020. doi:
+538     10.1145/3368089.3417050. URL https://doi.org/10.1145/3368089.3417050.
+539
+
+
+
+                                                       10
+

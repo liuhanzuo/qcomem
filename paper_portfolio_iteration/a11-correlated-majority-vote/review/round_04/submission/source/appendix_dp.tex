@@ -1,0 +1,71 @@
+% Appendix B: exact DP for the adaptive rule (r470). Included from paper.tex.
+\section{Exact dynamic program for the adaptive rule}
+\label{app:dp}
+
+For a fixed true count $K$ and frozen fitted prior
+$\widehat H=\widehat H_m$, we compute the exact per-task replay-flip
+probability $g(K;\alpha,\widehat H)$ and expected stopping time
+$\E[\widehat\tau\mid K]$ of the resulting BAYES-H fitted-score rule under the
+replay model, by dynamic programming over prefix states.
+
+\paragraph{State space and transitions.}
+A state is a prefix $(k,x)$ with $0\le x\le k\le N$, $k\ge 0$. Under
+count $K$, the next draw is a uniform element of the remainder, so the
+transition kernel is
+\[
+\P(x_{k+1}=x+1\mid k,x,K)=\frac{K-x}{N-k},
+\qquad
+\P(x_{k+1}=x\mid k,x,K)=\frac{N-K-(k-x)}{N-k},
+\]
+and the initial state has $\P(x_0=0)=1$. The state graph is a DAG
+($O(N^2)$ states, $O(N^2)$ edges), so a single backward pass is linear
+in the number of states.
+
+\paragraph{Fitted-score table.}
+The plug-in posterior $\P_{\widehat H}(K=j\mid k,x)\propto
+\widehat H[j]\,\HG(N,j,k,x)$ and fitted score $s_{\widehat H}(x,k)$ are
+precomputed once for all $(k,x)$ on the $O(N^2)$ grid (with terminal convention
+$s_{\widehat H}(x,N):=0$). At a posterior-supported endpoint, the likelihood
+supports only $j=x$, so the terminal score is zero; it also defines a
+zero-prior-mass table row, where observing all outcomes fixes the full-$N$
+binary pass-count decision. A state is a \emph{stop state} iff $k\ge3$ and
+$s_{\widehat H}(x,k)\le\alpha$; therefore $k=N$ satisfies the same stopping
+test rather than a separate truncation rule. This fitted score is not called
+the oracle conditional probability unless $\widehat H=\trueH$.
+
+\paragraph{Recursions.}
+For a fixed $K$, define $V(k,x)=\P(\MV(\tau)\neq\MV(N)\mid k,x,K)$
+and $T(k,x)=\E[\tau-k\mid k,x,K]$. Then
+\[
+V(k,x)=
+\begin{cases}
+\mathbf 1\{\mathrm{side}(x,k)\neq\mathrm{side}(K,N)\}, & (k,x)\ \text{stop state},\\[4pt]
+\dfrac{K-x}{N-k}\,V(k+1,x+1)+\dfrac{N-K-k+x}{N-k}\,V(k+1,x), & \text{otherwise},
+\end{cases}
+\]
+and the same recursion with
+$T(\cdot)=0$ at stop states and $T(k,x)=1+\text{(continuation mean)}$
+otherwise. The requested quantities are $g(K)=V(0,0)$ and
+$\E[\tau\mid K]=T(0,0)$. The per-task exact saving is
+$1-\E[\tau\mid K]/N$; population quantities follow by linearity,
+$\sum_K H[K]g(K)$, for any mixture $H$. The same forward pass yields the
+exact terminal-stop occupancy $\P(\tau=N\mid K)$.  At that boundary the
+reachable state has $x=K$, so the stop-state value in the recursion is zero
+for replay flip; on the TEST split terminal occupancy is $0.59\%$ at
+$\alpha=0.05$ and $1.10\%$ at $\alpha=0.02$.
+
+\paragraph{Complexity.}
+For each $K$: $O(N^2)$ states, $O(1)$ work per state after the
+fitted-score table is frozen, so all 33 values of $K$ cost
+$O(N^3)\approx 3.6\times 10^4$ flops at $N=32$ --- negligible. This is
+why every TEST number in the main table is an \emph{exact replay
+quantity}, not a Monte Carlo estimate.
+
+\paragraph{Cross-check against simulation.}
+The DP is validated against an independent replay Monte Carlo
+implementation (fresh random prefixes) on the same frozen prior: the
+maximum absolute deviation over the checked cells is $0.043$, within the
+pre-set tolerance $3\sigma_{\rm MC}=0.075$ (the check includes cells at
+$\alpha=0.01$, whose realized flips are small and inflate the pooled MC
+standard error); PASS. See \texttt{fit\_cal\_test\_r469.py} and the
+self-check block of \texttt{fit\_cal\_test\_r469\_result.json}.

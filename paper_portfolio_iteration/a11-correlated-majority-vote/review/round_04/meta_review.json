@@ -1,0 +1,162 @@
+{
+  "round": 4,
+  "snapshot_sha256": "36a6e8c45f3c2aed3763f2ebb1efa07641e83957120cb31ac9cdba1bb234fd7d",
+  "reviewer_count": 5,
+  "consensus_strengths": [
+    "五位审稿人一致认可 oracle true-H posterior identity 与实际 FIT-frozen BAYES-H score 被清楚地区分；CAL 的有限候选族 empirical-Bernstein/Bonferroni 结论没有被表述成 fitted conditional certificate。",
+    "主 OMR 数值在所给匿名 count manifest 条件下可由标准库重放并字节一致；FIT/CAL/TEST 划分、候选族和 TEST 仅作 descriptive replay readout 的边界均可审计。",
+    "论文反复且一致地说明：full-vote flip 与 1-mean(k)/N 是 count-exchangeable replay 量，而非自然顺序在线策略、返回答案正确性、token、延迟或取消成本。",
+    "当前稿诚实保留合成 drift 的反例、跨 carrier 的 setting-specific 限制，以及 FIT/CAL 与 oracle 的区分；这避免了将窄 replay 证据夸大为部署保证。"
+  ],
+  "consensus_weaknesses": [
+    "Lemma 1 对偶数 N 的 K=N/2 情形和 k*(alpha) 空可行集的无条件表述有可复现的形式缺陷；task-demeaned correlation remark 还从恒等的零和约束推出了未识别的潜在相关性结论。",
+    "最接近的 finite-population without-replacement CS 先例虽已被正确引用，却没有在相同 count-replay endpoint 上被明确地实现、比较或以足够精确的目标级论证区分；BAYES-UNIF 也没有成为主结果中的可审计比较。",
+    "主结果只能在派生 manifest 条件下重放，原始 parquet 到 manifest 的构造、环境锁和二级 carrier 的端到端重跑均不可用；这限制了实证证据的可复现性，而非证明结果造假或推翻条件 replay 计算。",
+    "没有 ordered rollout、stopped-answer gold correctness 或真实 token/latency/cancellation telemetry。因此这是对 offline count-replay 的证据，不是实用在线早停或服务成本效果的证据。",
+    "Table 5 单独阅读时没有把 replay outcome 列明确标成 descriptive TEST，OMR alpha=.01 行也未直接标出 CAL-only；Figure 1 renderer 还引用了快照中未打包的 remote_snapshot 路径。"
+  ],
+  "material_disagreements": [
+    {
+      "topic": "窄 count-replay 结论的 soundness 与实际早停意义",
+      "positions": [
+        "技术、实验和新颖性审稿人均认为 true-H identity、FIT-frozen CAL screen 与条件 count-manifest replay 在其明示模型内可成立；技术审稿人则因 Lemma 1 和 correlation remark 给出较低 soundness。",
+        "实验与新颖性审稿人将无 order/correctness/cost 视为 practical significance 的主要上限；清晰度与复现审稿人认为论文没有把这些未测 endpoint 冒充为已证实结果。"
+      ],
+      "recommended_resolution": "接受 replay theorem 与描述性 TEST 的已声明范围，但先修复被证实的形式错误。不要把缺失在线 endpoint 重新表述为对未声称 theorem 的反例；它限制的是贡献与最高评分。",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Waudby-Smith--Ramdas 的比较义务",
+      "positions": [
+        "新颖性审稿人要求同 endpoint 的 WoR-CS majority stopper 比较或目标级分离，认为这是判断有限样本效率与新颖性的关键。",
+        "当前稿已准确承认该工作是最近的 without-replacement 先例，并将自身贡献收窄为 FIT/CAL screening；它没有声称一般 CS 新颖性或优于所有 adaptive stoppers。"
+      ],
+      "recommended_resolution": "将同一随机前缀、同一 exact replay loss 下预先指定的 WoR-CS-to-majority stopper 加入比较，并同时报告 BAYES-UNIF；若比较不可完成或不支持优势，则进一步把贡献写成有限候选 plug-in policy 的 held-out calibration，而非声称通用 stopping advance。",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "主数值是否已可复现",
+      "positions": [
+        "复现审稿人和实验审稿人确认主 JSON 可从给定派生 manifest 字节一致重放，且源、split 与 selection 边界有记录。",
+        "同两位审稿人也指出这个成功不能验证原始数据提取、去重、manifest 构造或二级结果的端到端来源。"
+      ],
+      "recommended_resolution": "保留“conditional on the derived manifest”的正面结论；提供可许可的原始数据获取/受控审计、派生程序、环境锁与二级 runner 输入，或降低这些二级 readout 的证据角色。",
+      "needs_adjudicator": false
+    }
+  ],
+  "unsupported_reviewer_claims": [
+    {
+      "reviewer_issue_id": "NOV-01",
+      "reason": "缺少同 endpoint WoR-CS 比较确实削弱新颖性证据，但其验证测试中“证明不存在任何 CS-derived stopper 可实例化该 target”这一替代要求过宽，且冻结材料不支持这种全称不可能性。给出一个透明、预先指定的 CS-to-majority 实例并比较，或收窄贡献边界，已足以裁决当前的实证/定位问题。"
+    }
+  ],
+  "meta_score": 4,
+  "meta_recommendation": "marginally_below",
+  "evidence_ceiling": 6,
+  "prioritized_actions": [
+    {
+      "action_id": "A1-REPAIR-FORMAL-STATEMENTS",
+      "issue_ids": [
+        "TS-R4-01-LEMMA-CENTER-AND-EXISTENCE",
+        "TS-R4-02-DEMEANED-CORRELATION-INFERENCE",
+        "TS-R4-03-TV-EMPTY-CRITICAL-RADIUS"
+      ],
+      "action_type": "method",
+      "description": "将 K=N/2 从 reflection argument 中分离，证明 odd k 时 f_{N/2}(k)=1/2；把 k*(alpha) 限定为 odd-grid feasible set 非空时，或定义明确的 full-N/no-feasible fallback。扩展 exact audit 覆盖 central tie 与空集。删除或严格限定 task-demeaned correlation 对潜在 within-task dependence 的识别性推论，并为 tau*(alpha) 的 V(0)>alpha 情形定义 infeasible sentinel（而非可行半径 0）。",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [
+        "保留现有 terminal convention、odd-budget certificate family 与 true-H/FIT-frozen scope"
+      ],
+      "verification_criterion": "对所有审计范围内偶数 N 断言 center symmetry；对 H=delta_{N/2}, alpha<1/2 验证 documented no-feasible/fallback；对 V(0)>alpha 验证代码输出 infeasible；全文不再从 demeaning identity 推断 latent dependence 来源。",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A2-SAME-ENDPOINT-COMPARATORS",
+      "issue_ids": [
+        "NOV-01",
+        "ER-01-baseline-scope"
+      ],
+      "action_type": "analysis",
+      "description": "在冻结 count-replay 数据上预先指定并实现 finite-population WoR-CS-to-majority stopper：当 confidence set 内所有最终 count 位于同一 full-N majority side 时停止。对每个方法用相同随机前缀、exact per-task replay loss、mean k 和 FIT/CAL/TEST accounting 报告结果；加入已经命名的 BAYES-UNIF。明确任何 CS operating choice 和任何 fitted policy family 均在 FIT/CAL 后冻结。若比较不支持特别效率优势，则相应收窄贡献。",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [
+        "A1-REPAIR-FORMAL-STATEMENTS 完成后冻结最终 replay conventions",
+        "记录 CS 到 majority decision 的精确定义与所有 alpha/候选选择规则"
+      ],
+      "verification_criterion": "可执行工件在同一 manifest 和 split 上对每个基线输出 exact replay flip、mean k、count reduction、CAL status 与配置哈希；TEST 不参与方法或参数选择；文本只声称比较实际覆盖的 endpoint。",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A3-ORDERED-CORRECTNESS-COST-STUDY",
+      "issue_ids": [
+        "ER-03-operational-endpoint-ceiling",
+        "SIG-02"
+      ],
+      "action_type": "experiment",
+      "description": "执行已注册的 EXP-ORDERED-CORRECTNESS-COST 最小正式设计：一个有确定 gold evaluator 的新 model-task carrier，FIT/CAL 冻结 policy，TEST 中配对 FULL-N 与 chronological BAYES-H-online episodes，并保存 no-future-read、cancellation 和 post-stop-work ledger。",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "high",
+      "dependencies": [
+        "作者授权执行",
+        "有权限保存 ordered traces、答案、确定 evaluator 与 cancellation telemetry 的合格 carrier",
+        "冻结 split、policy/table hashes 和运行环境"
+      ],
+      "verification_criterion": "通过 chronology integrity audit；报告预指定的 paired gold-correctness non-inferiority bound、completed/billable token 与 latency intervals、cancellation acknowledgement 和 post-stop work；shadow full-vote agreement 只作次要诊断。",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "A4-END-TO-END-PROVENANCE",
+      "issue_ids": [
+        "ER-02-provenance-and-secondary-replay",
+        "RP-01"
+      ],
+      "action_type": "code",
+      "description": "提供许可证允许的 raw OMR 获取配方或受控第三方审计，发布从 raw parquet 到 manifest 的派生/去重/split/selection 程序、环境锁和一键 clean-room 检查；为保留的 shard/OpenR1/RLVE 结果提供等价的输入、配置和 rerun path，否则仅将其列为 provenance-only。",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "high",
+      "dependencies": [
+        "数据许可与原始输入访问权限",
+        "各 carrier 的固定 revision、完整配置和环境材料"
+      ],
+      "verification_criterion": "独立 clean room 从固定原始输入重建 manifest、seeded split 和主 JSON；每个保留二级 runner 在其 pinned 输入上重现报告的 output hash 或记录可解释的确定性差异。",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "A5-MAKE-PACKAGE-AND-MATRIX-STANDALONE",
+      "issue_ids": [
+        "CP-R4-01",
+        "CP-R4-02",
+        "RP-02"
+      ],
+      "action_type": "figure",
+      "description": "将 Table 5 的结果列明确标为 descriptive TEST replay flip/mean k/count reduction，并将 OMR alpha=.01 标记为 CAL-only；在主文实验段增加简洁 carrier-to-endpoint/scope 指引。把 Figure 1 renderer/provenance 指向已打包且哈希一致的 drift JSON，并声明 PDF byte identity 的确定性约定或使其确定。",
+      "expected_impact": "low",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [
+        "保留既有数字、scope language 和 manifest hashes"
+      ],
+      "verification_criterion": "不读附录上下文即可识别 Table 5 每列和每行的 CAL/TEST 状态；Figure 1 renderer 在干净的冻结包副本中无需暂存文件即可通过 input-hash 与文档化 output checks。",
+      "possible_with_current_evidence": true
+    }
+  ],
+  "must_resolve_before_accept": [
+    "TS-R4-01-LEMMA-CENTER-AND-EXISTENCE、TS-R4-02-DEMEANED-CORRELATION-INFERENCE 和 TS-R4-03-TV-EMPTY-CRITICAL-RADIUS：修正形式陈述、证明和实现边界，而非仅加 limitation。",
+    "NOV-01 与 ER-01-baseline-scope：完成预先指定的同 endpoint WoR-CS/BAYES-UNIF 比较，或把贡献和经验结论收窄到已比较的 fitted-versus-selected-fixed replay 行为。",
+    "ER-02-provenance-and-secondary-replay 与 RP-01：若保留源构造、跨 carrier 或可复现实证的较强表述，必须提供端到端 raw/受控审计与环境链；否则明确降级为 conditional manifest replay 和 provenance-only 记录。",
+    "任何声称 practical online LLM early stopping、returned-answer correctness 或真实服务节约的版本，必须先解决 ER-03-operational-endpoint-ceiling/SIG-02；当前 replay 证据不能替代该实验。"
+  ],
+  "score_gaming_suggestions_to_reject": [
+    "不得把 full-vote replay agreement 或 1-mean(k)/N 改称为 gold correctness、实际 token/latency 节约或 deployment safety。",
+    "不得以新增范围不一致、TEST 调参或事后挑选的 adaptive baseline 替代同 endpoint 的预先指定比较。",
+    "不得删除 E3 中 BAYES-H 失效而 FIXED-EB 有效的合成反例，或用措辞掩盖其 exploratory/nonconfirmatory 身份。",
+    "不得把 conditional manifest replay 写成 raw-to-result clean-room reproducibility，或以改善版式取代技术和证据修复。"
+  ],
+  "decision_rationale": "五份 review 均通过 schema-equivalent 闭字段、离散 ICLR score、round、snapshot hash、唯一 reviewer ID/role 检查，并与 panel summary 一致；冻结校验器也验证了 133 个文件和指定根哈希。当前 meta score 为 4（marginally below），不是对 4/6 分数的机械平均：被直接证明的 Lemma center/feasibility、demeaned-correlation 和 empty-TV-radius 问题使形式可靠性不足，而条件 count-manifest replay、oracle/fitted 区分和 CAL-screened scope 仍是可信优点。证据上限为 6：用现有材料可修复形式问题、完成同 endpoint CS/BAYES-UNIF 分析、修正包路径并在必要时进一步收窄 claim，但现有快照不能提供原始数据端到端出处或 ordered correctness/cost 证据，故不足以支撑 8 或更广的实际早停主张。尚未 plateau：A1、A2 和 A5 是高置信、可由当前证据完成的实质改进；A3/A4 需要新授权、原始数据或新运行。"
+}

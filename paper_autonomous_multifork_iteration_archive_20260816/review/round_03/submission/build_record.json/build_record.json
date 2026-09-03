@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0.0",
+  "build_steps": [
+    {
+      "step": "build_pdf",
+      "command": "xelatex -interaction=nonstopmode -halt-on-error manuscript.tex",
+      "status": "success",
+      "notes": "完成首次LaTeX编译，生成 manuscript.pdf（6 pages）。"
+    },
+    {
+      "step": "build_bibtex",
+      "command": "bibtex manuscript",
+      "status": "success",
+      "notes": "生成/更新 manuscript.bbl，完成参考文献解析。"
+    },
+    {
+      "step": "build_relink",
+      "command": "xelatex -interaction=nonstopmode -halt-on-error manuscript.tex",
+      "status": "success",
+      "notes": "进行第一轮交叉引用重建（第2次运行）。"
+    },
+    {
+      "step": "build_finalize",
+      "command": "xelatex -interaction=nonstopmode -halt-on-error manuscript.tex",
+      "status": "success",
+      "notes": "进行第二轮交叉引用重建，完成稿件输出（6 pages）。"
+    },
+    {
+      "step": "consistency_review",
+      "command": "manual_text_audit",
+      "status": "success",
+      "notes": "人工复核：边界仅限 same-kernel same-batch，不宣称TTFT/throughput/NVML/下游指标提升。"
+    }
+  ],
+  "notes": "稿件迭代后重建并同步状态/复核痕迹，输出 manuscript.pdf（6 pages）与 main.pdf。"
+}

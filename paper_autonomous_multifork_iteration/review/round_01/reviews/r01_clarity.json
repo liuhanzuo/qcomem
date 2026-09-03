@@ -1,0 +1,156 @@
+{
+  "reviewer_id": "r01_clarity",
+  "round": 1,
+  "snapshot_sha256": "192c747fc60119ef4aa7051ded3b868a11371856ca7a7f4cf737a91b43a5caca",
+  "role": "clarity_presentation",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The claims are unusually well bounded: the paper consistently labels cross-layout and cross-N results as self-consistency rather than independent semantic correctness, separates deterministic page accounting from allocator measurements, and states the missing request-base GDN alias check. The central arithmetic and comparison counts are explained and traceable in the supplied maps. I did not independently rerun the GPU experiment, and the evidence remains a single fixed-callable case, so excellent soundness is not warranted.",
+    "presentation": "The English is grammatical, the section order is logical, the two principal figures are legible and informative, and a systems/ML reader can clearly distinguish supported observations from unmeasured production claims. Presentation falls short of excellent because the abstract and introduction front-load many counts and repeated caveats, terminology drifts between paper and artifacts, Table 3 is visually cramped, and the frozen blind package exposes identifying local paths/tokens even though the PDF and supplement_anonymous subtree are otherwise anonymized.",
+    "contribution": "The executable ownership checklist, witness-strength table, and denominator discipline are useful, but the paper deliberately offers neither a new cache mechanism nor a scheduler and validates only one model/runtime/geometry with no independent semantic oracle. The contribution is therefore clear but narrow relative to typical ICLR KV-cache systems papers."
+  },
+  "paper_summary": "ForkAudit is a seven-target audit contract for shared-prefix state ownership in a hybrid LLM containing full-attention KV and recurrent GDN state. The paper instantiates the contract on one Qwen3.5-35B-A3B setup, comparing a source-retaining materialization control with a shared-document KV layout while holding the GDN treatment and recorded vLLM Python callable fixed. It reports exact recorded equality across 504 paired requests and bounded cross-fan-out consistency, then contrasts a 12.33x controlled full-attention pool ratio with a 1.0398x PyTorch allocated-peak ratio. It explicitly disclaims independent semantic validation, throughput/latency benefit, scheduler behavior, and generalization beyond the frozen case.",
+  "strongest_verified_contribution": "The clearest and best-supported contribution is the combination of an ownership/witness ledger with denominator-explicit memory reporting: Figures 1 and 2, Tables 3 and 4, and claims C-EXACT-01, C-POOL-01, C-MEM-01, and C-DENOM-01 make it difficult to confuse layout self-consistency or controlled page-pool savings with semantic correctness or production capacity.",
+  "strengths": [
+    "The paper identity is explicit from the title through the conclusion: this is a bounded reference audit, not a new serving kernel, scheduler, or correctness proof.",
+    "The organization from hazards, to audit contract, to executable protocol, to results, to limitations follows the reasoning a systems reader needs to verify the argument.",
+    "Figure 1 gives a compact, readable ownership picture and makes the source-retaining topology and invariant GDN treatment visible rather than burying them in prose.",
+    "Figure 2 is an effective side-by-side visualization of why the memory denominator changes the apparent headline; its caption also states the measurement boundary.",
+    "Tables 3 and 4 explicitly pair each witness with its remaining blind spot and disambiguate unique queries, paired requests, model steps, and attention-call records.",
+    "The prose repeatedly distinguishes runtime equality checks from offline recomputability, N-dependent evidence from common-mode blind spots, and allocator peaks from NVML or service capacity.",
+    "The rendered PDF uses the ICLR 2026 review style, is anonymous at the PDF level, has blank author metadata, has sequential page numbers, fits the main text within nine pages, and contains reproduction and ethics statements."
+  ],
+  "questions": [
+    "Are MANIFEST.json, generated/package_closure_audit.json, and the top-level build/anonymization scripts intended to be visible in the actual double-blind upload? If so, how will all absolute home paths and hard-coded personal/organization tokens be removed without weakening the relative-path integrity ledger?",
+    "Can the authors choose one canonical pair of arm names and use it in the manuscript, figures, claim map, method map, and generated metrics, while also defining rank once as the GPU/book execution unit?",
+    "What single positive takeaway should a reader retain beyond careful qualification: the reusable seven-target contract, the case-study exactness result, or the denominator lesson? Could the abstract prioritize that takeaway and move secondary counts to Table 4?",
+    "Does the phrase 'PyTorch production peak' have a distinct technical meaning here? If not, would 'absolute PyTorch peak allocated bytes' throughout avoid suggesting a production serving measurement?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R01-CLARITY-001",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Frozen reviewer package: MANIFEST.json source_path fields (beginning at entry line 9); generated/package_closure_audit.json paper_root; scripts/build_anonymous_supplement.py lines 54-73; scripts/validate_package_closure.py lines 27-33",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The manuscript PDF has anonymous authors and blank author metadata, and the supplement_anonymous audit reports no violations. However, the enclosing frozen package records absolute /Users/... source paths containing a personal username, the package audit records the same local paper_root, and two included scripts hard-code that personal username and an organization name in their redaction/forbidden-scan rules.",
+      "why_it_matters": "A reviewer who receives this package can infer author or employer identity despite the double-blind label. This is a submission-compliance problem that can change the decision independently of the otherwise strong manuscript presentation, and it also contradicts the package's reader-facing anonymity claim.",
+      "required_fix": "Construct the blind upload from an allowlist of anonymous, package-relative artifacts. Remove source_path and paper_root fields, do not ship redaction rules containing the secrets they are intended to remove, and keep any unredacted build provenance outside the reviewer-visible package. Regenerate all affected manifests and hashes after sanitization.",
+      "verification_test": "Unpack the exact candidate blind archive in a fresh directory and recursively scan every text file, filename, archive member, PDF metadata field, and manifest value for absolute home paths, personal usernames, organization names, private hosts, and job identifiers; require zero matches, then verify that every relative artifact reference and checksum still resolves.",
+      "evidence_needed": "A machine-readable zero-violation report over the exact final reviewer archive, together with the final archive hash and a clean independent spot check.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-CLARITY-002",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Abstract and Sections 3-5; Figure 2 panel (b) and note; Appendix A Table 5; evidence/claim_evidence_map.tsv claims C-POOL-01/C-MEM-01/C-DENOM-01; generated/manuscript_evidence_audit.json n32 fields",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The paper's canonical labels are Source+Materialize and Shared-Document, while tables shorten them to Materialize and Shared, Figure 2 refers to the denominator as 'fresh,' and machine-readable files use fresh/reuse field names. The prose also alternates among 'absolute PyTorch production peak,' 'absolute peak,' and 'allocator peak.'",
+      "why_it_matters": "These terms appear to describe the same two controls and the same measurement, but the drift forces readers and artifact auditors to infer equivalence. In a paper whose contribution is precise ownership and denominator bookkeeping, terminology should itself be ledger-exact.",
+      "required_fix": "Define one canonical label and one short alias for each arm, include a single mapping to legacy artifact keys if necessary, define rank at first use, and use one measurement name such as 'absolute PyTorch peak allocated bytes' throughout text, legends, captions, tables, and claim/evidence files.",
+      "verification_test": "Search the rebuilt manuscript and reviewer package for fresh/reuse/materialize/shared/production-peak variants and confirm that every remaining occurrence is either the canonical term or appears in one explicit legacy-key mapping; verify that Figure 2 and Table 5 use the same labels and denominator wording.",
+      "evidence_needed": "No new experiment is needed; a terminology crosswalk and a clean consistency scan are sufficient.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-CLARITY-003",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract, page 1 lines 11-28; Introduction, pages 1-2 lines 41-72; Table 1, page 3; Discussion and Limitations, page 8 lines 375-400; Conclusion, page 8 lines 404-409",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-CALL-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The abstract presents five separate scale/count quantities and several caveats before its final identity sentence. Closely related exclusions (no independent semantic oracle, no scheduler or speed claim, one frozen topology) recur in the introduction, positioning table, witness table, results, limitations, and conclusion.",
+      "why_it_matters": "The repetition makes the paper admirably honest but also defensive and harder to summarize: the reader can distinguish evidence from limitations, yet must work to identify the single positive contribution around which the details are organized. This weakens perceived significance without adding scientific caution after the first precise statement.",
+      "required_fix": "Rewrite the abstract around problem, audit contribution, one exactness result, one denominator result, and one compact boundary sentence. Consolidate detailed exclusions into Table 3 and Section 6, leaving only locally necessary qualifiers elsewhere. State a one-sentence positive paper identity before enumerating counts.",
+      "verification_test": "Ask a technically informed blind reader to summarize the contribution, strongest evidence, and principal limitation after reading only the abstract and introduction; each should be recoverable without consulting Table 4, and no major limitation should be materially overstated or lost after deduplication.",
+      "evidence_needed": "No new evidence is needed; this is an organization and compression revision constrained to preserve the current claim boundaries.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-CLARITY-004",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Table 3 on page 5, especially the Private state, Dispatch, Cross-layout, and Cross-N rows",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-ISOLATE-01",
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-GDN",
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-MF-SUMMARY"
+      ],
+      "observed_evidence": "The three-column witness table is central to the paper but uses narrow justified columns that create uneven word spacing and awkward multi-line breaks. Several boundary phrases are visually fragmented, making witness-versus-gap comparison slower than the surrounding prose and figures.",
+      "why_it_matters": "This table is the paper's most compact statement of what each audit target proves and does not prove. Reduced scanability directly works against the paper's clarity and responsible-claim objective.",
+      "required_fix": "Give the table more horizontal room or use ragged-right columns, shorten each cell to a parallel noun phrase, and move secondary detail to a note. Preserve the explicit boundary column and do not reduce the font below the current readable size.",
+      "verification_test": "Render the final PDF at letter size and inspect Table 3 at 100%: every row should be readable without extreme inter-word spacing, orphaned fragments, overlap, or reliance on the body text to identify the remaining gap.",
+      "evidence_needed": "Only the rerendered table and visual inspection are needed.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No research-ethics concern is apparent from the frozen submission. The paper uses PG-19 train text for a systems audit, makes no human-subject or downstream safety claim, and includes a proportionate ethics statement. The double-blind identity leak is treated above as a submission-compliance issue rather than a research-ethics allegation.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A rebuilt, independently scanned blind archive with zero identifying-path/token leaks and intact relative-path checksum provenance would remove the current decision-changing presentation/compliance issue.",
+    "A terminology-normalized manuscript and artifact crosswalk, together with a compressed abstract and a more readable witness table, would make the current contribution substantially easier to evaluate and could support a marginally-above-threshold score without new experiments.",
+    "Evidence from an additional hybrid model or runtime, or a successful independent semantic oracle and direct request-base GDN storage check, would raise the contribution/evidence ceiling beyond what presentation changes alone can achieve."
+  ],
+  "evidence_that_would_lower_score": [
+    "Confirmation that the identifying username, organization token, or absolute paths in the reviewer-visible package reveal the authors in the actual ICLR submission would strengthen the case for rejection on double-blind compliance grounds.",
+    "Evidence that the apparently synonymous fresh/reuse and materialize/shared labels refer to different allocation topologies or different allocator baselines would turn a terminology issue into a substantive soundness problem.",
+    "Discovery that the supplied equality booleans or digests do not correspond to the counts and claim boundaries stated in Table 4 would undermine the paper's central audit narrative.",
+    "A final render exceeding the nine-page main-text limit or introducing unreadable tables/figures would lower the presentation assessment."
+  ],
+  "review_limitations": [
+    "I reviewed only the immutable round-01 snapshot and did not inspect the parent workspace, prior rounds, prior reviews, targets, or issue ledger.",
+    "I visually inspected all 12 rendered PDF pages and read the supplied claim/evidence and method maps, but I did not rerun the H20 GPU experiment or independently validate full tensor equality.",
+    "I did not conduct a fresh external literature search; contribution calibration is limited to the supplied manuscript, rubric, and prescribed KV-cache qualitative anchors.",
+    "The specialty emphasis is clarity and presentation, although the official overall score also reflects the paper's stated evidence scope and contribution breadth."
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "schema_version": "forkaudit-r30c-native-vllm-preregistration-v2",
+  "created_before_scientific_execution": true,
+  "created_at_utc": "2026-08-25T07:50:25Z",
+  "objective": "Determine whether one fixed Qwen3.5-35B-A3B/vLLM-0.26/H20 stack executes genuine native ragged and continuous batching, with scheduler-visible ownership/lifecycle receipts and a full model-vocabulary comparison against sequential controls.",
+  "protocol_repair": {
+    "predecessor": "R30B",
+    "predecessor_job_id": 249885,
+    "predecessor_trial_id": 1899487,
+    "predecessor_run_path": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r30-native-batching-20260825b",
+    "predecessor_trace_sha256": "52567c800b7c7c65db57ecd5034afc3e4915d4db1d4010572d42040af20d0794",
+    "predecessor_status": "failed before formal result because the receipt expected tokenizer vocabulary width 248077 while vLLM returned model vocabulary width 248320",
+    "preserved_gate": "all model-vocabulary log probabilities at every generated step",
+    "only_output_contract_change": "bind dense receipt width and exact key range to the model logits vocabulary 0..248319 instead of len(tokenizer)",
+    "semantic_output_values_used_to_design_repair": false,
+    "automatic_manuscript_use_prohibited": true
+  },
+  "target_node": {
+    "job_id": 249885,
+    "trial_id": 1899487,
+    "pod": "qs-249885-1899487-ai-1443683-master-0",
+    "authorized_physical_gpu_index": 1,
+    "node_stop_prohibited": true
+  },
+  "fixed_stack": {
+    "model": "Qwen3.5-35B-A3B",
+    "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "python": "3.11.13",
+    "torch": "2.11.0+cu129",
+    "transformers": "5.14.1",
+    "vllm": "0.26.0",
+    "triton": "3.6.0",
+    "cuda": "12.9",
+    "hardware": "one NVIDIA H20-3e (compute capability 9.0, at least 140 GiB GPU memory)"
+  },
+  "vocabulary_contract": {
+    "tokenizer_vocab_size": 248077,
+    "model_vocab_size": 248320,
+    "padded_model_vocab_slots": 243,
+    "expected_model_token_id_range": [
+      0,
+      248319
+    ],
+    "model_config_sha256": "5e4d7f74fec2f360eb9cfbfcd6ec0c4c76e684d3a11caaed259d9fd9bfbc7944",
+    "dimension_authority": "Qwen text_config.vocab_size and vLLM ModelConfig.get_vocab_size(), i.e. the logits output width",
+    "sampled_token_deduplication": "vLLM prepends the sampled token to all model-vocabulary IDs; the public per-step dictionary must deduplicate it to exactly 248320 keys",
+    "dense_sidecar_dtype": "float32",
+    "dense_sidecar_indexing": "column j is model token ID j for every j in 0..248319"
+  },
+  "vllm_source_sha256": {
+    "sampling_params.py": "d2f9789ba2b93819c4918159cfd29818eab3ba4f9098241e2febadcc690aa767",
+    "config/model.py": "7d52e060db54067a21591882bd6e3c2dd2486ac9041dde1117f97023e71bf89f",
+    "v1/worker/gpu_model_runner.py": "81b7627fbe81f7aaa2f77b4bf085faa353c69d03662ebfe369536a9773bb70d0",
+    "v1/worker/gpu_input_batch.py": "ca9b8a627cb8e5109c804970a09597c6aa019a78957df399e8b3022bd493ecfc",
+    "v1/sample/sampler.py": "315af950ef4c35fced53dc3a5df49a80af20b47e417e8f12bf315f535769bab2",
+    "v1/engine/logprobs.py": "b4ac11f40a99d6b409db8c6ee0a190e630c9ef01919104e653d2965f23e36e15",
+    "v1/outputs.py": "1e87bf44162452c1908d3a5003685937dbdc56f5634e35e11ed7b6a5322a1c15",
+    "logprobs.py": "8aa02890e5f4a5d8b35cff4668bba2993604b206c5e2aae14aedd0f552712bd0"
+  },
+  "required_pre_model_load_gates": [
+    "the frozen model artifact and weight ledgers both verify",
+    "len(tokenizer) is exactly 248077",
+    "Qwen text_config.vocab_size is exactly 248320 and its config.json raw SHA matches",
+    "the eight installed vLLM source files on the active GPU runner/output path match the frozen SHA-256 map",
+    "SamplingParams(logprobs=-1).num_logprobs remains -1",
+    "synthetic output assembly with sampled token ID 0 deduplicates to exactly keys 0..248319",
+    "synthetic output assembly with padded model token ID 248319 deduplicates to exactly keys 0..248319"
+  ],
+  "data_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+  "data_selection": "first three distinct rows of the frozen PG19-train smoke64 JSONL; tokenize the first 50000 text characters locally; take the exact prefix lengths below",
+  "text_prefix_characters": 50000,
+  "model_artifact_ledger_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+  "model_weight_ledger_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+  "source_sha256": {
+    "r30_native_scheduler_trace.py": "b082f696ecf96651cca57a73a6cd5e3b3d6be1b4b3a52db0f9917ae5b3482766",
+    "r30_replay_native_batching.py": "f436338ed943bab677d3fa4c8cb9133fb75c7bc9304e6d2b77e75580121dbf21",
+    "r30_run_native_batching.py": "4a9e1921701c2ecd001e426f6476990e897ae3fab9d6de274ef072058a4d48d0"
+  },
+  "seed": 20260825,
+  "requests": [
+    {
+      "role": "A",
+      "prompt_tokens": 1105,
+      "max_output_tokens": 2,
+      "lifecycle_role": "initial short request"
+    },
+    {
+      "role": "B",
+      "prompt_tokens": 2209,
+      "max_output_tokens": 5,
+      "lifecycle_role": "initial long-lived request"
+    },
+    {
+      "role": "C",
+      "prompt_tokens": 1537,
+      "max_output_tokens": 2,
+      "lifecycle_role": "waiting replacement admitted while B remains live"
+    }
+  ],
+  "engine_config": {
+    "engine": "vLLM V1 LLM offline engine with the configured native Scheduler subclass observer",
+    "max_model_len": 8192,
+    "max_num_batched_tokens": 4096,
+    "max_num_seqs": 2,
+    "gpu_memory_utilization": 0.85,
+    "dtype": "bfloat16",
+    "enforce_eager": true,
+    "enable_prefix_caching": false,
+    "enable_chunked_prefill": true,
+    "language_model_only": true,
+    "generation_config": "vllm",
+    "max_logprobs": -1,
+    "temperature": 0.0,
+    "ignore_eos": true
+  },
+  "full_vocab_logprob_tolerance": {
+    "atol": 0.005,
+    "rtol": 0.0,
+    "comparison": "all 248320 model-vocabulary entries at every generated step; identical finite/non-finite mask required"
+  },
+  "required_positive_gates": [
+    "the same native SchedulerOutput admits A and B as new requests with distinct prompt lengths 1105 and 2209",
+    "at least one later native SchedulerOutput contains cached decode work for both A and B",
+    "A reaches a terminal free receipt before B",
+    "a later native SchedulerOutput admits new request C while cached request B remains scheduled",
+    "scheduler-observed simultaneously live KV block IDs are pairwise disjoint within every cache group",
+    "every block ID reported as newly allocated to a new request is present in that step's native new_block_ids_to_zero receipt",
+    "sequential A/B/C controls never contain more than one request in a SchedulerOutput",
+    "every public output-logprob mapping has exactly keys 0..248319 after sampled-token deduplication",
+    "native-batch and sequential-control generated token IDs are exactly equal for A, B, and C",
+    "native-batch and sequential-control full model-vocabulary output log-probabilities meet the preregistered tolerance for A, B, and C",
+    "a detached replay rehashes, reloads, and independently recomputes all six dense sidecars and all scheduler gates"
+  ],
+  "scientific_negative_policy": "If any required positive gate fails after model execution, preserve the result as a completed scientific negative; do not relabel or automatically add it to the manuscript.",
+  "infrastructure_failure_policy": "Failures before any model execution are infrastructure/preflight failures, not scientific negatives.",
+  "claim_boundary": {
+    "eligible_if_all_gates_pass": [
+      "native vLLM scheduler ragged admission for two different-length requests",
+      "native continuous-batching turnover from finished A to waiting C while B remains live",
+      "scheduler-visible KV block ownership/lifecycle receipts",
+      "greedy-token and all-248320-model-vocabulary output-log-prob comparison against sequential controls on this fixed stack"
+    ],
+    "not_established": [
+      "integration of the existing in-process CoMem/ForkAudit cache facade into vLLM EngineCore",
+      "ForkAudit GDN ownership under native batching",
+      "independent GPU-memory observation",
+      "native-batching throughput, capacity, cancellation, or production safety",
+      "cross-model or cross-runtime generality"
+    ]
+  }
+}

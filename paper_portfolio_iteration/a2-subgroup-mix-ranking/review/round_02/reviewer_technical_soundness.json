@@ -1,0 +1,148 @@
+{
+  "reviewer_id": "subgroup-r2-technical",
+  "round": 2,
+  "snapshot_sha256": "a59cc79648a2b5daedc8f4b8f57637648180e5cd8d1c9eb3abffc6739eb61edc",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The linear and paired-regret arguments are algebraically sensible conditional on simultaneous valid pair/group UCBs, and the nonnegative outer cap repairs the self-comparator boundary. However, the manuscript does not state the within-group i.i.d./exchangeability (and sampling) conditions needed to obtain Clopper--Pearson, Hoeffding, or Maurer--Pontil coverage, gives an invalid sufficient condition in Proposition 3, and leaves the M3 sampling action operationally undefined when the subgroup is the ground-truth label.",
+    "presentation": "The paper is unusually explicit about descriptive versus finite-sample results and labels the normal band correctly. The main certificate is readable. Still, the false condition and reversed regret sign in Proposition 3 make a stated mechanism hard to trust, while key sampling assumptions are absent rather than localized in the setup/theorem statements.",
+    "contribution": "A mixture-indexed regret gate built from simultaneous paired bounds is a useful, narrowly scoped instantiation. Under current evidence it is incremental and its practical label-budget component is not yet a well-defined deployable procedure; the supplied empirical frontier cannot be independently technically audited end-to-end from this snapshot."
+  },
+  "paper_summary": "The paper considers a fixed candidate pool under label-prior/subgroup-mixture shift. It selects the empirical-risk minimizer for each mixture and commits only when either absolute Clopper--Pearson bands or paired-difference UCBs certify regret at most a user tolerance. It reports constructed-mixture diagnostics on four classification carriers, a static label-budget allocation study, and a clearly delimited width-surrogate analysis.",
+  "strongest_verified_contribution": "Theorem 1's deterministic reduction is correct if all ordered-pair, per-group one-sided UCBs jointly cover their target mean differences: nonnegative mixture weights preserve each pairwise upper bound, the maximum over comparators bounds regret, and the outer max with zero handles a strictly dominating chosen model. The simultaneous event then also covers every mixture weight without a grid-level union bound.",
+  "strengths": [
+    "The theorem uses a single pair/group simultaneous event, so the claimed extension from a finite set of UCBs to all mixture weights is structurally justified once those UCBs are valid.",
+    "The manuscript explicitly separates the asymptotic normal diagnostic from its finite-sample Hoeffding/Maurer--Pontil variants and does not treat zero held-out violations as nominal coverage.",
+    "The outer nonnegative cap in Definition 1/Theorem 1 is the necessary repair for a selected model that strictly dominates all comparators; evidence E12 documents a gate-invariance check for nonnegative tolerances.",
+    "The surrogate allocation section carefully says that its water-filling calculation does not optimize the actual pairwise regret UCB."
+  ],
+  "questions": [
+    "What is the precise stochastic sampling assumption for each CAL group (i.i.d., exchangeable, or finite-population sampling), and how are candidate training, CAL selection, and any allocation rule kept independent of the CAL errors to which CP/Hoeffding/Maurer--Pontil are applied?",
+    "In Section 6, if a subgroup is a ground-truth class and its label costs budget, what observable information lets an operator target an unlabelled point to achieve a prescribed per-class count n_g or even know per-group availability? Please specify the sampling oracle/protocol and revise the guarantee accordingly.",
+    "Can the authors replace Proposition 3 by a valid two-model statement based on U_a(w) < U_b(w) (with correctly signed regret), and provide the promised numerical counterexample or remove the proposition?",
+    "Can the supplement provide the exact paired-UCB formula, code/configuration hash, per-group CAL counts and sufficient statistics, split manifest, and a verifier that recomputes Table 3 from the bundled artifact?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TS01_missing_sampling_conditions_for_exact_bands",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF p. 3, Section 2 'Calibration' and PDF pp. 3--4, Lemma 1, Definition 1, and Theorem 1; source/paper.tex lines 157--160 and 174--242.",
+      "claim_ids": [
+        "C01",
+        "C02"
+      ],
+      "evidence_ids": [
+        "E02",
+        "E03"
+      ],
+      "observed_evidence": "The setup says only that each per-point error indicator is Bernoulli with mean r_{i,g}; it never states that CAL observations within a group are independent/exchangeable, how the group-stratified CAL sample is drawn, or the independence between model fitting and CAL. The supplied closest-work matrix itself describes Maurer--Pontil as requiring bounded independent observations. Equal marginal Bernoulli means alone do not yield CP/Hoeffding/empirical-Bernstein coverage under arbitrary dependence.",
+      "why_it_matters": "The paper's central finite-sample certificate is only as valid as the simultaneous component UCBs. Without a stated sampling condition, the advertised >=1-delta theorem is not established for the problem formulation, rather than merely being an implementation detail.",
+      "required_fix": "State a precise data-generating and sampling assumption (for example, fixed candidates trained without CAL and conditionally i.i.d. CAL examples within each subgroup), state any finite-population alternative with its appropriate intervals, and carry that condition explicitly into Lemma 1 and Theorem 1. Describe how FIT-only allocation preserves the condition.",
+      "verification_test": "A proof audit should derive each component CP and paired UCB under the stated sampling model, union-bound the exactly enumerated cells/pairs, and then recover the all-w theorem. A counterexample with perfectly dependent CAL errors should be outside the declared model or handled by a valid dependent-sampling bound.",
+      "evidence_needed": "A formal assumption statement plus the exact sampling/split protocol; no new predictive experiment is required for the conditional theorem, though a code-level check is needed for the reported implementation.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS02_proposition3_condition_does_not_imply_selection_and_regret_sign_is_reversed",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "PDF p. 4, Proposition 3 and proof; source/paper.tex lines 296--310.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "By Proposition 2, M1 selects a iff U_a(w) is smaller than every competing U_b(w). Proposition 3 instead asserts selection of a from Delta_a = U_a-L_a > Rhat_b-L_a, which simplifies to U_a > Rhat_b and contains no condition on U_b; it therefore cannot imply U_a < U_b. Moreover, if b is the oracle-better model, selecting a has regret R_a-R_b > 0, whereas the proposition writes R_b-R_a '(positive)'. The claimed small min_j L_j is also irrelevant to the M1 argmin after Proposition 2 makes it constant across candidates.",
+      "why_it_matters": "This is a false formal mechanism supporting the paper's headline 'bands gate, they do not choose' caution. The empirical diagnostic may still be useful, but it does not repair a proposition whose stated premise is insufficient and whose conclusion has the regret sign wrong.",
+      "required_fix": "Replace the statement with a valid, fully hatted/true-risk-distinguished sufficient condition, e.g. explicitly require U_a<U_b while the point estimate and/or true risk favors b, and use regret R_a-R_b. Provide a short constructive example satisfying all stated interval relations, or remove Proposition 3 and present only the empirical diagnostic.",
+      "verification_test": "Symbolically reduce the revised condition to the M1 selector in Proposition 2 and check a numerical two-model example. Confirm the selected-model regret against the definition in Section 2.",
+      "evidence_needed": "A corrected derivation; no new dataset experiment is needed.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS03_m3_requires_unobserved_subgroup_labels_to_allocate_them",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF p. 6, Section 6.1, especially the 'unlabeled calibration pool' premise and rules mapping (R, per-group avail) to n_g; source/paper.tex lines 423--439. The subgroup definition is ground-truth class at PDF p. 3, Section 2.",
+      "claim_ids": [
+        "C05",
+        "C08"
+      ],
+      "evidence_ids": [
+        "E04",
+        "E13"
+      ],
+      "observed_evidence": "The paper says the operator reveals at most R group labels from an unlabelled CAL pool, while every static policy allocates a prescribed number of labels to each ground-truth-class subgroup and takes per-group availability as input. If the subgroup is the ground-truth class, an operator cannot identify an unlabelled example's group in order to fill n_g without an additional free group-membership oracle or a defined stratified sampling frame. The paragraph only excludes an earlier adaptive method for unspecified observability; it does not resolve this issue for the displayed static rules.",
+      "why_it_matters": "FIT-only choice of counts does not make the collection action feasible or establish that the realized samples have the groupwise distribution required by the certificate. Thus the M3 contribution is not yet an operational label-allocation method under its stated budget semantics.",
+      "required_fix": "Specify one implementable observation model: free pre-observed subgroup metadata distinct from the costly outcome label, an externally supplied stratified sampling frame, or a sequential label-only design. State which variables are available before labeling, how draws are sampled, and use a confidence analysis valid for that model; otherwise narrow M3 to an oracle-stratified simulation.",
+      "verification_test": "Give pseudocode that selects each queried item using only permitted pre-label information and show that it realizes the stated n_g distribution. Then verify the paired-UCB assumptions for that sampling design.",
+      "evidence_needed": "A sampling-oracle specification and, for a deployable claim, an implementation trace or experiment using it.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS04_exact_frontier_not_independently_auditable_from_bundled_evidence",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF p. 5, Table 3 and the exact finite-sample interpretation; evidence/experiment_registry.json entries E02/E03 and evidence/method_provenance.tsv entries M02/M03.",
+      "claim_ids": [
+        "C02",
+        "C03"
+      ],
+      "evidence_ids": [
+        "E03",
+        "E12"
+      ],
+      "observed_evidence": "The bundled r1885 JSON supplies aggregate values and 350 rows, but not the code cited by M02/M03, the exact MPB formula and confidence allocation as executed, per-group CAL counts/loss-pair sufficient statistics, split identifiers, or an environment/configuration lock. The registry labels E03 'executed_snapshot_artifact_not_replayed'; E12 checks only that applying a zero cap does not change gates for selected tolerances and explicitly does not establish coverage.",
+      "why_it_matters": "Consequently a reviewer cannot check that the reported 0.260 MPB frontier corresponds to a valid finite-sample UCB implementation rather than only a self-reported result artifact. This does not refute the conditional theorem, but it prevents the central empirical exactness claim from being decision-ready.",
+      "required_fix": "Bundle the executable paired-UCB implementation and immutable config/split manifest, specify all formulas and alpha allocation, include sufficient per-group statistics or reviewer-safe raw loss arrays, and provide a deterministic verifier that recomputes Table 3 and validates the reported commitment decisions.",
+      "verification_test": "In a clean environment, run the supplied verifier from the bundled inputs and reproduce every Table 3 rate, component UCB, and commitment mask; separately inspect that its sampling assumptions match TS01.",
+      "evidence_needed": "Implementation, configuration, data/split provenance, and replayable sufficient statistics; this is new reproducibility evidence, not a request to invent new outcomes.",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics violation is evident in the submitted snapshot. The paper appropriately avoids claiming measured abstention utility; the main concerns are technical validity and operational feasibility rather than a distinct ethics issue.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the frozen submission snapshot and supplied rubric.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A corrected theorem setup with explicit valid CAL sampling assumptions and an audited proof of the component confidence bounds and simultaneous event.",
+    "A corrected or removed Proposition 3 with a valid selection condition and correctly signed regret.",
+    "An explicit, implementable M3 observation/sampling model plus a certificate analysis valid for it.",
+    "A replayable exact-UCB evidence bundle that independently recomputes the Table 3 finite-sample frontier."
+  ],
+  "evidence_that_would_lower_score": [
+    "A demonstration that CAL samples or model choices depend on CAL errors in a way incompatible with the required concentration assumptions.",
+    "A replay showing that the paired Maurer--Pontil UCB implementation or Bonferroni allocation differs from the stated certificate.",
+    "Evidence that M3 uses true class labels to target queried examples while those labels are counted against the claimed budget without a declared oracle."
+  ],
+  "review_limitations": [
+    "This isolated review was restricted to the frozen snapshot. The cited historical code paths, raw datasets, split files, and environments were not included, so I did not infer their contents or claim an end-to-end replay.",
+    "I did not perform an external literature search; novelty assessment is limited to the bundled citations and closest-work matrix."
+  ]
+}

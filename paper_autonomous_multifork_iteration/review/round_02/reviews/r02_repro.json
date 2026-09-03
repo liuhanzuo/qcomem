@@ -1,0 +1,164 @@
+{
+  "reviewer_id": "r02_repro",
+  "round": 2,
+  "snapshot_sha256": "e11e5241849c4997ccab4ffb86de316b3edc05b02a8c66296fac45859ad3fb90",
+  "role": "reproducibility_provenance",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The deliberately narrow claims are internally coherent and unusually well audited: I independently verified every outer and anonymous manifest entry, replayed all eight raw shards through the deep aggregate validator, reran the 17 governance tests, and reproduced all six generated artifacts byte-for-byte. Soundness remains 3 rather than 4 because the package cannot independently recompute the runtime logits/KV/GDN tensors or perform a clean GPU rerun, and one central hybrid-state ownership witness (request-versus-persistent-base GDN storage disjointness) is absent.",
+    "presentation": "The paper is exceptionally explicit about what each denominator, oracle, comparison count, and pass bit does and does not establish. Claims, evidence IDs, limitations, and package-relative paths are easy to trace. The only notable presentation/reproducibility gap is that the README documents figure/table generation but not the stronger raw-shard replay path already present in the code.",
+    "contribution": "The audit checklist, evidence package, and denominator discipline are useful, but the conceptual ingredients are largely combinations of established paged sharing, metamorphic testing, and memory accounting. The empirical contribution is one model/runtime/hardware case with no independent semantic oracle, optimized recurrent path, scheduler, or deployment measurement, so significance is credible but narrow relative to the closest ICLR systems anchors."
+  },
+  "paper_summary": "ForkAudit defines a seven-target audit contract for document KV ownership, request-private append state, recurrent GDN state, dispatch provenance, relational exactness, and memory denominators, then instantiates it on Qwen3.5-35B-A3B. In a source-retaining Source+Materialize versus Shared-Document comparison, 504 request pairs and 4,032 paired decoding steps record exact tokens, runtime full-vocabulary equality, final logical-KV digests, and GDN digests; 248 non-vacuous cross-fan-out comparisons also pass. At N=32 the analytic pools are 2,960 versus 240 MiB, while absolute PyTorch peak allocated bytes differ by 3.83%. The paper correctly frames these as case-specific self-consistency and accounting results, not semantic correctness or production serving gains. The strongest decision-driving reason to accept is the unusually auditable, fail-closed evidence package; the strongest reason against is the limited new scientific knowledge and lack of independently rerunnable numerical evidence.",
+  "strongest_verified_contribution": "A genuinely closed offline evidence audit for the recorded case: all 64 snapshot payloads and all 36 anonymous-supplement entries hash-verify; a clean LaTeX build succeeds at 13 pages with eight main-text pages and no undefined references or overfull boxes; the deep validator replays all eight roughly 29.5 MB shards and semantically matches the stored derivative summary; the 17 governance tests pass; and the deterministic generator reproduces the metrics, three figures, and two tables byte-for-byte while preserving the distinction between analytic KV pools and allocator peaks.",
+  "strengths": [
+    "Excellent claim discipline: the abstract, main text, and conclusion consistently restrict the result to same-callable, within-run KV-layout self-consistency and explicitly reject throughput, semantic-correctness, recurrent-sharing-benefit, and service-capacity claims.",
+    "Strong artifact integrity: the outer manifest covers exactly all 64 payload files with matching SHA-256 and byte sizes, and the anonymous manifest covers exactly all 36 supplement files with no missing or unmanifested entries.",
+    "Raw provenance is far above normal paper-level reporting: eight complete shards expose per-request trajectories, call ledgers, storage equations, allocator snapshots, identities, and digest relations, and the supplied deep aggregate validator replays them successfully.",
+    "The mutation/governance suite is substantive rather than decorative: all 17 tests pass in the copied closure and exercise 28 serialized-artifact tamper cases plus helper and launcher failures.",
+    "Build and anonymity checks pass in the inspected snapshot: the two manuscript PDFs are byte-identical, PDF author metadata is empty or anonymous, all sensitive infrastructure keys are redacted, and my independent scan found no author-identifying path, username, affiliation, or non-redacted sensitive value.",
+    "The memory discussion carefully separates logical/allocated page pools, PyTorch allocator peaks, and unmeasured process/device/service capacity, preventing the 12.33x local ratio from being presented as a deployment claim."
+  ],
+  "questions": [
+    "Can the authors provide a public, clean GPU-rerun recipe that identifies the exact checkpoint/tokenizer revision and PG-19 acquisition/preprocessing path, reconstructs the currently hash-only protocol/model/code ledgers, and pins the CUDA/PyTorch/Transformers/vLLM/Triton environment?",
+    "Can a rerun archive per-layer GDN storage identities or address ranges and directly check every request state against the persistent prefix base, including the otherwise vacuous N=1 case?",
+    "Will the supplement add one documented offline command that invokes the deep raw-shard aggregate validator before generating figures/tables, sets a headless Matplotlib backend, and validates the derivative-summary schema normalization?",
+    "The original absolute-path execution ledger reports 135 entries whereas the derivative ledger contains 18 files. Are the 135 entries repeated references to exactly those 18 unique digests, and can that reconciliation be published as a path-free digest/count manifest?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R02-RP-01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "Reproducibility Statement, main.tex lines 567-581; Artifact and Claim Map, lines 686-695; supplement_anonymous/README.md lines 26-36; supplement_anonymous/code/run_qcomem_qwen35_vllm_paged_multifork_resident.py lines 2133-2190",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-CALL-01",
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CODE-MF",
+        "E-CODE-GDN"
+      ],
+      "observed_evidence": "The package truthfully labels itself an offline evidence-replay artifact. It redistributes runtime equality booleans and SHA-256 digests but not full logits/KV/GDN tensors, model weights, PG-19 text, the original protocol/model/weight ledger preimages, or a runnable environment lock. The runner CLI unconditionally performs static validation and requires model, data, protocol manifest, and several ledgers that are absent. I could replay internal consistency from the shards, but I could not independently recompute the numerical experiment or verify the runtime equality assertions from tensor values.",
+      "why_it_matters": "The primary empirical result is an execution-correctness audit. Internal digest agreement is strong evidence, but without a clean rerun or archived values it cannot rule out a faulty runtime check, common generation bug, or mismatch between the recorded and intended environment. This places a hard ceiling on independently verifiable soundness.",
+      "required_fix": "Release privacy-safe acquisition and reconstruction instructions for the exact checkpoint/tokenizer and PG-19 inputs, the normalized protocol/model/code ledgers, and a pinned container or lockfile; provide a clean GPU-rerun entry point. If full tensors are impractical, archive a preregistered sample of actual logits and state slices plus complete digests and produce a fresh-run comparison report.",
+      "verification_test": "Starting from a fresh documented environment and only public inputs plus the supplement, reproduce the static identity, execute all eight ranks, regenerate raw shards and the aggregate, and show that every registered token/logit/KV/GDN/call/storage relation and headline value matches or has a predeclared, justified tolerance.",
+      "evidence_needed": "A clean-environment build/run log, resolved dependency lock or container digest, public input/revision manifest, newly generated shards/summary, and an automated comparison against the frozen submission evidence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-RP-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "ForkAudit Contract target 3, main.tex lines 209-212; Table 3, lines 316-339; Results lines 432-436; Evidence limitations lines 540-553",
+      "claim_ids": [
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-GDN",
+        "E-CODE-MF",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The paper explicitly records only a final runtime boolean for GDN request-request disjointness when N>1. The anonymous shards do not preserve the underlying storage keys or address ranges, N=1 is vacuous, and there is no direct request-versus-persistent-base range comparison. Both ownership arms also use the same functional GDN treatment, so cross-arm equality supplies no independent recurrent-state control.",
+      "why_it_matters": "Heterogeneous state is the motivation for the audit, yet one of the seven ownership targets remains only partially witnessed and cannot be independently replayed. An unnoticed request-base alias could preserve value digests and same-arm comparisons while violating the intended ownership contract.",
+      "required_fix": "Instrument a fresh run to archive stable per-layer storage identities/ranges for the persistent GDN base and every request-local convolutional/recurrent tensor, record direct request-base and request-request disjointness, and add explicit alias mutants to the validator suite. Keep the current claim narrowing unless a separate GDN-sharing/materialization control is added.",
+      "verification_test": "For N=1 and every multi-request cell, replay raw ranges to prove that all request tensors are disjoint from the persistent base and from one another; then inject deliberate request-base and request-request aliases and confirm that both runtime and offline validators fail closed.",
+      "evidence_needed": "New raw storage-identity/range fields, a validator and mutation tests covering them, and a rerun log/summary binding those fields into the aggregate.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-RP-03",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "supplement_anonymous/README.md lines 21-24; submission/scripts/generate_paper_artifacts.py lines 72-328 and 593-631; supplement_anonymous/code/run_qcomem_qwen35_vllm_paged_multifork_resident.py lines 1612-1990 and 2133-2190",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SHARDS",
+        "E-MF-SUMMARY",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "The README command generates artifacts but does not document invocation of the stronger aggregate_shards validator. The generator recomputes many cross-arm counts and formulas but accepts the stored cross-N pass bit instead of replaying the cross-N relation. The runner contains the complete validator, which I successfully invoked by custom import using static-dry-run.json, but its public CLI first requires the omitted clean-run inputs. In this headless reviewer environment the exact README generator command also aborted under the default GUI Matplotlib backend; setting MPLBACKEND=Agg made it succeed and reproduce all six tracked outputs byte-for-byte.",
+      "why_it_matters": "A core artifact contribution should make the strongest available replay path obvious and one-command safe. As packaged, a typical reviewer may run only the shallower generator and mistakenly treat it as complete raw replay, or encounter an avoidable headless-rendering failure.",
+      "required_fix": "Add a dedicated offline replay command that loads static-dry-run.json, invokes aggregate_shards on the eight derivative shards, normalizes and compares the derivative summary schema, verifies the anonymous manifest, then generates artifacts. Set the Agg backend before importing pyplot and add a minimal dependency/versions file.",
+      "verification_test": "Run the documented command in a fresh headless environment; require zero exit status, semantic equality of the replayed and stored summaries, byte-identical generated outputs, and failure after mutating a cross-N digest, a call record, a storage field, or a shard hash.",
+      "evidence_needed": "The new offline entry point, dependency specification, updated README, and a captured clean headless replay log.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-RP-04",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "citation_integrity"
+      ],
+      "location": "supplement_anonymous/README.md lines 6-16 and 31-36; supplement_anonymous/provenance/original_evidence_digests.json field original_execution_code_ledger and code list; Artifact and Claim Map, main.tex lines 693-695",
+      "claim_ids": [
+        "C-CALL-01",
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN"
+      ],
+      "observed_evidence": "All 18 derivative code/protocol files match their published per-file digests and support offline replay/tests. However, the authoritative original absolute-path ledger is withheld and is reported as 135 entries, while the derivative ledger contains 18 entries. The package does not provide a path-free digest multiplicity table or other proof that the 135 original entries reduce exactly to these 18 unique files; this could be benign repetition, but it is not independently verifiable.",
+      "why_it_matters": "The paper calls the copied files the exact executed transitive source closure. Per-file equality proves identity of copied files, but without reconciling the complete original ledger it does not prove that no executed local source was omitted from the anonymous closure.",
+      "required_fix": "Publish a privacy-safe normalized ledger containing each original entry's digest and multiplicity, or a Merkle-style inclusion/completeness proof, and explicitly reconcile 135 original entries to the 18 redistributed unique files without revealing absolute paths.",
+      "verification_test": "Confirm that the normalized original ledger has 135 accounted entries, its unique digest set maps completely to the derivative closure (or explicitly classifies non-source entries), and every redistributed file hash matches the corresponding original digest.",
+      "evidence_needed": "A path-free original-ledger reconciliation with digest counts and a deterministic verifier.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No ethics concern requiring a flag was identified. The study uses the PG-19 training split for systems behavior, introduces no human-subject collection, makes no safety or downstream-quality claim, and explicitly notes the broader dual-use effect of lowering deployment cost.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It inspected only the frozen blind snapshot and the named rubric, calibration, protocol, and schema; it did not inspect prior reviews, author plans, or repository history.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean third-party GPU reproduction from a fully public, pinned recipe that recomputes the runtime numerical evidence rather than only replaying hashes and booleans.",
+    "Direct, replayable GDN request-base and request-request storage evidence plus alias fault injection, eliminating the central partial ownership witness.",
+    "An independent semantic oracle and a factorial KV-share/GDN-share study in a real scheduler, ideally across another hybrid model/runtime and realistic lifecycle events; this is the main route from a rigorous case study to an ICLR-level contribution score of 3.",
+    "A one-command headless raw replay and privacy-safe reconciliation of all original provenance-ledger entries."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any failure of the deep raw validator, manifest checks, or a clean rerun to reproduce the recorded token/logit/KV/GDN relations or the N=32 memory values.",
+    "Evidence that metadata redaction changed numerical or boolean fields, or that omitted entries from the 135-entry execution ledger affected the experiment.",
+    "A demonstrated N-invariant common-mode semantic bug in the shared callable or functional GDN path that invalidates the intended ownership comparison.",
+    "An author-identifying value in the actual submitted archive outside the currently supplement-scoped anonymity audit."
+  ],
+  "review_limitations": [
+    "I did not have the model weights, PG-19 text, H20 hardware, or original unredacted evidence, so I could not perform the clean GPU numerical rerun that the paper itself says is unsupported.",
+    "Per the isolation instruction, I did not access the internet; citation existence and novelty were assessed only from the frozen bibliography, citation lock, closest-work matrix, and supplied calibration references.",
+    "I inspected no path outside the reviewer-safe snapshot, the named review instructions, and the designated output file."
+  ]
+}

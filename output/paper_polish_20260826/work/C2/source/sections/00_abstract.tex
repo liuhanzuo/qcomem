@@ -1,0 +1,32 @@
+\begin{abstract}
+Long-context systems commonly retain or reconstruct key--value state at every
+layer.  We study a training-free alternative on a frozen backbone: cache one
+activation tensor per chunk at depth $j$, retrieve a fixed number of chunks, and
+recompute only the upper layers.  \textbf{CoMem} implements this
+write--retrieve--read pipeline.  With fixed top-$k$, model read length is
+independent of document length and the measured GPU read-time working set remains
+approximately flat through 128k tokens.  The external activation store, raw text,
+and BM25 index still grow with the document, so this is not a constant-memory
+system.
+
+Matched measurements on Qwen3-8B separate the retrieval operating point from the
+depth-cache trade-off.  A fixed-$k$ short read provides the working-set benefit.
+At the same 6.7k-token read in a 128k memory check, moving from $j{=}0$ to
+$j{=}12$ saves about 0.3\,GB, a read-length-scoped quantity rather than a general
+memory benefit.  The matched $j{=}12$ read is less accurate than re-forwarding the
+same retrieved chunks from $j{=}0$.  In a five-arm decomposition, the contrast
+remains significant when selection, decoding, chunk-independent encoding, and
+position relocation are held fixed; a residual lower-band context-set difference
+prevents interpreting it as a fully deconfounded causal effect.  The relocation
+contrast is null at the scored endpoint but not at the raw-generation level.
+
+The preregistered depth sweep has the same direction: pointwise and without
+multiplicity correction, every tested $j{\ge}2$ read loses to matched $j{=}0$ on
+the same samples, and no deeper point recovers it.  The load-bearing $j{=}12$
+comparison remains significant under Bonferroni correction, although the curve is
+not strictly monotone.  Because the headline 4k magnitude was selected and depends
+on the registered reader convention, the reusable conclusion is the direction,
+not a convention-independent effect size.  The result bounds what this frozen,
+training-free backbone gives up; it does not bound recovery after training for
+cache compressibility or establish superiority over unimplemented prior systems.
+\end{abstract}

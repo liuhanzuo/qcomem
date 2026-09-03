@@ -1,0 +1,34 @@
+{
+  "issue_id": "allocator-window-correction",
+  "verdict": "resolved",
+  "operational_issue": "Verify that every allocator-memory artifact distinguishes the post-pack production peak, defined as max(resident setup, generation) from reset phase counters, from the full recorded-lifecycle peak, defined as max(prefill, Q16 pack, resident setup, generation), across all eight ranks and N in {1,2,4,8,16,32}; independently reconstruct N=32; and reject any remaining ambiguous absolute-peak wording.",
+  "evidence_checked": [
+    "main.tex sha256=626361aac9b8ef3b2da209e844217178e9e32abab1aa4de89c9e492f7e27430e",
+    "main.pdf sha256=e227ce06d5d73dcc8bd86d303eb467bdee0feee8720af70577bc08bb51f3fa89",
+    "scripts/generate_paper_artifacts.py sha256=c36f63dadaf6b411eaf517d3d9278ba8dbf4bac604298cf3433290740098ee23",
+    "scripts/validate_manuscript_evidence.py sha256=9489441b4fe75a917735a0973e6d49ce8849dbffc37d4337cf5c7c3f230a9ea4",
+    "generated/artifact_metrics.json sha256=c92e9fca27a24ba4170dfd7a5e7ba0bda6d261a684675a6a307d0296732150b7",
+    "generated/manuscript_evidence_audit.json sha256=a69ea45d97448d88c3755041fd986e9fe2c5fde25758ce9b2cd2e1179927a063",
+    "figures/memory_denominators.pdf sha256=2ca9bff8f78bdf087cf76e4c82934145a9b3d21992523e5ebade0bfe49117249",
+    "tables/capacity_table.tex sha256=a136e67c743fc97ca135b2d1a6a36cda68883dc594f0afd602685f1fde6c1266",
+    "evidence/claim_evidence_map.tsv sha256=2d7834da5480c8420601fb7d3655987688b48802362f3019bd011e1b3b75fa16",
+    "Original raw shard sha256 values by rank 0..7: 12ad2f778a97fe386695c4ee9855653dcb0ce89585ebf4caf6ba9a93aabc172a; fed3f81ca89269736308be7fc56ce52e9f67b89816fa9917f12f5acab364287c; 0799b8898c9f489980937975b2dd4f64997794eaea5f98882e8539cef78297b2; 9faffaf4da80672ee9b2500d5c1542d05513c0c16919a60242f5042249e1ff6f; 8bfc58d0f55513bcbea7c3ef6513e498533b8eef853237bc0e9f1967d531fc90; afa54ff174800c90e6a17dac431043a2bfc3ded10e8ad83b72ff7a6172b07c78; 7805ba1c261b4b673975d36b2afaac51fb5895839540cf8e1a2d9401b29b5656; eb17c32058b4b390811a393225466f3d2d1e6adf32c0d70034e10cab92e83809",
+    "A read-only temporary execution of validate_manuscript_evidence.py produced a byte-identical audit (sha256=a69ea45d97448d88c3755041fd986e9fe2c5fde25758ce9b2cd2e1179927a063).",
+    "A fresh temporary generator execution reproduced artifact_metrics.json, memory_denominators.pdf, and capacity_table.tex byte-for-byte."
+  ],
+  "locations_checked": [
+    "main.tex:52-56, 86-88, 105-107, 368-378, 475-507, 569-575, 631-650",
+    "main.pdf:pages 1, 7, and 12, visually rendered and inspected",
+    "scripts/generate_paper_artifacts.py:193-280, 518-535, 633-660",
+    "scripts/validate_manuscript_evidence.py:66-188, 190-224, 246-310",
+    "generated/artifact_metrics.json:/capacity/0 through /capacity/5 and /interpretation_boundaries",
+    "generated/manuscript_evidence_audit.json:/allocator_windows_by_n, /n32, /manuscript_sha256, and /evidence_namespaces/original_run",
+    "figures/memory_denominators.pdf:page 1",
+    "tables/capacity_table.tex:1-23",
+    "evidence/claim_evidence_map.tsv:7-8",
+    "results/gpu-qwen35-vllm-paged-multifork-resident-20260814a/resident-shards/multifork-resident-shard-{0..7}.json: every row's fresh/reuse prefill, pack, setup, generation, setup_plus_generation, and generation_only allocator records"
+  ],
+  "reasoning_summary": "All requested checks pass. Across 96 arm records (8 ranks x 6 N x 2 arms), independent direct max(setup-after peak, generation pre-exactness peak) exactly equals both generation_only.production_absolute_peak_allocated_bytes and setup_plus_generation.combined_absolute_peak_allocated_bytes. Direct max(prefill-after, Q16-pack-after, setup-after, generation pre-exactness) exactly equals the full recorded-lifecycle value. Each N-level value is identical on ranks 0-7. For N=[1,2,4,8,16,32], post-pack fresh bytes are [69681563648,69845286400,70163806720,70798768640,72075495936,74623183360], post-pack reuse bytes are [69592170496,69665186304,69805438464,70082815488,70643848704,71765915136], full-lifecycle fresh bytes are [72407176192,72407176192,72407176192,72407176192,72407176192,74623183360], and full-lifecycle reuse bytes are [72407176192,72407176192,72407176192,72407176192,72407176192,72407176192]. At N=32, post-pack is 74623183360 versus 71765915136 bytes: delta 2857268224 bytes (2.661038399 GiB, 3.828928351% of fresh, ratio 1.0398137224). Full recorded lifecycle is 74623183360 versus 72407176192 bytes: delta 2216007168 bytes (2.063817501 GiB, 2.969596134%, ratio 1.0306048003). The generator and validator independently replay both definitions, check both legacy production fields, enforce all eight ranks and every N, and compare all four window values against generated metrics. The regenerated audit contains six allocator-window rows, all rank_values_identical=true, status=passed, and manuscript_sha256=626361aac9b8ef3b2da209e844217178e9e32abab1aa4de89c9e492f7e27430e, exactly matching live main.tex. The ambiguity scan finds none of the prohibited manuscript strings; main.tex now says phase-bounded allocator peaks and its fallback table explicitly provides post-pack production and full-lifecycle columns. Manuscript claims, C-MEM-01/C-DENOM-01, generated metrics, Figure 2, and the complete capacity table agree. Visual inspection of manuscript pages 1, 7, and 12 plus standalone Figure 2 found the corrected labels legible and no clipping, overlap, or rendering defect.",
+  "regressions": [],
+  "remaining_action": "None."
+}

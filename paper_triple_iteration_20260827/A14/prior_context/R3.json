@@ -1,0 +1,135 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "d97f36aebfe3377236c0acc84ee88257d4b704e0d298ad74e88ccb435793821f",
+  "role": "experimental_rigor",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "n=400 参考预算曲线和 disjoint n=819 reveal-order 床均保留逐题配对记录，主要差异使用 exact McNemar 与明确区间，效应较大且作者公开 post-selection、异质性与位置反转。关键 2L/2L 行确实反驳了“差异只因 reference forward 次数更少”这一测试床内解释。但随机 mask/随机 reveal schedule 每题每 cell 只有一次实现，不能量化 protocol RNG；确认性家族跨多轮预算与事后提升的 2L 端点较碎片化；NFE 只计 forward 次数而未测实际成本。",
+    "presentation": "协议组成、预算账本、成对 discordance 与结论边界通过图表表达得较清楚，19 页逐页视觉检查无排版故障。附录充分披露决策树与历史小样本，但正文/附录共有 23 张表，多种 interval convention、promotion gate 和 status 标签增加了认知负担，核心确认性与探索性结果可进一步压缩。",
+    "contribution": "论文提供了一个扎实的测量案例：同一模型和题目在不同打分协议下可得到不同准确率，且简单的 draw-count 匹配并不足以消除差异。该结论对 benchmark 实践有意义，但只覆盖 LLaDA-8B × 人工构造的四选 GSM8K-MC，协议同时改变 schedule、ground-truth feedback 与 estimator，尚不足以支持一般机制或跨床规律。"
+  },
+  "paper_summary": "本文在 LLaDA-8B-Instruct 与 balanced four-choice GSM8K-MC 上比较五种评分协议：confidence、seeded-random、anti-confidence、fixed-order 的 ground-truth injection，以及无 feedback 的 random-mask reference。n=400 参考预算曲线中，s_conf 相对 mc_uniform 在单 draw、每候选 draw-matched、total-NFE-fair 2L/2L 和高预算 128-draw 条件下分别领先约 14、13、13、9 个百分点；2L/2L 的 exact McNemar p=6.6×10^-5。独立 n=819 床上，固定左到右顺序反而比 s_conf 高 5.62 个百分点，并表现出构造 strata 与 answer position 交互。论文据此主张 scoring protocols 在该床不可互换，但不作 feedback 机制或跨床推广。",
+  "strongest_verified_contribution": "第 5--6 页图 2、表 3 的 n=400 配对结果最有说服力：在 reference 使用 2L forwards、与 s_conf 的总 NFE 数相等时，s_conf 仍领先 13.0 pp（109/57 discordants，95% CI [6.75, 19.25]，exact p=6.6×10^-5）。因此在这个冻结床上，差异不能仅由 reference 获得更少 forward 次数解释。",
+  "strengths": [
+    "所有主要准确率比较都以同题 paired records 进行，并报告 b/c discordants、exact McNemar、区间和多重性家族。",
+    "预算曲线包含单 draw、nominal draw-matched、total-NFE-fair 和高预算 conservative endpoint，而不是只挑一个有利 reference。",
+    "n=819 reveal-order 床与 n=400 参考床不重叠，并加入 fixed-order negative control，直接否定 confidence ordering 必然最优。",
+    "第 8、11--12 页保留池异质性、构造 strata 与 answer-position reversal，避免将总体均值误作统一机制。",
+    "明确承认完整 protocol swap 同时改变反馈、schedule 与 estimator，不声称因果 feedback、dose-response 或跨模型规律。",
+    "逐页视觉核查显示 19 页均完整可读，所有图表、公式和密集附表均无裁切或乱码。"
+  ],
+  "questions": [
+    "mc_uniform 与 rand_inject 的 mask/order 是每题独立随机、由同一全局 RNG stream 顺序产生，还是由 item-id 派生？若重新选择 10--20 组 protocol seeds，主要 accuracy gap 的 seed 间方差是多少？",
+    "第 7 页表 5 将 total-NFE 2L/2L 标为 post-selection secondary，却在摘要和结论中称其 decisive。它是在看到 matched-L 与其他 budget 结果后才加入的吗；跨四个 n=400 reference endpoints 的整体 family 如何定义？",
+    "不同 scorer 的一次 forward 是否在 sequence length、cache、mask density、schedule-selection overhead 与 kernel 路径上等成本？能否报告实际 FLOPs、GPU 时间和峰值显存，而不只用 NFE？",
+    "固定顺序在 fresh pool 总体胜出但在 answer position 0 反向。若对每题随机置换选项位置并跨多种 distractor construction，fixed 与 confidence 的差异是否仍存在？",
+    "能否通过 factorial protocol 分离 ground-truth feedback、reveal order、选择规则和最终 aggregation，而不是只比较成套 scorer？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A14-I1",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility"],
+      "location": "第 3 页 Setup（seeded-random 描述）；第 8 页 Persisted-schedule sensitivity；第 9 页 Limitations",
+      "claim_ids": ["Reference-budget curve", "Reveal-order result"],
+      "evidence_ids": ["Table 3", "Table 6", "Table 19"],
+      "observed_evidence": "每个 item/cell 只保留一次 random mask 或 seeded reveal order。fresh n=819 的 random arm 是一个 persisted schedule realization，作者明确称其不是 seeded-random family 的平均；名义 seed 还曾受未固定 Python string hash 影响，虽然现在可按已存 order replay。",
+      "why_it_matters": "题目配对区间量化 item 变异，但不能分离 protocol RNG 对 accuracy、discordance 和 arm ranking 的贡献。一个有利或不利的 schedule/mask realization 可能放大床内差异。",
+      "required_fix": "对所有随机协议使用多组预先声明的独立 seeds，并为每题保留多次 mask/order；用 item 与 protocol-seed 的交叉层级分析报告均值、方差和 seed 敏感性。",
+      "verification_test": "主要 gap 在 leave-one-seed-out、随机 seed meta-analysis 和 seed×item 分层 bootstrap 下方向稳定，且预定最差 seed 界仍保留实际意义。",
+      "evidence_needed": "逐 item×seed 的 mask/order、score vector、prediction 与分层方差结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims", "clarity"],
+      "location": "第 4 页 Registration and principal-contrast selection；第 6--7 页表 3/5；第 14--15 页表 12--14",
+      "claim_ids": ["Decisive total-NFE-fair endpoint", "Tested budget curve"],
+      "evidence_ids": ["Table 3", "Table 5", "Table 13", "Table 14"],
+      "observed_evidence": "原 primary 是 nominal matched-L；2L/2L total-NFE-fair 行在分析图中标为 post-selection secondary，却被提升为“decisive”。四个 n=400 budget rows 来自分阶段/独立注册的运行并复用同一 s_conf 记录，正文主要说明单配置的 ten-test Holm family，没有给整条追加预算曲线的统一序贯 family。",
+      "why_it_matters": "结果的原始 p 值很小，方向可能稳健，但事后选择最能回答质疑的端点和分阶段扩展曲线会使“confirmatory curve”地位高于预先承诺的证据。",
+      "required_fix": "将 matched-L 明确作为唯一原 primary、2L 等标为假设驱动的后续确认；或者在独立新题池上一次性预注册全部预算点、主要端点、停止规则和跨端点多重性。",
+      "verification_test": "独立冻结池的统一预注册 family 中，total-NFE-fair 和 conservative high-budget 两个预定端点均通过校正阈值且效应超过预定实用门限。",
+      "evidence_needed": "各注册时间戳、端点添加顺序、完整 family 决策与独立确认性运行。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I3",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness"],
+      "location": "第 2--4 页图 1、表 1 与 Load-bearing estimand；第 17 页表 19",
+      "claim_ids": ["Total-NFE-fair equalization", "Less-reference-compute explanation"],
+      "evidence_ids": ["Table 1", "Table 3", "Table 19"],
+      "observed_evidence": "2L/2L 只匹配 nominal total forward-call count。s_conf 的 L 次 schedule-selection forwards 与 L 次 scoring forwards，和 mc_uniform 的 2L random-mask scoring draws 在 mask pattern、控制流、重用与潜在 kernel/cache 路径上不同；论文未报告 FLOPs、延时或显存。",
+      "why_it_matters": "NFE 是合理但不完整的计算代理。该行可反驳“forward 次数较少”这一窄解释，却不能称为一般 compute-fair，亦不能支持计算效率结论。",
+      "required_fix": "逐 protocol 测量总 FLOPs/有效 token operations、wall-clock、GPU-hours 与峰值显存，并在等实际预算下重跑；将现有措辞限定为 draw/forward-count matching。",
+      "verification_test": "在预定实际成本容差（例如总 FLOPs 或 GPU 时间±5%）下，配对 accuracy gap 仍保持方向与实用大小。",
+      "evidence_needed": "profile 日志、硬件/软件版本、每阶段成本分解与等成本结果。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "A14-I4",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "limitations_responsible_claims"],
+      "location": "第 8--9 页表 6、fresh-pool strata audit 与 Boundary；第 12 页表 8",
+      "claim_ids": ["Structured reveal beats seeded-random", "Confidence is not unique"],
+      "evidence_ids": ["Table 6", "Table 8"],
+      "observed_evidence": "fresh pool 上 fixed 左到右比 s_conf 高 5.62 pp，但差异依赖题目构造 strata，并在 answer position 0 变为 s_conf 领先 12.56 pp、在 positions 1--3 反向。position audit 是事后分析，选项构造并非随机化干预。",
+      "why_it_matters": "总体 fixed-order 优势可能由 option position 与 distractor construction 的耦合产生，而非 reveal schedule 的一般属性；当前只能证明这套题面构造下协议结果不同。",
+      "required_fix": "对每题生成多种随机 option permutations，跨 construction strata 平衡，预注册 schedule×position 交互；最好在第二种 MC 构造/任务上重复。",
+      "verification_test": "在对 option permutation 取平均后，fixed/s_conf 差异与交互区间可重复；若主效应消失，应将结论改为 format-specific interaction。",
+      "evidence_needed": "逐题多 permutation score、随机化记录、分层交互模型与独立构造床。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I5",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "significance", "limitations_responsible_claims"],
+      "location": "第 2--3 页图 1、表 1；第 9 页 Boundary；第 9 页 Limitations",
+      "claim_ids": ["Protocol non-interchangeability", "Feedback/reveal-order interpretation"],
+      "evidence_ids": ["Figure 1", "Table 1", "Table 2"],
+      "observed_evidence": "s_conf、fixed/rand/anti inject 与 mc_uniform 同时改变 reveal schedule、是否注入 ground truth、schedule-selection forwards 和 scoring estimator/aggregation。单一 composite swap 无法识别 feedback、order 或 estimator 的独立效应；所有结果又来自一个 checkpoint 和一个四选 GSM8K-MC 构造。",
+      "why_it_matters": "“协议不可互换”的床内描述成立，但其解释和可迁移性有限，不能指导哪个设计组件在何种条件下导致差异。",
+      "required_fix": "实施 factorial ablation，正交操纵 feedback、reveal order、selection rule 与 estimator；在额外模型、任务和 option 数上重复并报告交互。",
+      "verification_test": "每个组件的主效应/交互在预注册设计中可识别，且至少一个独立床复现 protocol-level 排名变化。",
+      "evidence_needed": "factorial arm 结果、功效分析、跨床数据与组件级效应。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "不涉及人类受试者或私密数据。负责任使用方面，论文正确提醒基准准确率依赖 scorer/protocol；若忽略该依赖，可能对模型能力作错误比较。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "多 protocol seeds 的交叉重复证明主要 gap 远大于 RNG 方差，并可复现 fixed-order/position 交互。",
+    "在独立新题池上统一预注册完整预算曲线与 family，total-NFE-fair、高预算端点均通过校正与实用门限。",
+    "实际 FLOPs/时间匹配后 s_conf-reference gap 仍保持。",
+    "factorial ablation 分离 feedback、order 与 estimator，并在额外模型/任务上复现。"
+  ],
+  "evidence_that_would_lower_score": [
+    "更换 mask/order seeds 后 reference gap 或 reveal-order ranking 大幅波动甚至反向。",
+    "随机化 option positions 后 fixed-order 优势消失，表明结果主要是构造伪影。",
+    "按实际计算成本匹配后 2L/2L 差异显著缩小或消失。",
+    "独立预注册曲线未复现，或跨端点校正后只剩事后选择的单点。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的冻结 PDF；未访问匿名 artifact、逐题记录、注册文件或实现，无法复算 exact tests、验证 seeds/哈希或审计预算账本。",
+    "按隔离要求未联网，未核验外部引文、模型/数据来源及文中 reproduction bundle 的可访问性。",
+    "已全文阅读并逐页视觉核查全部 19 页；页面、图表、公式和密集附表均完整可读，无裁切或乱码。"
+  ]
+}

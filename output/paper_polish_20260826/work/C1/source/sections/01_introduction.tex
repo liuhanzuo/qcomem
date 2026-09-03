@@ -1,0 +1,26 @@
+\section{Introduction}
+
+A recent multilingual evaluation reported that every tested model exceeded chance while none exceeded the benchmark's majority-class baseline \citep{arcon2026metalinguistic}. Printing both references exposed the discrepancy. A systematic construct-validity review of 445 language-model benchmarks provides 27 actionable checklist items but does not require reporting a null, chance level, or constant predictor \citep{bean2025measuring}. We address this operational gap: before comparing model arms, report whether the measured construct clears an appropriate input-blind reference. Figure~\ref{fig:construct-null-concept} previews the two references needed for interface comparability and arm-specific item-level information.
+
+For a letter-valued multiple-choice construct, the floor is the most accurate constant letter under the benchmark's empirical gold marginal. For content likelihood, an analogous input-blind heuristic can exploit option length. Neither reference need equal nominal chance. An arm can therefore appear above chance while conveying no more usable signal through the measured interface than a constant predictor, especially after structural damage, when option-token selection bias \citep{zheng2024selectors} can dominate the argmax even if some content knowledge remains.
+
+We study null calibration as a \emph{measurement protocol}, not a new multiple-choice interface or debiasing algorithm. Majority-class baselines for MCQA already exist \citep{balepur2024artifacts}; letter-versus-content formulations are established \citep{gu2025olmes,cho2026choices}; constant outputs can game automatic judges \citep{zheng2025cheating}. Our contribution is to make the construct-appropriate input-blind null an explicit pre-comparison reporting check, quantify the choices hidden in its definition, and separate two questions that require different references:
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Is the interface valid for arm comparison?} Use an arm-independent best-constant floor.
+    \item \textbf{Does this particular arm carry item-level information?} Use an arm-conditional permutation null that preserves the arm's prediction marginal.
+\end{enumerate}
+
+This distinction prevents two opposite errors. Nominal chance can credit a literal constant emitter as competent, whereas the best-constant floor can assign different deltas to equally uninformative emitters that collapse onto different letters. The first error motivates our headline floor; the second motivates read-out v2 and its algebraic constant-collapse invariance.
+
+Our evidence uses ten target constructs plus Winogrande as a negative control, four base-model families, letter and content likelihood interfaces, and structurally damaged arms. Our findings:
+
+\begin{itemize}[leftmargin=*,nosep]
+    \item The null is not ``chance,'' and the floor must itself be calibrated against a null the construct can \emph{realise}. Our first MMLU-Pro calibration violated that requirement. The corrected construct-level estimates and verdicts are reported in Table~\ref{tab:nulls}; only MMLU and BoolQ support a quantitative above-balanced-null claim.
+    \item Content floors are not dataset constants unless their tie convention, length unit, and tokenizer are fixed. Table~\ref{tab:conventions} reports the measured reversals and spans; Section~\ref{sec:legality-aware-null} records the separate option-count correction.
+    \item At MMLU-scale power, the conventional chance reference materially overstates the damaged-arm count. Table~\ref{tab:headline-reference} puts the chance and best-constant comparisons under matched point-estimate and interval standards; Appendix~\ref{app:designated} reports the exceptions and power limits.
+    \item The permutation null makes every pure constant emitter score exactly zero, re-sorts rather than uniformly shrinks the read-out, and reveals intact Llama-2-7B as a weak MMLU-Pro anchor (Tables~\ref{tab:v2-resort} and~\ref{tab:v2-full}).
+    \item Full-fp32 evaluation removes the exact-tie mechanism without recovering accuracy; the compact diagnostic audit in Table~\ref{tab:diagnostic-contrasts} separates that result from the integrity repairs.
+\end{itemize}
+
+The floor comparison is deliberately one-directional: failure withholds an above-reference label from a score used in an arm comparison, whereas passing does not certify that the benchmark measures the intended capability. \citet{feng2019misleading} construct a dataset in which a partial-input baseline is at chance while artifacts remain exploitable; one input-blind check cannot enumerate every validity threat.

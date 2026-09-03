@@ -1,0 +1,38 @@
+\begin{table}[t]
+\caption{Capacity--latency--quality trade-off from a separate execution on the
+registered eight-item Qasper/2WikiMQA slice (source indices 6--9 of each
+dataset), a subset of the 60-item panel rather than an independent
+replication.  All rows use Qwen3.5-35B-A3B, PyTorch~2.11.0+cu129,
+Transformers~5.14.1, one H20-3e per item, a 4,096-token cap, greedy decoding,
+at most 32 generated tokens, and three timing repeats.}
+\label{tab:qcomem-tradeoff}
+\centering\scriptsize
+\setlength{\tabcolsep}{3.0pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+\multicolumn{8}{@{}l}{\emph{Dataset: Qasper (4 items) + 2WikiMQA (4 items)}}\\
+Retained state & Store (MiB/doc) & Reduction & TTFT (s) & TPOT (ms) & tok/s & F1 (0--100) & Recall \\
+\midrule
+No-cache dense recompute & 0.00 & -- & 0.649 & 648.75 & 1.36 & 39.42 & \\
+Full-prefix, native dtype & 140.34 & reference & 0.163 & 54.11 & 13.38 & 39.14 & \\
+\qcomem{} Q8 & 15.89 & 88.68\% & 0.673 & 55.44 & 7.15 & 39.14 & \\
+\qcomem{} Q4/Q4/Q8 & 10.01 & 92.87\% & 0.674 & 54.97 & 7.19 & 39.01 & \\
+\qcomem{} per-layer mixed & 9.74 & 93.06\% & 0.673 & 55.07 & 7.19 & 39.11 & \\
+\qcomem{} Q4 & 8.41 & 94.01\% & 0.674 & 55.02 & 7.19 & 36.09 & \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+\parbox{0.97\textwidth}{\scriptsize Store, timing, and throughput columns are medians over the eight documents,
+whereas the 60-item panel reports means over a cohort with $3.8\%$ shorter
+documents, which is why its full-prefix figure is $136.235$ rather than
+$140.34$ MiB. Store is the byte-range union owned by one retained entry and
+excludes non-tensor/Python metadata, allocator pools, process/NVML memory,
+workspace, and admission capacity. The reference is the entry in the stack's
+native dtypes: $42.8\%$ of its $140.34$ MiB is FP32 GDN recurrent state, so
+part of every reduction is dtype narrowing rather than packing. F1 is the
+eight-workload mean and this execution is not pooled with the 60-item panel.
+The per-layer policy uses a Q4 residual and layer bits $[8,8,4,4,8,8,8]$ from a
+disjoint four-item calibration set; its mean-F1 delta is $-0.022$, Q8's is
+$0.000$. The all-Q4 row is the aggressive failure endpoint, and Recall was not
+measured.}
+\end{table}

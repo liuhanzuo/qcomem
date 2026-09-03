@@ -1,0 +1,1129 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      A N H ONEST-M ETHODOLOGY N OTE :
+002   A NOT_MEASURED R EGISTER
+003
+004   FOR A W ITHDRAWN KV-S ELECTIVE S ERVING S TUDY
+005
+006
+       Anonymous authors
+007
+       Paper under double-blind review
+008
+009
+010
+011                                               A BSTRACT
+012
+013
+               We publish the reporting methodology of a frozen, closed repeated-query serving
+               study as a positive methodological asset rather than concealing or overstating its
+014
+               evidence ceiling. The note contributes three instruments: the exact publishable
+015
+               scope of every surviving claim, a NOT_MEASURED register that is complete
+016            relative to the claim ledger the authors enumerate (a declarative universe, not
+017            an independent ground truth — see the limitation in Section 4), and the frozen
+018            values carrying per-row scope labels. Two blockers previously read as hardware
+019            boundaries turn out to be application-level defects in our own measurement code:
+020            a thread-local grad-mode leak in the full-context worker (≈2 lines, now fixed)
+021            and an argument mismatch in a vendored KV-selector (≈6–10 lines, statically
+022            diagnosed only). A decisive concurrent fix-and-rerun (D1) confirms at L=32k
+023            that the guarded full-context baseline is feasible — 29.31 GB peak at concurrency
+024
+               G=1, finite decode, no out-of-memory failure — where the unguarded code had
+               aborted out of memory. The corresponding 16k figure, a measured pre-guard peak
+025
+               of 139.2 GB, is attributed to the same missing guard by inspection and remains
+026
+               NOT_MEASURED, because no 16k concurrent re-run was produced. The KV-
+027            selector and adapter-matched arms remain NOT_MEASURED, so the earlier
+028            “infeasible environment” reading is withdrawn rather than replaced by a positive
+029            serving claim.
+030
+031
+032   1    I NTRODUCTION AND S COPE
+033
+034
+      An archived study of multi-query KV-selective serving was withdrawn after review identified an
+      evidence ceiling rather than a writing defect: load-bearing claims could not be honestly measured
+035
+      on a worker whose GPU allocation was exhausted, whose declared adapter was unrecoverable, and
+036
+      whose environment aborted concurrent serving. Rather than bury the study, this note publishes the
+037   reporting apparatus the failure produced and treats that apparatus as the contribution.
+038
+039   Contributions. Figure 1 shows how the three instruments compose. (a) Adjudicated scope state-
+040
+      ments for each surviving claim (Section 3), each with a re-runnable, pattern-scoped check. (b) A
+      NOT_MEASURED register (Section 4) whose universe is the author-enumerated claim ledger —
+041
+      complete relative to that declared universe, without proving no claim was ever omitted. (c) Frozen
+042
+      values with per-row scope labels (concurrency, estimand class, status); a label documents how the
+043   value may be cited but does not constrain a downstream author (Section 5). (d) A documented
+044   withdrawal: the apparent memory ceiling was an application-level guard bug, confirmed by a matched
+045   fix-and-rerun at one length and left unconfirmed at the other (Section 6). Everything is scoped to a
+046   single GPU (H20-3e, 141 GB (Yang et al., 2025), Qwen3-8B bfloat16, SDPA, adapter-free unless
+047   stated); multi-GPU, multi-day, or 1M-token concurrent serving is out of scope.
+048
+      What this note does NOT do. It does not resurrect the archived cost–quality conclusion, claim any
+049   concurrent throughput/latency result, or claim adapter-arm identity is verified; these are register rows
+050   and a binding consumption discipline (Section 7). The archived study used short internal identifiers;
+051   Table 1 defines the ones the argument needs and Table 8 (Appendix E) the full ledger, so the note
+052   reads from the PDF alone.
+053
+
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+      Figure 1: The three instruments this note contributes, and how they compose. Frozen records pass one
+071   provenance-and-scope audit that assigns exactly one of three dispositions; each disposition travels with a scope
+072   label documenting how the value may be cited; and a runnable, coverage-enumerated (pattern-scoped) gate
+073   re-checks the manuscript itself against that discipline (Section 3.1). The diagram is methodological and contains
+074   no quantitative evidence.
+075
+      Table 1: Core notation. Arm names describe where a query’s context is reconstructed from; the full ledger-ID
+076   glossary is Table 8 in Appendix E.
+077
+078    Term           Definition
+079    CoMem          The archived cached-memory serving system; cached arm.
+080    j0 (j=0)       The full-depth arm: nothing cached; selected chunks replay all layers.
+081
+       j12            The flagship cached arm (j=12 states + LoRA (Hu et al., 2022)).
+       B-only         The full-context dense baseline without the (unrecoverable) LoRA arm; every staircase cell is
+082                   B-only.
+083    S              Per-query CPU cost of chunk-selection; algorithmic estimate, not a frozen-corpus
+084                   measurement.
+085    G              Concurrency; or the generated length in the archived decode model (as labelled per row).
+086
+       Q∗             Break-even query count of the cached arm vs the full-depth arm (Eq. 1).
+       C/D/S/R-       Stable claim IDs of the archived ledger (Table 2 and Appendix E).
+087    family IDs
+088
+089   2    R ELATED W ORK AND P OSITIONING
+090
+091   Measurement and reporting methodology. The closest prior work is not a serving system but
+092   the literature on how empirical claims should be measured and reported. Systems benchmarking
+093   names how performance results mislead (Hoefler & Belli, 2015) and how bias can invert a conclusion
+094   drawn from careful experiments (Mytkowicz et al., 2009) — our failure mode, since the “capacity
+095
+      boundary” was a property of the measurement surface. Machine learning has adopted budget-aware
+      reporting (Dodge et al., 2019), reproducibility checklists (Pineau et al., 2021), artifact evaluation
+096
+      (Krishnamurthi & Vitek, 2015), and structured documentation templates (Gebru et al., 2021; Mitchell
+097
+      et al., 2019). Two strands bear on a withdrawal note: pre-registration, which fixes analysis scope
+098   before the result is known (Nosek et al., 2018), and non-replication reporting (Ferrari Dacrema et al.,
+099   2019; Kapoor & Narayanan, 2023). Closest in spirit, assurance-case notation (the Goal Structuring
+100   Notation; Kelly & Weaver, 2004) already makes undeveloped goals — claims an argument states but
+101   does not yet establish — explicit in a structured tree. That idea is not new.
+102
+      What a NOT_MEASURED register adds over a Limitations section. Given that making unestab-
+103
+      lished claims explicit predates this work (GSN (Kelly & Weaver, 2004)), the register is a narrow,
+104   machine-checked instance of that idea, not a new argument formalism. A Limitations section is
+105   prose, author-selected, and unfalsifiable — nothing fails if a limitation is dropped; datasheets and
+106   model cards fix the template, checklists fix the questions. The register adds three machine-checkable
+107   properties (Section 4, Table 3, Section 3.1): a complete inventory relative to a declared universe,
+
+
+                                                             2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      per-row binding labels (concurrency, estimand class, status) that forbid re-citing a value outside the
+109   scope that produced it, and a machine-checked scope predicate a reviewer runs, exiting non-zero on
+110   violation.
+111
+112
+      Technical background for the withdrawn study. For context only, and contributing nothing here:
+      the archived study sat among IO-aware exact attention (Dao et al., 2022), token- and page-level
+113
+      KV-cache management (Zhang et al., 2023; Xiao et al., 2024; Adnan et al., 2024; Kwon et al., 2023;
+114
+      Ge et al., 2024), and length-scaled long-context quality probes (Hsieh et al., 2024; Li et al., 2023);
+115   its statistics use the exact conditional paired test (McNemar, 1947), percentile bootstrap (Efron &
+116   Tibshirani, 1993) and Wilson (Wilson, 1927) intervals. The memory-inflation behind the withdrawal
+117   is autograd bookkeeping: outside an inference-mode guard the framework retains per-layer activations
+118   for a backward pass that never happens (Paszke et al., 2019).
+119
+120
+      3     A DJUDICATED B OUNDARIES AND T HEIR E NUMERATED (PATTERN -S COPED )
+121
+122
+            C HECKS
+123
+124
+      3.1   S ERIAL - LEDGER DECOUPLING IS SCOPED , AND THE SCOPE IS MACHINE - CHECKED
+125   The same-term cancellation in the archived cost accounting applies to the serial ledger only, and
+126   we make zero wall-clock or concurrency-cancellation claim from that scoping. The only con-
+127   current wall-clock ever measured on this stack (full-context, no adapter and no selector; Sec-
+128   tion 6) carries no selection-cost S term, so there is no concurrent critical path on which an
+129   S-cancellation could be asserted; the S-removal is licensed only as a serial-ledger same-term
+130   cancellation (S0 =Sc on both serial-ledger sides). A reviewer re-runs the enumerated scope au-
+131   dit python3 bundle/scanners/audit_p0_1_critical_path_scope.py --note
+132   bundle/note/main.tex (0 GPU, standard library only); it exits 0 only when all four gates hold.
+133
+      The predicates, as implemented post-D1, with their arm restrictions:
+134          • G1 (required).         An explicit serial-ledger-only scoping statement is present,
+135            matched on the literal tokens serial-ledger, serial ledger, or same-term
+136            cancellation.
+137          • G2 (required, arm-restricted). A concurrent-serving NOT_MEASURED declaration is
+138            present, matched on not_measured, not measured, or unmeasured. Post-D1 that
+139            declaration is arm-restricted: it governs the KV-selector (j0) arm, the adapter-matched arm
+140            and the 16k full-context arm, and not the full-context arm at L=32k, which Table 2 declares
+141
+               MEASURED. The gate checks such a declaration exists, not that every arm is unmeasured,
+               so the two statements are consistent.
+142
+             • G3 (required). The withdrawn reading is not re-asserted: four phrase patterns are banned
+143
+               in non-negated sentences, including permanent (memory|capacity|hardware)
+144            bound and verified in code. The script’s original docstring also required the re-
+145            attribution to be called suspected; that gloss is superseded because D1 measured it at 32k.
+146            The implemented predicate is unchanged.
+147          • G4 (banned). No concurrent-critical-path S-cancellation claim and no concurrency-
+148            throughput reading appears, matched against a published enumeration of eleven phrase
+149            patterns in non-negated sentences.
+150
+      The gate has two published limits. First, it enumerates phrasings: an earlier revision passed
+151
+      G4 while a throughput-style reading sat in prose outside the enumeration; that reading was
+152   removed, the enumeration extended, and the failure kept as a runnable red-team fixture
+153   (bundle/scanners/redteam/) so a reviewer confirms the gate now rejects it. Second, verba-
+154   tim code spans are exempt from matching — which is what lets this section print the banned literals
+155   as specification, not assertion; prose is never exempt, so no enumerated place within the declared
+156   phrasing universe remains to hide a claim. A reviewer who finds another uncovered phrasing has
+157   falsified the gate’s coverage, not merely disagreed. Bounded by its enumeration, the gate is falsifiable
+158   exactly because it is.
+159
+160
+161
+
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      3.2   T HE MACHINE - CHECK IS A TRANSCRIPT, NOT A SLOGAN
+163
+164   “Machine-checked” is a concrete run, not a prose promise: Table 5 in Appendix A lists every scanner
+165   that shipped with this note, what it targets, the exit code on the frozen text at compile time, the counts
+166   it emits, and — for the scope and register gates — a red-team fixture that must fail, proving the check
+167   has discriminative power rather than always passing. A reviewer re-runs any row against bundle/
+168   (0 GPU, stdlib only).
+169
+170   3.3   A DAPTER IDENTITY IS PARTIAL AND PROVISIONAL
+171
+      The shared-flagship-LoRA arm identity was provisional: the declared matched adapter
+172
+      (dd09cd17...0536f) could not be retrieved or reproduced, so any dependent specialization
+173
+      claim is provisional. Two facts are separated so each is independently verifiable. FACT-A, the
+174   measured serving record’s own manifest is authentic: sha256sum -c SHA256SUMS.txt run
+175   inside bundle/p1_8_serving/ reproduces 24/24 files OK in seconds — the record’s original
+176   manifest, a different file from the bundle-wide bundle/SHA256SUMS.txt that covers every
+177   other shipped artifact. FACT-B, the adapter weights are not recoverable: zero LoRA weight files
+178   (.safetensors, .bin, .pt) exist anywhere in the bounded release tree, and dd09cd17 is
+179   governed by a withdrawn disposition. FACT-A does not imply FACT-B’s negation: an authentic
+180   record of a run is not a recoverable copy of the weights that ran. This note therefore claims no veri-
+181   fied adapter-dependent specialization; re-run python3 bundle/scanners/verify_p0_2_
+182
+      adapter_provenance.py --bundle bundle/ to confirm both.
+183
+184   3.4   L ONG E VAL IS DIRECTION - ONLY
+185
+      On the LongEval line-retrieval suite (Li et al., 2023), per-cell Wilson 95% intervals (Wilson, 1927)
+186
+      separate in the same direction at every tested length. But no paired test is claimed and no LongEval
+187   value is citable from this note: per-item raw outputs were never retained, so the archived pooled
+188   statistic is a descriptive comparison between independent aggregates, not a paired significance result
+189   on matched items. The paired re-run is register row D6 of Table 2; until it exists, the LongEval
+190   evidence is directional only.
+191
+192
+      4     T HE NOT_MEASURED R EGISTER
+193
+194
+      Table 2 is the register, and its universe is declared, not rhetorical: the rows enumerate the load-
+195
+      bearing claims of the archived claim ledger at closure — the C-numbered serving/quality claims,
+196   D-numbered decisive-evidence debts, and S-numbered soundness-deficit classes. Completeness is
+197   asserted relative to that enumerable, shipped ledger, not to every statement a reader might form, and is
+198   falsified by exhibiting a ledger item with no row. The limit is that the ledger is author-constructed: the
+199   register certifies no ledgered claim lacks a row, but cannot prove none was ever omitted (third-party
+200   recovery is the narrowing check we have not run); and the exact-set semantic check is clue-scoped,
+201   not a general guarantee — each registered ID appears and every canonical semantic clue in the text
+202   after it belongs to that same ID (a swap that moves one ID’s meaning onto another’s row is caught
+203   by the shipped mutation fixture), but a substitution borrowing no canonical clue, or one outside the
+204
+      per-ID text window, is unseen. A new failing mutation falsifies one of these bounds, as the red-team
+      fixtures do.
+205
+206   Exact-set completeness is machine-checked. Table 2 is generated from the checked-in single source
+207   tools/register_ledger_check.py (LEDGER + REGISTER + DECLARED_MERGES),
+208   and every row carries an explicit Ledger-ID column that spans the full C/D/S closure universe:
+209   C-numbered claims retained, D-numbered decisive-evidence debts, S-numbered soundness-deficit
+210
+      classes. The generator and the checker enforce the same invariants — every ledger ID has a row, no
+      row adds an unknown ID, and any many-to-one merge (e.g. S1/S3/S6 → one row) is declared and
+211
+      counted — so deleting a row (e.g. omitting D4) or diverging a status canonical token makes the build
+212
+      fail non-zero, rather than silently passing (Section 3.1).
+213
+214   One cross-scope reference, labelled as such. The guarded serial staircase records 22.30 GB at 16k
+215   (C7, serial ledger, G=1; Table 3). For the D1-16k row of Table 2 that value is a serial cross-scope
+      reference, not a concurrent measurement of it and not an independent confirmation of it. Its role is
+
+
+                                                          4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+217
+218   Table 2: The NOT_MEASURED register, machine-generated from the checked-in single source
+219   (tools/register_ledger_check.py). Each row binds Ledger-ID entries — spanning the C (claim re-
+220   tained), D (decisive-evidence debt) and S (soundness-deficit) families — to their arm and scope, canonical status,
+      and closing measurement. Statuses come from one vocabulary shared with Table 3: MEASURED, DERIVED,
+221
+      ESTIMATE (algorithmic, not measured), EXTRAPOLATED (outside the measured range), NOT_MEASURED,
+222   CLOSED_WRITING (closed by a writing-only declaration, not empirically), NOT_ADJUDICATED (reported
+223   for completeness, not citable as a prediction). The last two are printed because the checker fixes the vocabulary,
+224   not this table; no row here carries them. The D4 row and the S1/S3/S6 merged row instantiate the many-to-one
+225   semantic formalization.
+226   Ledger      Ledger item                Arm / scope           Status              What would close it
+227   ID
+228
+      C4          serial-cost ledger:        family C; serial MEASURED                 MEASURED from frozen
+229               CoMem/j0 serving cost      cost                                      24-file manifest
+230               terms                                                                (p1_8_serving); citable
+231                                                                                    within serial-cost scope
+232   C7          memory slope vs           family C; serial       DERIVED             co-measured memory and
+                  time-power-law exponent capacity; G=1                                prefill-time record at the same
+233
+                  (B-only capacity                                                     operating point
+234               staircase)
+235   C9          RULER macro accuracy family C;                   DERIVED             item-level paired McNemar on
+236               gap and bootstrap         quality; macro                             the retained raw outputs
+237                                         over 15 cells
+238   C13         Q∗ crossover estimate     family C; serial       ESTIMATE            measured per-query margin at
+                  class                     cost; crossover                            G=1 (not an estimate)
+239
+      D1          concurrent full-context   family D;              MEASURED            MEASURED (D1
+240
+                  serving @ L=32k           full-context;                              fix-and-rerun at L=32k, no
+241               (grad-mode fix-and-rerun) concurrent                                 OOM; Table 4; throttle curve
+242                                         G∈{1, 4};                                  remains open)
+243                                         L=32k
+244   D1-16k      concurrent full-context   family D;              NOT_MEASURED        NOT_MEASURED: re-run
+                  serving @ L=16k re-run full-context;                                 the guarded full-context arm at
+245
+                                            L=16k                                      L=16k; the current 16k peak
+246                                                                                    is inspection-grade
+247                                                                                    cross-scope reference only
+248                                                                                    (Section 6)
+249   D2          adapter-source recovery / family D;              NOT_MEASURED        recover or rebuild the declared
+250               rebuild                   adapter; serial                            adapter, then re-run
+                                            and concurrent
+251
+      D3          KV-selector (j0) finite   family D;              NOT_MEASURED
+                                                                           repair
+252               fetch                     selector;                      create_causal_mask
+253                                         concurrent                     argument mismatch (three call
+254                                                                        sites), then re-run
+255   D4       adapter-identity table      family D;        CLOSED_WRITING CLOSED_WRITING: closed
+256            completeness                adapter; writing                by a writing-only declaration,
+                                           declaration                     not empirically (this table) —
+257
+                                                                           completeness is relative to the
+258                                                                        enumerated ledger
+259   D5       adapter-identity per-row family D;           CLOSED_WRITING CLOSED_WRITING: every
+260            binding caveat              adapter; per-row                identity value carries a per-row
+261                                        scope                           binding caveat (this table), not
+                                                                           a verified equality
+262
+      D6       LongEval per-item           family D;        NOT_MEASURED retain per-item outputs and run
+263
+               (paired) re-run             quality;                        paired McNemar; needs GPU
+264                                        LongEval;                       and a scorer environment
+265                                        direction-only
+266                                        currently
+267   S1/S3/S6 single-arm isolation of the family S; any    NOT_MEASURED single-arm run with
+               scoped mechanism            arm; serial                     co-measured cost and quality
+268
+269
+
+
+
+                                                               5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      bounded and stated in Section 6: same model, dtype, attention backend and GPU as the pre-guard
+271   concurrent 16k observation, hence a same-hardware comparison point for the guard mechanism.
+272
+273
+274   5   F ROZEN M EASURABLE VALUES , W ITH P ER -ROW B INDING S COPE
+275
+276   The values in Table 3 are citable only with the scope printed on their own row. There is no table-wide
+277
+      scope, because the rows are heterogeneous by design: C13’s replicate row is a G=512 figure, not a
+      G=1 serial one, and C9’s rows are accuracy estimands, not cost figures. An earlier version carried a
+278
+      universal “every value is a serial G=1 figure” preamble that its own C13 row falsified. Rows must
+279
+      not be combined into a serving×quality metric.
+280
+281   Estimators, so every derived row is reproducible from the printed inputs.
+282
+             • C9. On the discordant counts b/c/n printed in Table 3, the two-sided exact conditional
+283                                         Pmin(b,c) n −n
+               McNemar test gives p = 2 k=0            k 2    , so those counts alone reproduce the printed p.
+284
+               That test is at the pooled item level, whereas the interval is a percentile bootstrap at the cell
+285
+               level (15 RULER cells, seed 123, nboot =20000) around the macro gap. No test is claimed
+286            for the macro gap, and the pooled gap is a same-direction but distinct estimand rather than
+287            a second estimate of it. Figure 3 (Appendix D) plots the two intervals this note cites; neither
+288            includes zero.
+289          • C13. With per-query cost carm (G) = fetch + read + decode(G),
+290
+                                                         WCoMem (L) − Ij0 (L)
+291                                         Q∗ (L) =                             .                          (1)
+292
+                                                         cj0 (G) − cCoMem (G)
+293            The numerator differences the two one-time costs; the denominator is the mean paired
+294            per-query margin, defined only where positive. Q∗ grows with G because decode does not
+295            cancel between the arms, so its values at two concurrency settings are different quantities
+296
+               rather than a contradiction; and S does not enter Eq. 1, so every input is measured. Table 6
+               (Appendix C) carries the inputs, the quotients and the per-row provenance flag, including
+297
+               the superseded face whose denominator is not reproducible from the printed components.
+298
+             • C7. The three slopes of Table 7 (Appendix C) are different quantities and must not be
+299            interchanged: 1.46 is the least-squares slope of log t on log L over the five prefill times; the
+300            same estimator on the peak-memory series gives 0.48, and peak memory is near-affine in L
+301            at 0.438 GB per 1k tokens.
+302          • S versus C4’s selection-side terms: different quantities, not a discrepancy. S is the
+303            per-query CPU cost of scoring chunks (Table 7), an algorithmic estimate on representative
+304            chunks rather than the frozen corpus. C4’s “j0 index build” (0.022 s @128k) is the one-
+305            time O(L) index construction over the whole store, entering Eq. 1’s numerator beside the
+306            one-time write rather than any per-query term; C4’s “j0 read” (0.94 s/q) is the per-query
+307
+               36-layer replay. The three sit at different decomposition granularity and are not expected to
+               reconcile numerically; Figure 2 (right) shows the split.
+308
+309
+310   6   T HE D1 C ONCURRENT F IX - AND -R ERUN , AND W HAT I T D OES N OT C OVER
+311
+312   Two application-level defects, one fixed and measured, one only diagnosed. The concurrent exper-
+313   iment was previously reported as blocked by the environment; static audit of our own measurement
+314   code found two defects with different evidential status instead. (i) A thread-local grad-mode leak:
+315   the concurrent worker called the model outside any torch.inference_mode()/no_grad()
+316   scope that the serial baseline wrapped the same forward in. Because grad mode is thread-local,
+317   worker threads inherited autograd on and retained 36 layers of activations for a backward pass
+318
+      that never occurs (Paszke et al., 2019). The repair is ≈2 lines and has been applied and re-
+      measured. (ii) A framework-version argument mismatch: the vendored QCMem selector calls
+319
+      create_causal_mask with keyword inputs_embeds, whereas installed transformers
+320
+      4.54.1 names that parameter input_embeds; the ≈6–10-line repair across three call sites needs no
+321   transformers≥5.5 upgrade but is statically diagnosed only, not re-measured. The two stay
+322   separate rather than being summed into one “≈10-line” blocker, because only the first is backed by a
+323   measurement.
+
+
+                                                         6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      Table 3: Frozen measurable values with per-row binding scope. “G” is the row’s concurrency or generated-
+325   length setting (− where concurrency does not apply, as for accuracy estimands). Status tokens are the canonical
+326   vocabulary of Table 2: MEASURED (read from a frozen record), DERIVED (computed from measured values
+327   by the stated estimator), ESTIMATE (algorithmic only), NOT_ADJUDICATED (reported for completeness, not
+328   citable as a prediction). Rows are grouped by claim family. No cross-row aggregation and no concurrent-serving
+      inference is licensed by any row.
+329
+330   ID    Quantity                       Value (units)              G Estimand class Status
+331   C4    CoMem write @128k,             6.65 s                      1 serial cost        MEASURED
+332         one-time
+333   C4    j0 index build @128k,          0.022 s                     1 serial cost        MEASURED
+334         one-time
+      C4    CoMem cache read, per          0.68 s/q                    1 serial cost        MEASURED
+335
+            query
+336   C4    j0 read, per query             0.94 s/q                    1 serial cost        MEASURED
+337   C4    fetch, per query (CoMem /      0.0014 / 0.00002 s/q        1 serial cost        MEASURED
+338         j0)
+339   C7    B-only full-context peak at    18.80/22.30/29.31/          1 serial capacity    MEASURED
+340         8/16/32/64/128k                43.34/71.38 GB
+341   C7    B-only cache peak @128k        18.29 GB                    1 serial capacity    MEASURED
+342   C7    full-context prefill time at   1.28/2.98/7.75/             1 serial cost        MEASURED
+            8/16/32/64/128k                22.26/72.74 s
+343
+      C7    growth exponent of prefill     1.46 (dimensionless)        1 serial fit, 5 points DERIVED
+344         time in L
+345
+      C9    RULER macro accuracy gap 3.12 pp                          − quality, macro MEASURED
+346                                                                     over 15 cells
+347   C9    cell-level 95% percentile    [1.69, 4.68] pp              − quality, cell level DERIVED
+348         bootstrap CI
+349   C9    item-level discordant counts 83 / 1 / 84                  − quality, pooled     MEASURED
+            b/c/n                                                       item level
+350
+      C9    exact two-sided McNemar p 8.79×10−24                      − quality, pooled     DERIVED
+351
+                                                                        item level
+352   C9    pooled accuracy gap            5.47 pp                    − quality, pooled     MEASURED
+353
+      C13 paired per-query margin   0.0404 s/q                       512 crossover input    MEASURED
+354       @128k
+355   C13 Q∗ @128k (aggregate grid) 25.8 queries                      1 crossover,         DERIVED
+356                                                                      model-implied:
+357                                                                      Eq. 1 with inputs
+                                                                         in Table 6
+358
+      C13 Q∗ @32k                          8.4 queries                1 crossover,         DERIVED
+359                                                                      model-implied:
+360                                                                      Eq. 1; inputs not
+361                                                                      separately
+362                                                                      printed
+      C13 Q∗ @1M                           180.2 queries              1 crossover          EXTRAPOLATED
+363
+                                                                         beyond the
+364                                                                      measured
+365                                                                      staircase
+366                                                                      (≤ 128k);
+367                                                                      model-implied
+      C13 Q∗ @128k, replicate              164.2 queries             512 crossover,        DERIVED
+368
+                                                                         replicate
+369
+370   R142 full-context write model        4.432×10−5 L + 0.775 s      1 in-sample fit, 3   NOT_ADJUDICATED
+           W (L)                                                         points
+371
+372   What D1 measured. After the guard, the full-context arm at L=32k runs end to end at both tested
+373   concurrency levels, with finite decode and no out-of-memory failure; every value is on its own row
+374   of Table 4, and the matched pair is pre-guard abort versus a post-guard finite peak. Two scope
+375   labels attach to the two pre-guard rows of that table. First, the pre-guard 32k job recorded no peak
+376   before aborting, so the tensor-size figure sometimes attached to 32k is analytical, from a superseded
+377   root-cause account, and never a measured peak. Second, the pre-guard 16k job did record a peak, on
+
+
+
+                                                            7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+      Figure 2: Frozen serial-ledger profiles, plotted from the bundled datacards behind Table 3. Left:
+392   guarded B-only full-context peak memory rises monotonically with context length (bundle/staircase/
+393   fullctx_serving.json); this is the guarded serial surface, and the pre-guard concurrent observations of
+394   Section 6 are not on it. Right: the @128k, G=1 cost terms on a log axis, split into one-time and per-query
+395   classes, the hatched bar being the unmeasured algorithmic estimate S; each tick label carries its class, (1-time)
+396
+      for a cost paid once per store and (per q) for one paid per query. The log axis is needed because the terms span
+      five orders of magnitude, and the one-time/per-query split is what keeps the 0.022 s index build from being read
+397   as a per-query selection cost. Both panels are scoped serial references, never concurrent-serving or capacity
+398   claims.
+399
+400   Table 4: The D1 concurrent full-context measurement at L=32k, after the two-line inference-mode guard.
+      Single H20-3e (141 GB), Qwen3-8B bfloat16, SDPA attention, store L=32k, read sample 8k, task
+401
+      niah_multikey_1, 8 queries, R=3 rounds, seed 42, no adapter, no selector. Wall-clock is per request and
+402   includes queue wait under contention. Dispersion is the coefficient of variation, which is what the driver retained.
+403   Source bundle/d1/e2e_concurrent_kvsel.json; applied diff bundle/d1/D1_FIX.diff.
+404
+              G           Peak (GB)       Median (s)      CV       n (R×G)       Role of this row
+405
+406           1              29.31            7.71       0.031      3 = 3×1      consistency check (see below)
+407
+              4              70.73           30.63       0.001     12 = 3×4      the concurrency datum
+408    pre-guard 32k     none (abort)         —            —            1        no peak recorded; the 137.4 GB
+409                                                                              figure is analytical only, never
+                                                                                 measured
+410
+       pre-guard 16k         139.2            —            —            1        cross-scope reference,
+411                                                                              inspection-grade vs serial 22.30 GB
+412                                                                              (see text)
+413
+414   the same model, dtype, attention backend and GPU as the guarded serial surface — consistent with
+415   activations retained across all 36 layers. That 16k comparison is inspection-grade: no 16k concurrent
+416
+      re-run was produced, so the 16k row stays NOT_MEASURED (Table 2), even though its peak is
+      a measured record. The earlier reading of D1 as a memory or infeasibility boundary is therefore
+417
+      withdrawn — at 32k the full-context concurrent state is feasible and the inflation was a property of
+418
+      our measurement code — while the KV-selector arm, the adapter-matched arm and the 16k re-run
+419   remain unmeasured. D1 closes exactly one register row.
+420
+421   Replication structure, stated rather than implied. The n column counts per-request samples:
+422
+      n=12 at G=4 is 3 rounds of 4 simultaneous requests sharing a queue and a device, so the effective
+      independent replication is 3 rounds per level. The driver retained only median, CV and n; per-request
+423
+      wall-clocks were not persisted, so an IQR or range is not recoverable from the frozen record, and we
+424
+      do not manufacture one.
+425
+426   The G=1 row is a consistency check, not a second concurrency datum. At G=1 the driver submits
+427   one in-flight request through the same full-context forward path as the serial staircase: its peak equals
+428
+      the serial C7 32k entry of Table 3 exactly, and its median wall-clock agrees with the serial read time
+      to within 0.6%. We read this as cross-surface agreement that the guarded surface is the same surface
+429
+      — not an independent second concurrency level; the withdrawal’s concurrency content rests on the
+430
+      G=4 row alone.
+431
+
+
+
+                                                               8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      No throughput reading is offered. The two rows are peak-feasibility and wall-clock records. The
+433
+      G=4 to G=1 median ratio is ≈ 4, but with one reference implementation, one operating point per
+434   level, 3 effective replicates and no controlled contention arm, the ratio identifies no mechanism; we
+435   make no concurrency-throughput, latency or scalability claim (a prior version printed the ratio at three
+436   significant figures and glossed it as a throughput result; that reading is removed, not re-disclaimed).
+437
+      Quality debt carried forward (D2–D6, S1). D2, adapter source recovery, is an external artifact-
+438
+      access problem rather than a code fix. D6, the LongEval per-item re-run, needs GPU and a scorer
+439
+      environment. D4, adapter identity in the archived tables, is closed here as a writing-only declaration
+440   (Section 3.3). S1, single-arm isolation, needs GPU; D3, the KV-selector (j0) finite fetch, is statically
+441   diagnosed but not re-measured.
+442
+443
+      Environment-boundary honesty. No failure was retried to burn: every failing job was stopped and
+      reported, and all GPU consumption is in the shipped burn ledger (cumulative 1.82 GPU·h, “0 data”
+444
+      across five fires). The driving code logs torch.cuda.max_memory_allocated() before
+445
+      failing, so a pre-guard peak exists at 16k; the earlier 32k job predates that logging, which is why none
+446   exists there.
+447
+448
+449   7    C ONSUMPTION D ISCIPLINE (B INDING ON R E -U SE )
+450
+451
+      The following are required interpretations for any later text that re-uses values from this note; they
+      are prohibitions on inference, not on discussion.
+452
+453          • Do not re-assert “selection is cheap or S-symmetric, therefore concurrent wall-clock can-
+454            cels”: no concurrent selector critical path was ever measured.
+455          • Do not read the LongEval gap as a paired significance result, and do not claim adapter-arm
+456            identity is verified.
+457          • Do not read Table 4 as throughput, scalability or latency.
+458          • Cite frozen values only with the scope printed on their own row (Table 3): no derived
+459
+               extrapolation, no combined serving×quality metric.
+             • Report failures loudly; do not re-fire a failed job to consume budget.
+460
+461
+462   8    M ETHOD VALIDITY: C ROSS -C ASE T RANSFER
+463
+464   The instrument is not a description of this one withdrawal case: the read-only six-family scanner
+465   (bundle/method/independent_claim_audit.py, 0 GPU) also ran on an independent
+466   project — the S1 SparseForge manuscript (934 lines, a different group’s paper, different area) —
+467   striking 91 signal hits across all six families (audit_sparseforge.json) under a different,
+468
+      provenance-crisis-led honesty structure. The same tool yields 68 hits on this note (withdrawal-dense,
+      28 WITHDRAWN), so the scan distinguishes failure-mode structures, not a “more hedging = more
+469
+      honest” counter; the per-family split of both runs is the last row of Table 5 (Appendix A).
+470
+471   The transfer shows the scan generalizes, not that any downstream evaluation score is comparable
+472   across projects. Two validity checks are reported in Appendix B: an independent-annotator recovery
+473   study (a reader blind to our ledger recovered all 14 register IDs at the paper’s semantics) and a
+474
+      coverage-self-critique of the six-family taxonomy, which is not exhaustive — the scanner is a
+      necessary hygiene filter, not a complete-honesty certificate.
+475
+476   Layout step-width is NOT_MEASURED on held-out partitions. The mechanical formatting/layout
+477   revisions in this note’s history (float placement, collapse to the 9-page main-text limit, caption and
+478   font scaling) are NOT_MEASURED improvements: none was re-verified on an un-measured/held-out
+479   visual partition by an independent layout audit at every step. We claim only that the artifact’s content
+480
+      and scope gates hold; the layout step-width is not a measured gain and must not be cited as one until
+      an independent visual audit passes on a frozen face.
+481
+482
+483   9    R EPRODUCIBILITY AND E THICS S TATEMENTS
+484
+485   Every value citable in this note is verifiable against a shipped frozen record (checkable, in bundle/ with
+      SHA256SUMS.txt and per-item READMEs), and most derived quantities re-compute from their printed inputs
+
+
+                                                          9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      with 0 GPU and only the standard library. Not every recovered artifact is end-to-end re-runnable — the declared
+487   adapter and the LongEval per-item outputs are unrecoverable — so “runtime” is not claimed where it does not
+488   hold. The note source is bundled at bundle/note/main.tex so the scope gate can run against the frozen
+489   text itself.
+490   Artifact verification. An anonymized archive of bundle/ (with its SHA256SUMS.txt and per-item
+491   READMEs) ships at the link on this manuscript’s blind submission; no artifact path here is specific to any
+492   author identity. A reviewer verifies the retrieved bytes by digest: the bundle manifest SHA256SUMS.txt
+493   has dfa477175acb79497e59a0de7c3aad9de72bd72d2c30ba99f050d196d9567322                                       and
+      sha256sum -c SHA256SUMS.txt inside the retrieved bundle/ reproduces all shipped artifacts —
+494
+      including the manuscript source bundle/note/main.tex that the scanner registers (Section 3.1, Section 4)
+495   run against. The compiled PDF is produced deterministically from that source, so its digest is recorded in this
+496   revision’s build receipt and re-derived by recompiling; a reviewer needs only the standard library and 0 GPU.
+497
+             • Scanners (G1–G4 scope, adapter provenance, grad-mode, register): see the transcript in Table 5
+498
+               (Appendix A) and Section 3.1.
+499          • D1 measurement (Table 4): bundle/d1/e2e_concurrent_kvsel.json, applied diff
+500            bundle/d1/D1_FIX.diff, gate verdict bundle/d1/feas_verdict.json; pre-guard
+501            evidence bundle/oom/fullctx_16k_oom.log (139.2 GB recorded) and
+502            bundle/oom/fullctx_32k_oom.log (abort) — records of the pre-fix surface, never capacity
+               bounds.
+503
+             • Datacards behind Table 3: bundle/staircase/fullctx_serving.json (C7),
+504            bundle/ruler_ci_bootstrap.json (C9),
+505            bundle/qstar_dispersion_reanalysis.json (C13; superseded by the aggregate grid),
+506            bundle/s_estimate_iterbm25.json (S), and bundle/p1_8_serving/ (C4/C13,
+507            24-file manifest).
+             • Method-transfer audit: bundle/method/independent_claim_audit.py,
+508
+               audit_sparseforge.json, audit_ownnote.json.
+509          • GPU accounting: bundle/burn/HONEST_BURN_*.md.
+510
+511   Ethics. This work involves no human subjects, no personal or sensitive data and no model release. Its only
+512   foreseeable risk is misuse of the retained numbers outside their recorded scope, which Section 7 exists to
+513   constrain. The withdrawal of an earlier interpretation is reported in full rather than silently corrected.
+514
+515   10     C ONCLUSION
+516
+517   Established. Two blockers previously read as environment or hardware boundaries are defects in
+518   our own measurement code; at L=32k the guarded full-context concurrent arm is feasible at both
+519   tested concurrency levels, with finite decode and no out-of-memory failure (Table 4). The frozen
+520   serial values remain citable within the scope printed on their own row, and each derived quantity is
+521   reproducible from its printed inputs. Open. The KV-selector arm, the adapter-matched arm and the
+522
+      16k concurrent re-run are unmeasured; the 16k re-attribution rests on inspection, and the G=4 row
+      is the sole concurrency datum, at 3 effective replicates. Boundary of the contribution. This note
+523
+      contributes a reporting instrument, not a serving result: a register whose completeness is falsifiable
+524
+      only against the author-declared ledger, per-row scope labels, and an enumerated, pattern-scoped
+525   gate whose coverage is itself criticizable. We claim no generalization beyond studies that keep an
+526   enumerable claim ledger, and it does not substitute for the missing measurements — it renders their
+527   absence and its cost enumerable and auditable within this record.
+528
+529
+      R EFERENCES
+530
+531   Muhammad Adnan, Akhil Arunkumar, Gaurav Jain, Prashant J. Nair, Ilya Soloveychik, and Purushotham
+532      Kamath. Keyformer: Kv cache reduction through key tokens selection for efficient generative inference. In
+         Proceedings of the 7th Annual Conference on Machine Learning and Systems (MLSys), 2024.
+533
+      Tri Dao, Daniel Y. Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. Flashattention: Fast and memory-efficient
+534      exact attention with io-awareness. In Advances in Neural Information Processing Systems (NeurIPS), 2022.
+535   Jesse Dodge, Suchin Gururangan, Dallas Card, Roy Schwartz, and Noah A. Smith. Show your work: Improved
+536      reporting of experimental results. In Proceedings of the 2019 Conference on Empirical Methods in Natural
+537      Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-
+         IJCNLP), pp. 2185–2194, 2019. doi: 10.18653/v1/D19-1224.
+538
+      Bradley Efron and Robert J. Tibshirani. An Introduction to the Bootstrap. Chapman and Hall/CRC, 1993.
+539   Maurizio Ferrari Dacrema, Paolo Cremonesi, and Dietmar Jannach. Are we really making much progress? a
+         worrying analysis of recent neural recommendation approaches. In Proceedings of the 13th ACM Conference
+         on Recommender Systems (RecSys), pp. 101–109, 2019. doi: 10.1145/3298689.3347058.
+                                                            10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      Suyu Ge, Yunan Zhang, Liyuan Liu, Minjia Zhang, Jiawei Han, and Jianfeng Gao. Model tells you what to
+541     discard: Adaptive kv cache compression for llms. In International Conference on Learning Representations
+542     (ICLR), 2024.
+543   Timnit Gebru, Jamie Morgenstern, Briana Vecchione, Jennifer Wortman Vaughan, Hanna Wallach, Hal Daumé III,
+544     and Kate Crawford. Datasheets for datasets. Communications of the ACM, 64(12):86–92, 2021. doi:
+        10.1145/3458723.
+545
+      Torsten Hoefler and Roberto Belli. Scientific benchmarking of parallel computing systems: Twelve ways to tell
+546     the masses when reporting performance results. In Proceedings of the International Conference for High
+547     Performance Computing, Networking, Storage and Analysis (SC), pp. 1–12, 2015. doi: 10.1145/2807591.
+548     2807644.
+549   Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, Shantanu Acharya, Dima Rekesh, Fei Jia, Yang Zhang, and
+        Boris Ginsburg. Ruler: What’s the real context size of your long-context language models? In Conference on
+550
+        Language Modeling (COLM), 2024. arXiv:2404.06654.
+551   Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu
+552     Chen. Lora: Low-rank adaptation of large language models. In International Conference on Learning
+553     Representations (ICLR), 2022. arXiv:2106.09685.
+554   Sayash Kapoor and Arvind Narayanan. Leakage and the reproducibility crisis in machine-learning-based science.
+        Patterns, 4(9):100804, 2023. doi: 10.1016/j.patter.2023.100804.
+555
+      Tim Kelly and Rob Weaver. The goal structuring notation — a safety argument notation. In Proc. Workshop
+556     on Assurance Cases: Best Practices and Future Potential (DSN 2004), Florence, Italy, 2004. The Goal
+557     Structuring Notation (GSN) — an assurance/safety argument notation whose tree makes undeveloped goals
+558     (claims not yet established by evidence) explicit.
+559   Shriram Krishnamurthi and Jan Vitek. The real software crisis: Repeatability as a core value. Communications
+        of the ACM, 58(3):34–36, 2015. doi: 10.1145/2658987.
+560
+      Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gon-
+561     zalez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with
+562     pagedattention. In Proceedings of the 29th ACM Symposium on Operating Systems Principles (SOSP), 2023.
+563   Dacheng Li, Rulin Shao, Anze Xie, Ying Sheng, Lianmin Zheng, Joseph E. Gonzalez, Ion Stoica, Xuezhe Ma,
+564     and Hao Zhang. How long can open-source llms truly promise on context length? LMSYS Org blog post;
+        releases the LongEval topic-retrieval and line-retrieval test suite, June 2023.
+565
+      Quinn McNemar. Note on the sampling error of the difference between correlated proportions or percentages.
+566     Psychometrika, 12(2):153–157, 1947. doi: 10.1007/BF02295996.
+567   Margaret Mitchell, Simone Wu, Andrew Zaldivar, Parker Barnes, Lucy Vasserman, Ben Hutchinson, Elena
+568     Spitzer, Inioluwa Deborah Raji, and Timnit Gebru. Model cards for model reporting. In Proceedings of the
+569     Conference on Fairness, Accountability, and Transparency (FAT*), pp. 220–229, 2019. doi: 10.1145/3287560.
+        3287596.
+570
+      Todd Mytkowicz, Amer Diwan, Matthias Hauswirth, and Peter F. Sweeney. Producing wrong data without doing
+571     anything obviously wrong! In Proceedings of the 14th International Conference on Architectural Support
+572     for Programming Languages and Operating Systems (ASPLOS), pp. 265–276, 2009. doi: 10.1145/1508244.
+573     1508275.
+574   Brian A. Nosek, Charles R. Ebersole, Alexander C. DeHaven, and David T. Mellor. The preregistration revolution.
+        Proceedings of the National Academy of Sciences, 115(11):2600–2606, 2018. doi: 10.1073/pnas.1708274114.
+575
+      Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen,
+576     Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Köpf, Edward Yang, Zach DeVito,
+577     Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith
+578     Chintala. Pytorch: An imperative style, high-performance deep learning library. In Advances in Neural
+579     Information Processing Systems (NeurIPS), 2019.
+      Joelle Pineau, Philippe Vincent-Lamarre, Koustuv Sinha, Vincent Larivière, Alina Beygelzimer, Florence
+580
+        d’Alché Buc, Emily Fox, and Hugo Larochelle. Improving reproducibility in machine learning research (a
+581     report from the neurips 2019 reproducibility program). Journal of Machine Learning Research, 22(164):1–20,
+582     2021.
+583   Edwin B. Wilson. Probable inference, the law of succession, and statistical inference. Journal of the American
+584     Statistical Association, 22(158):209–212, 1927. doi: 10.1080/01621459.1927.10502953.
+      Guangxuan Xiao, Yuandong Tian, Beidi Chen, Song Han, and Mike Lewis. Efficient streaming language models
+585
+        with attention sinks. In International Conference on Learning Representations (ICLR), 2024.
+586   An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, et al. Qwen3 technical report. arXiv preprint
+587     arXiv:2505.09388, 2025.
+588   Zhenyu Zhang, Ying Sheng, Tianyi Zhou, Tianlong Chen, Lianmin Zheng, Ruisi Cai, Zhao Song, Yuandong
+589     Tian, Christopher Ré, Clark Barrett, Zhangyang Wang, and Beidi Chen. H2o: Heavy-hitter oracle for efficient
+        generative inference of large language models. In Advances in Neural Information Processing Systems
+590
+        (NeurIPS), 2023.
+591
+592
+593
+
+
+
+                                                           11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      A     M ACHINE -C HECK T RANSCRIPT
+595
+596
+      Every scanner shipped with this note, with the exit code it returns on the frozen text at compile time
+597   (Section 3.2). Paths are relative to the release root, and each scanner’s path heads its own full-width
+598   row so that no path is broken across lines.
+599
+600
+      Table 5: Machine-check transcript: for each scanner, its target, its exit code on the frozen text, the counts it emits,
+      and its red-team verdict. A fixture that must fail is what separates a check with discriminative power from one
+601   that always passes; n/a marks a structural or same-source check for which a fixture is not the relevant evidence.
+602
+603     Target                            Exit Match counts (frozen text)             Red-team verdict
+604     bundle/scanners/audit_p0_1_critical_path_scope.py
+605     main.tex; G1–G4 scope  0 G1=4, G2=3, G3=0, G4=0 redteam/FIXTURE1 fails
+606                                                     (rc=1): G4 rejects
+                                                        concurrency-throughput
+607
+                                                        gloss
+608
+        bundle/scanners/audit_grad_mode_guard.py
+609
+        vendored e2e bench sources 0 baseline guarded, worker                         n/a (structural)
+610                                  unguarded; fix locus present
+611
+        bundle/scanners/verify_p0_2_adapter_provenance.py
+612
+        bundle; FACT-A/B       0 FACT-A 24/24 manifest OK; n/a
+613                               FACT-B 0 weight files
+614
+        tools/register_ledger_check.py
+615     registry LEDGER/REGISTER 0 12 rows exact-set; statuses                        9 known-bad mutations all fail
+616                                canonical
+617
+        tools/gen_register_tables.py
+618     main.tex Table 2 (same source) 0 12 rows = registry, no drift                 n/a (drift vs checker = build fail)
+619
+        bundle/method/independent_claim_audit.py
+620     main.tex, six families 0 68 hits (28 WITHDRAWN / 8                            independent manuscript (S1) 91
+621                               NOT_MEASURED / 5                                    hits, distinct failure-mode
+622                               OVERCLAIM_RISK / 5                                  structure
+623                               HEDGE / 19 PROVENANCE /
+                                  3 MATCHED)
+624
+625
+626   B     S CANNER VALIDITY: I NDEPENDENT R ECOVERY AND C OVERAGE
+627
+            S ELF -C RITIQUE
+628
+629
+      Two 0-GPU validity studies (Section 8) bound how the six-family scanner may be read.
+630
+631
+      Independent-annotator recovery. A reviewer blind to our ledger re-extracted the load-bearing
+632   claims from the frozen PDF and recovered all 14 C/D/S register IDs with the same canonical semantics
+633   the paper assigns them (51 claims: 21 MEASURED, 10 NOT_MEASURED, 7 withdrawal, 5 scope,
+634   5 method-instrument, 3 cross-case; bundle/validity/annotator_recovery.json). Its
+635   skeptical omissions were all already-honest disclaimers in the paper (single-point D1 replication; the
+636   author-constructed ledger limit; inspection-grade 16k attribution); none was a registered claim absent
+637   from the paper.
+638
+639   Coverage self-critique. A blind mapping of this note’s own prose honesty onto the six families left
+640   9 of 27 structures outside any family — the structures that most distinguish the note: an attribution-
+641
+      grade distinction (measured vs. by inspection vs. analytical-only vs. derived), declared-universe
+      completeness, refusal-to-aggregate integrity, effective-vs-nominal sample size, and false-precision
+642
+      (bundle/validity/coverage_self_critique.json). The six families are a necessary
+643
+      hygiene filter: a scanner built purely from them would pass this note’s strongest honesty structures
+644   unseen.
+645
+646
+647
+
+
+
+                                                               12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+      C    Q∗ R ECONCILIATION AND THE D ERIVED S EQUENCES
+649
+650
+      The two tables the C13 and C7 estimators of Section 5 point at. Both are read as rows rather than as
+651   prose because every entry is one of a set of comparable quantities.
+652
+653   Table 6: C13 Q∗ reconciliation at L=128k. The inputs are the printed per-query components of
+      bundle/p1_8_serving/p1_8_serving_aggregate.json (cell gpu); the one-time numerator
+654
+      WCoMem −Ij0 is shared by every row, so the rows differ only in their denominator. Each citable row re-
+655   produces from the printed inputs. The superseded face is a replicate-level paired-bootstrap reanalysis (bundle/
+656   qstar_dispersion_reanalysis.json): its denominators are bootstrap means over replicates and are
+657   not recomputable from the printed per-query components, which is why the aggregate grid supersedes it for
+658   point values, and its own datacard flags it as not a reproduction of the frozen G=1 figure.
+659        Case       WCoMem −Ij0 (s) mean paired margin (s/q)              Q∗      denominator recomputable
+660
+           aggregate grid — the citable face
+661        G=1      6.653−0.022          0.9379−0.6807 = 0.2572   25.8 yes
+662        G=512 6.653−0.022             20.9617−20.9213 = 0.0404 164.2 yes
+663
+           superseded face — replicate-level paired-bootstrap reanalysis
+664        G=1      6.653−0.022         0.2430 (reanalysis)               27.3 no
+665        G=512 6.653−0.022            0.0536 (reanalysis)              123.6 no
+666
+667   Table 7: Derived sequences behind C7 and S, moved out of prose so they are read and compared as comparable
+      rows. The S row is an algorithmic ESTIMATE on representative chunks (64/256/2048 at 32k/128k/1M), not a
+668
+      frozen-corpus measurement.
+669
+670       ID Quantity                     Value                       Estimand                 Scope
+671       C7 prefill-time growth in L     1.46                        serial fit, 5 points     not a memory
+672                                                                                            slope
+673       C7 peak-memory growth in        0.48                        serial fit, 5 points     not a time slope
+             L
+674
+          C7 peak-memory rate in L        0.438 GB per 1k             serial, near-affine      —
+675
+676
+          S     per-query chunk scoring 0.0038/0.0142/                algorithmic estimate     32k/128k/1M
+                                        0.1255 s/q
+677
+678
+679   D       I NTERVAL E STIMATES FOR C9 AND C13
+680
+681   The two intervals this note cites, each drawn from its own resampling population, as referenced by
+682   the C9 estimator of Section 5.
+683
+684
+685
+686
+687
+688
+689
+690
+691
+692
+      Figure 3: The two interval estimates this note cites, each with its own resampling population. Left: the C9 macro
+693   RULER gap, cell-level 95% percentile bootstrap [1.69, 4.68] pp (15 cells, seed 123, nboot =20000). Right: the
+694   dispersion of the C13 G=512 @128k per-query margin, paired bootstrap [0.026, 0.088] s (15 units). The right
+695   panel is a dispersion measure; the citable point margin is the recomputable aggregate figure 0.0404 s/q (Table 3
+696   C13). Neither interval includes zero; the axes differ because the quantities differ.
+697
+698
+      E    F ULL N OTATION AND L EDGER -ID G LOSSARY
+699
+700
+      The row definitions that were removed from the main-text notation table (Table 1) to meet the page
+701
+      budget are collected here for completeness; they are the same definitions the archive used.
+
+
+                                                            13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+      Table 8: Full notation and internal identifiers. Identifier families (C, D, S, R) index the archived claim ledger.
+713   Rows are grouped as terms, then identifier families.
+714
+715    Term              Definition
+716    CoMem             The archived cached-memory serving system: writes one long document’s layer-j hidden
+717                      states once, then replays layers j . . . 36 per query instead of re-prefilling.
+718    QCMem             The vendored selector module inside the CoMem code base; source of the
+719                      create_causal_mask argument mismatch of Section 6.
+720    j0 (j=0)          The full-depth arm: nothing cached; selected raw token-id chunks replay through all 36
+721                      layers, so its per-query read is the most expensive.
+722    j12               The flagship cached arm (j=12 hidden states plus a LoRA adapter (Hu et al., 2022));
+723                      replays 24 layers.
+724
+       B-only            The full-context (dense) baseline measured without the LoRA adapter (arm B); the matched
+725                      adapter arm (A) was unrecoverable, so every staircase cell is B-only.
+726
+       S                 Per-query CPU cost of the chunk-selection step (iterated BM25 scoring); an algorithmic
+727                      estimate, never measured on the frozen corpus.
+728
+       G                 Concurrency (in-flight requests), or the generated sequence length in the archived decode
+729
+                         model, as labelled per row.
+730
+       Q∗                Break-even query count at which the cached arm’s amortized cost falls below the full-depth
+731
+                         arm’s; defined by Eq. 1.
+732
+733    C4, C7, C9,       Stable claim IDs of the archived ledger (serving cost; capacity staircase; RULER quality;
+       C13               crossover), so each frozen value maps to its record.
+734
+735    D1–D6             The six decisive-evidence debts recorded at closure and their scope: D1 concurrent
+                         full-context serving @L=32k (measured fix-and-rerun), D1-16k the same @L=16k
+736
+                         (unmeasured re-run), D2 adapter-source recovery, D3 KV-selector (j0) finite fetch, D4
+737                      adapter-identity table completeness, D5 adapter-identity per-row binding caveat, D6
+738                      LongEval per-item re-run. Single-arm isolation is class S1 (below), not D5.
+739
+       S1, S3, S6        Three soundness-deficit classes from the review taxonomy: S1 the titled mechanism was
+740                      never isolated by a single arm; S3 n=1 treated as an effect; S6 no control-family member
+741                      was run.
+742    R142              The internal round at which the flagship j=12 adapter arm was withdrawn; recorded in
+743                      later run configurations as adapter=NONE_WITHDRAWN_R142.
+744
+       “0 data”          A GPU burn-ledger column counting usable measurement records from one job; “0 data
+745                      across five fires” means five GPU jobs were charged and none produced one.
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+
+
+
+                                                             14
+

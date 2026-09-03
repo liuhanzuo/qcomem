@@ -1,0 +1,189 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "090599d59e42d3dbe36d9cf724ddc469f317f9ea9065ab90a58b321bda30aa6d",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "五个 arms 中估计的 period 都跟随 block length，描述性结果清楚，且作者最终把解释限定在 active-block recorder 而非模型内在动力学。但 detector 在原阈值下对错误候选有 40% 假阳性，修正 margin 是看过该失败后提出；主 intervention 又同时改变分块与每块 allocation，缺少 full-canvas recorder/factorial 对照。因而当前证据更像记录器几何的自证，而非经校准的 schedule-tracking phenomenon。",
+    "presentation": "18 页 PDF 的定义、separator、bootstrap、非嵌套 probes 和撤回的 model-intrinsic 分支均可追踪，版面无缺页且图表可读。作者对 post-hoc detector 与限制披露较好，但正文保留过多历史判尺、manifest 与修订路径，使主结论的确认性边界不够醒目。",
+    "contribution": "把 active-block recorder 的 identity-lock period 与 schedule block length 对齐并做 L=16/32/64、96-token nonnested probes，是有用的 instrumentation warning。不过 active-block recorder 按定义只观察当前块，中心规律很大程度由测量支持集诱导；缺乏真正独立的记录器与机制对照，科学增量有限。"
+  },
+  "paper_summary": "论文研究 masked-diffusion 解码事件日志中的 identity-lock 周期是否跟随 schedule block length。主 arms 在固定 NFE=48 下比较 L=16、32、64，另在 96-token canvas 上测试 L=24、48；active-block recorder 只记录当前 sampling block。作者定义边界/内部距离 separator sep(P)，五个 arms 的最大分离均选择 P=L，bootstrap 与 rank-sum 多数支持这一点。原 within-block threshold detector 在错误候选上有 10/25（40%）被判为阳性，作者事后改用 top-minus-second margin，并把结论收窄为 recorder-level。非嵌套 L=24/48 probes、一个独立 L=32/NFE=32 content analysis 及 provenance 审计被用作补充证据。",
+  "strongest_verified_contribution": "第 4–8 页最可靠地支持一个窄描述性结论：在 L=16、32、64 以及 96-token canvas 的 L=24、48 五个冻结事件流中，separator/rank criteria 选出的 period 都是调度块长 L。作者同时明确 active-block recorder 的观测支持集随 L 改变，并撤回模型内在周期主张，因此该结果可作为事件记录器与 schedule geometry 不可分离的具体警示。",
+  "strengths": [
+    "加入 L=16 与 L=64 新 arms，并用 L=24/48 非嵌套 canvas probes 减少只在 32 的整数倍上看到别名的单一解释。",
+    "在发现原 threshold detector 对错误候选产生 40% 阳性后没有继续把它包装为确认，而是披露失败并收窄主张。",
+    "报告 separator、bootstrap stability、rank-sum 与 candidate grid，允许读者看到选择 P=L 的具体依据而非只看结论。",
+    "明确区分 recorder-level schedule tracking 与 model-intrinsic periodicity，并将后者标为撤回/未识别。"
+  ],
+  "questions": [
+    "active-block recorder 的支持集天然在每个 block 边界重置时，什么可证伪结果会让 corrected detector 不选 P=L？",
+    "能否在同一 decode 上并行运行 full-canvas/constant-support recorder，以直接分离模型事件与记录器可见性？",
+    "主 L=16/32/64 arms 同时改变 partition 与每块 allocation；可否做 factorial 设计分别改变二者？",
+    "修正后的 top-minus-second margin 在独立 clean null arms 上的 false-positive rate 是多少，阈值是否在处理 treatment 前冻结？",
+    "私有 checkpoint 与 event streams 是否会随匿名 artifact 发布；公开近似 checkpoint 与私有版本的差异能否量化？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A31-R2-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor"
+      ],
+      "location": "第 3–6 页 detector 定义与主结果；第 8–10 页 red-team/null audit；第 14–16 页阈值敏感性",
+      "claim_ids": [
+        "period identification",
+        "corrected separator detector",
+        "false-positive control"
+      ],
+      "evidence_ids": [
+        "original within-block threshold",
+        "10/25 wrong-candidate positives",
+        "post-hoc top-minus-second margin"
+      ],
+      "observed_evidence": "原冻结 within-block threshold 在 25 个错误候选中有 10 个（40%）通过，说明不能解释为有校准的 period detector。当前主依据改为看过失败后定义的 top-minus-second margin，并用同一批 treatment arms/candidate structure 评估；没有独立 clean null arm 给出 arm-level 或 family-level FPR。",
+      "why_it_matters": "候选 period 的距离统计天然受块结构影响，事后 margin 可选择性放大 P=L 与次优候选的差。bootstrap 只刻画当前样本稳定性，不能替代在无真实 period 时的错误发现率。",
+      "required_fix": "在不含 schedule-locked signal、但保留相同长度与边际分布的独立 null streams 上冻结 detector 与阈值；同时在未使用的 treatment streams 上评估 power，并校正候选搜索。",
+      "verification_test": "先锁定候选网格、score、margin 与决策阈值；大量独立 null arms 的 family-wise FPR 应低于预设水平，且新 treatment arms 的 P=L power/coverage 达到预设标准。",
+      "evidence_needed": "独立 null/treatment calibration、候选搜索校正与完整 FPR/power 曲线。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 2–4 页 recorder 与 intervention 定义；第 6–8 页主结果；第 10–12 页解释边界",
+      "claim_ids": [
+        "schedule-tracking period",
+        "block-length intervention",
+        "recorder-level phenomenon"
+      ],
+      "evidence_ids": [
+        "active-block recorder",
+        "L=16/32/64 composite arms",
+        "absence of dual-recorder control"
+      ],
+      "observed_evidence": "active-block recorder 只记录当前 sampling block，其可见 token/support 在每个 L 边界机械重置。改变 L 还同时改变 partition 与 required per-block allocation；没有在同一 decode 上保持恒定支持集的 full-canvas recorder，也没有分离这两个因素的 factorial intervention。",
+      "why_it_matters": "P=L 很可能是测量窗口定义的几何结果。当前研究证明了 recorder 追随自己被调度的边界，却不能判断日志中是否还有独立的模型行为或 allocation effect；即使限定为 recorder-level，识别内容仍接近定义性。",
+      "required_fix": "对同一随机解码轨迹并行记录 active-block 与 full-canvas/constant-support events，并正交改变 partition boundary 和 per-block allocation；预先定义 recorder×schedule 交互。",
+      "verification_test": "若现象来自 recorder，P=L 应只在 active-block channel 随 L 移动；若来自模型或 allocation，应在恒定支持 recorder 上仍出现可预测变化。factorial interaction 需给区间。",
+      "evidence_needed": "双记录器同轨迹数据与正交 intervention。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 7–9 页 96-token nonnested probes；第 13–15 页 probe 细节",
+      "claim_ids": [
+        "non-aliasing validation",
+        "L=24/48 generalization",
+        "robust exclusion of P=32"
+      ],
+      "evidence_ids": [
+        "L24 margin result",
+        "L48 single-boundary result",
+        "96-token canvas"
+      ],
+      "observed_evidence": "nonnested probes 使用与主 arms 不同的 96-token canvas。L=24 的 corrected margin 证据边缘（报告的 p_margin 约 0.071），L=48 虽约 p=0.021，但 96-token canvas 只有一个内部 48 边界（|B48|=1），对单个边界异常高度敏感。",
+      "why_it_matters": "这两项不足以稳健排除固定 32-token 周期、canvas-specific artifact 或偶然边界。它们是支持性 probes，而不是对 aliasing 的强确认。",
+      "required_fix": "为每个 nonnested L 使用包含多个内部边界的更长 canvas、多个 independent decodes/seeds，并加入固定 P=32 的预注册竞争假设；保持 recorder 和其他配置与主 arms 一致。",
+      "verification_test": "在每 arm 至少多个边界与多个 seeds 下，P=L 相对 P=32 的 margin 区间应排除零，leave-one-boundary-out 后仍保持。",
+      "evidence_needed": "多边界、多 seed nonnested arms 与边界影响分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "第 9–11 页 provenance；第 16–18 页 artifact/manifest 说明",
+      "claim_ids": [
+        "exact experimental reproducibility",
+        "checkpoint identity",
+        "event-level auditability"
+      ],
+      "evidence_ids": [
+        "private checkpoint",
+        "conditional supplement release",
+        "post-manifest estimator source touch"
+      ],
+      "observed_evidence": "实验使用的私有 checkpoint 与公开版本不是 byte-identical，且不能重新发布；event streams/scripts 的匿名发布仍依赖 provenance 批准。稿件还披露 estimator source 在 manifest 后被触碰，虽在第二环境重推结果，但审稿对象中没有可执行 artifact 供独立验证。",
+      "why_it_matters": "中心结果完全依赖事件记录语义与细微 detector 实现；checkpoint、events 或确切代码任一不可得都会阻止第三方重建，也无法排除版本漂移。",
+      "required_fix": "发布所有去标识 event streams、不可变 estimator 版本、环境锁文件与 hashes；若 checkpoint 不能发布，至少在可公开 checkpoint 上运行完整复制并量化差异。",
+      "verification_test": "独立环境从发布 artifact 重建每个 candidate score、separator、bootstrap 与表格；公开 checkpoint 复制应预先定义容许偏差并保持 period-follow-L。",
+      "evidence_needed": "可执行匿名 artifact、版本 hashes 与公开 checkpoint 复制。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-R2-05",
+      "severity": "minor",
+      "dimensions": [
+        "significance",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 8–10 页 content analysis；第 10–13 页讨论与结论",
+      "claim_ids": [
+        "content-period association",
+        "scientific contribution beyond instrumentation",
+        "final interpretation"
+      ],
+      "evidence_ids": [
+        "separate L32/NFE32 bed",
+        "Kendall tau=0.272",
+        "BIN16/BIN32 resolution checks"
+      ],
+      "observed_evidence": "content association 来自另一个 L=32/NFE=32 bed，而非跨主 arms 的共同分析；报告 tau=0.272，并称到 BIN16 仍可见，但 BIN32 已没有足够分辨率/检验力。它不能验证五个 schedule arms 中的 period 机制。",
+      "why_it_matters": "将单独床的弱内容关联与 recorder geometry 并列，容易给中心结论增加并不存在的机制含义。论文当前最清楚的贡献是 instrumentation warning，而不是 content-linked dynamics。",
+      "required_fix": "把 content analysis 明确降为独立探索性附录；若要保留机制贡献，应在所有 arms 用同一预注册 content feature 与分辨率检验 interaction。",
+      "verification_test": "跨 arms 的 content×boundary 或 content×L 交互在预注册粒度下复制，且不依赖选择 bin width；否则结论只保留 recorder-level 描述。",
+      "evidence_needed": "跨 arm 内容分析或更窄的最终主张。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现涉及人类受试者、敏感数据、隐私或直接安全风险的问题。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审目录、作者计划、编辑上下文、旧稿或历史评分。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在同一解码轨迹上用 active-block 与 constant-support/full-canvas 双记录器验证 recorder×schedule 交互。",
+    "用独立 clean null arms 预注册并校准 corrected detector 的 family-wise false-positive rate 与 power。",
+    "完成多边界、多 seed 的 nonnested probes，并发布可逐项重建的事件与代码 artifact。"
+  ],
+  "evidence_that_would_lower_score": [
+    "恒定支持记录器显示相同 P=L，从而暴露当前 recorder-level 解释不完整或 detector 对 schedule 的普遍混淆。",
+    "独立 null calibration 显示 corrected margin 仍有高假阳性率。",
+    "多 seed、多边界 probes 不能稳定区分 P=L 与固定 P=32/其他候选。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、模型说明或相关工作。",
+    "仅审阅冻结 PDF，未读取或执行 checkpoint、事件日志、代码、manifest 或匿名 supplement，因此 provenance 与重推声明仅按稿件内容评价。",
+    "PDF 共 18 页，已全文阅读并逐页视觉核查；未发现缺页或不可辨认页面。"
+  ]
+}

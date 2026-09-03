@@ -1,0 +1,35 @@
+{
+  "schema_version": "forkaudit-r40-passive-clone-lineage-assessment-v1",
+  "status": "cpu-prototype-pass-formal-hold",
+  "question": "Can materialized clone provenance be checked passively when two source coordinates have identical content and geometry?",
+  "answer": "yes-for-the-frozen-eager-builder-path",
+  "selected_mechanism": "TorchDispatchMode over the unchanged builder; record persistent-rooted aten.clone/copy source and destination strong handles plus storage intervals; bind returned live destinations independently by semantic coordinate",
+  "does_not_consume_builder_emitted_mapping": true,
+  "changes_scientific_tensor_values": false,
+  "alternatives": {
+    "saved_tensors_hooks": "not-applicable-to-inference-mode-eager-clones",
+    "allocator_events": "destination-allocation-only-no-source-semantic-attribution",
+    "content_shape_storage_checks": "cannot-discriminate-identical-content-and-geometry-sources",
+    "Tensor_clone_monkey_patch": "more-invasive-and-easier-to-bypass-than-dispatch-mode"
+  },
+  "coverage": {
+    "exact_frozen_tensor_memo_and_prepare_helpers_executed": true,
+    "all_60_identical_bf16_source_coordinates": true,
+    "correct_two-request_materialization": "pass-120-direct-clone-edges",
+    "wrong_source_before_real_clone": "detected",
+    "borrowed_exact_alias": "pass-zero-clone-edges",
+    "source_and_destination_values_unmodified_by_observer": true
+  },
+  "formal_gpu_execution": "not-run",
+  "formal_evidence_eligible": false,
+  "required_before_formal": [
+    "PyTorch-2.11.0+cu129 CUDA BF16 dispatch identity smoke in the ownership-witness path",
+    "integration around only the unchanged real ownership-witness builder call",
+    "exact N*60 edge-count and one-to-one live-destination closure",
+    "observer absent from every clean primary-memory cell",
+    "independent audit of hook restore/failure cleanup and terminal artifact closure"
+  ],
+  "paper_modified": false,
+  "qs_or_gpu_touched": false,
+  "launcher_generated": false
+}

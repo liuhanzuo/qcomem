@@ -1,0 +1,133 @@
+{
+  "reviewer_id": "a11-r4-experimental",
+  "round": 4,
+  "snapshot_sha256": "36a6e8c45f3c2aed3763f2ebb1efa07641e83957120cb31ac9cdba1bb234fd7d",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "For the stated count-exchangeable binary pass-count replay endpoint, the principal OMR result is unusually checkable: the supplied standard-library replay reconstructs the seeded FIT/CAL/TEST split, frozen-prior DP, J=64 CAL selection, and expected JSON byte-for-byte conditional on the derived manifest. The resulting finite-family CAL claim is materially stronger than an unheld-out TEST-only comparison. Soundness is nevertheless conditional on the unverified derived manifest, i.i.d.-task/FIT-CAL assumptions, and replay order model; it is not experimental support for online stopping or answer quality.",
+    "presentation": "The abstract, Figure 1, Table 1, Sections 5--8, and the evidence map consistently distinguish true-H oracle theory, fitted-score CAL screening, descriptive TEST replay, and synthetic drift. Table 1 is legible and honestly reports the alpha=0.10 FIXED-EB row that slightly exceeds BAYES-H in replay-count reduction. The broad amount of scope qualification is clear, though it cannot replace the missing endpoint evidence.",
+    "contribution": "The verified empirical contribution is a narrow, count-replay demonstration that an adaptive fitted score can reduce expected replay rollout count relative to selected fixed budgets under a finite CAL-screened family. It does not yet establish an online LLM-serving improvement, stopped-answer quality, measured cost, or superiority to the cited adaptive stopping methods; the manuscript generally says so. Those boundaries leave the current practical contribution below a typical ICLR accept threshold despite the careful claim discipline."
+  },
+  "paper_summary": "The paper studies stopping under a count-exchangeable replay model. It separates an oracle posterior theorem under the true count law from BAYES-H, a FIT-frozen plug-in score whose stated operational result is a Bonferroni empirical-Bernstein CAL screen over a finite family. The main OMR table is a single descriptive TEST replay readout; shard, OpenR1, RLVE, and synthetic-drift results are scoped as setting-specific or exploratory diagnostics.",
+  "strongest_verified_contribution": "Conditional on the reviewer-safe OMR count manifest, the main artifact is byte-exactly reproducible: it selects from the predeclared J=64 FIT-frozen family on CAL and yields the reported count-exchangeable replay quantities, including BAYES-H alpha=0.05 TEST replay flip 0.02489 and replay-count reduction 0.8085.",
+  "strengths": [
+    "I ran VERIFY_SNAPSHOT.py successfully; it reported the supplied snapshot root hash and 133 verified files.",
+    "I independently ran evidence/repro_bundle_round4/replay_fit_cal_test_stdlib.py to a temporary output. It reproduced the expected main JSON byte-for-byte with SHA-256 b114c72d9ab1cf1a6ba1d2bd734433c06bd4d5cbd19bf93be0964edf6fc8a5f7.",
+    "The executable replay uses FIT only to fit Hhat, constructs CAL losses for all 60 fixed-k and four BAYES-H candidates, applies delta_r=0.05/64, then accesses TEST only after CAL selection. This supports the claimed split separation within the supplied replay program.",
+    "Baseline accounting is more careful than usual for the stated endpoint: FIXED-EB shares the empirical-Bernstein CAL machinery, FIXED-HOEF is distribution-free, and WINDOW3 is explicitly uncalibrated. The paper does not conceal the alpha=0.10 case where FIXED-EB has 84.4% versus BAYES-H's 84.0% replay-count reduction.",
+    "The shard-1, OpenR1, and RLVE artifacts are explicitly not promoted to a population-transfer, policy-class, or allocation-law result. The synthetic E3 counterexample and exploratory margin scope are retained rather than converted into a robustness claim."
+  ],
+  "questions": [
+    "Can the authors run the registered ordered/correctness/cost protocol on one frozen model-task carrier, with paired full-N and online BAYES-H episodes, a gold evaluator, chronological trace audit, and cancellation telemetry?",
+    "Can the authors make a clean-room reconstruction possible by supplying the pinned raw inputs (or a durable controlled-access route), derivation and duplicate logs, split/selection timestamps, and environment lock for OMR; and analogously make the secondary carrier runners executable?",
+    "For the empirical adaptive-stopping comparison, can the authors add a prespecified FIT/CAL-tuned implementation of at least one applicable cited adaptive baseline and the already named BAYES-UNIF ablation, or sharply state that Table 1 establishes only adaptive-versus-fixed-budget replay behavior?"
+  ],
+  "issues": [
+    {
+      "issue_id": "ER-01-baseline-scope",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 5--7, Section 5 Baselines, Table 1, and Section 6 Fair comparison",
+      "claim_ids": [
+        "C03",
+        "C05"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-REPRO-R4"
+      ],
+      "observed_evidence": "The main controlled comparisons are against FIXED-HOEF and FIXED-EB; this is a useful isolation of adaptivity versus fixed budgets. WINDOW3 is only an ESC-style, untuned heuristic, while BAYES-UNIF is named but its result is not reported in the main table, and no comparable implementation of the cited adaptive methods is supplied. All Table 1 rows are correctly labeled as replay quantities, not SOTA serving metrics.",
+      "why_it_matters": "The current experiment substantiates a narrower adaptive-versus-fixed-budget claim, but cannot determine whether the fitted-score construction is advantageous over plausible non-fixed early-stopping alternatives or whether fitting H rather than using a simpler posterior is responsible for the effect. This limits empirical significance; it does not contradict the paper's carefully narrowed replay claim.",
+      "required_fix": "Either add a preregistered, same-endpoint comparison to at least one implementable adaptive baseline plus BAYES-UNIF, with every policy choice frozen on FIT/CAL, or narrow the empirical takeaway throughout to adaptive-versus-selected-fixed-budget replay behavior.",
+      "verification_test": "For every added rule, release its configuration, candidate family, CAL UCB/selection result, and one held-out TEST replay readout; verify that no TEST value changes the selected policy and that effort is computed from the same per-task replay accounting.",
+      "evidence_needed": "Frozen baseline code/configurations and FIT/CAL/TEST result artifacts on the same count manifest; if a cited method cannot be mapped to this endpoint, a precise incompatibility analysis rather than an unqualified comparison request.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-02-provenance-and-secondary-replay",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF p. 6 Carrier paragraph; p. 9 Reproducibility statement; evidence/repro_bundle_round4/README.md Derived-data contract; Sections 6 cross-source, shard-1, OpenR1, and RLVE paragraphs",
+      "claim_ids": [
+        "C05",
+        "C06",
+        "C07",
+        "C10"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-REPRO-R4",
+        "EV-OPENR1-R473"
+      ],
+      "observed_evidence": "The standard-library bundle genuinely reconstructs the main JSON conditional on a count-level manifest, but the source parquet, raw evaluator/answer-extraction path, raw task membership and duplicate outputs, selection-time records, and environment lock are absent. The recovered shard/OpenR1/RLVE runners require excluded inputs and the secondary results are stored artifacts rather than locally rerun evidence. The paper discloses each of these limits.",
+      "why_it_matters": "The 80.9% central result is auditable only conditional on a derived data object whose source construction cannot be independently checked here. The external-carrier and source-transfer numbers therefore add descriptive breadth but limited independently verifiable support. This is a reproducibility and evidence-strength gap, not evidence of fabrication or a claim that the replay endpoint is false.",
+      "required_fix": "Provide raw-data access compatible with the licenses, or a durable controlled-access/third-party audit path, together with immutable derivation, deduplication, split, and CAL-selection records plus an environment lock. Make the recovered secondary runners runnable against their pinned inputs where permissible.",
+      "verification_test": "A clean-room verifier rebuilds each retained count manifest from the pinned raw input, reproduces the seeded FIT/CAL/TEST assignments and selected rules, and matches the published result JSON hashes or reports any justified deterministic difference.",
+      "evidence_needed": "Pinned raw carrier files or audited access, derivation logs, complete run manifests, and executable dependency specifications for OMR and the secondary carriers.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-03-operational-endpoint-ceiling",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF Abstract; pp. 7--9 Sections 7--9; protocol/decisive_experiment_protocol.md; experiment registry EXP-ORDERED-CORRECTNESS-COST",
+      "claim_ids": [
+        "C13"
+      ],
+      "evidence_ids": [
+        "EV-MISSING-ORDER",
+        "EV-MISSING-ENDPOINT",
+        "EV-MISSING-COST"
+      ],
+      "observed_evidence": "Every reported flip is binary pass-count replay disagreement with a corresponding full count vote, and savings are 1-mean(k)/N. The carriers do not retain natural chronological rollouts for OMR, and none reports a stopped delivered answer, gold correctness, generated/billable tokens, latency, cancellation acknowledgement, or post-stop work. The E1--E3 and margin grids are synthetic; the paper explicitly calls them exploratory/nonconfirmatory and retains an E3 cell where BAYES-H fails while FIXED-EB passes.",
+      "why_it_matters": "This does not invalidate the stated count-replay theorem or descriptive readout, and the manuscript does not mislabel it as an online result. It does, however, cap the practical significance of an early-stopping paper: replay full-vote agreement and virtual rollout-count reduction cannot establish answer utility or actual serving savings.",
+      "required_fix": "Execute the already specified minimal formal ordered/correctness/cost experiment without broadening its endpoint: freeze one eligible model-task carrier, select the policy on FIT/CAL, then compare online BAYES-H with paired full-N TEST episodes and maintain the required trace/cancellation ledgers.",
+      "verification_test": "Pass the protocol's chronological no-future-read audit; report the paired one-sided 95% gold-accuracy non-inferiority bound, completed-token and latency intervals, cancellation/post-stop work telemetry, and separately labeled shadow full-vote agreement diagnostic.",
+      "evidence_needed": "A completed integrity-valid EXP-ORDERED-CORRECTNESS-COST run with retained ordered traces, frozen policy/table hashes, deterministic gold evaluator, and prespecified paired analysis.",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No distinct ethics violation is apparent in the frozen snapshot. Data licenses and the count-only/telemetry limitations are stated. The absence of online traces is an evidence limitation rather than an ethics allegation.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the frozen Round-4 submission snapshot and its supplied rubric.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean-room rebuild from pinned raw OMR data that reproduces the derived manifest, CAL selection, and main JSON, plus runnable/pinned secondary-carrier pipelines.",
+    "A fair, preregistered same-endpoint comparison against an applicable adaptive baseline and BAYES-UNIF with FIT/CAL-only tuning.",
+    "A completed version of the registered ordered/correctness/cost study showing chronological policy integrity, acceptable stopped-answer gold accuracy relative to full-N, and real completed-token/latency savings after cancellation effects."
+  ],
+  "evidence_that_would_lower_score": [
+    "A clean-room reconstruction that changes the retained rows, seeded split, candidate family, CAL UCBs, or central Table 1 values.",
+    "Evidence that TEST or source-transfer outcomes informed the fitted prior, candidate family, alpha choice, or reported selected rule before the claimed one-time TEST readout.",
+    "An ordered online test showing future-rollout leakage, material stopped-answer correctness loss, or cancellation/post-stop work that removes the apparent cost saving."
+  ],
+  "review_limitations": [
+    "I did not inspect prior rounds, other Round-4 reviewer outputs, author plans, or repository material outside the frozen submission directory.",
+    "The snapshot contains no separately named evidence-contract file; I used the bundled Derived-data contract in evidence/repro_bundle_round4/README.md together with the claim-evidence and experiment-registry records.",
+    "Raw carrier files were intentionally absent, so I could rerun only the supplied count-manifest main replay, not a clean-room derivation or the pandas/pyarrow secondary runners.",
+    "This is an experimental-rigor review; the oracle and empirical-Bernstein derivations were checked for stated scope and implementation correspondence, not formally re-proved as a dedicated technical-soundness review."
+  ]
+}

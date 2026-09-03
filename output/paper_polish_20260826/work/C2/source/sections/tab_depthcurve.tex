@@ -1,0 +1,78 @@
+% Complete depth-partition curve from the frozen depth sweep
+% (out/depth_sweep_full_v2_20260823_201948, prereg
+% PREREG_DEPTH_SWEEP_FULL_ADDENDUM_V2_R158).  All acc values are n=100/bucket/arm
+% under the byte-pinned robust_correct V2 reader (rev5, c5ba5674), independently
+% reproduced by the external review from the raw CSVs.  Paired p is exact
+% McNemar on discordant pairs vs the j=0 arm of the same context length.
+% Operating points: 4k (j=0..16) and 16k (j=0/12/24 plus dense and re-forward
+% baselines); 16k is the operating point, NOT 32k (no 32k claim).
+%
+% R270: merged with the former appendix wall-clock table (tab:depthcurve-cost)
+% so that the eight duplicated arms appear once.  Every wall-clock second that
+% table carried is preserved: the deeper-arm values are the new column and the
+% two matched j=0 references (465.6 s at 4k, 528.5 s at 16k) are in the caption.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{ctx} & \textbf{$j{=}0$} & \textbf{deeper read} & $j{=}12$ & \textbf{$\Delta_{j0{-}j}$} & \textbf{exact $p$} \\
+\midrule
+% 4k axis: j0 vs each depth point
+4k & 75.0 & $j{=}2$ & 65.0 & $+10.0$\,pp & $2.1\times10^{-2}$ \\
+4k & 75.0 & $j{=}4$ & 62.0 & $+13.0$\,pp & $9.8\times10^{-4}$ \\
+4k & 75.0 & $j{=}6$ & 57.0 & $+18.0$\,pp & $1.2\times10^{-4}$ \\
+4k & 75.0 & $j{=}8$ & 55.0 & $+20.0$\,pp & $1.1\times10^{-5}$ \\
+4k & 75.0 & $j{=}10$ & 56.0 & $+19.0$\,pp & $6.6\times10^{-5}$ \\
+4k & 75.0 & $j{=}12$ & 48.0 & $+27.0$\,pp & $4.6\times10^{-7}$ \\
+4k & 75.0 & $j{=}14$ & 46.0 & $+29.0$\,pp & $1.1\times10^{-6}$ \\
+4k & 75.0 & $j{=}16$ & 42.0 & $+33.0$\,pp & $1.0\times10^{-7}$ \\
+\midrule
+16k & 77.0 & $j{=}12$ & 48.0 & $+29.0$\,pp & $1.3\times10^{-7}$ \\
+16k & 77.0 & $j{=}24$ & 24.0 & $+53.0$\,pp & $2.3\times10^{-14}$ \\
+\midrule
+16k dense \textsuperscript{$\dagger$} & -- & -- & 71.0 & -- & $0.43$ \\
+16k \mbox{re-forward} \textsuperscript{$\dagger$} & -- & -- & 72.0 & -- & $0.50$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.35em}
+\begin{tabular}{@{}lcccccc@{}}
+\multicolumn{7}{@{}l}{\emph{Same-run wall clock (s, $n{=}100$), recorded arms only}} \\
+\toprule
+\textbf{arm} & 4k $j{=}12$ & 4k $j{=}16$ & 16k $j{=}12$ & 16k $j{=}24$ &
+16k \texttt{dense} & 16k re-forward \\
+\midrule
+seconds & 504.3 & 501.7 & 511.6 & 606.1 & 734.3 & 750.6 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Complete depth-partition curve (9+3 points, preregistered
+sweep) with the same-run wall clock.}
+Accuracy (\%) under the pinned first-mention reader ($n{=}100$/bucket/arm, oracle
+selector); paired exact McNemar against the $j{=}0$ arm of the same length, which
+shares the selected raw chunks (retrieval fixed) and the content-hash-verified
+paired subset (Appendix~\ref{app:pairing-provenance}).  Every tested point from
+$j{=}2$ onward is a significant paired loss against $j{=}0$ on the same samples;
+the trend in $j$ is downward overall but we claim no strict monotonicity (the
+single $1$\,pp reversal at $j{=}8\!\to\!10$ at 4k is within noise at $n{=}100$,
+and each $p$ compares a depth to $j{=}0$, not to its predecessor).  The $p$
+values are pointwise: under Bonferroni over the eight 4k comparisons the
+shallowest $j{=}2$ cell ($p{=}2.1\times10^{-2}$) does not survive
+$0.05/8{=}6.25\times10^{-3}$, so ``every point from $j{=}2$'' is pointwise, not
+family-wise.  The load-bearing $j{=}12$ point is $+27.0$\,pp at 4k; at 16k the
+$j{=}12$/$j{=}24$ losses are $+29.0$/$+53.0$\,pp.
+\textsuperscript{$\dagger$}\texttt{dense} is stock full-context generation (no
+CoMem) and \texttt{re-forward} the authors' full-depth re-forward without
+retrieval (not an implementation of the published KV-Direct method): at 16k
+neither differs significantly from $j{=}0$ at $n{=}100$ ($p{=}0.43$/$0.50$) --- a
+non-rejection, not equivalence --- and their $\le6$\,pp deficit is the registered
+bound on retrieval-side differences.  The lower block is the wall clock of the
+same runs, so quality and cost are matched operation points: the matched $j{=}0$
+references are $465.6$\,s at 4k and $528.5$\,s at 16k, and seconds were not
+retained for the intermediate 4k depths $j{=}2$--$10$.  Per-depth peak memory was
+not recorded (Appendix~\ref{app:depthcurve-cost}); data roots are in the protocol
+matrix (Appendix Table~\ref{tab:protocol-matrix}).}
+\label{tab:depthcurve}
+\end{table}

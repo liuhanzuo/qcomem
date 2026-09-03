@@ -1,0 +1,124 @@
+{
+  "reviewer_id": "a11-r3-technical",
+  "round": 3,
+  "snapshot_sha256": "683d2d58f3eead73dba6344efefe02a17d9904f9170b77fb6364a6e1735dc6ee",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The oracle-model hypergeometric calculation, odd-budget monotonicity proof, terminal-state treatment, and fixed-rule CAL empirical-Bernstein construction are substantively sound under their stated assumptions. However, the paper currently conflates the theorem's exact conditional posterior identity with the operational FIT-estimated prior, and it makes a synthetic-robustness superlative contradicted by its own grid. These are material claim-to-premise gaps.",
+    "presentation": "The model boundary, replay endpoint, and distinction between CAL selection and descriptive TEST readout are unusually explicit. The main weakness is that the same prose does not cleanly separate the oracle-H conditional theorem from the FIT-estimated rule's marginal CAL guarantee, which makes the headline certificate sound stronger than the proved operational statement.",
+    "contribution": "Within the intentionally narrow count-exchangeable binary pass-count replay model, the posterior-stopping and CAL-selection formulation is useful and the exact DP analysis is well motivated. Its practical significance is limited by the count-only replay endpoint and by the absence of ordered online correctness or cost evidence, which the paper appropriately does not claim."
+  },
+  "paper_summary": "The paper studies stopping before a full binary pass-count vote under a count-exchangeable replay model. It derives a posterior probability that the prefix decision disagrees with the full-N pass-count decision, proves an oracle-prior tower-property result for prefix-measurable stopping, and uses a FIT-frozen candidate family plus CAL empirical-Bernstein/Bonferroni screening for population replay flip control. It reports exact replay-DP results on OMR and two additional count carriers, along with synthetic order-drift stress tests and clearly scoped sensitivity diagnostics.",
+  "strongest_verified_contribution": "For a true, fixed count-mixture H, Theorem 1's posterior flip identity for a prefix-measurable stop rule is correctly matched to the hypergeometric replay model; the supplied closed-form monotonicity proof and exact-rational audit support the fixed-budget component. For an estimated FIT prior, Theorem 2 correctly offers a distinct CAL-side marginal population guarantee for a finite frozen family, conditional on its i.i.d. FIT/CAL assumptions.",
+  "strengths": [
+    "The paper states its endpoint precisely: binary pass-count replay agreement rather than delivered-answer correctness or online operational savings.",
+    "Appendix A handles the zero-support boundary before forming its ratio; the bundled exact-rational audit passes 21,824 reversal cases, including the stated N=32 boundary.",
+    "The FIT/CAL separation and finite-family Bonferroni rationale are concrete, and the manuscript correctly labels TEST as descriptive rather than a second population certificate.",
+    "The manuscript explicitly withdraws the non-prefix-observable Appendix E(g) construction as an oracle diagnostic, preventing it from being used as a policy result."
+  ],
+  "questions": [
+    "Will the authors state explicitly, at every headline use of 'exact conditional certificate,' that Theorem 1 is exact only when the posterior prior equals the data-generating mixture H, whereas BAYES-H with H-hat_FIT receives only the separate marginal CAL guarantee of Theorem 2?",
+    "Why does the OpenR1 paragraph say 9,374 problems each have two deduplicated rollouts when the supplied result contains 8,853 problems and its script retains only rows with exactly two deduplicated observations? Please provide the inclusion/exclusion accounting by split.",
+    "Will the authors replace the claim that BAYES-H is the 'most robust stopper' in the synthetic harness with a cell-qualified statement that acknowledges the alpha=0.05 E3 case where FIXED-EB remains valid and BAYES-H does not?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TS-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "source/paper.tex:48-56 (abstract); 291-313 (Theorem 1 and BAYES-H instantiation); 315-334 (Theorem 2)",
+      "claim_ids": [
+        "C01"
+      ],
+      "evidence_ids": [
+        "EV-THEORY-TOWER",
+        "EV-OMR-R469",
+        "artifacts/L4b_bound_r469.md"
+      ],
+      "observed_evidence": "The proof at source/paper.tex:300-306 identifies c_H with the conditional law of K, which requires the posterior prior H to be the generating mixture. Immediately afterward, BAYES-H sets H=H-hat_FIT (lines 309-313). The bundled L4b document explicitly recognizes that when H-hat_FIT differs from H, 'the conditional-layer identity [is] distorted' and relies instead on CAL empirical Bernstein applied to g(K). Thus the abstract's statement that a FIT-frozen prior yields an exact per-problem conditional certificate, followed by the unrestricted tower-property wording, is not the operational guarantee actually established for the fitted rule.",
+      "why_it_matters": "A marginal high-probability CAL guarantee for a selected finite family is not a per-prefix conditional certificate. Collapsing these statements overstates what is controlled when the prior is estimated and obscures the role of the independent CAL layer.",
+      "required_fix": "Separate the two results throughout the abstract, introduction, method, figure caption, and conclusion: call Theorem 1 an oracle-H conditional identity; call H-hat_FIT's posterior quantity a fitted stopping score; and state that its valid claim is the Theorem 2 CAL-screened marginal replay flip bound, conditional on the stated i.i.d. FIT/CAL assumptions. Do not describe the fitted score itself as exact conditional risk unless a valid conditional prior-estimation result is added.",
+      "verification_test": "Check that each occurrence of 'exact,' 'conditional certificate,' 'adaptive is free,' and 'BAYES-H' either explicitly assumes H is the true mixture or points to the CAL marginal guarantee for H-hat_FIT. Mathematically verify that the proof conditions c_H on the same H that generates K and that no fitted-prior path is claimed to satisfy the equality without CAL.",
+      "evidence_needed": "No new experiment is needed for claim narrowing. A stronger per-problem operational claim would require a finite-sample conditional treatment of prior estimation or an explicitly stated correct Bayesian generative prior.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "source/paper.tex:64-67 (abstract); 670-679 (synthetic-drift findings); source/drift_tables.tex Table at alpha=0.05, E3 delta=0.15",
+      "claim_ids": [
+        "C03"
+      ],
+      "evidence_ids": [
+        "EV-DRIFT-R469",
+        "artifacts/results/drift_stress_r469_result.json:1093-1201"
+      ],
+      "observed_evidence": "The abstract says BAYES-H is 'the most robust stopper in the reported harness,' and Section 7 repeats that it is the most robust under E2/E3. But the supplied E3 alpha=0.05 delta=0.15 cell reports FIXED_EB flip 0.04715 (valid) and BAYESH flip 0.05181 (invalid); the manuscript itself states this exception at lines 677-679. Therefore the global robustness superlative is contradicted by the reported grid.",
+      "why_it_matters": "The synthetic-order analysis is presented as the failure-domain evidence for an otherwise count-only model. A headline robustness claim must match every relevant reported mechanism/level cell, especially where the proposed rule loses validity to a baseline.",
+      "required_fix": "Remove the global 'most robust' characterization. Report a qualified mechanism-and-level comparison, for example that BAYES-H outlasts the fixed rules in the specified E2 alpha=0.10 grid, while FIXED-EB survives the E3 alpha=0.05, delta=0.15 cell that BAYES-H fails. Apply the same correction to the unified-mechanism appendix text and figure-associated prose.",
+      "verification_test": "Cross-check each retained comparative robustness sentence against all E1/E2/E3, alpha, and delta cells in artifacts/results/drift_stress_r469_result.json; no unqualified dominance or 'most robust' claim may remain if any baseline has a strictly better validity boundary in a stated comparison set.",
+      "evidence_needed": "No new experiment is necessary to correct the wording. A renewed global robustness claim would need a pre-specified aggregate robustness metric and its full-grid analysis.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "source/paper.tex:592-601; artifacts/openr1_m2_pilot_r473.py:80-94; artifacts/results/openr1_m2_pilot_r473.json:1-3; artifacts/REPRO_README.md:9",
+      "claim_ids": [],
+      "evidence_ids": [
+        "artifacts/openr1_m2_pilot_r473.py",
+        "artifacts/results/openr1_m2_pilot_r473.json"
+      ],
+      "observed_evidence": "The manuscript says the OpenR1 evaluation has 9,374 unique problems 'two deduplicated ... rollouts each,' yet its stated 3000/3000/2853 split sums to 8,853. The supplied script appends a problem only when len(obs)==2 after deduplication (lines 80-87), and the result JSON reports n_problems=8853. The reproduction README separately explains that 9,374 raw unique problems yield 8,853 included M=2 replay problems after deduplication.",
+      "why_it_matters": "This is a concrete carrier inclusion mismatch in one of the paper's principal cross-model mechanism demonstrations. It leaves unclear which population the reported splits, fitted mixture, and claimed frontier describe.",
+      "required_fix": "Correct the manuscript to distinguish the 9,374 raw problems from the 8,853 problems with exactly two deduplicated rollouts that enter the analysis. State the exclusion rule and the resulting FIT/CAL/TEST counts, and ensure every related table, appendix, and abstract statement uses the effective sample correctly.",
+      "verification_test": "The carrier paragraph, split arithmetic, script inclusion predicate, and result JSON must agree on 8,853 analyzed problems and 3,000/3,000/2,853 splits; if they do not, regenerate the OpenR1 outputs from a frozen inclusion manifest and revise the affected claims.",
+      "evidence_needed": "At minimum, an anonymized inclusion-count manifest and per-split counts before/after deduplication. Raw rows or stable IDs would be needed for independent end-to-end verification.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethical violation is apparent in the submitted count-replay analysis. The paper appropriately discloses that it does not measure ordered online behavior, delivered-answer correctness, or operational costs.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A consistent oracle-versus-fitted-prior statement that leaves Theorem 2, rather than a per-prefix fitted-posterior claim, as the operational validity guarantee.",
+    "A corrected OpenR1 carrier accounting with a frozen inclusion/split manifest, and a reproducible rerun if the correction changes any reported result.",
+    "A pre-specified robustness aggregation or additional ordered-rollout evidence if the authors wish to make a broader robustness claim."
+  ],
+  "evidence_that_would_lower_score": [
+    "A counterexample to the tower identity under the stated oracle count-exchangeable model, or an error in the CAL empirical-Bernstein implementation/family accounting.",
+    "Evidence that FIT, CAL, and TEST were not independent as stated, that TEST informed rule selection, or that OpenR1 exclusions changed the reported split results.",
+    "Retention of unqualified fitted-prior conditional-certification or global synthetic-robustness claims after the documented contradictions."
+  ],
+  "review_limitations": [
+    "This reviewer had only the frozen reviewer-safe snapshot. The inventory explicitly lacks raw task membership, duplicate-check outputs, selection timestamps, predictions, and an environment lock, so the numerical artifacts were assessed as supplied evidence rather than independently rerun end to end.",
+    "This review does not judge natural ordered online deployment, gold answer correctness, or token/latency/cancellation savings because the paper explicitly excludes those endpoints."
+  ]
+}

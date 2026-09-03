@@ -1,0 +1,796 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      I S DATA VALUE PATH -O RDERED OR S ET-O RDERED ?
+002   A C ARRIER -D EPENDENT S AME -S AMPLE T EST
+003
+004   U NDER WSD S CHEDULES
+005
+006    Anonymous authors
+007    Paper under double-blind review
+008
+009
+010
+011
+                                                  A BSTRACT
+012            Data attribution is computed from a selected set although optimization follows a
+013            schedule. We distinguish set-ordered from path-ordered marginal value by mea-
+014            suring each target at multiple entry positions within the same seed. On two frozen
+015            synthetic logistic carriers the paired test returns carrier-dependent readings: the
+016            sine carrier shows a negative paired departure (g = −0.186, CI[−0.258, −0.115])
+017
+               that reverses, rather than reproduces, the cross-sectional sign (negative g: early en-
+               try lowers value; a negative τ : early-scheduled targets rank higher; Section 4.2),
+018
+               while the linear carrier is ambiguous (g = +0.010, CI[−0.112, +0.132]). On a
+019
+               pure set-ordered ridge where value is order-invariant by construction, the identical
+020            paired estimator carries a non-negative bias (g = +0.102, CI[+0.028, +0.176]
+021            on the canonical allocation, positive on all four allocations, minimum CI lower
+022            −0.066). Because a non-negative bias cannot produce a negative departure, the
+023            calibration is conservative with respect to the sine headline. The canonical al-
+024            location literally ﬁres the sealed binary contract (CI excludes 0), but its conse-
+025            quence clause is two-sided (sign-blind) and the measured bias is opposite in sign
+026            to the headline, so it does not falsify the negative sine reading (a speciﬁcation erra-
+027            tum, not a rewrite of the frozen criterion). Value-conditioned routing reproduces
+028
+               the cross-sectional B2 negative τ on a set-ordered world, so B2 is a reference-
+               conditioned stress test; identiﬁcation remains undecided on this zero-GPU bed.
+029
+030
+031   1   I NTRODUCTION
+032
+      Which training samples matter is often treated as a property of a selected set. Datamodels predict
+033
+      model outputs from training-set membership (Ilyas et al., 2022), while TRAK provides scalable
+034
+      set-indexed model-behavior attribution (Park et al., 2023). Neither representation retains the path
+035   by which samples entered an optimization trajectory. This abstraction is useful, but it leaves open a
+036   prior measurement question: is per-sample marginal value actually invariant to entry order?
+037   The question matters whenever data are introduced by a curriculum, sampler, or staged acquisition
+038   rule. If value is set-ordered, an order-invariant attribution is an adequate description of sample
+039   ranking. If value is path-ordered, the same sample set can induce different marginal-value relations
+040   under different entry schedules. Distinguishing these possibilities requires more than observing a
+041   nonzero correlation: the experiment must specify the entry construction, use the seed rather than the
+042   item as its inference unit, enforce a minimum effect size, and measure the detector’s behavior on a
+043   known set-ordered case (Section 4.3) rather than assume it is quiet.
+044   We introduce a frozen Construction-Sensitivity Test on a deterministic logistic-regression test bed.
+045   Figure 1 emphasizes the controlled comparison (schematic; all quantitative evidence comes from
+046   the frozen runs and the data-derived Figure 2): the same sample identities and held-out readout are
+047
+      used across three entry rules, each evaluated through both a path-sensitive leave-one-out value and
+      an order-invariant set comparator.
+048
+049   Contributions. First, we give a same-sample measurement of per-target entry-position sensitivity,
+050   so a cross-sectional selection signal can no longer masquerade as a path effect. Second, a quantiﬁed
+051   calibration: the sine carrier shows a negative paired departure (g = −0.186, CI[−0.258, −0.115])
+052   that reverses the cross-sectional sign (Section 4.2), the linear carrier is ambiguous (g = +0.010,
+053   CI[−0.112, +0.132]), and a set-ordered ridge counter-arm shows the identical paired estimator car-
+      ries a non-negative bias (g = +0.102, CI[+0.028, +0.176] on the canonical allocation, positive
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+      on all four allocations, minimum CI lower −0.066), so that bias cannot explain—and is conserva-
+055   tive with respect to—the negative sine departure. Third, value-conditioned routing on a set-ordered
+056   world reproduces the cross-sectional B2 negative τ , making B2 a stress test, not a decisive effect;
+057   a discriminating-bed certiﬁcate and decoupled positive control bind this reading. We claim only a
+058   controlled measurement on two synthetic carriers.
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+073
+074
+075
+076
+077   Figure 1: Carrier-dependent measurement (qualitative schematic). Each target is measured at early,
+078
+      middle, and late entry while its identity and held-out readout are ﬁxed. The in-panel badges are the
+      paired arm’s frozen four-state labels (Table 5); the set-ordered counter-arm of Section 4.3 shows
+079
+      the same estimator’s bias is non-negative, which is conservative with respect to the negative sine
+080
+      departure. The separate B2 lane is the reference-conditioned stress test: routing alone can create a
+081   cross-sectional signal in a set-ordered world, so that lane is not decisive. The audited raster contains
+082   no experimental values.
+083
+084
+085   2    P ROBLEM AND ESTIMANDS
+086
+      For seed k, let Dk be the clean training set, Gk a ﬁxed target set, and Hk a ﬁxed held-out split. An
+087
+      entry construction c assigns each target z ∈ Gk a schedule location sc (z). With U (w; Hk ) denoting
+088
+      held-out negative cross-entropy (higher is better), the empirical path value is
+089                                                                       
+                                                                     −z
+090                                Vc,k (z) = U wc,k+G
+                                                       ; Hk − U wc,k    ; Hk ,                          (1)
+091
+092   where both ﬁts use the same WSD budget and differ only by leaving out target z. This is a marginal
+093   utility, not the raw loss or a per-item independent replicate.
+094   The seed-level path statistic is
+095                            τc,k = KendallTau ({sc (z)}z∈Gk , {Vc,k (z)}z∈Gk ) .                          (2)
+096
+097   Negative τ means that targets scheduled earlier have larger held-out marginal value. The estimand is
+098
+      τbc , the mean of Equation 2 over seeds. Frozen 95% Student-t conﬁdence intervals are formed across
+      the seed-level coefﬁcients; a two-sided Wilcoxon signed-rank result is retained as a corroborating
+099
+      signiﬁcance check for the per-sample constructions. The minimum meaningful magnitude is τa =
+100
+      0.10.
+101
+      The reporting label is deliberately two-part. A cell is null when its interval includes zero, sig-sub-
+102
+      threshold when it excludes zero but does not lie strictly beyond ±τa , and sig-supra-threshold when
+103
+      the entire interval lies beyond the threshold in the effect direction; reverse is reserved for a signiﬁcant
+104   sign reversal. Separately, exceeds_threshold records the minimum-effect decision. This 4-
+105   state presentation labels the outcome of the pre-registered 3-state decisive test without conﬂating
+106   evidence against zero with an effect large enough to trigger the headline claim.
+107
+
+
+
+                                                          2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      Set-valued comparator. On the same Dk ∪ Gk and Hk , the order-invariant arm ﬁts a regularized
+109   logistic model to the full set and evaluates the inverse-Hessian leave-one-out approximation
+110
+111                                 Vbset,k (z) = −∇w U (wk∗ ; Hk )⊤ Hk−1 gk (z),                           (3)
+112   where Hk is the regularized training Hessian and gk (z) is the target-sample loss gradient. This is the
+113   exact operational GLM reduction used here as the nearest set-valued TRAK/datamodel comparison;
+114   it is not an implementation of their large-scale pipelines.
+115
+116   3     F ROZEN EXPERIMENTAL DESIGN
+117
+118   The experiment uses two 24-dimensional synthetic logistic carriers. The linear carrier contains a
+119   clean class-separated pool and conﬂicting near-duplicates with ﬂipped labels. The second carrier,
+120   retained under its frozen artifact key sine, uses a shifted Gaussian pool with a ﬁxed linear label
+121   boundary; its targets negate the ﬁrst feature and ﬂip the label. We therefore use “sine” only as
+122   the registered carrier name, not as a claim of broad nonlinear coverage. The ﬁxed conﬁguration is
+123
+      summarized in Table 1.
+124   Component                Frozen setting
+125
+      Carriers                 linear; registered sine carrier
+126   Dimension / clean pool   d = 24 / 400 examples per seed
+127   Split / targets          320 clean train; 80 held out; 40 conﬂicting targets
+128   Optimizer                full-batch logistic GD, ℓ2 coefﬁcient 10−3
+129
+      WSD budget               T = 300; 10% warmup, 80% stable, 10% decay
+      Entry locations          0.15T , 0.50T , 0.85T (or rank-linear positions for B1)
+130   Inference                16 seeds; per-seed Kendall τ ; 95% Student-t CI
+131   Magnitude gate           τa = 0.10
+132   Negative control         20 seeded trials; Bonferroni/FWER-controlled detector
+133   Table 1: Frozen experimental contract. Items within a seed are never treated as independent infer-
+134   ence units. All headline intervals are computed over seed-level coefﬁcients.
+135
+136
+137
+      3.1   E NTRY CONSTRUCTIONS
+138   Construction A inserts the complete target block from one of the three schedule locations onward
+139   and computes leave-one-out value within that block. Construction B1 assigns each target a distinct
+140   single injection step, linearly spread from 0.15T to 0.85T . Construction B2 ranks targets by the
+141   ﬁxed set-valued reference score, partitions that order into thirds, and injects the high-, middle-, and
+142   low-ranked regions at the early, middle, and late locations. Thus, B1 genuinely changes per-sample
+143   position, while B2 additionally imposes a region-lumped relation between reference value and entry
+144
+      time. The comparison identiﬁes the entry rule, not the binary attribute “position was manipulated.”
+145   Worked example of Construction A (for Eq. (1)). For the 40 targets Gk and insertion fraction
+146   t ∈ {0.15T, 0.50T, 0.85T }, sA (z) = 0 for targets outside the chosen block and sA (z) = ⌊tT ⌋ for
+147   targets in the block, so the block is injected only at step ⌊tT ⌋ (all other targets present from step 0).
+148   The leave-one-out value is then VA,k (z) = U (w+G ) − U (w−z ), where both ﬁts use the same WSD
+149   budget and differ only by whether z is in the block—exactly the general deﬁnition of Eq. (1).
+150
+151   3.2   C ONTROLS , VALIDITY, AND FROZEN DECISION
+152   The clean negative control uses a strictly convex quadratic ridge substrate with additive, schedule-
+153   invariant inﬂuence. Independent random position labels are tested with a per-seed critical value
+154   Bonferroni-adjusted over the 20 trials; the frozen acceptance condition is no ﬁres. The decisive
+155   result is then read per cell using both the 4-state label and exceeds_threshold. A global
+156   construction-dependent verdict requires that the threshold-crossing pattern vary by construction or
+157   carrier; it does not license a universal mechanism statement.
+158   The code, speciﬁcations, and outputs were frozen before this writing pass. In particular, the current
+159   paper does not regenerate or tune the six cells, choose seeds after observing effects, or replace the
+160   seed-level uncertainty with item-level pseudo-replication. The provenance manifest and hashes are
+161   listed in Appendix B.
+
+
+
+                                                          3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+                                          Shaded band: |τ| ≤ τa = 0.10
+163
+164
+                          linear carrier                                   sine carrier
+165
+166                                                                                           sig-sub-
+          A                                 null             A                                threshold
+167
+168                                         sig-sub-
+          B1                                threshold     B1                                  null
+169
+170
+                                            sig-supra-                                        sig-supra-
+171       B2                                threshold     B2                                  threshold
+172
+173                −0.4    −0.2     0.0      0.2                   −0.4     −0.2       0.0    0.2
+174       Kendall τ(entry position, marginal value) Kendall τ(entry position, marginal value)
+175
+176   Figure 2: Construction sensitivity from the frozen six-cell artifact (16 seeds per cell). Takeaway:
+177   only the two B2 cells lie wholly beyond the negative magnitude boundary −τa ; A and B1 stay
+178   inside it on both carriers. Points are mean per-seed Kendall τ ; bars are the frozen 95% Student-t
+179   intervals. The shaded region marks |τ | ≤ τa = 0.10. This ﬁgure is generated deterministically from
+180   the SHA-pinned R128 JSON; exact values and the independent exceeds_threshold decisions
+181   appear in Table 2.
+182                                                                                            exceeds_
+183   Carrier Entry construction                    τ    95% CI            4-state label       threshold
+184
+      linear     A: time-fraction block       +0.007 [−0.017, +0.032] null                false
+185   linear     B1: rank-linear per-sample   −0.065 [−0.125, −0.005] sig-sub-threshold   false
+186   linear     B2: region-lumped per-sample −0.321 [−0.384, −0.257] sig-supra-threshold true
+187   sine       A: time-fraction block       −0.102 [−0.130, −0.075] sig-sub-threshold   false
+188   sine       B1: rank-linear per-sample   −0.011 [−0.056, +0.033] null                false
+189   sine       B2: region-lumped per-sample −0.471 [−0.502, −0.440] sig-supra-threshold true
+190   Table 2: Frozen six-cell result (16 seeds per cell). The 4-state label and exceeds_threshold
+191   are both reported. Only the B2 cells cross the pre-registered magnitude threshold, and both are
+192   negative. The intervals are per-cell and unadjusted; because the six cells are not independent, we do
+193   not read them as a single family of six tests, and the cross-cell interval overlaps discussed below are
+194   declarations of interval overlap, not additional hypothesis tests (see Section 4 multiple-comparison
+195   note). The NEG-NC detector is SILENT, with 0/20 ﬁres under FWER control.
+196
+      4        C ONSTRUCTION SENSITIVITY
+197
+198   Figure 2 gives the data-derived overview, and Table 2 reports the exact frozen values together with
+199   both required labels. Only the two B2 cells lie wholly beyond the negative magnitude boundary.
+200   Statistical signiﬁcance alone would give the wrong headline: A on sine and B1 on linear exclude
+201   zero but remain below the minimum-effect threshold.
+202
+203
+      Construction-speciﬁc ﬁnding (cross-sectional). Cross-sectionally, B2 crosses τa = 0.10 on both
+      carriers, with CIs below −τa ; A and B1 do not. Routing can manufacture this pattern (Section 4.4),
+204
+      so the paired sine departure and ambiguous linear reading remain subject to the counter-arm caveat
+205
+      (Sections 4.2–4.3).
+206
+207   4.1      C ONSTRUCTION - AXIS SEPARATION
+208
+209   A threshold label could differ merely because two noisy intervals straddle a boundary. The frozen
+210
+      construction-axis analysis therefore compares the intervals themselves. Table 3 shows that B2 is
+      separated from both alternatives on each carrier. The A–B1 contrast is mixed: the linear intervals
+211
+      overlap, whereas the sine intervals are separated. This yields the pre-registered CONSTRUCTION -
+212
+      DEPENDENT- SEPARABLE reading.
+213
+      Throughout, the cell and construction-axis intervals are seed-level, within-cell reads treated as dec-
+214
+      larations of interval overlap, not as an unadjusted multiple-testing family (cells share seeds, so
+215
+      their intervals are correlated). Inferential cross-construction comparisons are instead within seed via
+
+
+                                                         4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+      the paired same-sample identiﬁcation of Section 4.2; claims that a contrast “excludes zero” or “is
+217   separated” come from the paired seed-level difference, with multiplicity declared, rather than from
+218   reading uncorrected per-cell intervals as independent tests.
+219
+      Because the six cells share seeds, the between-cell interval comparison above is conservative (the
+220   two trajectories in the same carrier are positively correlated). We therefore supplement it with the
+221   same-seed paired difference of the per-construction cross-sectional τ (Table 4): for each pair, the
+222   within-seed difference τkpair-B − τkpair-A , averaged over the 16 seeds with a Student-t CI, is the direct
+223   test of whether the two entry constructions change the ranking (not merely whether their between-
+224   seed intervals happen to overlap).
+225   Multiplicity (M3): these six paired contrasts form one correlated family (they share the same 16
+226   seeds and reuse per-carrier τ ), so raw p-values are reported and the family-wide comparison is the
+227   pattern that all four B2-involving contrasts exceed the band while neither B1-A contrast does; a
+228   Bonferroni threshold of α/6 = 0.0083 over the six contrasts leaves the four B2-involving results
+229   signiﬁcant (smallest p among them 3 × 10−8 ; the two B1-A p-values 0.009, 0.001 straddle it).
+230
+231   4.2    S AME - SAMPLE PAIRED IDENTIFICATION
+232   The cross-sectional τ in Table 2 is not by itself decisive about path ordering: because B2 routes
+233   high-reference-inﬂuence samples early and that score correlates with realized value, a truly set-
+234   ordered world can still yield a large negative τ . We therefore measure each target’s marginal value
+235   at multiple entry positions within the same seed, holding every other target at its frozen B2 step. For
+236   seed k and target z, the paired difference is ∆(z) = V (0.15T ; z) − V (0.85T ; z), by construction a
+237   within-sample contrast holding every other target at its frozen B2 step. The seed-level slope is
+238                                                  meanz∈Gk ∆(z)
+239                                           gk =                 ,                                        (4)
+                                                      stdz∈Gk ∆(z)
+240
+241   with the standard deviation across the 40 targets (ddof = 1); gk is the standardized within-seed
+242
+      paired effect, so it is scale-free across seeds and carriers. Sign convention: gk < 0 means early
+      entry lowers a target’s value (V at 0.15T below V at 0.85T ); gk > 0 means early entry raises value.
+243
+      This is the opposite interpretation of the cross-sectional τ of Section 2: there, τ < 0 means targets
+244
+      scheduled earlier are ranked higher in marginal value (a routing/rank statement), whereas here g < 0
+245   means a target’s value is lower when that same target is moved earlier (a causal-position statement).
+246   We therefore never equate the two signs; a negative τ and a negative g are not evidence of the “same
+247   direction,” and we ﬂag their reversal explicitly where both appear. The frozen preregistered decision
+248   uses a Student-t interval over the 16 seeds and a two-sided Wilcoxon signed-rank corroboration,
+249   with a minimal-effect band meff = 0.10. The result is carrier-dependent (Table 5).
+250   On sine, the same-sample test returns a negative paired departure: the slope is negative, its in-
+251   terval excludes zero and lies beyond the minimal-effect band in the early-lowers-value direction.
+252   Because a negative g means early entry lowers value while a negative cross-sectional τ ranks early-
+253   scheduled targets higher (Section 2), the paired arm reverses the cross-sectional sign rather than
+254   reproducing it in the same direction (supplementary evidence for the undecided verdict). A per-seed
+255   sign-consistency fraction is not evidence: it is the no-test-power identity disclosed in Table 5. A
+256
+      routing-permutation placebo leaves the effect essentially unchanged (g = −0.176 vs. −0.186), rul-
+257
+      Pair       linear                          sine                            composite
+258
+      B2 vs A    SEPARATED                       SEPARATED                       separated on both
+259
+                 [−0.384, −0.257] vs             [−0.502, −0.440] vs
+260              [−0.017, +0.032]                [−0.130, −0.075]
+261
+      B2 vs B1 SEPARATED                         SEPARATED                       separated on both
+262            [−0.384, −0.257] vs               [−0.502, −0.440] vs
+263            [−0.125, −0.005]                  [−0.056, +0.033]
+264
+      A vs B1    overlap (amount 0.011)          SEPARATED                       mixed
+265                                              [−0.130, −0.075] vs
+266                                              [−0.056, +0.033]
+267
+      Table 3: Frozen construction-axis CI separation. The registered rule assigns approximately zero
+268
+      construction-dependence weight if all pairs overlap on a carrier; separation of B2 from both A and
+269   B1 makes the B2-only threshold crossing construction-separable.
+
+
+                                                          5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+                    Same-seed pair      ∆τ                 95% CI            p   |∆τ | beyond band
+271
+272                 linear, B2 − A    −0.328    [−0.395, −0.260]     3 × 10−8    yes
+                    linear, B2 − B1   −0.256    [−0.325, −0.186]     1 × 10−6    yes
+273
+                    linear, B1 − A    −0.072    [−0.124, −0.021]        0.009    no
+274
+275                 sine, B2 − A      −0.369    [−0.421, −0.317]    2 × 10−10    yes
+                    sine, B2 − B1     −0.460    [−0.509, −0.411]    3 × 10−12    yes
+276
+                    sine, B1 − A      +0.091    [+0.041, +0.141]        0.001    no
+277
+278   Table 4: Same-seed paired construction contrasts from frozen per-seed τ (16 seeds; no new compu-
+279   tation beyond forming the within-seed differences). |∆τ | beyond band = the CI of the paired differ-
+280
+      ence lies strictly outside [−τa , τa ] = [−0.10, +0.10]. The B2 vs. A and B2 vs. B1 paired contrasts
+      exceed the minimal-effect band on both carriers, while B1 vs. A does not—so B2’s region-lumped
+281
+      routing, not the per-sample position manipulation itself, is what separates B2 from the other two
+282
+      constructions.
+283
+284   Carrier paired slope g                    4-state label                    routing-robust
+285   sine      −0.186 CI[−0.258, −0.115]       PATH-SUPPORTED-neg               placebo g = −0.176
+286             Wilcoxon p = 9 × 10−5           (early entry lowers value)
+287   linear    +0.010 CI[−0.112, +0.132]       AMBIGUOUS                        —
+288             Wilcoxon p = 0.74               (not-identiﬁed)
+289
+      Table 5: Same-sample paired identiﬁcation (frozen R139/R140/R141 artifacts, 16 seeds). The sine
+290   paired test returns a negative g (interval excludes zero, beyond the minimal-effect band) that reverses
+291   the cross-sectional τ ’s sign interpretation (negative g: early entry lowers value; negative τ : early-
+292   scheduled targets rank higher; Section 4.2); it persists under routing permutation. The linear test
+293   is ambiguous. A per-seed sign-consistency fraction is deliberately omitted from this table: under
+294   this construction the per-seed sign of the frozen B2 cross-sectional reference τ is a structural con-
+295   stant, so a sign-agreement fraction is an identity equal to the fraction of negative seed-level slopes
+296   gk —bookkeeping only, no test power, and not used as evidence in the abstract, contributions, or
+297   conclusion. The earlier “cross-sec B2 τ is a conﬁrmed selection confound on both carriers” claim
+298
+      rested on a corrected sign-consistency code bug and is revoked.
+299   ing out value-conditioned routing. On linear, the interval covers 0, so the cross-sectional negative τ
+300   is not identiﬁed as a same-sample path effect.
+301
+302   4.3      S ET- ORDERED RIDGE COUNTER - ARM : PAIRED - DETECTOR CALIBRATION
+303
+      Because a routing-axis placebo cannot decide the path-versus-set axis, we run the identical paired
+304
+      estimator on the pure set-ordered ridge of Section 4.4, whose marginal value is order-invariant by
+305
+      construction (inverse-Hessian leave-one-out inﬂuence on a strictly convex quadratic).
+306
+      The sealed pre-registration ﬁxes the contract before the run: g ≈ 0 with a 16-seed CI covering 0
+307
+      was intended to count as silent, and any CI excluding 0 as the paired detector ﬁring on a set-ordered
+308
+      world (Appendix B). Table 6 reports the outcome on the canonical target allocation together with
+309   the complete allocation sweep. The result is a quantiﬁed, conservative calibration:
+310
+311            • The canonical allocation literally ﬁres the sealed binary contract: its CI excludes 0
+312              (g = +0.102, CI[+0.028, +0.176]; Wilcoxon p = 0.011). We disclose this literally and do
+313              not soften it.
+314            • The bias is non-negative on the order-invariant substrate: the point estimate is positive
+315              on all four target allocations (+0.102, +0.192, +0.049, +0.145), with the smallest CI
+316
+                 lower bound −0.066. The sign is not outlier-driven: 14 of 16 seeds are positive on the
+                 canonical allocation, and dropping the most extreme seed of either sign leaves the positive
+317
+                 sign intact.
+318
+               • The sealed contract’s consequence clause is two-sided (sign-blind): it maps “CI ex-
+319
+                 cludes 0” to “headline falsiﬁed”, which is valid only if the bias shares the headline’s (neg-
+320
+                 ative) sign. The measured bias is positive, opposite in sign to the negative sine headline
+321              (−0.186), so a positive bias cannot produce a negative departure; this is a speciﬁcation
+322              erratum in the sealed consequence clause, not a rewrite of the frozen criterion.
+323
+
+
+
+                                                           6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+            Substrate / target allocation              paired g            95% CI      Wilcoxon p       CI covers 0
+325
+326
+            Set-ordered ridge, canonical Xs [0:40]     +0.102     [+0.028, +0.176]         0.011         no (ﬁres)
+            Set-ordered ridge, Xs [40:80]              +0.192     [+0.130, +0.254]       0.00015         no (ﬁres)
+327         Set-ordered ridge, Xs [80:120]             +0.049     [−0.066, +0.165]         0.298        yes (silent)
+328         Set-ordered ridge, random slice            +0.145     [+0.065, +0.225]         0.006         no (ﬁres)
+329
+            sine carrier (headline, Table 5)           −0.186     [−0.258, −0.115]      9 × 10−5            no
+330
+331   Table 6: Set-ordered ridge counter-arm and its target-allocation sweep (16 seeds per row; canonical
+332   row from the sealed R148 artifact, sweep rows from the R148 ﬁnding record and code listed in
+333
+      Appendix B). Takeaway: the paired estimator’s bias on the order-invariant world is non-negative—
+      positive point estimates on all four target allocations (+0.102/ + 0.192/ + 0.049/ + 0.145, smallest
+334
+      CI lower bound −0.066)—so it cannot explain, and is conservative with respect to, the negative sine
+335
+      departure (−0.186). The canonical allocation literally ﬁres the sealed binary contract (CI excludes
+336   0); that contract’s sign-blind consequence clause (speciﬁcation erratum) does not falsify the negative
+337   headline. The sweep characterizes the reliability of the bias sign, not a rewrite of the frozen criterion.
+338
+339                     Carrier    operating corr. ρ    routing-only τ   frozen B2 τ     zero-corr. τ
+340                     linear                 0.30           −0.313         −0.321          −0.054
+341                     sine                   0.55           −0.563         −0.471          −0.054
+342   Table 7: B2 as a reference-conditioned stress test (frozen R141 artifact, 16 seeds). Takeaway: on a
+343   truly set-ordered ridge, value-conditioned routing at the real B2 operating correlations reproduces
+344   the full frozen B2 magnitudes, while at zero correlation the cross-sectional τ is near zero; the B2
+345   cells are therefore reference-conditioned stress tests, not a standalone decisive path effect. Detector
+346   calibration is reported separately in Table 8.
+347
+      Consequently the counter-arm does not falsify the negative sine departure; it quantiﬁes a non-
+348   negative bias that a non-negative bias cannot explain (conservative: a cleaner zero baseline would
+349   make the sine departure only stronger). The post-hoc allocation sweep is used solely to establish the
+350   reliability of the bias sign, not to rewrite the already-ﬁred frozen binary criterion. We deliberately do
+351   not report a magnitude-offset ﬁgure (such as −0.288) as a headline, because the offset’s magnitude
+352   is not transferable from the ridge substrate to the sine carrier; only its sign is.
+353   Framing choice (settled here). We do not adopt a “re-baseline” framing that subtracts the ridge
+354   offset magnitude from the sine reading, because that magnitude would need to transfer across carri-
+355   ers (ridge → sine, untested, unclaimed). We adopt the sign-only, non-transport conservative claim:
+356   a non-negative set-ordered bias cannot explain a negative sine departure. The cost is that we do not
+357   assert a quantitative clean-null (bias-corrected) calibration of the sine reading. A future re-baseline
+358
+      with magnitude transfer would require a carrier-internal order-invariant control (an order-invariant
+      variant of the sine, linear-GD, WSD carrier from the same feature process), pre-registered here as a
+359
+      minimal 0-GPU follow-up rather than run, as it lies outside the frozen evidence.
+360
+361   4.4    B2 AS A REFERENCE - CONDITIONED STRESS TEST
+362
+363   On a set-ordered ridge, we route targets by a reference score with controlled Kendall correlation to
+364
+      realized value. At the real B2 correlations this reproduces the frozen magnitudes; at zero correlation
+      it is near zero (Table 7). Thus B2 is a reference-conditioned stress test, not evidence that a path effect
+365
+      exists; the paired reading remains subject to Section 4.3. Decoupled positive and order-invariant
+366
+      negative controls provide the calibration rates in Table 8.
+367
+368
+369
+      5     S AME - BED COMPARISON WITH A SET- VALUED BASELINE
+370   On identical carriers, targets, held-out splits, and constructions, we compute per-seed Kendall agree-
+371   ment τAB between empirical path values and Equation 3. Table 9 separates B1 from canonical B2;
+372   all point estimates are positive, even with a negative paired departure on sine and an unidentiﬁed
+373   linear reading.
+374
+375   Frozen failure criterion. This arm is decisive only if (i) the bed is DISCRIMINATING, (ii) canoni-
+376   cal B2 granularity is not mixed with A or B1, and (iii) agreement separates from chance. Otherwise
+377
+      it has approximately zero contribution weight. Because the frozen τAB estimates lack uncertainty
+      intervals, Table 9 is descriptive.
+
+
+                                                              7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Detector control                                                             family   ﬁres   rate
+379
+380
+      Decoupled positive control (imposed schedule-dependent                    16 seeds     14    87.5%
+      inﬂuence, independent of the B2 routing score)
+381   Order-invariant negative control, unadjusted α = 0.05                    100 trials     3    3%
+382   Order-invariant negative control, FWER-controlled frozen           20 seeded trials     0    0% (SILENT)
+383   detector
+384
+      Table 8: Frozen detector calibration for the cross-sectional readout. Takeaway: the detector has
+385   genuine power on a decoupled substrate whose schedule dependence is imposed independently of
+386   the B2 routing score, and it stays at or below its nominal false-alarm level on an order-invariant
+387   substrate—silent under the frozen FWER-controlled setting also recorded in Table 10. The family
+388   size is stated for every rate so the unadjusted and FWER-controlled numbers are not read off the
+389   same trial count.
+390
+                               Carrier   B1 rank-linear    B2 region-lumped (canonical)
+391
+                               linear        +0.20                   +0.30
+392
+                               sine          +0.57                   +0.55
+393
+394   Table 9: Frozen mean within-construction rank agreement τAB between empirical path value and
+395   the inverse-Hessian set-valued comparator. Values are descriptive point estimates; the canonical
+396
+      same-bed arm is the B2 column.
+397   6    B ED - DISCRIMINABILITY CERTIFICATE
+398
+399   The certiﬁcate combines a known path-sensitive probe, known set-ordered probe, and set-estimator
+400   aliveness check without treating B2 as path evidence. Table 10 records high power on the decoupled
+401   positive control, a silent negative control, and cross-sample estimator variation. Because routing
+402
+      reproduces the B2 ﬁring on a set-ordered world, B2 cannot certify path sensitivity; the certiﬁcate
+      validates both outcomes but does not replace the head-to-head uncertainty requirement.
+403
+404   Three probe properties should be kept separate, because a single statistic can have some without
+405
+      others: (i) alive (its readout varies across targets), (ii) power for a known path effect (it ﬁres on a
+      substrate with a manually imposed, schedule-dependent inﬂuence), and (iii) a controlled false-alarm
+406
+      rate on a set-ordered substrate (quiet when value is order-invariant). The B2 cross-sectional probe
+407
+      is alive and ﬁres, but is only a routing-sensitive stress probe: its power for path-dependence is not
+408   established (reference-conditioned entry, ﬁring reproduced by routing on a set-ordered world). The
+409   decoupled positive control is the probe with (ii); the NEG-NC order-invariant negative control is
+410   the probe with (iii). No single probe here is certiﬁed on all three, and the headline does not require
+411   it—the decisive evidence for entry-position sensitivity is the same-sample paired arm (Section 4.2),
+412   not the cross-sectional probes.
+413
+414   Reading                                                             linear                    sine
+415   KNOWN-PATH probe: decoupled positive control                  ✓ (14/16, 87.5%)         ✓ (14/16, 87.5%)
+416   (imposed schedule dependence, independent of B2)
+      B2 routing-sensitive stress probe (cross-sectional; NOT        ✓ (τ = −0.321)           ✓ (τ = −0.471)
+417
+      KNOWN-PATH)
+418   KNOWN-SET: NEG-NC ﬁres                                          0/20 SILENT              0/20 SILENT
+419   Set estimator alive (frac_distinct)                                  1.0                      1.0
+420   Live τAB (certiﬁcate aliveness read)                               +0.88                    +0.72
+421   Verdict                                                      DISCRIMINATING           DISCRIMINATING
+422
+      Table 10: Frozen bed-discriminability certiﬁcate. The known-path probe is the decoupled posi-
+423
+      tive control (imposed schedule-dependent inﬂuence independent of the B2 routing score, 14/16
+424   detected); the B2 cross-sectional probe is listed as ﬁring but not as KNOWN - PATH, because its sig-
+425   nal is reproduced by value-conditioned routing on a set-ordered world (Section 4.4). The known-set
+426   probe remains silent, and the set-valued estimate has distinct values for every target. The aliveness
+427   read is part of the certiﬁcate and is distinct from the canonical head-to-head point estimates in Ta-
+428   ble 9.
+429
+430
+431
+
+
+
+                                                           8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      7    R ELATED WORK
+433
+434   Set-indexed data attribution. Datamodels predict behavior from training-set membership (Ilyas
+435   et al., 2022), while TRAK aggregates projected training gradients (Park et al., 2023). Both are
+436   indexed by selected sets, with no schedule-position axis. We test whether empirical leave-one-out
+437   value has a schedule-dependent component that such scores omit, varying entry rules while holding
+438   target identities and held-out readout ﬁxed.
+439
+      Uncertainty and reproducibility. Machine-learning conclusions can be sensitive to statistical
+440
+      power, run-to-run variance, and reporting choices (Card et al., 2020; Bouthillier et al., 2021; Dodge
+441
+      et al., 2019; Reimers & Gurevych, 2017). We therefore ﬁx the seed as the inference unit, show
+442   conﬁdence intervals rather than a single run, and keep a minimum-effect decision distinct from
+443   signiﬁcance. Training-trajectory suites motivate retaining checkpoints and schedules as ﬁrst-class
+444   experimental objects (Biderman et al., 2023); our contribution isolates one narrower object, sam-
+445   ple entry construction. The frozen analysis plan follows the broader rationale for preregistration in
+446   empirical NLP and machine learning (van Miltenburg et al., 2021).
+447
+448   8    L IMITATIONS AND SCOPE
+449
+450   The evidence is restricted to deterministic CPU logistic-regression carriers with synthetic conﬂicts;
+451   the registered sine carrier does not represent general nonlinear models or large language models.
+452
+      The primary arm is the paired test; B2 is only a routing-reproducible stress test. The same-sample
+      paired test’s bias on the set-ordered ridge is non-negative (g = +0.102, CI[+0.028, +0.176] on
+453
+      the canonical allocation, positive on all four allocations, Section 4.3); we report this as a quanti-
+454
+      ﬁed calibration and disclose that the canonical allocation literally ﬁres the sealed binary contract,
+455   whose sign-blind consequence clause is a speciﬁcation erratum that does not falsify the negative
+456   sine departure. Linear is not identiﬁed; the earlier selection-confound claim rested on a corrected
+457   sign-consistency bug. The decoupled control’s 87.5% power is not evidence for canonical B2.
+458   The comparator is an inverse-Hessian GLM reduction, not end-to-end TRAK/datamodel; its τAB
+459   values lack frozen uncertainty and are descriptive. One pre-registered set-ordered negative control
+460   cannot exclude every artifact or calibrate natural data. A natural carrier, full same-bed baselines, and
+461   agreement uncertainty remain necessary and unclaimed.
+462
+463   Future work: bed transfer to a larger carrier. Transfer the same three-entry-rule, same-seed,
+464   same-sample design to a natural-data or LLM-ﬁnetuning carrier, re-running the negative control,
+465
+      four-state margin readout, and bed certiﬁcate. The carrier-agnostic contract and τa = 0.10 are pre-
+      registered, preventing outcome tailoring. This tests nonconvex, diverse-data transfer; it does not
+466
+      replace same-bed baseline positioning or fresh review.
+467
+468
+469
+      9    C ONCLUSION
+470
+      Whether per-sample marginal value is path-ordered or set-ordered is a carrier-dependent measure-
+471   ment, not a universal property, and this controlled, zero-GPU bed leaves the question honestly un-
+472   decided. A frozen, pre-registered same-sample paired test controls the value-conditioned routing
+473   confound and returns carrier-dependent readings: the sine carrier shows a negative paired depar-
+474   ture (g = −0.186, CI[−0.258, −0.115]) that reverses the cross-sectional sign (early entry lowers
+475   value; negative cross-sectional τ ranks early-scheduled targets higher), while the linear carrier is
+476   ambiguous (g = +0.010, CI[−0.112, +0.132]). A set-ordered ridge counter-arm quantiﬁes the es-
+477   timator’s calibration: its bias is non-negative (g = +0.102, CI[+0.028, +0.176] on the canonical
+478   allocation, positive on all four allocations), so it cannot explain—and is conservative with respect
+479
+      to—the negative sine departure. The canonical allocation literally ﬁres the sealed binary contract,
+      whose sign-blind consequence clause is a speciﬁcation erratum that does not falsify the negative sine
+480
+      reading; we disclose the letter-ﬁring and do not rewrite the frozen criterion. Its magnitude remains
+481
+      uncalibrated across carriers. Value-conditioned routing reproduces the full B2 magnitude on a set-
+482   ordered world, making B2 a stress test; set-ordering remains a coarse-graining, not a universally
+483   decidable property on this evidence.
+484
+485
+
+
+
+                                                         9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      R EFERENCES
+487
+488   Stella Biderman, Hailey Schoelkopf, Quentin Anthony, et al. Pythia: A suite for analyzing large
+489     language models across training and scaling. In International Conference on Machine Learning,
+490
+        2023. arXiv:2304.01373; PMLR v202:2397–2430 (venue veriﬁed 2026-08-25).
+491   Xavier Bouthillier, Pierre Delaunay, Mirko Bronzi, et al. Accounting for variance in machine learn-
+492     ing benchmarks. In Proceedings of MLSys, 2021. arXiv:2103.03098 (veriﬁed).
+493
+      Dallas Card, Peter Henderson, Urvashi Khandelwal, Robin Jia, Kyle Mahowald, and Dan Jurafsky.
+494
+        With little power comes great responsibility. In Proceedings of EMNLP, 2020. arXiv:2010.06595
+495
+        (veriﬁed).
+496
+497   Jesse Dodge, Suchin Gururangan, Dallas Card, Roy Schwartz, and Noah A. Smith. Show your work:
+498     Improved reporting of experimental results. In Proceedings of ACL, 2019. arXiv:1909.03004
+499     (veriﬁed; venue=ACL 2019).
+500   Andrew Ilyas, Sung Min Park, Logan Engstrom, Guillaume Leclerc, and Aleksander Madry. Data-
+501     models: Predicting predictions from training data. In International Conference on Machine Learn-
+502     ing, 2022. arXiv:2202.00622 (veriﬁed via arXiv API 2026-08-24).
+503
+      Sung Min Park, Kristian Georgiev, Andrew Ilyas, Guillaume Leclerc, and Aleksander Madry.
+504
+        TRAK: Attributing model behavior at scale. In International Conference on Machine Learning,
+505     2023. arXiv:2303.14186 (veriﬁed via arXiv API 2026-08-24).
+506
+507   Nils Reimers and Iryna Gurevych. Reporting score distributions makes a difference: Perfor-
+508     mance study of LSTM-networks for sequence tagging. In Proceedings of EMNLP, 2017.
+509
+        arXiv:1707.09861 (veriﬁed).
+510   Emiel van Miltenburg, Chris van der Lee, and Emiel Krahmer. Preregistering NLP research. In
+511    Proceedings of NAACL, 2021. arXiv:2103.06944 (veriﬁed).
+512
+513
+      A     R EPRODUCIBILITY AND DISCLOSURE
+514
+515   All runs are deterministic CPU experiments with the seed as statistical unit. The quantitative ﬁgure is
+516   generated from a SHA-asserted frozen R128 JSON. Generative tooling assisted language/typesetting
+517   and the semantically checked qualitative schematic, which contains no measurements; a determinis-
+518   tic same-label glyph repair changed no module, arrow, or meaning. No generated asset created or
+519   modiﬁed quantitative evidence.
+520   Ethics. The study uses synthetic data and no human participants, personal information, or user-
+521   generated content.
+522
+523   B     F ROZEN PROVENANCE
+524
+525   The sixteen sealed speciﬁcations, outputs, derivations, and counter-arm artifacts are mapped below
+526   by SHA-256 preﬁx; full hashes and claim links remain in the author-side evidence ledger.
+527   61894856 R127 order run: candidateB_order_r127.json
+      2e08b7f9 R126 reconcile: candidateB_reconcile_r126.json
+528
+      3a1c18da R128 four-state labels: candidateB_relabel_4state_R128.json
+529   3178724b R128 bed certiﬁcate: candidateB_bed_discriminability_R128.json
+      40b74cbc R133 construction CI: candidateB_construction_axis_CI_R133.json
+530
+      d74eb619 R127 supplement: CANDIDATE_B_PREREG_SUPPLEMENT_R127_ORDERCONSTRUCTION.md
+531   d0c898fb R126 preregistration: CANDIDATE_B_PREREG_v1_draft.md
+      547978c5 R139 same-sample paired and placebo: candidateB_path_placebo_R139.json
+532
+      b7028282 R140 rebuild (re-frozen R214): candidateB_rebuild_R140.json
+533   f6ba5097 R140 rebuild spec: CANDIDATE_B_PREREG_SUPPLEMENT_R140_REBUILD.md
+      502c13bf R141 preregistration (Rev. 2): CANDIDATE_B_PREREG_SUPPLEMENT_R141.md
+534
+      67c52c0b R141 stress test and routing placebo: candidateB_R141.json
+535   e3431b7f R148 set-ordered ridge counter-arm preregistration:
+               CANDIDATE_B_PREREG_SUPPLEMENT_R148_SETORDERED_RIDGE_ARMA.md
+536
+      6b437ba5 R148 counter-arm output, canonical allocation: candidateB_set_ordered_ridge_armA_R148.json
+537   397dd466 R148 counter-arm code: candidateB_set_ordered_ridge_armA.py
+      b81168c4 R148 counter-arm ﬁnding record, including the target-allocation sweep of Table 6:
+538
+               R148_SETORDERED_RIDGE_ARMA_FINDING.md
+539
+      Full hashes and claim-level mappings are stored with the manuscript’s auditable evidence ledger.
+
+
+                                                            10
+

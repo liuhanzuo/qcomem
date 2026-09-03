@@ -1,0 +1,81 @@
+{
+  "schema_version": "qcomem-related-palu-whiten-transfer-prereg-v1",
+  "status": "frozen_before_new_gpu_model_outputs",
+  "method": {
+    "name": "Palu activation-aware head-wise low-rank K/V projection",
+    "official_repository": "https://github.com/shadowpa0327/Palu",
+    "official_commit": "bb22666e2ef96707e8dd21d93fc00146c2e0d615",
+    "official_decomposition_sha256": "5c9896bd45910e0f81dbf3e519466eb60c49c2882a66592be2c0fbeb633c09ad",
+    "official_svd_module_sha256": "be0b986b727094e82d1c74694eedb656b755ed73b876bdea54af8f8d41fbd7d4",
+    "port_boundary": "The released wrapper targets Qwen2 rather than Qwen3.5. This bounded port preserves Palu's activation-covariance Cholesky transform, per-head SVD of W@S, inverse-S postmultiplication, and square-root singular-value factorization for Qwen3.5 layer-3 K/V projections. It does not port Palu's attention kernel, rank-search pipeline, quantized latent kernel, or all-layer model conversion."
+  },
+  "model": {
+    "id": "Qwen/Qwen3.5-35B-A3B",
+    "revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "model_weight_ledger_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+    "model_artifact_ledger_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+    "weight_index_sha256": "d8d0b7ca4e61ae107e3e87a3ff21136b3ac7c789e64bb24267227ca804e04205",
+    "config_sha256": "5e4d7f74fec2f360eb9cfbfcd6ec0c4c76e684d3a11caaed259d9fd9bfbc7944",
+    "layer_index": 3,
+    "hidden_size": 2048,
+    "key_value_heads": 2,
+    "head_dim": 256,
+    "projection_output_size": 512
+  },
+  "input": {
+    "dataset": "PG19 registered training smoke64",
+    "dataset_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "selection": "first 256 tokenizer tokens without special tokens",
+    "calibration_rows_zero_based": [0, 1, 2, 3, 4, 5, 6, 7],
+    "heldout_evaluation_row_zero_based": 8,
+    "token_ids_dtype": "torch.int64",
+    "tokens_per_row": 256,
+    "token_ids_sha256_by_row": {
+      "0": "6fec26cdbe75e4502741f075fca870be56f726035a5c258a1a55d1b8d6389983",
+      "1": "5ca5e6c9a1ff2e3d3cb924ed355b8c0ff391e116054a43379a13fd598cfe6bb3",
+      "2": "9b1f7c31451a438d265789b5ff1c3eb3212616f0bc10a08a12a4fa4e0ca59841",
+      "3": "a86eb80c24c9ebc9c1ea7e4f4862f5472453651ba54adf70a4e3bbfbe5f9866d",
+      "4": "5f2deee4926b5ee28593a47f9c5588ababacdfa4ec3173ad09caf56988c8bd15",
+      "5": "1f7413704fb46818da0739e959321906f4af74aa7596a03872fe754209cf5175",
+      "6": "45064ae6abe67ee65740e880f5089aa8c4a4e51fe376545aa892241039bd7501",
+      "7": "9e8e50aa2759193ab0ea4d584c9ce79d4dcbc47f6818f3f0e24db4032394fffa",
+      "8": "ddd4504ab38fd74486651cd025b9d3ac18488ebfe5c0719a058669aaad31daa0"
+    }
+  },
+  "calibration": {
+    "tokens": 2048,
+    "covariance": "sum over calibration hidden rows of H^T H in FP32, explicitly symmetrized",
+    "factorization": "Cholesky after deterministic jitter max(0,-lambda_min+1e-3)",
+    "evaluation_is_held_out_from_calibration": true
+  },
+  "ranks_per_kv_head": [64, 128, 192],
+  "comparisons": [
+    "original Qwen3.5 K/V projection versus plain per-head SVD on held-out row 8",
+    "original Qwen3.5 K/V projection versus Palu activation-whitened per-head SVD on held-out row 8"
+  ],
+  "validity_gates": {
+    "all_outputs_finite": true,
+    "plain_and_whitened_projection_error_must_decrease_strictly_with_rank": true,
+    "official_source_hashes_match": true,
+    "model_and_all_nine_input_receipts_match": true,
+    "gpu_name": "NVIDIA H20-3e",
+    "compute_capability": "9.0"
+  },
+  "hypothesis": {
+    "activation_whitening_improves_heldout_error_over_plain_svd_at_every_rank_for_both_key_and_value": true,
+    "failure_is_a_valid_negative_not_an_invalid_run": true
+  },
+  "authorized_claims": [
+    "held-out selected-layer Qwen3.5 K/V projection sensitivity to plain and activation-aware Palu-style ranks",
+    "logical per-token latent-cache byte ratios at the selected ranks",
+    "whether activation-aware Palu projection appears complementary to CoMem's recurrent/document-state management at this bounded operator level"
+  ],
+  "not_authorized": [
+    "end-to-end LongBench quality or language-model logits",
+    "tokens per second, TTFT, or attention-kernel latency",
+    "all-layer rank selection or all-layer calibration",
+    "an implemented Palu attention kernel for Qwen3.5",
+    "production serving compatibility",
+    "a completed end-to-end Palu plus CoMem system"
+  ]
+}

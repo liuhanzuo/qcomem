@@ -1,0 +1,160 @@
+{
+  "reviewer_id": "R19-TECH",
+  "round": 19,
+  "snapshot_sha256": "78fbe618c81777dc0834e33a9a14f6d5efec996fa5e7294cf1625680b6f1a3b7",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The paper's explicitly bounded case-study claims are technically credible. I reproduced the snapshot-local RR2 replay over 623 manifest-bound files, 96 factorial configurations, 96 ownership timelines, 288 phase artifacts, eight attention-oracle rows, and nine matched fault pairs; the fully preregistered four-row GDN replay, lifecycle replay, and Transformers valid-negative replay also passed. Definitions of aliasing, conservative byte intervals, phase lifetimes, canonical equality, and memory denominators are unusually precise. The main remaining soundness gap is at the contract level: the seven-target decision rule does not normatively integrate independent semantic-oracle failure, as demonstrated by the Transformers cohort receiving full relational targets while failing its clean dense oracle 8/8.",
+    "presentation": "The manuscript is readable, visually polished, and exceptionally explicit about scope, cohort separation, denominators, and negative evidence. Figures 1–4 and Tables 1–14 are legible, and the nine-page main text respects the venue limit. Presentation is held at 3 rather than 4 because the meaning of a target being 'full,' the overall audit disposition, and the separate supporting-oracle status must be reconstructed across Sections 3 and 5 and Appendix Tables 5 and 12.",
+    "contribution": "The integration of ownership lifetimes, dispatch receipts, relational checks, bounded numerical oracles, mutation gates, and denominator accounting is useful and carefully engineered. However, the mechanisms are largely established techniques assembled into a reference audit, and positive validation remains one model/runtime/adapter and one sequential schedule. The only distinct-runtime instantiation is a valid negative, so the current evidence does not yet establish a reusable runtime-independent audit standard."
+  },
+  "paper_summary": "ForkAudit proposes an executable evidence contract for auditing hybrid LLM request ownership, separating immutable document KV, request-private append storage, persistent GDN bases, request-local recurrent state, dispatch provenance, semantic relations, and memory denominators. Its Qwen3.5-35B-A3B case study crosses two KV and two GDN setup policies at N in {1,8,32}, replays storage and semantic receipts, applies selected dense-attention and recurrent-transition oracles, injects nine targeted live faults, measures allocator endpoints, and adds a same-adapter cancellation/reclamation lifecycle. A separate Transformers DynamicCache cohort is retained as negative portability evidence.",
+  "strongest_verified_contribution": "The strongest verified result is the manifest-first, independently replayable ownership factorial: E-RR2-OWNERSHIP-MUTANTS reconstructs all 96 configurations and three-phase storage timelines, establishes request–base and request–peer disjointness after each request's first transition, confirms all 288 adjacent-fan-out relational comparisons, and reproduces eight bounded attention-oracle decisions and nine matched gate-reachability fault pairs.",
+  "strengths": [
+    "The contract cleanly separates ownership correctness from allocator, process-memory, service-capacity, and speed claims.",
+    "The pointer-free storage witness uses conservative half-open byte intervals and complete cross-coordinate owner-pair comparisons rather than relying on raw pointer values or matching tensor coordinates.",
+    "The paper distinguishes canonical CPU-FP32 digest equality from unarchived device-side equality and repeatedly states the common-mode limitations of relational checks.",
+    "The fully preregistered GDN oracle discloses that its boundary was informed by a prior failed diagnostic and then validates a fresh immutable execution without a post-execution amendment.",
+    "The authors preserve the Transformers cohort as a scientifically valid negative instead of converting top-1 agreement into positive portability evidence.",
+    "All four snapshot-local replay commands I executed returned their advertised classifications, including adversarial manifest or tamper self-tests."
+  ],
+  "questions": [
+    "What is the normative overall decision when Targets 6 and 7 are full but an independent clean semantic oracle fails, as in Table 12? Is such an adapter ownership-valid, audit-passing, or audit-failing?",
+    "Can the authors localize the Transformers dense-oracle discrepancies of relative L2 0.377545–0.933235 to an adapter semantic error, an oracle capture/reference-boundary mismatch, or a legitimate runtime numerical difference?",
+    "Why is an independent semantic oracle a supporting check rather than a mandatory target of the runtime-independent decision rule, given that the paper itself demonstrates that cross-arm and cross-N relations can be full while absolute semantics fail?",
+    "Can a future artifact rerun bind GPU execution, aggregation, cleanup, terminal source closure, and offline replay into one terminal manifest while explicitly excluding non-authoritative pycache files?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R19-TECH-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Section 3, pp. 4–5, lines 198–248; Appendix Table 5, p. 14, lines 731–752; Section 5.3, p. 8, lines 409–418; Appendix Table 12, p. 18, lines 955–970",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-R6-RUNTIME-NEG-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS",
+        "E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE"
+      ],
+      "observed_evidence": "The runtime-independent rule makes seven record targets normative, while the numerical oracles are explicitly only supporting checks. In the Transformers cohort, frozen identity, prefix immutability, private ownership, cross-arm equivalence, and cross-N consistency are full and dispatch is partial, yet every clean rank fails the dense oracle by a large margin. The replay reproduces this exact combination: target vector full/full/full/N.A./partial/full/full, clean oracle pass 0/8, and 16 clean false positives.",
+      "why_it_matters": "The contract has no executable aggregate rule explaining how an absolute semantic failure overrides otherwise full relational targets. Consequently, two adapters can emit similar target vectors while one is semantically invalid, leaving the central audit disposition dependent on prose judgment rather than the claimed runtime-independent decision rule.",
+      "required_fix": "Define a normative aggregate disposition that separates ownership-record completeness from semantic validation and makes clean independent-oracle failure non-passing for any semantic-correctness claim. Alternatively, narrow the contract to an ownership-evidence schema and remove language suggesting a complete correctness decision.",
+      "verification_test": "Apply the revised rule blindly to both frozen cohorts. It should deterministically classify RR2 as ownership-witnessed with bounded semantic support and the Transformers cohort as semantic-failing, without relying on manually interpreted narrative fields. Add a regression test in which cross-arm and cross-N digests agree but the independent oracle fails.",
+      "evidence_needed": "The existing RR2 and Transformers artifacts are sufficient to verify a revised decision rule; stronger claims would require an additional clean independent-runtime execution.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R19-TECH-02",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "Introduction, p. 2, lines 79–107; Section 4.1, p. 5, lines 258–275; Section 5.3, p. 8, lines 409–418; Limitations, pp. 9 and 19, lines 455–464 and 1009–1030",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-RR4-LIFECYCLE-01",
+        "C-R6-RUNTIME-NEG-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS",
+        "E-RR4-LIFECYCLE-TRANSFER",
+        "E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE"
+      ],
+      "observed_evidence": "All positive ownership, oracle, mutation, allocator, and lifecycle evidence uses one Qwen3.5/vLLM Q16 adapter, the same Torch GDN seam, one H20 family, and sequential single-stream execution. The lifecycle cohort changes geometry and request lifecycle but not the adapter/runtime. The only distinct-runtime cohort fails all eight clean semantic-oracle rows.",
+      "why_it_matters": "The manuscript correctly disclaims portability, but the primary contribution is the audit contract rather than the single implementation. With no clean independent instantiation, it remains uncertain whether the record schema and oracle boundaries are practical and correctly specified beyond the adapter that co-developed them. This limits the ICLR-level contribution more than it undermines the narrow case-study facts.",
+      "required_fix": "Provide one independently implemented clean adapter or hybrid runtime that emits the normative records without importing the primary ownership helpers, passes applicable ownership targets and a predeclared independent semantic oracle, and rejects at least representative ownership and dispatch faults. If unavailable, consistently frame ForkAudit as a single-adapter reference audit rather than a runtime-independent contract.",
+      "verification_test": "Freeze the adapter, inputs, oracle boundary, tolerances, and fault map before execution; require passing matched-clean paths, exact raw-first replay, non-vacuous request/base and request/peer checks, and no clean false positives. Confirm that the result is reproduced by a manifest-first reviewer command.",
+      "evidence_needed": "New positive cross-runtime or cross-implementation evidence is needed to raise the contribution beyond the current single-adapter scope.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R19-TECH-03",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Reproducibility Statement, p. 9, lines 468–476; evidence/integrated_results.json field terminal_closure_boundary; evidence/round_04_manifest_scope.md",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-GDN-01",
+        "C-RR2-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "The manuscript states that the primary GPU aggregate is valid but that terminal recursive code closure failed on post-ledger pycache files. The reviewer derivative separately binds the raw aggregate and offline replay rather than demonstrating one run that completed GPU work, aggregation, cleanup, terminal code closure, and replay under a single terminal identifier.",
+      "why_it_matters": "This is explicitly disclosed and the offline package replay passes, so it is not evidence that the numerical results are false. It is nevertheless a cannot-verify provenance gap for a paper whose main contribution is executable auditability: the live execution and reviewer replay are separately verified rather than terminally closed as one execution object.",
+      "required_fix": "Rerun the primary case with a predeclared authoritative-file allowlist that excludes pycache, then create a terminal manifest after aggregation and cleanup that binds executed source, inputs, raw shards, aggregate, and replay entry point. If rerunning is infeasible, make the two-object provenance model a formal part of the contract rather than an exceptional note.",
+      "verification_test": "Starting only from the terminal manifest, verify all authoritative bytes, reconstruct the aggregate, and confirm that adding or changing a non-authoritative pycache file cannot fail or alter the scientific closure while changing any authoritative source or shard must fail.",
+      "evidence_needed": "A new terminally closed run or a formally specified two-object provenance rule with adversarial tests.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R19-TECH-04",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 4.5, p. 7, lines 324–332; Figure 3 and caption, p. 7, lines 354–374; Section 5.3, p. 8, lines 400–407; Appendix Tables 7–8, pp. 16–17",
+      "claim_ids": [
+        "C-RR2-MUT-01",
+        "C-RR4-DETECTOR-LOCAL-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS",
+        "E-RR4-DETECTOR-TWO-FAULT-DEBUG-D"
+      ],
+      "observed_evidence": "Each of nine injected faults is preassigned to one intended gate, each matched-clean cell passes, and each mutant reaches that gate. The M8/M9 debug shows that both mutant paths abort before token/logit and cross-arm/cross-N observations; M8 reaches only an injected sentinel, while M9 reaches an ordinary paired-view assertion. No detector matrix, incremental catch rate, or downstream consequence is measured.",
+      "why_it_matters": "The evidence validates gate reachability and schema sensitivity, not the audit's incremental ability to detect naturally occurring or common-mode faults. The prose usually states this correctly, but the compact 'live fault sensitivity' panel and contribution bullet can be read as stronger detector validation.",
+      "required_fix": "Rename the displayed result to 'intended-gate reachability' and keep detector-completeness claims explicitly out of scope. To claim broader fault-detection value, run a blinded fault-by-gate matrix with the named gate disabled and record downstream ownership, oracle, and semantic consequences.",
+      "verification_test": "Audit every main-text and figure statement to ensure it claims only 9/9 intended-gate reachability under matched controls unless a new detector matrix exists. For a strengthened experiment, require predeclared faults, all gate outcomes, missing-output accounting, and clean false-positive counts.",
+      "evidence_needed": "Current evidence is sufficient for claim narrowing; new blinded ablation evidence is required for an incremental detector claim.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern identified. The study uses an existing text corpus for systems-behavior testing and makes no human-subject, downstream safety, privacy, or deployment-quality claim.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. The subagent was read-only, received only the frozen Round-19 submission snapshot and specified reviewer protocol, and did not inspect prior reviews, author plans, targets, or response letters.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A normative aggregate decision rule that makes semantic-oracle failure override otherwise full relational targets and is replay-tested on both current positive and negative cohorts.",
+    "One clean, independently implemented runtime or adapter that passes predeclared semantic and ownership checks without importing the primary ownership helpers.",
+    "A terminally closed live execution binding source, inputs, raw shards, aggregate, cleanup, and replay under one authoritative manifest.",
+    "A blinded fault-by-gate ablation showing which audit components detect faults beyond their intended assertion and reporting clean false positives."
+  ],
+  "evidence_that_would_lower_score": [
+    "Evidence that the primary RR2 dense-oracle capture or reference shares the same erroneous boundary assumption responsible for the Transformers clean failures.",
+    "A counterexample in which two requests share mutable storage despite passing the normalized all-pairs witness and lifecycle binding checks.",
+    "Failure of the manifest-first RR2, GDN, lifecycle, or Transformers reviewer replay on the frozen bytes.",
+    "Evidence that any claimed GPU aggregate was produced by source or configuration not bound by the preregistered authoritative ledger."
+  ],
+  "review_limitations": [
+    "The fixed-snapshot constraint precluded browsing external literature or public discussions, so novelty and citation-support judgments are based only on the manuscript's included positioning.",
+    "The reviewer could replay frozen CPU-side artifacts but could not independently regenerate the live H20 executions, model weights, or PG-19 inputs.",
+    "The paper's concurrent scheduler behavior cannot be assessed from the sequential single-stream execution evidence."
+  ]
+}

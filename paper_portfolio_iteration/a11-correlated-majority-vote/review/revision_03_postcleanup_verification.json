@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "audit_kind": "independent_read_only_postcleanup_verification",
+  "audit_date": "2026-08-22",
+  "write_scope": "Only this JSON was written; manuscript, evidence, state, build, and pre-existing review files were not modified.",
+  "verdict": {
+    "postcleanup_source_hygiene": "resolved",
+    "hash_build_and_visual_gate": "resolved",
+    "external_evidence_status": "open_nonblocking_for_the_current_narrow_replay_claim",
+    "overall": "resolved_for_the_requested_postcleanup_scope"
+  },
+  "snapshot": {
+    "paper_tex_sha256": "c18968a351c51dcd55daaba721e3ce8d98fd755e4fb315cf4104e1aea6210bb4",
+    "paper_pdf_sha256": "d957fde49632e93797f3405bad1470bacc09bd54608ee0eceafcd3232cd5d931",
+    "claim_audit_manifest_sha256": "02672621c59b9e05488baec08e28fec6d3117a44d7a7027f2291c48509195545",
+    "canonical_snapshot_root_sha256": "dee51395095a08900f129177e26a69436858711f72a823f2fe5283670a749d9c",
+    "pdf_pages": 18,
+    "pdf_page_size": "letter, 612 x 792 pt"
+  },
+  "checks": [
+    {
+      "id": "PC01-live-source-history-deletion",
+      "status": "resolved",
+      "question": "Has the historical \\iffalse...\\fi block been completely removed from live source?",
+      "evidence": [
+        "A direct conditional scan over manuscript/paper.tex found no \\iffalse, \\iftrue, or \\fi token.",
+        "The former location now transitions directly from the valid frozen-rule discussion (source lines 930-939) to the active oracle-only Appendix E(g) disclosure (lines 940-956).",
+        "A recursive live-TeX scan finds none of the old constructive-repair heading, former prop:prefix label, base_S(c) formula, affine-TV formula, or conditional delimiters. The sole hits for 'universal budgets', '70-of-72', etc. are in the active negative withdrawal sentence at paper.tex:949-952.",
+        "The active paragraph says the stored calculation is oracle K-wise sensitivity only, K is unobserved at a prefix, it is not a policy or a Theorem-1 instance, and it supports none of the withdrawn policy claims."
+      ],
+      "conclusion": "The prior source-reader contamination risk is closed. Historical traceability remains available in the immutable Round-2 snapshot and adjudication, not in reviewer-facing live manuscript source."
+    },
+    {
+      "id": "PC02-b1-two-step-proof",
+      "status": "resolved",
+      "question": "Is the expanded two-step B_1 endpoint proof correct?",
+      "evidence": [
+        "Proposition 1, manuscript/paper.tex:342-363, defines B_R over probability vectors with L1 radius 2R; lines 355-357 explicitly state: any two simplex points have L1 distance at most 2, B_1 is the full simplex, and the linear objective is maximized at a vertex, hence V(1)=max_K g(K).",
+        "The first implication is correct because for simplex points q and H-hat, ||q-H-hat||_1 <= ||q||_1+||H-hat||_1 = 2. Thus every simplex q lies in B_1, while the definition already constrains B_1 to the simplex.",
+        "The second implication is correct because a linear functional over a finite simplex attains its maximum at a vertex e_K, with value g(K).",
+        "The same proposition correctly retains the general curve as a capacity-constrained, nondecreasing, piecewise-linear LP and explicitly rejects global affinity."
+      ],
+      "visual_confirmation": "Rendered PDF page 5 shows the two-step proof fully legible, without clipping, overlap, or damaged equations."
+    },
+    {
+      "id": "PC03-claim-and-monotonicity-audits",
+      "status": "resolved",
+      "question": "Do the current hash-bound claim audit and monotonicity audit pass?",
+      "evidence": [
+        "Independently executed 'python3 manuscript/claim_audit.py': SUMMARY: 36 PASS / 0 FAIL. This includes the active oracle-only scope, removal of the former affine/Proposition-2 content, B_1 capacity geometry, theorem/protocol scope, and headline/Table-1 checks.",
+        "The same audit verified all 19 manifest member hashes and the canonical root.",
+        "Independently executed 'python3 manuscript/audit_monotonicity_boundary.py': PASS for 21,824 exact-rational reversal cases and 11,904 zero-F0 support cases, including (N,K,k)=(32,17,29)."
+      ]
+    },
+    {
+      "id": "PC04-final-double-build-and-binding",
+      "status": "resolved",
+      "question": "Do final_build1, final_build2, manuscript PDF, manifest canonical root, and build record bind to the same snapshot?",
+      "evidence": [
+        "SHA-256(manuscript/paper.pdf) = SHA-256(build/revision_03_final_build1/paper.pdf) = SHA-256(build/revision_03_final_build2/paper.pdf) = d957fde49632e93797f3405bad1470bacc09bd54608ee0eceafcd3232cd5d931.",
+        "Byte comparisons confirm manuscript/paper.pdf equals each final-build PDF.",
+        "The manifest's 19 actual member hashes have zero mismatches. Recomputing its prescribed sorted-path canonical payload produces dee51395095a08900f129177e26a69436858711f72a823f2fe5283670a749d9c, exactly its declared root.",
+        "build/build_record.json revision_03 binds that same canonical root, the same paper.tex hash c18968a351c51dcd55daaba721e3ce8d98fd755e4fb315cf4104e1aea6210bb4, and the same triple PDF SHA-256.",
+        "The final-build log scan found no TeX error, undefined-reference/citation, or overfull-box condition."
+      ],
+      "qualification": "No new compiler invocation was made: the task's only-write-JSON/read-only restriction precludes creating build artifacts. This is an independent verification of the final controlled-build artifacts, hashes, logs, and bindings."
+    },
+    {
+      "id": "PC05-final-visual-qa",
+      "status": "resolved",
+      "question": "Are pages 5, 16, and 17 visually sound after cleanup?",
+      "evidence": [
+        "Direct inspection of build/revision_03_final_render/page-05.png: Proposition 1, its B_1 derivation, surrounding formulas, and page break are legible with no clipping, overlap, or malformed mathematics.",
+        "Direct inspection of page-16.png: the Appendix E(g) heading and first oracle-sensitivity paragraph begin cleanly at the bottom of the page; no deleted-history residue is visible.",
+        "Direct inspection of page-17.png: the K-unobservability, non-policy, and withdrawal boundary render fully and legibly; the following evidence-matrix table is readable and stays within page bounds."
+      ]
+    }
+  ],
+  "still_open_external_evidence_gaps": [
+    {
+      "gap": "Executable Appendix E(g) repair",
+      "status": "open",
+      "required_for_expansion": "One serialized K-independent prefix-observable S(x,k), mechanical prefix-measurability/consistency tests, and regenerated profiles plus capacity-aware TV LP."
+    },
+    {
+      "gap": "Ordered deployment endpoints",
+      "status": "open",
+      "required_for_expansion": "Naturally ordered rollout traces, gold stopped-answer correctness, and generated-token/latency/cancellation telemetry."
+    },
+    {
+      "gap": "Independent end-to-end reproducibility",
+      "status": "open",
+      "required_for_expansion": "Self-contained raw task/split/deduplication/selection provenance, primary pipeline, and an environment lock."
+    }
+  ],
+  "scope_interpretation": "These external gaps do not invalidate the now-clean source, corrected TV endpoint proof, or the narrow count-exchangeable binary pass-count replay claims. They remain blockers only for any expansion to executable E(g) policy repair, ordered-online correctness, operational-cost, or clean-room end-to-end reproducibility claims."
+}

@@ -1,0 +1,189 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "b1eed7ac44c179e68b6d31e3b7235d19ddb1094fc99de461246f36a1de2d5edb",
+  "role": "technical_soundness",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "作者对撤回边界、单次 guarded rerun 与未测项目大体诚实，32k 全上下文 arm 在修复 grad-mode leak 后可运行这一窄事实有日志式证据。但核心 register 的完备性仅相对于作者自建 ledger，scanner 仅覆盖列举字符串；跨案例证据没有独立真值，且正文的 canonical-status 表述与表中状态直接矛盾。因而它只能验证作者定义的内部一致性，不能支撑更广的审计有效性。",
+    "presentation": "逐行 scope、MEASURED/NOT_MEASURED 区分和失败披露较清楚，读者能追踪哪些数字不可复用。然而 14 页中大量内部 C/D/S/R 编号、历史版本与 scanner 细节使论证高度档案化；Table 2、Table 3 caption 的状态词错误尤其损害了其所主张的精确机器检查。",
+    "contribution": "论文没有提供 KV selector、adapter-matched arm、16k guarded rerun、吞吐/延迟或 KV-selective serving 结果；唯一新实测是修复常见 inference guard 后的单机 32k 可行性。NOT_MEASURED register 是既有 assurance/checklist 思路的窄实现，其外部有效性尚未建立，难达到 ICLR 研究贡献门槛。"
+  },
+  "paper_summary": "本文是一份撤回说明与报告工具论文，而非原 KV-selective serving 研究。它将旧档案中的 C/D/S 类主张整理为作者枚举的 NOT_MEASURED register，以模式匹配 scanner 检查部分措辞和状态，并给冻结数值附逐行 scope。一次修复约两行 inference-mode guard 的并发复跑表明：Qwen3-8B、单 H20-3e、L=32k 下，全上下文无 adapter/selector arm 在 G=1 与 G=4 可运行，峰值分别为 29.31 GB 与 70.73 GB；KV selector、matched adapter、16k guarded rerun 仍未测。",
+  "strongest_verified_contribution": "第 7–8 页 §6 与表 4 最可靠地支持一个很窄的诊断结论：原并发 worker 存在线程局部 grad-mode 泄漏；加入 inference-mode guard 后，L=32k 的全上下文、无 adapter、无 selector 路径在 G=1 和 G=4 均得到有限 decode 且无 OOM。作者同时正确限定有效独立重复只有每个并发级别 3 轮，并未把 G=4/G=1 比值解释为吞吐或可扩展性。",
+  "strengths": [
+    "明确撤回旧成本—质量解释，没有用一次修复复跑重新包装成正面的 KV serving 结论。",
+    "表 2–4 将 arm、并发、estimand、状态和可引用范围逐行列出，并区分 32k 已测、16k inspection-grade 与 selector/adapter 未测。",
+    "第 8 页坦率说明 G=4 的 12 个请求只有 3 个有效独立轮次，且未保留逐请求时延，避免制造不可恢复的离散度。",
+    "公开 scanner 的模式范围、verbatim exemption、作者构造 ledger 和非穷尽 taxonomy 等限制，降低了误读风险。"
+  ],
+  "questions": [
+    "若 register 的 claim universe 和 semantic clues 都由作者定义，什么独立程序能发现作者从 ledger 中完全遗漏的一类重要主张，而不是只证明内部 exact-set 一致？",
+    "第 5 页表 2 caption 为何声称 CLOSED_WRITING 与 NOT_ADJUDICATED 均无 row，尽管 D4、D5 明列 CLOSED_WRITING？第 6 页表 3 caption 又为何未列实际出现的 EXTRAPOLATED？这些文本是否来自未经扫描的生成路径？",
+    "第 9 页所称 cross-case generalization 除两个作者选择的文稿上的 hit count 外，有何带独立标签的 precision、recall、漏报率或 reviewer-utility 证据？",
+    "为什么一个不同组的单篇 SparseForge 稿件和本稿足以称 cross-case transfer，而不是两个便利样本上的词汇命中演示？",
+    "若目标仍是 KV-selective serving 方向，何时会运行修复后的 selector、matched adapter、16k guarded arm，并给出端到端质量、峰值、吞吐与延迟？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C3-R2-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 3 页 §3.1；第 4 页 §4；第 12 页 Appendix C",
+      "claim_ids": [
+        "complete NOT_MEASURED register",
+        "machine-checked scope predicate",
+        "exact-set completeness"
+      ],
+      "evidence_ids": [
+        "Table 2",
+        "register_ledger_check",
+        "pattern-scoped G1–G4 scanners"
+      ],
+      "observed_evidence": "register 只要求每个作者枚举的 LEDGER ID 有一行；语义检查只看每个 ID 后有限窗口中的 canonical clues。scope gate 也只匹配明确列出的字面模式，并豁免 verbatim code。作者在第 4 页和第 12 页承认完全遗漏的 claim、未列同义表达及 27 个 honesty structures 中 9 个都可不被发现。",
+      "why_it_matters": "这套机制可以证明给定作者输入下的结构一致性，却不能证明论文中的重要主张均已登记或被正确限定。标题与贡献表述若让读者把它理解为语义完备审计，会把 author-supplied specification 当成独立 ground truth。",
+      "required_fix": "将贡献始终表述为 author-declared ledger 的一致性 lint；若要主张审计完备性，需由独立标注者在不知道 ledger 的情况下抽取完整主张集，并以预定义匹配规则测漏报、误报和语义错配。",
+      "verification_test": "在冻结 ledger 前由多名独立标注者建立 adjudicated claim truth set；对 scanner/register 报告 claim-level precision、recall、漏项类型与一致性，并用留出同义改写做盲测。",
+      "evidence_needed": "独立真值集、标注协议、混淆矩阵及留出改写结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "第 5 页表 2 caption 与 D4/D5 行；第 6 页表 3 caption 与 C13 @1M 行",
+      "claim_ids": [
+        "canonical status vocabulary",
+        "single-source generated register",
+        "machine-checked status discipline"
+      ],
+      "evidence_ids": [
+        "Table 2",
+        "Table 3"
+      ],
+      "observed_evidence": "表 2 caption 写道 CLOSED_WRITING 与 NOT_ADJUDICATED ‘no row here carries them’，但紧接着的 D4、D5 两行状态均为 CLOSED_WRITING。表 3 caption 把 canonical vocabulary 列为 MEASURED、DERIVED、ESTIMATE、NOT_ADJUDICATED，却在 C13 @1M 行使用未列出的 EXTRAPOLATED。",
+      "why_it_matters": "论文的主要卖点正是状态词和表格由单源生成并受到机器检查；可直接目视确认的内部矛盾说明检查没有覆盖最终 caption-to-row consistency，削弱最核心的可信度主张。",
+      "required_fix": "修正两个 caption，并让构建 gate 从最终生成表中抽取实际状态集合，验证 caption 声明、共享 vocabulary 与每行 token 完全一致；加入当前矛盾作为必须失败的 mutation fixture。",
+      "verification_test": "自动解析最终 PDF/LaTeX 表格；若 caption 声称某状态无行而行中出现，或 caption 枚举遗漏已用状态，构建必须非零退出。",
+      "evidence_needed": "修订后的表格、final-render scanner transcript 与对应 red-team fixture。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 9 页 §8；第 11–12 页表 5与 Appendix C",
+      "claim_ids": [
+        "method validity",
+        "cross-case transfer",
+        "the scan generalizes"
+      ],
+      "evidence_ids": [
+        "audit_sparseforge.json",
+        "audit_ownnote.json",
+        "Table 5"
+      ],
+      "observed_evidence": "所谓 transfer 只是在本稿与一篇作者选择的‘different group’ SparseForge 稿件上分别得到 68 与 91 个模式命中。没有独立的诚实/越界真值、precision/recall、未使用文稿或 reviewer outcome；命中数量不同只说明文本中目标词形频率不同。",
+      "why_it_matters": "没有标签的两案例 hit count 不能识别 scanner 是否捕获真正风险、是否大量漏报或误报，更不能支持‘generalizes’。这使方法有效性停留在可运行演示，而非可评价的跨案例工具。",
+      "required_fix": "把 generalization 改为 feasibility demonstration；或在预先冻结的多领域、作者外部语料上，由独立标注者给 load-bearing claims 与 scope violations 建立真值并评价检测性能。",
+      "verification_test": "留一项目外测，预注册 taxonomy/pattern，不按测试稿扩充；报告宏/微 precision、recall、每类错例及 reviewer 时间节约。",
+      "evidence_needed": "多案例独立标注 benchmark 与盲测结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "novelty",
+        "experimental_rigor"
+      ],
+      "location": "第 1 页摘要与 §1；第 7–9 页 §6–9；第 14 页表 8",
+      "claim_ids": [
+        "withdrawn KV-selective serving study",
+        "reporting instrument contribution",
+        "guarded rerun"
+      ],
+      "evidence_ids": [
+        "Table 4",
+        "D1",
+        "D2–D6/S1 register rows"
+      ],
+      "observed_evidence": "唯一新运行是无 adapter、无 selector 的 full-context arm 在 L=32k、单 GPU、3 轮上的 guard 修复检查。KV selector 因参数名错误未复跑，adapter 不可恢复，16k 未复跑；无端到端吞吐/延迟结论，也没有 single-arm isolation。",
+      "why_it_matters": "修复 inference/no-grad 使用错误并确认一个 operating point 可行是有用的档案纠错，但不构成 KV-cache/serving 方法评价。论文自己承认 register 是既有 GSN/模板思想的窄实例，因此当前实证与方法新颖性都不足以支撑完整 ICLR 论文。",
+      "required_fix": "若作为 serving 论文，完成 selector、matched adapter、16k 与质量/成本端到端对照；若作为元科学论文，则去除 KV 系统贡献暗示并提供独立、多案例的工具效度研究和与现有 assurance/documentation 方法的实证比较。",
+      "verification_test": "serving 路线需在冻结协议下复跑所有关键 arm 并画质量—内存—延迟 Pareto；方法路线需在未参与构建的语料与评审者上比较漏报率和工作量。",
+      "evidence_needed": "完整 serving 实验或外部方法有效性实验。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R2-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "第 2 页表 1；第 6–7 页表 3、式 (1)；第 13–14 页表 6与表 8",
+      "claim_ids": [
+        "Q* crossover interpretation",
+        "per-row G scope"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Table 3",
+        "Table 6"
+      ],
+      "observed_evidence": "符号 G 在不同位置既表示并发，也表示 archived decode model 的生成长度；Q* @128k 又给出 G=1 的 25.8 与 G=512 的 164.2，而后者表中 scope 写作 replicate crossover。作者依靠逐行标签避免直接合并，但同一符号承载不同物理量。",
+      "why_it_matters": "在一篇核心目标是防止跨 scope 误读的文章中，符号重载本身增加误读和错误复用风险，尤其当两个 Q* 数值并列出现时。",
+      "required_fix": "为 concurrency 与 generated length 使用不同符号，并在所有 Q* 行显式打印生成长度、并发、聚合单位和 numerator/denominator 来源。",
+      "verification_test": "全文符号 lint 应拒绝同一符号对应两个定义；逐行 schema 要求 concurrency 与 generation_length 为独立字段。",
+      "evidence_needed": "无歧义的重排表格与符号检查。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文不涉及人类受试者、个人或敏感数据，也没有模型发布；其主要风险是冻结数字被脱离 scope 复用，作者已显式讨论。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审结果、作者计划、编辑上下文或历史评分。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "修复最终表格中 canonical-status 的直接矛盾，并让机器检查覆盖最终渲染文本。",
+    "在作者外、多领域冻结语料和独立真值上验证 register/scanner 的漏报、误报与 reviewer utility。",
+    "若保留 KV serving 定位，完成 selector、adapter、16k 与端到端质量—系统测量。"
+  ],
+  "evidence_that_would_lower_score": [
+    "独立 claim recovery 发现作者 ledger 系统性遗漏 load-bearing claims。",
+    "留出同义改写显示模式 gate 很容易在不改变语义的情况下被绕过。",
+    "修复 selector/adapter 后仍无法产生任何可解释的 serving operating point。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、硬件规格、框架 API 或邻近工作。",
+    "按要求完整读取了 KV-cache 专项校准文件，并仅将其用于 C3 的贡献类型、baseline、内存/速度/精确性与复现性判断。",
+    "仅审阅冻结 PDF；未读取或执行 bundle、scanner、manifest、diff、日志或数据，故其 exit code、hash 与 artifact 可恢复性均仅按文稿评估。",
+    "PDF 共 14 页，已全文阅读并逐页视觉核查；未见解析缺页，表 2–4 信息密度高但可辨认。"
+  ]
+}

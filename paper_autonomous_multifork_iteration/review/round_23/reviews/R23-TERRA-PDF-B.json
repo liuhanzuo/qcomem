@@ -1,0 +1,158 @@
+{
+  "reviewer_id": "R23-TERRA-PDF-B",
+  "round": 23,
+  "snapshot_sha256": "bb4f8371b83d07fa1ffc0cfb6ea4c5648d82c86c9e152099053cac70aba54a62",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The paper makes unusually careful bounded claims and supplies a coherent, replayable receipt contract. The 96-cell factorial, all-arm/cross-N digest comparisons, storage-range predicates, selected independent FP32 checks, and predeclared positive controls support the claimed conditional evidence (pp. 7-8, Fig. 3; p. 14, Table 5). However, the core lifecycle evidence is still generated within a trusted-capture boundary; most tensors are hashes, the numerical checks cover selected captured-input operators only, and dispatch is explicitly partial. These are substantive but transparently disclosed limitations rather than contradictions of the narrow claims (pp. 8-9, Secs. 6-7; p. 21, Sec. I).",
+    "presentation": "The manuscript is professionally structured, unusually explicit about what each cohort can and cannot establish, and the main figures/tables are readable (pp. 2, 5, 7-8; Tables 2-5). The density of audit terminology, multiple unpooled cohorts, and many similarly named evidence levels make the central scientific takeaway harder to assess than necessary; readers must work through substantial appendix machinery to distinguish validation of the contract from validation of an LLM system.",
+    "contribution": "A receipt-bound, phase-aware ownership audit for hybrid KV plus recurrent state is useful and relevant. Still, the constituent elements—copy-on-write checks, storage-range/alias checks, metamorphic equality, selected reference oracles, and mutation testing—are acknowledged as existing practices, and the evidence is a single frozen sequential stack rather than a demonstrated general audit capability (p. 3, Sec. 2; p. 17, Tables 9-10). The resulting contribution is a careful integration and case study, but its broader significance remains uncertain."
+  },
+  "paper_summary": "ForkAudit specifies an audit contract for forking continuations in a hybrid Qwen3.5 stack, separating immutable shared document KV from request-private append state and recurrent GDN state. It evaluates four KV-by-GDN ownership configurations at fan-outs 1, 8, and 32, with receipt replay for identity, storage, semantic digests, allocator state, selected attention/GDN reference checks, and targeted faults. The main conclusion is conditional receipt-level evidence of isolation and a shared-document-KV allocation reduction for one sequential H20 configuration, not a general serving, capacity, or end-to-end correctness result.",
+  "strongest_verified_contribution": "Within the stated trusted-capture boundary, the paper gives a concrete and unusually well-scoped lifecycle witness: all four ownership arms preserve registered semantic digests while the borrowed GDN state transitions from an immutable base alias to request-private disjoint state; the factorial additionally isolates a 4.90-to-2.23 GiB final allocated-delta contrast at N=32 (pp. 7-8, Secs. 5.3 and 5.6; p. 20, Table 15).",
+  "strengths": [
+    "Claims are disciplined: the manuscript repeatedly separates relational equality, selected independent numerical support, positive-control sensitivity, and production-serving conclusions (pp. 7-9, Fig. 3 and Sec. 6).",
+    "The 2x2 ownership factorial is well motivated for hybrid models, and the setup/first-transition/final lifecycle makes the recurrent-state question concrete (pp. 4-5, Secs. 3-4 and Fig. 2).",
+    "The audit reports denominator distinctions rather than presenting a pool ratio as service capacity; Table 15 clearly shows that KV sharing changes final allocation whereas GDN borrowing mainly changes generation-time allocation (pp. 8 and 20, Table 15).",
+    "The paper has useful fault sensitivity evidence: nine separately rebuilt live mutants hit their predeclared gates, with clear intended boundaries (pp. 7-8, Fig. 3; p. 16, Tables 7-8).",
+    "Limitations and cohort authorization are unusually explicit, including the absence of concurrent-kernel, scheduler-throughput, transfer, and independent-recapture evidence (p. 13, Table 4; p. 21, Sec. I)."
+  ],
+  "questions": [
+    "Can the authors demonstrate that the contract provides materially stronger bug-finding or localization value than a conventional invariant/unit-test suite on realistic held-out regressions, rather than only on the nine gates designed for the injected faults?",
+    "What is the smallest independently implemented observer that could validate the crucial physical ownership/alias observations without trusting the producer's receipt capture? Could it be applied at least to a representative end-to-end request trajectory?",
+    "How robust is the contract across a second hybrid architecture/runtime and an actual concurrent or continuous-batching schedule, where storage lifetime and dispatch assumptions differ?",
+    "The GDN oracle begins after native q/k normalization. What evidence supports the correctness of the omitted upstream boundary, or can the paper make its practical implications more explicit?"
+  ],
+  "issues": [
+    {
+      "issue_id": "trusted_capture_and_selected_oracles",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF p. 4, Sec. 3 (decision rule and selected-oracle scope); p. 8, Sec. 6; p. 21, Sec. I",
+      "claim_ids": [
+        "conditional_receipt_level_ownership_evidence",
+        "full_lifecycle_storage_witness"
+      ],
+      "evidence_ids": [
+        "Section 3",
+        "Figure 3",
+        "Table 5",
+        "Section I"
+      ],
+      "observed_evidence": "The paper explicitly states that replay cannot independently recapture the producer, most tensors are represented as digests, and attention/GDN references operate only on selected captured-input boundaries. Table 5 nevertheless labels several targets 'full' within this conditional record-completeness boundary.",
+      "why_it_matters": "The central result establishes consistency of the recorded receipts rather than independently establishing that the executing runtime had the represented ownership behavior. A shared capture or instrumentation error can make all four arms and their digest checks agree, and selected operator checks cannot close that gap.",
+      "required_fix": "Add an independently implemented observation path for representative full trajectories and substantially broaden end-to-end/reference validation, while retaining the present conditional language and separating record completeness from independently corroborated runtime behavior.",
+      "verification_test": "On a held-out set of fork trajectories, compare receipt-derived ownership and outputs with an external observer/reference that does not consume the candidate's capture records; report agreement, mismatches, and failure behavior.",
+      "evidence_needed": "Independent observer logs or reproducible raw traces covering physical alias/lifetime observations and end-to-end semantic outputs beyond the current selected rows.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "single_sequential_case_limits_general_value",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 4-5, Sec. 4.1; p. 8, Sec. 6; p. 13, Table 4; p. 21, Sec. I",
+      "claim_ids": [
+        "hybrid_fork_audit_general_contract",
+        "practical_ownership_audit_value"
+      ],
+      "evidence_ids": [
+        "Table 3",
+        "Table 4",
+        "Table 17",
+        "Section I"
+      ],
+      "observed_evidence": "The primary evidence covers one Qwen3.5 configuration, one H20 family, BF16 KV, one partial-tail geometry, N<=32, and sequential round-major execution on one CUDA stream. The scheduler extension remains deterministic request-step interleaving rather than concurrent kernels or continuous batching.",
+      "why_it_matters": "The contribution is framed as an audit contract for hybrid LLM stacks, but the conditions under which it continues to expose ownership failures are not tested when real serving schedulers, kernels, cache formats, or heterogeneous request lengths change the lifecycle.",
+      "required_fix": "Evaluate at least one materially distinct hybrid runtime/model and a realistic concurrent or continuous-batching serving configuration, including multiple tail/prefix geometries and lifecycle operations.",
+      "verification_test": "Run the same frozen contract and an external baseline observer across the new stacks; report target coverage, replay completion, detected held-out faults, semantic equivalence, and the explicitly unsupported cases.",
+      "evidence_needed": "Cross-runtime/model experiments with concurrent execution and a documented adaptation of the role map and receipts.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "incremental_benefit_over_existing_testing_not_measured",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "PDF p. 3, Sec. 2; p. 16, Tables 7-8; p. 17, Tables 9-10",
+      "claim_ids": [
+        "receipt_contract_adds_joint_replay_obligation",
+        "fault_diagnostic_value"
+      ],
+      "evidence_ids": [
+        "Tables 7-10",
+        "Section 2"
+      ],
+      "observed_evidence": "The paper correctly says its checks are not individually new. Its mutation evidence shows intended-gate reachability for nine designed mutations, but it does not compare against ordinary invariant, integration, or differential tests on held-out defects, nor measure localization efficiency or false negatives.",
+      "why_it_matters": "Without such a comparison, it is difficult to assess whether the proposed integration is a practically important new audit methodology rather than a thorough engineering checklist for this implementation.",
+      "required_fix": "Add a blinded or held-out regression study comparing ForkAudit with a strong conventional testing baseline, with predeclared bug classes and diagnostic outcomes.",
+      "verification_test": "Measure detection and localization for held-out faults, including faults outside the current gate map, under matched compute and capture budgets.",
+      "evidence_needed": "A preregistered comparison protocol, held-out faults or real regressions, and per-method detection/localization results.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "dense_information_design",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "PDF pp. 7-8, Sec. 5; pp. 13-22, appendix Tables 4-19",
+      "claim_ids": [
+        "interpretability_of_evidence_levels"
+      ],
+      "evidence_ids": [
+        "Figure 3",
+        "Table 4",
+        "Table 5"
+      ],
+      "observed_evidence": "The presentation contains many carefully separated cohorts, caveats, and record types, but a reader must reconcile several tables and appendices to identify the one decision-driving result and what remains unsupported.",
+      "why_it_matters": "This raises evaluation cost and risks readers conflating the primary factorial with unpooled deployment, framework, policy, and archival context.",
+      "required_fix": "Add a compact main-paper evidence hierarchy that maps each headline claim to its exact cohort, assurance level, and excluded inference; move non-decision-driving context to the appendix.",
+      "verification_test": "A reader should be able to recover the primary claim, assurance boundary, and non-claims from one main-text figure/table without consulting appendices.",
+      "evidence_needed": "A revised evidence-map figure or summary table.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No immediate ethics violation is apparent. The paper includes an ethics statement and appropriately notes that memory efficiency can facilitate larger-scale deployment; the study uses systems behavior and PG-19 text rather than human-subject data (PDF p. 12, Appendix A).",
+  "llm_usage_disclosure": "This is an internal automated review produced with LLM assistance. It is based only on the specified frozen PDF snapshot and should be treated as an independent reviewer assessment, not an external reproduction.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "Independent full-trajectory corroboration of physical ownership/lifetime and end-to-end semantics, beyond receipt replay and selected captured-input rows.",
+    "A cross-runtime/model evaluation that includes true concurrent or continuous-batching execution and demonstrates that the contract adapts cleanly.",
+    "A predeclared held-out-fault or real-regression comparison showing a tangible detection/localization advantage over conventional test suites."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any failure of a raw receipt replay, terminal identity binding, or stated cross-arm/cross-N equality on the primary factorial.",
+    "Evidence that the selected attention/GDN reference comparisons are not independent of candidate behavior or that the preregistration chronology was violated.",
+    "A demonstrated receipt/capture inconsistency that produces an undetected request-base or request-peer alias under the claimed conditions."
+  ],
+  "review_limitations": [
+    "I reviewed only the supplied PDF snapshot, manifest, rubric, and schema; I did not execute artifacts, inspect source, or consult external literature.",
+    "Accordingly, receipt replayability, artifact availability, citation accuracy, and experimental results are assessed from the manuscript's reported evidence rather than independently reproduced."
+  ]
+}
+

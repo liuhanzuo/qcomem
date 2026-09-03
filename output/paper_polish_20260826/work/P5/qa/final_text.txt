@@ -1,0 +1,771 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      L AST-M ARGIN G ATING U NDER A T RUE T EMPORAL
+002   E NDPOINT DATA -Q UALITY S HOCK
+003
+004
+005    Anonymous authors
+006    Paper under double-blind review
+007
+008
+009
+                                                  A BSTRACT
+010
+011
+               Checkpoint policies are often evaluated under a fixed training distribution. We
+012            instead impose a controlled temporal endpoint shock in synthetic sequence classi-
+013            fication: labels remain clean until a predetermined subset is flipped during the final
+014            quarter of training. A last-margin alarm compares the final calibration loss with
+015            its running minimum, applies a threshold frozen on separate FIT seeds, and rolls
+016            deployment back from last to best validation. On disjoint hold-out seeds, the
+017            alarm detects all 64/64 shocked runs and flags none of the 64 healthy runs; roll-
+018            back reduces mean outer loss by 0.3395 relative to last. However, every shocked
+019            trajectory reaches its minimum immediately before the shock, so the gate, best-
+020
+               val, and early-stop return identical outcomes. The experiment therefore supports
+               contamination detection and rollback relative to endpoint deployment, not discov-
+021
+               ery of a checkpoint unavailable to best-val. Healthy m ≡ 0 follows from strictly
+022
+               decreasing trajectories, leaving realistic deployment false alarms unmeasured.
+023
+024
+025   1   I NTRODUCTION
+026
+027   A late event can invalidate an otherwise usable endpoint checkpoint. Static corruption does not
+028   isolate this failure: when corruption is active from the first epoch, a poor final checkpoint does not
+029   show that a previously clean candidate was later damaged. We construct the temporal case directly,
+030   ending a clean prefix immediately before a final-quarter label shock. In every shocked hold-out run,
+031   the checkpoint selected by best validation is recorded just before the shock begins (Figure 1).
+032   We audit a simple deployment signal, the last margin m = L11 − min0≤t≤11 Lt , where Lt is
+033   calibration loss after epoch t. The signal is read only at the end of the run. If m exceeds a thresh-
+034   old calibrated without hold-out access, the gate raises a contamination flag and deploys the best-
+035   validation checkpoint rather than last. Figure 1 shows actual healthy and shocked trajectories, not
+036   a schematic.
+037
+      The experiment is pre-registered and deliberately narrow. Separate FIT seeds calibrate the threshold;
+038   disjoint hold-out seeds settle detection and checkpoint outcomes (Tables 1 and 7). The endpoint
+039   default is damaged, whereas the gate rolls each affected run back to the same pre-shock checkpoint
+040   selected by best-val and early-stop (Tables 2 and 3). This distinction—measurable value versus
+041   last, but no checkpoint advantage over existing selectors—sets the scope of the paper.
+042
+      Our contributions are:
+043
+044         1. a timing-controlled endpoint-shock protocol with a frozen FIT/hold-out split;
+045
+            2. a paired measurement of alarmed rollback versus last; and
+046
+047
+            3. an explicit boundary: the gate does not outperform best-val or early-stop here, and the
+               healthy carrier does not measure realistic false alarms.
+048
+049
+050   2   R ELATED WORK
+051
+052   Weight averaging and checkpoint ensembling provide alternatives to endpoint deployment. Stochas-
+053   tic weight averaging broadens the solution region (Izmailov et al., 2018); exponential moving aver-
+      ages are widely used to stabilize targets and model states (Tarvainen & Valpola, 2017); and model
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055                                         (a) Healthy run (seed 5)               (b) Endpoint shock (seed 30)
+056                                             monotone: m = 0                     last 25% epochs rise, m > 0
+057                                                                                m > τ: flag
+
+
+
+
+               calibration loss
+                                                                                   rollback to pre-shock best-val
+058
+                                  0.4
+059                                              m = Llast − minL = 0
+060
+061                               0.2
+                                                                   shock                                            shock
+062                                                                window                                           window
+063                               0.0
+064
+                                        0    2    4      6 8 10                0        2       4      6 8 10
+065
+066
+                                                      epoch                                         epoch
+067
+068   Figure 1: Actual E1 calibration trajectories. Left: healthy seed 5 decreases throughout, so the final
+069   point is the minimum and m = 0. Right: shocked seed 30 is clean through epoch 8; label flips acti-
+070   vate only in the shaded epoch-9–11 window, lifting the trajectory above its pre-shock minimum. The
+071   frozen-threshold gate flags the run and returns that pre-shock best-val checkpoint. These represen-
+072   tative runs were selected deterministically as closest to the across-run median trajectory; aggregate
+073   results use all 64 seeds per arm.
+074
+075
+076   soups combine multiple fine-tuned checkpoints without additional inference cost (Wortsman et al.,
+077   2022). We include SWA, EMA, and soup as registered baselines, but our question is different: can a
+078
+      scalar read from the completed trajectory attest that the final endpoint was exposed to a late event?
+079   Robustness work shows that nominal accuracy and robustness objectives can diverge (Tsipras et al.,
+080   2019). We use that citation only to motivate corruption as a stress test; it is not evidence about
+081   temporal label shocks, nor do we propose a label-noise correction method. Our contribution is the
+082   timing-controlled audit and its detection-versus-selection interpretation.
+083
+084
+085
+      3     M ETHOD
+086
+087
+      3.1   A TRUE TEMPORAL ENDPOINT SHOCK
+088
+      A run produces one calibration loss Lt and one model snapshot after each of E = 12 epochs. The
+089
+      shocked mode starts from the same clean training examples as the healthy mode. A predetermined
+090   subset of 150 of the 600 training examples is designated as affected. Crucially, designation does not
+091   change any label during epochs 0, . . . , 8. The command-line control --shock-time-frac=
+092   0.25 sets
+093
+                                                        tshock = ⌈(1 − 0.25)E⌉ = 9.                                          (1)
+094
+095   During epochs 9, 10, 11 only, the affected examples use the deterministic target map y 7→ (y +
+096   1) mod K; all other labels remain clean. Epoch shuffling changes batch order but not this onset.
+097   The intervention is therefore a time-gated late-training event, rather than a claim that sample identity
+098   encodes training time.
+099   The observed timeline validates the intended mechanism. All 64 shocked trajectories attain their
+100   minimum at epoch 8, immediately before tshock = 9, and all subsequent shocked points remain
+101   above that minimum. Thus the clean candidate that later becomes best-val exists before the inter-
+102   vention, while last is recorded after three affected epochs.
+103
+104
+      3.2   L AST- MARGIN GATE
+105
+106   Define
+107
+                                                        m = LE−1 − min Lt ≥ 0.                                               (2)
+                                                                       0≤t<E
+
+
+                                                                       2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+109   Table 1: Registered E1 configuration. The two fractions refer to different objects: 25% of examples
+110   are designated as affected, and their labels change only during the final 25% of epochs.
+111   Component         Setting
+112   Task              5 classes; vocabulary 400; sequence length 12; 6 informative features per class
+113   Splits            train 600; calibration 200; outer 200; disjoint within each run
+114   Model             3-layer transformer; hidden size 64; 4 heads; feed-forward size 128
+115   Optimization      12 epochs; batch 32; learning rate 3 × 10−3 ; weight decay 0.01
+116
+      Temporal shock    150 affected examples; labels clean in epochs 0–8 and flipped in epochs 9–11
+      Calibration       FIT seeds 101–104 in healthy and shocked modes; τ = 0.1354
+117   Settlement        hold-out seeds 1–64 in healthy and shocked modes
+118   Selectors         last, best-val, early-stop, SWA, EMA, soup, rollback, margin-gate
+119
+120
+121   The gate is                             
+122                                               best-validation checkpoint,    m > τ,
+123
+                              gate(m, τ ) =                                                                (3)
+                                                  last checkpoint,               m ≤ τ.
+124
+      Firing is both an alarm and a rollback decision. The gate cannot return a checkpoint outside the pair
+125
+      {last, best-val}; consequently, its scientific value must be stated relative to the endpoint deployment
+126
+      it replaces, not as a new optimizer.
+127
+128
+      3.3   F ROZEN CALIBRATION AND COMPARISON RULES
+129
+130   Let H and S be the healthy and shocked last margins from four FIT seeds in each mode. Before
+131   examining the hold-out settlement, we freeze
+132
+                                   τ = 12 (max H + min S) = 0.1354038956.                                  (4)
+133
+134   No hold-out trajectory is used to adjust this value. The registered comparison set contains the end-
+135   point, validation, stopping, averaging, soup, and rollback policies summarized with the full config-
+136   uration in Table 1.
+137
+138   3.4   S ETTLEMENT ESTIMANDS
+139
+140
+      The primary alarm endpoints are recall on shocked runs and false-alarm rate (FAR) on healthy runs,
+      with one-sided 95% Clopper–Pearson bounds. Checkpoint value is measured on the shocked arm
+141
+      by the paired increment
+142
+                                    ∆inc = E [Louter (gate) − Louter (last)] .                              (5)
+143
+144
+      The positive control reverses the endpoints, Louter (last) − Louter (best-val), to verify that the late
+      event actually damages endpoint deployment. We use the frozen paired bootstrap intervals and one-
+145
+      sided sign-flip permutation results in the settlement artifact; exact selector identity is reported as an
+146
+      equality rather than converted into a significance claim.
+147
+148
+149   4     E XPERIMENTAL SETUP
+150
+151   4.1   C ARRIER AND RUN INVENTORY
+152
+      The carrier is a self-contained 5-class sequence-classification task trained on CPU. FIT and hold-out
+153
+      seeds are disjoint, and training, calibration, and outer splits are disjoint within each run. Table 1
+154   moves the complete configuration out of prose; Table 7 in the appendix records every settlement
+155   unit.
+156
+157   4.2   P RE - REGISTRATION AND FROZEN DECISION RULE
+158
+159   The E1 pre-registration was frozen while only the first hold-out seed had completed. It declares
+160   four pass conditions: the healthy FAR upper bound is at most 0.10; at least one shocked run is
+161   detected; the paired confidence interval for gate-minus-last is wholly below zero; and the paired
+      confidence interval for last-minus-best-val is wholly above zero. The settlement is a direct execution
+
+
+                                                           3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+163   Table 2: Mean outer outcomes over 64 hold-out seeds per mode. All rows are recomputed from the
+164   E1 raw run records. Bold marks the lowest shocked loss and highest shocked accuracy; equality is
+165   retained rather than broken by arbitrary ranking.
+166                                            Healthy                             Shocked
+167                 Rule          Outer loss     Outer accuracy      Outer loss      Outer accuracy
+168
+                    last            0.00063          1.00000           0.34046           0.95547
+169                 best-val        0.00063          1.00000           0.00092           1.00000
+170                 early-stop      0.00063          1.00000           0.00092           1.00000
+171                 SWA             0.00088          1.00000           0.09780           0.99227
+172                 EMA             0.00238          1.00000           0.03900           0.99531
+                    soup            0.00164          1.00000           0.02812           0.99680
+173
+                    rollback        0.00070          1.00000           0.00106           1.00000
+174                 margin-gate     0.00063          1.00000           0.00092           1.00000
+175
+176
+177
+      Table 3: Frozen E1 paired outer-loss settlement on the 64 shocked hold-out runs. The two bootstrap
+178
+      intervals were computed separately, so their endpoints are reported exactly as stored. Permutation
+179   p ≈ 0 means zero counter-direction draws in the recomputed one-sided sign-flip settlement.
+180
+                       Contrast               Mean              95% CI               One-sided p
+181
+182                    gate − last         −0.3395        [−0.3643, −0.3189]              ≈0
+                       last − best-val     +0.3395          [0.3187, 0.3634]              ≈0
+183
+                       gate − best-val        0          exact equality in 64/64     not applicable
+184                    gate − early-stop      0          exact equality in 64/64     not applicable
+185
+186
+187
+      of those conditions. We report all four, including the positive control that could have invalidated the
+188
+      temporal-shock premise.
+189
+190
+191   5     R ESULTS
+192
+193
+      5.1   T HE ENDPOINT SHOCK DAMAGES L A S T , WHILE PRE - SHOCK SELECTORS SURVIVE
+194
+195
+      Table 2 reports every registered checkpoint baseline on both modes and both outer metrics. Under
+196
+      the endpoint shock, last has much higher loss than best-val and the gate; its accuracy also falls
+197   while the pre-shock selectors remain perfect. Averaging baselines reduce but do not eliminate the
+198   loss increase. The table retains every exact value and tied optimum.
+199
+200
+      The gate, best-val, and early-stop outcomes are exactly equal in all 64 shocked records, for both
+      outer loss and accuracy. Their common checkpoint is the epoch-8 snapshot. The alarm therefore
+201
+      restores an existing pre-shock candidate rather than creating a better checkpoint.
+202
+203
+204   5.2   PAIRED ENDPOINT EFFECT AND ROLLBACK INCREMENT
+205
+206   Table 3 gives the two frozen paired contrasts. The positive control establishes the damage: last is
+207   worse than best-val by +0.3395. Turning on the gate relative to accepting last changes the same
+208   quantity with the opposite sign, −0.3395. Both intervals exclude zero by a wide margin, and the
+209
+      one-sided permutation estimates are approximately zero. The per-run positive controls are shown in
+      Figure 2.
+210
+211
+212   5.3   A LARM OPERATING CHARACTERISTICS
+213
+214   At the FIT-frozen τ = 0.1354, every shocked margin exceeds the threshold and every healthy
+215   margin equals zero. Table 4 reports both point estimates and the pre-registered one-sided uncertainty
+      bounds; Figure 3 shows the complete empirical distributions.
+
+
+                                                            4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+217                                            0.8            mean = 0.3395 (95% CI [0.3187, 0.3634])
+
+
+
+
+              Llast − Lbest-val (outer loss)
+218
+219
+220                                            0.6
+221
+222
+223                                            0.4
+224
+
+                                               0.2
+225
+226
+227
+228
+229
+                                               0.0
+230                                                  0        10      20      30      40     50       60
+231                                                      shocked hold-out run (n=64, sorted by difference)
+232
+233
+234   Figure 2: Per-run positive control Louter (last) − Louter (best-val) on 64 shocked hold-out runs,
+235   sorted. The mean is +0.3395 and the 95% CI is [0.3187, 0.3634], read directly from the E1 settle-
+236   ment by the plotting script. Every observed difference is positive.
+237
+238
+239   Table 4: Alarm operating characteristics at frozen τ = 0.1354. Bounds are one-sided exact 95%
+240   Clopper–Pearson intervals in the conservative direction.
+241                                                      Endpoint                 Count   Estimate   Exact bound
+242
+                                                         Recall on shocked runs   64/64     1.0      lower 0.9543
+243
+                                                         FAR on healthy runs       0/64     0.0      upper 0.0457
+244
+245
+246
+247   5.4     T HE ZERO FALSE - ALARM RATE IS A DESIGN EXCLUSION , NOT DEPLOYMENT EVIDENCE
+248
+249   FAR = 0 is a real observation on this carrier, but the carrier excludes non-zero healthy margins.
+250   Every healthy trajectory is strictly decreasing at every adjacent transition, so its final point is nec-
+251   essarily the minimum and m ≡ 0. Table 5 distinguishes this mechanism from whole-cell readout
+252   collapse using the complete transition count and independent outer-loss and accuracy readouts.
+253   The exact FAR bound therefore applies only to the registered monotone healthy population. A real
+254   fine-tuning carrier with normal stochastic non-monotonicity is required to measure the deployment
+255   false-alarm distribution; E1 does not supply that carrier.
+256
+257
+258   5.5     I NTERPRETATION AND BOUNDARY OF THE RESULT
+259
+260   5.5.1           T HE FLAG HAS MEASURABLE ENDPOINT VALUE , BUT DOES NOT DISCOVER A NEW
+261                   CHECKPOINT
+262
+263   Relative to the experimental deployment default, the flag prevents deployment of the damaged final
+264   snapshot, giving ∆inc = −0.3395. Best-val and early-stop require no alarm to obtain the same
+265   epoch-8 checkpoint. The supported claim is therefore detection plus rollback relative to last, not
+266
+      gate dominance over checkpoint selection.
+267   The decisive next construction is E2: activate a shock early enough, or strongly enough, to suppress
+268   or displace the clean argmin so that best-val itself fails. If gate and best-val remain coextensive
+269   there, the checkpoint-novelty claim is falsified; if they separate under a frozen rule, that experiment
+      would test a contribution E1 cannot establish.
+
+
+                                                                                     5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+
+                                                1.0
+
+
+
+
+             empirical CDF (fraction of runs)
+271
+272
+273
+274                                             0.8
+275
+276
+277
+                                                0.6
+278
+279                                             0.4
+280
+                                                                                                    healthy (n=64): m ≡ 0
+281
+282
+                                                0.2                                                 shocked (n=64)
+283                                                                                                 frozen FIT τ = 0.1354
+284                                             0.0
+285                                                   0.0       0.1         0.2      0.3 0.4 0.5            0.6        0.7       0.8
+286
+287
+                                                                                     last margin m
+288
+289   Figure 3: Empirical CDF of the last margin over all E1 hold-out runs. Healthy margins are exactly
+290   zero; shocked margins are dispersed but all exceed the FIT-frozen τ = 0.1354. The separation
+291   supports the reported E1 operating point only; it is not a deployment calibration curve.
+292
+293
+294
+      Table 5: Independent audit of the healthy m ≡ 0 cell. The observations distinguish a genuine
+      monotone signature from an all-zero or non-responsive readout.
+295
+296                                             Diagnostic                        Observed            Interpretation
+297                                             Strict adjacent decreases       704/704       trajectory changes at every step
+298                                             Argmin at final epoch            64/64       monotone mechanism for m = 0
+                                                Best-val outer loss          mean 0.000625   non-zero independent loss readout
+299
+                                                Best-val outer accuracy       1.0 in 64/64       task solved, not a dead cell
+300
+301
+302
+      6   D ISCUSSION
+303
+304   Because the affected labels activate only after a clean prefix, the experiment establishes the ordering
+305   needed for an endpoint-shock audit: pre-shock minimum, shock onset, and damaged final deploy-
+306   ment. The paired benefit and positive control in Table 3 quantify this same operational event from
+307   opposite directions.
+308
+      The meaningful policy comparison is correspondingly narrow. The gate has measured value against
+309
+      last, but no checkpoint advantage over best-val or early-stop. SWA, EMA, soup, and rollback also
+310   absorb much of the late shock (Table 2), so the experiment does not establish that an explicit alarm
+311   is necessary when a pipeline already deploys a pre-shock selector.
+312
+313
+      Table 6 makes the evidential boundary explicit. In particular, the healthy result is internally valid but
+      externally narrow: strict monotonicity is verified as a real signal, yet it removes the variation needed
+314
+      for a realistic FAR test.
+315
+316
+317   7   L IMITATIONS
+318
+319         1. Synthetic scale and intervention. The carrier is a small CPU-trained classifier. The inter-
+320            vention flips a predetermined affected subset only in the final three epochs. This is a true
+321            late-training event, but it is not an external incident occurring after training has ended, and
+322
+               its effect size must not be transported to large-model fine-tuning.
+323         2. Healthy variation is excluded. Table 5 verifies that healthy m ≡ 0 is a genuine mono-
+               tone signature rather than readout collapse. Nevertheless, the absence of healthy non-
+
+
+                                                                                         6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+325   Table 6: Claim boundaries and decisive next evidence. A checked E1 observation is not promoted
+326   beyond the population or policy comparison that generated it.
+327   Question             What E1 establishes                            What remains open
+328   Temporal integrity   Flips activate only in epochs 9–11             Other shock types and durations
+329   Alarm detection      Recall 1.0 at frozen τ                         Recall on a realistic carrier
+330   Endpoint value       Gate beats last by 0.3395 loss                 Gate advantage over best-val (E2)
+331   False alarms         FAR 0.0 on verified monotone runs              FAR with natural non-monotonicity (E6)
+      Route-1 probe        Prior 36-run probe used a smaller, different   No transport of its rates to E1
+332
+                           carrier
+333
+334
+335
+                 monotonicity makes FAR = 0 partly a design exclusion. E6 requires a realistic carrier
+336              before any deployment-safety claim.
+337
+            3. Best-val is not defeated. Every shocked argmin occurs before shock onset, as shown in
+338
+               Figure 1, and gate, best-val, and early-stop therefore agree exactly. E1 measures the value
+339
+               of a flag relative to last; E2 must cover or suppress the argmin to test whether a gate can
+340            add checkpoint value beyond best-val.
+341
+            4. Threshold transport is untested. The midpoint τ = 0.1354 is blind to hold-out but
+342
+               calibrated on the same synthetic mechanism. No E1 threshold sweep is used to claim a safe
+343
+               band, and the frozen value is not a recommended deployment threshold.
+344
+345         5. Secondary diagnostics use distinct carriers. Route 3 is an in-sample overtraining diag-
+346
+               nostic, and the prior Route-1 probe uses a downsized configuration. Neither supplies an E1
+               FAR estimate or a substitute for a realistic healthy carrier.
+347
+348
+349   8    C ONCLUSION
+350
+351   Under a controlled final-quarter label shock, the FIT-frozen last-margin alarm detects all shocked
+352   runs and rolls the damaged endpoint back to a pre-shock checkpoint. Its outer-loss benefit is mea-
+353   sured relative to last; it offers no checkpoint advantage over best-val or early-stop, which return
+354
+      the same outcomes. Realistic false-alarm behavior and any advantage beyond existing selectors
+      remain unmeasured.
+355
+356
+357   R EPRODUCIBILITY
+358
+359   The frozen pre-registration, FIT threshold, 128 raw hold-out records, settlement JSON, verdict, and
+360   deterministic figure script are included in the anonymous workspace. Table 7 enumerates the run
+361   budget. Quantitative figures are generated only from registered E1 records; the conceptual image-
+362   generation candidate described in the supplementary disclosure is not used as experimental evidence.
+363
+      AI assisted language editing; every claim and number was checked against the registered artifacts.
+364
+365   R EFERENCES
+366
+      Pavel Izmailov, Dmitrii Podoprikhin, Timur Garipov, Dmitry Vetrov, and Andrew Gordon Wilson.
+367
+        Averaging weights leads to wider optima and better generalization. In Proceedings of the Thirty-
+368
+        Fourth Conference on Uncertainty in Artificial Intelligence (UAI), 2018. arXiv:1803.05407.
+369
+370   Antti Tarvainen and Harri Valpola. Mean teachers are better role models: Weight-averaged consis-
+371     tency targets improve semi-supervised deep learning results. In Advances in Neural Information
+372     Processing Systems 30 (NeurIPS), 2017. arXiv:1703.01780.
+373
+      Dimitris Tsipras, Shibani Santurkar, Logan Engstrom, Alexander Turner, and Aleksander Madry.
+374     Robustness may be at odds with accuracy. In International Conference on Learning Representa-
+375     tions (ICLR), 2019. arXiv:1805.12152.
+376
+377   Mitchell Wortsman, Gabriel Ilharco, Samir Yitzhak Gadre, Rebecca Roelofs, Raphael Gontijo-
+       Lopes, Ari S. Morcos, Hongseok Namkoong, Ali Farhadi, Yair Carmon, Simon Kornblith, and
+
+                                                            7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+        Ludwig Schmidt. Model soups: averaging weights of multiple fine-tuned models improves accu-
+379     racy without increasing inference time. In Proceedings of the 39th International Conference on
+380     Machine Learning (ICML), 2022. arXiv:2203.05482.
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+
+
+
+                                                     8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      A    RUN INVENTORY AND PROVENANCE
+433
+434
+435
+436   Table 7: E1 run inventory. FIT runs only calibrate τ ; all point estimates and uncertainty reported for
+437
+      E1 use the 128 hold-out runs.
+                         Phase                         Seeds                 Modes                        Runs
+438
+439                      FIT calibration                    4     healthy, shocked                            8
+440
+                         Hold-out settlement               64               healthy                          64
+                         Hold-out settlement               64              shocked                           64
+441
+442                      Total                                                        136 (8 FIT + 128 hold-out)
+443
+444   The temporal mechanism is implemented in experiments/code/combined.py; the frozen
+445   run and settlement procedure is in experiments/code/run_e1_temporal_shock.sh;
+446   the pre-registration is experiments/prereg/PREREG_E1_TEMPORAL.md; and the frozen
+447   numerical settlement is results/three_arm_temporal/E1_SETTLEMENT_frac0.25.
+448   json. The representative and aggregate figures are reproduced by experiments/code/p5_
+449   e1_figs.py.
+450
+451
+      B    D ISTINCT ROUTE -3 DIAGNOSTIC
+452
+453
+454
+      This prior diagnostic tests a different failure mode and does not validate E1. On its 48 in-sample
+      runs, positive last margin and low outer accuracy identify the same set, and last-margin and final-
+455
+      loss thresholds tie. The rates below are descriptive rather than deployment estimates.
+456
+457
+458            Table 8: Route-3 in-sample overtraining diagnostic, reported separately from E1.
+459                                           Statistic                         Recall     FAR
+460
+                                              last margin                       1.0000    0.0000
+461
+                                              final loss level                  1.0000    0.0000
+462                                           first-rise early-stop             0.8929    0.1000
+463                                           non-monotonicity indicator        1.0000    0.1500
+464
+465
+466
+467                                1.0   unhealthy cutoff (acc ≤ 0.99)
+468
+469                                0.8
+470
+
+
+
+
+                  outer accuracy
+471
+472
+                                   0.6
+473
+474                                0.4
+475
+476                                0.2
+477                                                                                                m = 0 (n=20)
+                                                                                                   m > 0 (n=28)
+478
+                                   0.0
+479                                      0            10−4       10−3      10−2       10−1                 100
+480
+481
+                                                    last-margin m (symlog; 0 shown at 10−6)
+482
+483   Figure 4: Route-3 overtraining scatter, retained as a distinct diagnostic. On these 48 runs, m > 0
+484   and outer accuracy ≤ 0.99 identify the same 28 runs. The identity explains the perfect in-sample
+485   last-margin row in Table 8; it does not provide an E1 operating estimate.
+
+
+
+                                                                         9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      C    S TATISTICAL DETAILS
+487
+488
+      Recall and FAR bounds are one-sided 95% Clopper–Pearson bounds. The two paired 95% confi-
+489   dence intervals in Table 3 use the bootstrap distributions frozen in the E1 settlement. The sign-flip
+490   permutation results were recomputed with 20,000 one-sided draws and correct elementwise signs;
+491   the stored empirical values are zero, which we report as p ≈ 0 rather than as mathematical probabil-
+492   ity zero. Exact equality statements for gate, best-val, and early-stop come from recordwise equality
+493   of both stored outer loss and stored outer accuracy, not a null test.
+494
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+
+
+
+                                                       10
+

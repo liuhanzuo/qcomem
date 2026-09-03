@@ -1,0 +1,96 @@
+{
+  "reviewer_id": "R22-TERRA-PDF-B",
+  "round": 22,
+  "snapshot_sha256": "308f9d22f4f2f1687cd49017578c38b16f53b6b9cabddd2acec4152d3842754a",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 3,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 3},
+  "dimension_justifications": {
+    "soundness": "The ownership predicates, lifecycle records, factorial comparisons, and selected independent operator checks form a coherent and unusually candid validation story (Sections 3–5, PDF pp. 3–8). However, the central evidence remains conditional on producer capture: most tensors are hashes, the original code-tree closure is explicitly broken, dispatch lacks compiled-binary/autotuning identity, and the independent numerical checks cover selected captured-input boundaries rather than end-to-end behavior (Section 6, PDF p. 8; Table 5, PDF p. 13; Appendix I, PDF p. 20). These are substantive but not claim-invalidating gaps because the paper states them plainly.",
+    "presentation": "The paper is well structured, clearly distinguishes audit evidence from contextual controls, and repeatedly labels what each cohort does not establish (e.g., Table 4, PDF p. 12; Table 5, PDF p. 13). The density of receipt terminology, cohorts, and appendices makes it demanding to assess, but definitions, tables, and limitations make the core argument followable.",
+    "contribution": "The useful contribution is an integrated, phase-aware receipt contract for hybrid token-KV and recurrent-state ownership, including typed evidence obligations and an ownership factorial (Sections 3–4, PDF pp. 3–5). Its components are acknowledged as established techniques and the demonstrated scope is one sequential stack, so the contribution is credible and distinct but narrower than a broadly validated systems mechanism (Table 9, PDF p. 16; Section 6, PDF p. 8)."
+  },
+  "paper_summary": "ForkAudit proposes a receipt-bound contract to audit request isolation and memory accounting when hybrid LLMs combine immutable token-indexed KV with mutable Gated DeltaNet state. On one Qwen3.5-35B-A3B configuration, it compares four KV/GDN ownership policies across eight PG-19 books and fan-outs 1, 8, and 32; reports exact registered-observable agreement, storage/lifecycle witnesses, selected FP32 attention and NumPy GDN checks, live injected faults, and separated allocator denominators. Contextual deployment and serving controls are explicitly not pooled with the primary audit (Sections 4–6, PDF pp. 5–8; Tables 2 and 15, PDF pp. 6 and 18).",
+  "strongest_verified_contribution": "Within the stated trusted-capture boundary, the paper gives a concrete, replay-oriented ownership witness that distinguishes borrowed immutable recurrent bases before first transition from private mutable state afterward, and exercises this with four ownership cells, range-disjointness checks, and 288 cross-fan-out comparisons (Sections 3 and 5.3, PDF pp. 3–4 and 7; Table 5, PDF p. 13).",
+  "strengths": [
+    "It directly addresses a real hybrid-serving correctness gap: output equality alone cannot establish isolation of mutable recurrent state (Introduction, PDF pp. 1–2).",
+    "The method separates logical state, allocator measurements, and unmeasured process/service capacity, avoiding common denominator overclaims (Section 4.4, PDF p. 5; Appendix E, PDF p. 15).",
+    "The primary factorial is well specified and includes all KV-by-GDN ownership combinations at three fan-outs rather than a single favorable comparison (Sections 4.1 and 5.3, PDF pp. 5 and 7).",
+    "The paper appropriately differentiates relational agreement, bounded independent operator oracles, and fault positive controls instead of presenting them as equivalent assurance (Figure 3 and Sections 5.4–5.5, PDF p. 7).",
+    "Limitations are unusually explicit, including sequential execution, a single model/configuration, selected operators, and absence of production-capacity evidence (Section 6, PDF p. 8; Appendix I, PDF p. 20)."
+  ],
+  "questions": [
+    "Can the authors provide a terminally closed source/build identity, including the compiled Triton binary and relevant autotuning configuration, and rerun the primary replay against that identity?",
+    "How often does ForkAudit detect naturally occurring or held-out ownership/dispatch faults, rather than the nine targeted mutants? A controlled held-out fault set would clarify practical detection coverage.",
+    "Does the contract remain practical and informative under concurrent kernels, continuous/ragged batching, cancellation, eviction, and multiple documents, where the key isolation risks may differ from the single-stream schedule?"
+  ],
+  "issues": [
+    {
+      "issue_id": "I1",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility", "citation_integrity"],
+      "location": "Section 7, PDF p. 8; Table 5, PDF p. 13; Appendix I, PDF p. 20",
+      "claim_ids": ["C-receipt-bound-replay", "C-frozen-identity", "C-dispatch-provenance"],
+      "evidence_ids": ["PDF-SEC7", "PDF-TABLE5", "PDF-APPENDIX-I"],
+      "observed_evidence": "The paper states that post-ledger pycache files broke terminal code-tree closure, so frozen identity is only partial. It also records only the Python attention callable, not the compiled Triton binary or autotuning choice; most runtime evidence is digest-based and cannot independently recapture the producer.",
+      "why_it_matters": "The paper's principal value is a receipt-bound audit. Without a closed executable/build identity, replay can validate internal consistency of captured receipts but not fully bind the results to a specific executed implementation. This materially limits reproducibility and the strength of the audit's provenance claim.",
+      "required_fix": "Provide a terminally closed, manifest-bound source and build artifact for the reported run, record compiled-kernel and tuning identities where feasible, and demonstrate a clean replay from that closed package. If this cannot be done, further narrow the primary framing from implementation audit to captured-receipt consistency audit.",
+      "verification_test": "An independent evaluator should recreate the declared environment from the terminal manifest and reproduce the identity, lifecycle, semantic, and aggregate receipts without relying on an unbound source tree.",
+      "evidence_needed": "Closed build/source manifest, compiled-artifact hashes and configuration records, plus an independently executed clean replay log.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "significance", "limitations_responsible_claims"],
+      "location": "Sections 4.1–4.3 and 6, PDF pp. 5 and 8; Appendix I, PDF p. 20",
+      "claim_ids": ["C-hybrid-ownership-validation", "C-fault-sensitivity", "C-serving-relevance"],
+      "evidence_ids": ["PDF-SEC4", "PDF-SEC6", "PDF-APPENDIX-I"],
+      "observed_evidence": "The primary case uses one model, BF16 KV, one 4,095-token partial tail, N≤32, batch size one per request, and sequential round-major stepping on one CUDA stream. Numerical validation covers eight attention rows and four GDN transitions conditional on captured inputs; the nine faults are targeted positive controls.",
+      "why_it_matters": "This leaves the central operational regimes motivating prefix sharing—concurrent scheduling, continuous batching, evictions/cancellations, varied length alignment, and different hybrid implementations—untested. The paper acknowledges this, but it limits confidence that the protocol detects consequential failures in realistic serving.",
+      "required_fix": "Add at least one independently configured concurrent/batched hybrid-serving evaluation with length/alignment variation and a preregistered held-out fault campaign, or reduce the practical framing to a single-stack case-study validation.",
+      "verification_test": "For each added regime, replay the same ownership predicates and show detection of faults not used to design the gates, while reporting any failures or open targets.",
+      "evidence_needed": "Raw receipts and replay results for concurrent or batched execution, multiple prefix geometries, and a held-out mutation set.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I3",
+      "severity": "minor",
+      "dimensions": ["clarity", "experimental_rigor"],
+      "location": "Table 2, PDF p. 6; Table 12, PDF p. 17; Appendix H, PDF p. 19",
+      "claim_ids": ["C-quality-state-latency-context"],
+      "evidence_ids": ["PDF-TABLE2", "PDF-TABLE12", "PDF-APPENDIX-H"],
+      "observed_evidence": "The deployment and serving tables use small, separately scoped cohorts and medians, with no uncertainty reporting; one CoMem Q16 row is caveated because of a later alias risk. The text is careful not to pool these controls with the audit.",
+      "why_it_matters": "These tables are useful context but visually prominent enough that readers may overinterpret them as robust performance evidence or as validation of the ownership contract.",
+      "required_fix": "Visually and textually de-emphasize contextual performance tables, report per-workload variability where available, and place the caveated Q16 result in a clearly separated ablation/limitations presentation.",
+      "verification_test": "A reader should be able to identify, from captions and surrounding text alone, that no speed, capacity, or broad quality claim rests on these cohorts.",
+      "evidence_needed": "Per-workload timing/quality dispersion and a revised table layout or captioning.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct human-subject, privacy, or harmful-content study is described. The paper includes an appropriate limited ethics statement and notes that cheaper deployment may increase model-use scale (Appendix A, PDF p. 11).",
+  "llm_usage_disclosure": "This is an internal automated review produced with LLM assistance. It is based solely on the supplied frozen PDF snapshot and should be treated as advisory rather than a substitute for human review.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A terminally closed executable/build identity and independently performed replay of the primary audit.",
+    "Evidence that ownership witnesses and fault gates work under concurrent or continuously batched hybrid serving, with varied prefix lengths and cancellation/eviction behavior.",
+    "A preregistered held-out fault campaign showing meaningful sensitivity beyond the nine designed positive controls."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure to reproduce the reported receipt aggregates from the claimed raw artifacts or discovery that identity/build bindings do not match the evaluated implementation.",
+    "A counterexample showing shared or mutable recurrent state can alias under an untested ordinary scheduling path while the proposed receipts still pass.",
+    "Evidence that the selected numerical sidecars or mutation outcomes were chosen after observing candidate behavior contrary to the stated preregistration."
+  ],
+  "review_limitations": [
+    "The supplied schema does not permit the requested role value 'holistic_pdf_only'; this schema-valid review uses the closest allowed role, 'technical_soundness'.",
+    "This review intentionally inspected only MANIFEST.json, main.pdf, the supplied rubric, and the supplied schema; it did not inspect the referenced artifact package, code, data, or external citations.",
+    "Accordingly, claims about replayability and provenance are evaluated from the paper's descriptions, not independently verified."
+  ]
+}

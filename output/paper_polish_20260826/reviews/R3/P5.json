@@ -1,0 +1,159 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "61cb32cfc2143449d9d418c67ae71814cbca1a9fda188facac641abe0285f565",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "在所定义的合成 E1 人群内，标签冲击时序、64+64 个 hold-out seed、配对外层损失、Clopper–Pearson 界和逐记录相等性支持了狭义结论。主要可信度折损来自预注册在第一个 hold-out 已完成后才冻结，以及阈值只用每模式4个、与结算完全同构的 FIT seed 标定；前者可能污染盲结算，后者没有检验自然健康波动或机制外运输。",
+    "presentation": "论文结构清楚，图1–3直接展示轨迹与完整分布，且明确区分检测、回滚和检查点选择。超链接彩框与两页大面积留白略显未定稿，bootstrap 细节和基线策略参数也过于依赖外部工件，但不妨碍理解主结果。",
+    "contribution": "真时间端点冲击的控制协议及对检测与选择边界的诚实拆分有一定价值；然而健康 m 恒为0、冲击 m 全部远离0，且 gate 必然只在 last 与 best-val 间选择，使观察接近由构造保证。没有现实假警报分布，也没有相对 best-val/early-stop 的增量效用，当前贡献较窄。"
+  },
+  "paper_summary": "论文在一个小型五分类合成序列任务中，把150/600个训练样本的标签仅在最后3个 epoch 翻转，构造真正晚发的端点质量冲击。last-margin m 是最终校准损失减去轨迹最小值；阈值由健康/冲击各4个 FIT seed 的间隙中点冻结，超过阈值则报警并部署 best-validation 而非 last。在64个健康和64个冲击 hold-out seed 上，冲击召回64/64、健康误报0/64；gate 相对 last 的平均外层损失差为-0.3395。所有冲击轨迹都在冲击前的 epoch 8 达到最小值，因此 gate、best-val 和 early-stop 在64/64记录上完全相同。作者据此只主张在该受控载体内检测晚发污染并相对端点回滚，不主张发现新检查点或获得现实部署假警报率。",
+  "strongest_verified_contribution": "最可信的贡献是第2–6页对一个时序干预的完整内部验证：冲击明确只在 epoch 9–11 生效，所有64个冲击 run 的最小校准损失都在 epoch 8，且逐 run 的 last-minus-best-val 外层损失均为正，从而表明端点损坏发生在一个先前可用检查点之后。",
+  "strengths": [
+    "FIT 与 hold-out seed 分开，训练、校准和 outer split 在每个 run 内分离，并用64个 seed/模式报告完整结算。",
+    "第4–6页同时报告点估计、保守方向的一侧精确二项界和逐 run 效应图，没有把64/64或0/64写成无不确定性的完美性能。",
+    "论文主动指出健康轨迹严格单调导致 m 恒为0，因此0误报是设计排除而非部署证据。",
+    "gate、best-val、early-stop 的64/64完全相等被保留为负结果，论文没有把相对 last 的收益包装成检查点选择创新。",
+    "限制部分明确列出阈值运输、冲击机制、现实健康波动和 E2/E6 后续构造。"
+  ],
+  "questions": [
+    "第3页称预注册冻结时第一个 hold-out seed 已完成：作者在冻结前是否看过 seed 1 的轨迹、margin、outer 指标或日志？若看过，为何仍把它纳入 confirmatory 的64个 seed？",
+    "阈值 τ 只由健康/冲击各4个 FIT seed 的 max/min 中点确定。四个 shocked FIT margins 的范围、对单个 FIT seed 的敏感性以及换一批 FIT seeds 后的 τ 分布是什么？",
+    "在健康轨迹 m 恒为0时，任何 0<τ<min shocked m 都会得到同一 operating point。为什么应把结果归因于 τ=0.1354 的标定，而不是归因于构造产生的完全分离？",
+    "配对 bootstrap 的重采样单位、重复次数、区间类型和随机种子是什么？表3两个区间为何分别计算且端点略不对称？",
+    "SWA、EMA、soup、rollback 与 early-stop 的确切窗口、衰减、组成和停止规则是什么，是否在查看 hold-out 前冻结？",
+    "能否在自然非单调健康轨迹与多个冲击时点、比例、映射和强度上冻结一个 E2/E6 阈值，然后完全独立结算，而不让 best-val 与 gate 结构性共线？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P5-R3-01",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "第3页，§4.2，第157–161行；表1与附录表7",
+      "claim_ids": [
+        "E1-pre-registered-settlement"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "论文明确写道 E1 预注册是在“only the first hold-out seed had completed”时冻结，但结算仍把 hold-out seeds 1–64 全部作为64个独立确认单位；PDF 没有说明 seed 1 的结果在冻结前是否不可见。",
+      "why_it_matters": "如果 seed 1 的任何结算信息可见，阈值以外的通过条件、指标选择、分析代码或叙事均可能受其影响，预注册和完全盲 hold-out 的表述就不成立。即使影响只占1/64，也涉及确认性设计的时间顺序与可审计性。",
+      "required_fix": "提供不可变时间戳、运行日志和访问记录证明冻结前未读取 seed 1 结果；否则把 seed 1 排除于确认结算并按原规则重算63个 seed，或用一批全新未查看的 seeds 进行独立结算，同时将当前结果标为部分前瞻。",
+      "verification_test": "审计预注册提交时间、seed 1 完成/访问时间和版本哈希；在排除 seed 1 或全新 seeds 后，四个预注册通过条件及所有表2–5结果仍按冻结脚本成立。",
+      "evidence_needed": "带时间戳的预注册、调度与访问日志，以及排除 seed 1/全新 seed 的冻结重算。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R3-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "第3页§3.3与表1；第5–7页§5.3–5.5、表4–6及限制2、4",
+      "claim_ids": [
+        "alarm-detection-E1"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "阈值由每模式仅4个 FIT seed 的 max healthy 与 min shocked 中点给出；全部64个健康 hold-out 轨迹严格单调，故 m=0，而全部64个冲击 margin 都超过阈值。FIT 与 hold-out 使用同一合成机制、同一时点和同一冲击比例，没有自然健康非单调性或机制变化。",
+      "why_it_matters": "当前64/64与0/64主要验证了一个人为完全分离的载体，而不是阈值在有重叠、随机训练波动或冲击异质性下的检测能力。四个 FIT seed 也不足以估计阈值运输不确定性，因此证据无法支持超出 E1 机制的报警价值。",
+      "required_fix": "在更多 FIT seeds 上只用训练侧信息冻结阈值，并在独立 settlement 中加入自然非单调健康 run、多个冲击强度/时点/比例/类型及至少一个更真实载体；报告 ROC/PR、校准与按条件分层的精确界。",
+      "verification_test": "阈值在完全未查看的新结算集上保持预设的 FAR 上界与召回下界，且结果不依赖健康 m 恒为0或单一冲击配置；阈值对 FIT seed 重抽样有稳定区间。",
+      "evidence_needed": "扩展 FIT/hold-out 原始轨迹、预先冻结的阈值选择规则、异质性分层结果与阈值稳定性分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R3-03",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "novelty"
+      ],
+      "location": "第2–5页，式(2)–(5)、表2–3、§5.5.1",
+      "claim_ids": [
+        "rollback-versus-last"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "gate 的动作空间定义为 {last,best-val}，且所有冲击 run 的校准最小值均在 epoch 8；因而 gate、best-val 与 early-stop 在64/64记录上相等，gate-minus-last 与 last-minus-best-val 只是符号相反的同一0.3395差值。",
+      "why_it_matters": "这个实验不能判断报警是否提供了任何超出现有验证选择器的信息或检查点价值；相对一个已知受损的 last 的收益几乎由构造和 gate 定义保证。论文诚实承认该边界，但它显著压低当前贡献和部署相关性。",
+      "required_fix": "实现作者提出的 E2 或等价的预注册构造：冲击应能覆盖、移动或暂时掩盖 clean argmin，使报警分数与 best-val/early-stop 不再结构性共线；同时设置不报警、best-val、early-stop、变化点检测与独立回滚策略。",
+      "verification_test": "在独立 seeds 上，gate 的选择至少在预定义比例的 runs 中与 best-val/early-stop 不同，并以配对 outer 指标和错误率控制显示增量价值；若仍完全同现，应明确否定检查点增量贡献。",
+      "evidence_needed": "E2 的冻结协议、逐 run 选择身份、配对 outer 结果和与标准变化检测/选择基线的公平比较。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R3-04",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "第3–4页§3.4、表3；第9–10页附录C",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "PDF 只称两个95%区间来自冻结 bootstrap 分布，未给出重采样次数、seed、区间类型或是否按 run 成对重采样；20,000次单侧 sign-flip 出现零个反向 draw 被写为 p≈0。",
+      "why_it_matters": "主效应很大，细节不太可能改变方向，但缺少算法细节妨碍精确重放；有限 Monte Carlo 下的零计数也应报告分辨率或加一估计，而非近似数学零。",
+      "required_fix": "在正文或附录列出 bootstrap/置换的完整算法、随机种子和 Monte Carlo 分辨率，并报告 p<1/20001 或加一估计。",
+      "verification_test": "独立实现按相同逐 run 成对重采样后复现表3端点至报告精度，且 p 值表达与有限抽样分辨率一致。",
+      "evidence_needed": "统计脚本、配置与独立重算日志。",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R3-05",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity",
+        "novelty"
+      ],
+      "location": "第1–4页§2、表1–2",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "论文列出 SWA、EMA、soup、rollback 和 early-stop，但未在 PDF 中给出各自窗口、衰减率、组成或停止耐心，也没有系统讨论变化点检测、概念漂移监测或序贯报警基线。",
+      "why_it_matters": "这些策略不是主结论的必要条件，但配置缺失使表2的公平性难核查，邻近检测文献的缺位也让贡献边界不够精确。",
+      "required_fix": "补充所有选择/平均策略参数及冻结时间，并将 last-margin 与至少一个标准变化点或漂移检测规则在同一 E1/E2 数据上比较；若不做实验，至少在相关工作中明确差异。",
+      "verification_test": "读者可从 PDF/匿名补充材料逐策略重建表2，且新增基线按同样 FIT/hold-out 分割标定。",
+      "evidence_needed": "完整策略配置、冻结记录和邻近基线结果或定位分析。",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "实验是合成序列分类，无人体参与者或个人信息；冻结 PDF 中未见直接伦理风险。部署安全措辞已被作者限制为受控 E1 观察。",
+  "llm_usage_disclosure": "本审稿由全新、隔离的 AI 子代理 R3 生成，仅用于内部投稿前质量控制；该子代理只读取指定的冻结 PDF、审稿协议、量表与 JSON schema，未与任何其他评审通信，也未接触作者计划、历史评审、目标分数或版本历史。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "时间戳与访问审计证明 seed 1 在预注册冻结前完全未被查看，或在排除 seed 1/全新 seeds 后所有预设结果无变化。",
+    "在自然非单调健康轨迹和多种未见冲击条件上，以更充分 FIT seeds 冻结的阈值仍满足预设 FAR/召回界。",
+    "E2 类构造使 gate 与 best-val/early-stop 可分，并在独立结算上显示配对的增量 outer 价值。",
+    "与标准变化点/漂移检测方法按相同标定预算的比较显示 last-margin 在简单性、时延或错误率上有明确优势。"
+  ],
+  "evidence_that_would_lower_score": [
+    "冻结前确实查看并据此调整了 seed 1 的 hold-out 结果，且排除它或新结算后预设条件不再成立。",
+    "加入自然健康波动后 FAR 明显超过预设0.10，或阈值对4个 FIT seed 的选择高度不稳定。",
+    "在不与 best-val 共线的冲击下报警无法提供增量价值，或标准变化点基线在相同信息下明显更稳健。"
+  ],
+  "review_limitations": [
+    "按隔离要求仅审阅冻结 PDF，未读取论文所称匿名 workspace、原始128条记录、预注册或统计脚本，因此无法核验时间戳、访问历史和端到端重放。",
+    "按任务要求未联网，引用的存在性、元数据及相关工作覆盖未做外部核验；对变化点/漂移文献缺口的判断仅基于 PDF 所列参考文献。",
+    "PDF 共10页，文本抽取完整且逐页视觉核查未发现影响内容读取的解析故障。"
+  ]
+}

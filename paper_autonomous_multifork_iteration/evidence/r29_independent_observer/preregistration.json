@@ -1,0 +1,117 @@
+{
+  "schema_version": "forkaudit-r29-independent-gdn-observer-preregistration-v1",
+  "status": "frozen_before_h20_candidate_outputs",
+  "created_at_utc": "2026-08-25T00:00:00Z",
+  "experiment_id": "R29-INDEPENDENT-GDN-OBSERVER-20260825A",
+  "objective": "Independently observe live GDN ownership and lifecycle facts and compare them with the candidate ForkAudit producer on the same frozen Qwen3.5/H20 objects.",
+  "model": {
+    "id": "Qwen/Qwen3.5-35B-A3B",
+    "revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "dtype": "bfloat16",
+    "hardware": "one isolated NVIDIA H20-3e selected from an eight-H20 node"
+  },
+  "source_binding": {
+    "observer_sha256": "8ad68ecdea8984bd851abf99c744e10ab287e5b45cda03968250313076cc295e",
+    "runner_sha256": "9d079a1192dc92a5a5bb22ac7ca91694a7f06cd1799f0d3d01c96ac42aa3975e",
+    "replay_sha256": "0605538e6504033fb4bde037a95a1884e299257ebf337576bd55b6643cde886e",
+    "test_sha256": "c9ff60313162494dd0be5cbad0b16e8516323682556360acfa6031cdf8ad8027",
+    "launcher_sha256": "b81a87de80be6e0f2c9e64ba8ddf153b78f5b6a8e07031a7f0a356cf278990be",
+    "source_ledger_raw_sha256": "93a1967c229c9c2374fd16fdfea58e5ee23814cfe3db08708f25517703b47d6a"
+  },
+  "input_binding": {
+    "candidate_code_ledger_raw_sha256": "837f7a488d75cbedbc01e35a236a97f00b85259746e6a368b7aeec873045e94a",
+    "model_weight_ledger_raw_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+    "model_artifact_ledger_raw_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+    "pg19_train_jsonl_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "pg19_train_manifest_sha256": "5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c",
+    "pg19_windows_sha256": "39bc36bb2eb04d51122e66caaebfa72367c02b43b073f072a2da240ed068c166",
+    "frozen_query_banks_sha256": "400921d147bc840e9802950dc542b002080f3f274661efbd5b4354ec364da7db",
+    "original_rr2_run_id": "372384bd37cf7640ca210537a4360e1a",
+    "rank": 0,
+    "split": "PG19 train only"
+  },
+  "design": {
+    "resident_count": 2,
+    "kv_policy_fixed": "vllm-q16-shared-document-reuse",
+    "gdn_policy_cells": [
+      "shared-base",
+      "materialized"
+    ],
+    "phases": [
+      {
+        "phase": "setup_pre_transition",
+        "completed_request_indices": []
+      },
+      {
+        "phase": "post_transition",
+        "completed_request_indices": [0]
+      },
+      {
+        "phase": "post_generation",
+        "completed_request_indices": [0, 1]
+      }
+    ],
+    "query_tokens_per_request": 32,
+    "forward_steps_per_request": 1,
+    "linear_layers": 30,
+    "state_families": [
+      "conv",
+      "recurrent"
+    ],
+    "rows_per_phase": 180,
+    "unordered_pair_relations_per_phase": 16110,
+    "total_row_observations": 1080,
+    "total_pair_relations": 96660
+  },
+  "independence_boundary": {
+    "candidate_generated": [
+      "model and cache objects",
+      "request execution",
+      "candidate qcomem-gdn-storage-witness-v1 rows"
+    ],
+    "independent_observer_generated": [
+      "tensor descriptors and content digests from live PyTorch tensors",
+      "opaque stable object and storage tokens",
+      "byte-overlap and exact-alias relations",
+      "policy-specific phase verdicts",
+      "persistent/incomplete/completed lifecycle verdicts",
+      "candidate-row comparison"
+    ],
+    "observer_candidate_imports": false,
+    "cpu_replay_candidate_imports": false,
+    "same_process": true,
+    "shared_trusted_dependency": "PyTorch tensor/storage API",
+    "setup_tensor_objects_pinned_against_allocator_aba": true,
+    "raw_addresses_serialized": false
+  },
+  "frozen_pass_criteria": [
+    "all seven local observer/replay tests pass before GPU execution",
+    "both policy cells complete without operational invalidity",
+    "independent observations immediately before and after each candidate capture are byte-identical",
+    "all six independent phase verdicts pass",
+    "all six candidate comparisons have zero row-descriptor mismatches and zero pair-relation mismatches",
+    "all six candidate self-replay diagnostics pass",
+    "persistent tensors retain exact object, storage, metadata, and content identity across all phases",
+    "request 0 changes both object and storage identity only at its completion and request 1 changes both only at its completion",
+    "the independent CPU replay reproduces the recorded verdicts without importing the candidate capture/replay module"
+  ],
+  "reporting_rule": {
+    "operational_or_preflight_failure_is_scientific_evidence": false,
+    "partial_cell_completion_is_reportable_as_positive": false,
+    "any_mismatch_must_be_preserved": true,
+    "candidate_passed_fields_are_authoritative": false,
+    "claim_only_after_independent_cpu_replay": true
+  },
+  "claim_boundary": {
+    "supported_if_passed": "Independent live GDN ownership/lifecycle agreement for two N=2 cells and three phases on one frozen Qwen3.5/H20 stack.",
+    "not_supported": [
+      "independent end-to-end recapture",
+      "independent KV ownership capture",
+      "attention kernel or dispatcher attestation",
+      "compiled binary or autotuning attestation",
+      "concurrent or continuous-batching serving",
+      "cross-model or cross-runtime generality",
+      "protection against a malicious same-process candidate"
+    ]
+  }
+}

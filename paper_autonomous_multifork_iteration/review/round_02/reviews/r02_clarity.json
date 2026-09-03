@@ -1,0 +1,152 @@
+{
+  "reviewer_id": "r02_clarity",
+  "round": 2,
+  "snapshot_sha256": "e11e5241849c4997ccab4ffb86de316b3edc05b02a8c66296fac45859ad3fb90",
+  "role": "clarity_presentation",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The manuscript keeps its principal empirical claims narrow and backs the KV-layout, call-path, cross-N, and accounting claims with internally consistent ledgers and explicit blind spots. Confidence is reduced because the recurrent-state part of the ownership contract is only partially witnessed: request-request GDN disjointness is stored as a runtime boolean, while storage keys and direct request-base range checks are absent. The paper acknowledges this limitation, so it bounds rather than invalidates the reported result.",
+    "presentation": "The paper is well structured, unusually explicit about denominators and limitations, and visually clean. All rendered pages, tables, equations, and embedded figures are legible and remain inside the text block. Presentation falls short of exceptional because the primary contribution is split among a checklist, one frozen case, and an accounting illustration; several arm names are used; and the nested query/request/step comparison counts must be reconstructed across multiple sections.",
+    "contribution": "The executable ownership checklist and evidence-linked reference case are useful to inference-systems practitioners, particularly the separation of page-pool and allocator denominators. However, the work introduces no serving mechanism or policy, validates only one model/runtime/hardware geometry, and presents its novelty mainly as a combination of prior ownership, metamorphic-testing, and memory-accounting ideas. The resulting knowledge is credible but narrow and of uncertain ICLR-level significance in its present form."
+  },
+  "paper_summary": "ForkAudit is an executable audit contract for shared-prefix state in a hybrid Qwen3.5-35B-A3B inference case. It compares a source-retaining per-request materialization control with a shared-document KV layout while holding one recorded Python attention callable and one functional GDN strategy fixed. Across nested resident fan-outs up to 32, it reports exact recorded tokens, runtime logit equality, logical-KV and GDN digest equality, cross-N consistency for the eligible queries, and a denominator-aware memory case in which a 12.33x controlled KV-pool ratio corresponds to a 1.0398x PyTorch peak-allocated ratio. The paper explicitly disclaims semantic proof, throughput gains, scheduler capacity, and generalization beyond the frozen case.",
+  "strongest_verified_contribution": "The strongest contribution is the auditable, denominator-explicit reference case that binds ownership layout, callable provenance, relational exactness checks, and page-pool versus allocator accounting while clearly recording what each witness cannot establish.",
+  "strengths": [
+    "The paper consistently separates logical/page-pool storage, PyTorch allocator counters, and unmeasured process or service capacity, avoiding a common source of misleading memory claims.",
+    "The abstract, Results, and Discussion state the central evidence boundary directly: the comparisons establish within-run self-consistency, not independent semantic correctness or a production speed/capacity result.",
+    "Figures 1 and 2 and Tables 1-4 are readable at normal page scale, use informative captions, and match the surrounding prose; no clipping, overlap, overfull material, or margin violation was observed.",
+    "Submission compliance is strong in the reviewed snapshot: the official ICLR 2026 review style is used, main text occupies eight pages before references, reproducibility and ethics statements appear before the references, the author line and PDF metadata are anonymous, and the supplement scan reveals no identifying path, account, or affiliation.",
+    "The evidence package exposes claim IDs, artifact paths, hashes, negative controls, and explicit replay limitations, making the narrow result easier to audit than a typical systems case study."
+  ],
+  "questions": [
+    "Is ForkAudit primarily a reusable evaluation protocol, a one-runtime reference implementation, or an empirical finding? Can the authors state one primary contribution type and list the exact outputs another system must implement to count as a ForkAudit instantiation?",
+    "Can the authors archive request-local GDN storage keys or ranges and directly test both request-request and request-persistent-base disjointness? If not, which hybrid-state ownership claim should be narrowed in the title, abstract, and checklist?",
+    "Can one diagram or compact table define the nesting among 256 unique queries, 504 paired request instances, 4,032 paired decoding-step comparisons, 128 cross-N-eligible queries, and 248 cross-N comparisons, including which quantities are not independent replicates?",
+    "Can the arm names be standardized across prose, figures, equations, and artifacts so that Source+Materialize/Materialize/fresh and Shared-Document/shared/reuse do not require a translation step?",
+    "Please confirm that the required submission-form disclosure of significant LLM use has been completed; that form-level item is not present in the reviewer-safe snapshot."
+  ],
+  "issues": [
+    {
+      "issue_id": "R02-CLR-01",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "novelty",
+        "significance"
+      ],
+      "location": "Title and Abstract (p. 1); Introduction contribution bullets (pp. 1-2); final paragraph of Related Work and Table 1 (pp. 2-3); Discussion (p. 8)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The Introduction presents three different contribution units: an executable checklist, a frozen reference case, and a denominator-explicit accounting case. Table 1 then describes the novelty as their combination while emphasizing that each constituent and the underlying caching mechanisms are prior art. The manuscript never gives a compact operational definition of what transfers as ForkAudit beyond this package.",
+      "why_it_matters": "A reviewer can understand what was executed but still struggle to identify the single new knowledge or capability being judged. This directly affects the contribution score and makes the narrow empirical scope look like a collection of well-documented checks rather than a clearly reusable method.",
+      "required_fix": "Reorganize the abstract and Introduction around one primary contribution type. Separate reusable protocol requirements from case-specific implementation details and case-specific findings, and add a compact prior-work-to-new-capability mapping for the seven audit targets.",
+      "verification_test": "A reader unfamiliar with the repository should be able to answer in one sentence whether ForkAudit is a method, protocol, benchmark, implementation, or artifact, and every headline claim should map to either a reusable protocol output or a frozen-case result without overlap.",
+      "evidence_needed": "No new experiment is required for an honest contribution reframing. Any claim that the protocol transfers across runtimes or hybrid architectures would require at least one independent instantiation.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-CLR-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 3, audit target 3 (p. 3); Table 3 private-state row (p. 5); Section 5.1 final paragraph (p. 6); Discussion evidence limitations (p. 8)",
+      "claim_ids": [
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN"
+      ],
+      "observed_evidence": "The contract says recurrent request states should be disjoint from one another and from the persistent base. The recorded evidence contains a runtime request-request GDN disjointness flag for multi-request cells and state digests, but Table 3 and the Discussion acknowledge that GDN storage keys are not archived and no direct request-base storage-range check exists.",
+      "why_it_matters": "Recurrent state is what makes this a hybrid-state ownership audit rather than a standard KV-sharing check. A pass boolean without replayable storage identities cannot independently establish the full stated private-ownership target, and the current organization makes the normative target more prominent than its partial witness.",
+      "required_fix": "Either archive replayable GDN storage keys/ranges and test request-request plus request-base disjointness directly, or narrow the target and headline language so the GDN result is described only as functional rebinding plus digest equality with a non-replayable runtime flag.",
+      "verification_test": "For every N greater than one, an offline verifier can reconstruct distinct request-local GDN storage identities and prove that each is disjoint from all other requests and the persistent base; otherwise no sentence claims that full recurrent-state ownership was verified.",
+      "evidence_needed": "New runtime evidence is needed to retain the stronger ownership claim; a claim-narrowing and presentation fix can be completed with current evidence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-CLR-03",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "Abstract (p. 1); Table 2 (p. 5); Section 5.1 and Table 4 (p. 6)",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The manuscript accurately reports 256 unique queries, 504 paired request instances, 4,032 paired step comparisons, 128 cross-N-eligible queries, and 248 larger-fan-out comparisons, but these units and their nesting are introduced in different places. The eight ranks represent distinct books/query banks rather than repeated stochastic trials, while many derived comparisons reuse nested queries.",
+      "why_it_matters": "Without a single sampling-unit map, readers can mistake a large derived comparison count for independent replication or miss why half the queries have vacuous cross-N coverage.",
+      "required_fix": "Add one compact comparison-lattice diagram or table that derives every count from books, query-bank prefixes, fan-outs, arms, and decoding steps, and label independent workload units separately from deterministic derived comparisons.",
+      "verification_test": "Every number in the Abstract and Table 4 can be derived from the new map, and its caption explicitly states which units are unique, nested, paired, and non-stochastic.",
+      "evidence_needed": "Current evidence is sufficient; this is an exposition change.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-CLR-04",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Section 3 control-arm paragraph and Figure 1 (p. 4); Sections 5.2-5.3 and Figure 2 (pp. 7-8); Appendix A (p. 12)",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The two arms are called Source+Materialize and Shared-Document in most prose, shortened to Materialize and Shared in tables/equations, and mapped to legacy artifact keys fresh and reuse. The source-retaining control also contains a common 80 MiB source plus 90N MiB per-request capacity, which is not obvious from the word Materialize alone. The memory discussion then alternates MiB pools, byte/GiB allocator peaks, ratios, and percentages.",
+      "why_it_matters": "All quantities are defined, but the reader repeatedly translates names and denominators while following the central comparison. This increases cognitive load and makes the 12.33x versus 1.0398x headline easier to misread than necessary.",
+      "required_fix": "Use one pair of arm names everywhere and add a small symbol/denominator box defining common source, per-request document copy, private reservation, controlled pool, allocator peak, units, and the artifact-key aliases.",
+      "verification_test": "Every occurrence in the main paper and appendix uses the canonical names or an explicitly defined alias, and each reported ratio names its numerator, denominator, measurement layer, and unit in the same sentence or caption.",
+      "evidence_needed": "Current evidence is sufficient; this is a terminology and visual-exposition change.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent. The study uses a public language-model checkpoint and PG-19 training text for a controlled systems audit, collects no human-subject data, and does not make downstream safety or deployment-quality claims. The manuscript includes an appropriate ethics statement and notes that memory efficiency may affect deployment cost and scale.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. The subagent reviewed only the frozen blind snapshot and the explicitly supplied rubric, calibration, protocol, and schema.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A second independent ForkAudit instantiation on another hybrid model or runtime that demonstrates which checklist outputs transfer and which are implementation-specific.",
+    "Replayable direct GDN request-request and request-persistent-base storage-disjointness witnesses, ideally paired with an independent semantic oracle rather than only same-implementation relational checks.",
+    "A sharper prior-work comparison showing a concrete failure that existing cache benchmarks or metamorphic-testing approaches miss and ForkAudit uniquely exposes.",
+    "A broader factorial study of KV sharing and recurrent-state sharing, if the authors wish to claim general hybrid-serving insight rather than a reference artifact."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any mismatch between the registered hashes/booleans and the raw per-request artifacts, or failure of the advertised offline replay on the frozen package.",
+    "Evidence that the runtime GDN disjointness flag can pass while request-local state aliases the persistent base or another request.",
+    "Broadening the abstract or conclusion into throughput, service-capacity, semantic-correctness, or cross-runtime claims without new measurements.",
+    "An identifying author, organization, private path, or account token discovered in the final manuscript or supplement."
+  ],
+  "review_limitations": [
+    "Novelty was assessed only from the frozen submission, its cited-work matrix, and the supplied KV-cache calibration; no external literature search was performed under the isolated-review constraint.",
+    "The required submission-form LLM-use disclosure is not included in the snapshot, so form-level compliance cannot be verified.",
+    "The manuscript/main.pdf and submission/main.pdf files are byte-identical; all 13 unique manuscript pages and all three one-page standalone figure PDFs were visually inspected, while the duplicate manuscript was verified by hash and metadata rather than redundantly reinterpreted."
+  ]
+}

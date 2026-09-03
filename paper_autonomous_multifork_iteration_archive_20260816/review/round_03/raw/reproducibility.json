@@ -1,0 +1,66 @@
+{
+  "reviewer_id": "R-RP-01",
+  "round": 3,
+  "snapshot_sha256": "55fab4ba9bdd9190d9d0b9b346235b663862f46eca3bf918a702dcbca44c3fec",
+  "role": "reproducibility_provenance",
+  "overall_score": 6.6,
+  "confidence": 3,
+  "recommendation": "borderline",
+  "dimension_scores": {
+    "novelty": 3,
+    "significance": 3,
+    "technical_soundness": 3,
+    "experimental_rigor": 4,
+    "clarity": 3,
+    "reproducibility": 4,
+    "citation_integrity": 3,
+    "limitations_responsible_claims": 4
+  },
+  "paper_summary": "证据链完整且 hash 可追溯，但快照内的仓库引用路径有少量不一致项，建议修正以便 blind review 阶段直接复用。",
+  "strongest_verified_contribution": "raw-shard重放与code/model/windows/ledger逐项 hash 复核构成高强度可复现闭环。",
+  "strengths": [
+    "包含完整 evidence 映射与 method provenance 表，便于追踪。",
+    "snapshot MANIFEST 含关键源文件与哈希，适合离线验真。"
+  ],
+  "issues": [
+    {
+      "issue_id": "I-RP-1",
+      "severity": "minor",
+      "dimensions": ["reproducibility", "clarity"],
+      "location": "evidence/repository_inventory.md",
+      "claim_ids": ["C1", "C2", "C6"],
+      "evidence_ids": ["EXP1", "E11"],
+      "observed_evidence": "库存清单中混入与fair-v2流程无关路径（如 qcomem-qwen35-vllm-paged-fair-v2.yaml）及重复条目。",
+      "why_it_matters": "会给复核者增加误导，影响审稿闭环的可信度与自动脚本解析。",
+      "required_fix": "清理仓库库存只保留本稿引用的 multifork-resident 资产，并在提交快照前重建清单。",
+      "verification_test": "通过 snapshot/repro run 验证仓库清单文件中条目均存在且与提交材料一致。",
+      "evidence_needed": "无新增实验。",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I-RP-2",
+      "severity": "major",
+      "dimensions": ["reproducibility", "experimental_rigor"],
+      "location": "paper_state.json / manuscript 版本描述",
+      "claim_ids": ["C4", "C5"],
+      "evidence_ids": ["E6", "E10", "cbb5d861...f671c0401"],
+      "observed_evidence": "top-level paper_state 显示 current_round=1/ current_phase=phase_3_draft_ready，与 snapshot 已达 round_03 存在状态不一致；此类元数据未与 round 编号对齐。",
+      "why_it_matters": "元数据不一致会让自动化审稿脚本误判版本流转是否闭环。",
+      "required_fix": "同步更新 paper_state（current_round、best_round、blockers、rounds 状态）与 review manifest round。",
+      "verification_test": "更新后再次生成 round_03 快照并确认主快照 manifest 与 paper_state 内 round 字段一致。",
+      "evidence_needed": "无新增实验。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "score_ceiling_under_current_evidence": 7.2,
+  "predicted_score_after_required_changes": 7.4,
+  "evidence_that_would_raise_score": [
+    "修复元数据版本一致性并重新冻结快照",
+    "清理并精简证据库存"
+  ],
+  "evidence_that_would_lower_score": [
+    "保留与fair-v2混淆的文件路径，导致自动验证误映射。"
+  ]
+}

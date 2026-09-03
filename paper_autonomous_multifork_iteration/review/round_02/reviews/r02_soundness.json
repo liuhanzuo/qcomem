@@ -1,0 +1,187 @@
+{
+  "reviewer_id": "r02_soundness",
+  "round": 2,
+  "snapshot_sha256": "e11e5241849c4997ccab4ffb86de316b3edc05b02a8c66296fac45859ad3fb90",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The KV-layout construction, cardinalities, exactness relations, page equations, and reported generation-phase allocator arithmetic are internally consistent, and I independently replayed the main counts and hashes. However, a headline memory number is labeled as an absolute PyTorch peak although it excludes an earlier, larger common-prefill peak in the shared arm; interpreting it as a full-arm peak changes the N=32 result from 2.661 GiB/3.83% to 2.064 GiB/2.97%. In addition, the recurrent-state ownership target is not directly archived or checked against the persistent base, and the same-callable oracles cannot reject common-mode defects.",
+    "presentation": "The paper is unusually explicit about its narrow scope, denominators, source-retaining control, non-independent queries, and common-mode blind spots. The organization and tables are clear. The main presentation failure is precisely where denominator clarity is the claimed contribution: the abstract, Figure 2, and Section 5.3 do not identify the allocator measurement window, making a production-step peak read as a full-arm peak.",
+    "contribution": "The evidence-gated checklist and unusually detailed artifact are useful, but the scientific contribution remains narrow: one model, one partial-tail geometry, one Python callable, one serial schedule, and no demonstrated production bug, independent semantic oracle, code-level mutation study, or transfer to another runtime. The result is closer to a careful reference case than a broadly validated ICLR-level audit framework in its present form."
+  },
+  "paper_summary": "ForkAudit proposes a seven-target checklist for auditing shared full-attention KV ownership when a hybrid LLM also contains recurrent GDN state. The paper compares a source-retaining materialization control with a shared-document paged-KV layout on Qwen3.5-35B-A3B, using eight PG-19 books and fan-outs N in {1,2,4,8,16,32}. It reports exact cross-layout and cross-fan-out relations for recorded tokens, logits, logical KV, and GDN digests, plus separate analytic page-pool and PyTorch allocator measurements. The paper explicitly disclaims a new kernel, scheduler, semantic proof, speedup, or production-capacity result.",
+  "strongest_verified_contribution": "The strongest verified contribution is the internally coherent, source-bound replay artifact for one narrow KV-ownership case. I independently verified all 64 snapshot manifest entries and all 18 executed-source digests, replayed 504 paired requests, 4,032 paired logit steps, 5,040 logical-KV layer pairs, 504 GDN digest pairs, 80,640 attention-call records, 128 cross-N-eligible unique queries and 248 larger-fan-out relations, and found no recorded cross-arm, cross-N, path, or storage-equation mismatch. The analytic 80+90N versus 80+5N MiB pool equations and the raw generation-phase N=32 allocator arithmetic also reconstruct exactly.",
+  "strengths": [
+    "The manuscript consistently distinguishes self-consistency from independent semantic correctness and explicitly rejects throughput, latency, NVML, service-capacity, recurrent-sharing-benefit, and cross-model generalization claims.",
+    "The source implements concrete ownership mechanisms rather than prose-only intentions: disjoint private KV reservations, partial-tail copy-on-write, immutable document facades, a fixed callable intercept, and functional recurrent-state rebinding.",
+    "The evidence package is unusually complete for offline structural replay: raw shards, source closure, per-file hashes, query identities, call ledgers, allocator phase snapshots, claim/evidence mapping, and fail-closed aggregation validators are all present and mutually consistent.",
+    "The paper reports negative and null results responsibly, including the failed cross-backend gate and the absence of a single-request timing speedup.",
+    "The source-retaining nature of the materialization control and the deterministic, non-statistical status of the page equations are clearly disclosed."
+  ],
+  "questions": [
+    "Are the headline 74,623,183,360 and 71,765,915,136 byte values intended to mean peak allocated bytes only during post-pack production model steps? If so, why are the abstract, Figure 2, and Section 5.3 not labeled with that phase boundary? If they are intended as full-arm peaks, why is the 72,407,176,192 byte shared-arm document-prefill peak excluded?",
+    "Can the authors archive a privacy-safe, replayable witness for every request-request and request-persistent-base GDN storage-range comparison, both immediately after forking and after generation?",
+    "Which representative code-level ownership faults has ForkAudit actually detected? In particular, what happens under an overlapping reservation, omitted tail COW, shared mutable GDN state, wrong position values, or an unintended fallback callable?",
+    "Can the authors provide a portable clean-rerun recipe with a pinned public model revision, PG-19 preprocessing/window reconstruction, environment lock, and commands that reproduce the central torch.equal comparisons?",
+    "Was any strict actual-value check or digest of position IDs and post-RoPE queries performed outside the timed call path, and if so where is that evidence archived?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R02-SND-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "clarity",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract (p. 1), Section 4.4 (p. 6), Section 5.3 and Figure 2 (p. 7), Conclusion (p. 8), claims C-MEM-01 and C-DENOM-01.",
+      "claim_ids": [
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The paper calls 74,623,183,360 versus 71,765,915,136 bytes the N=32 absolute PyTorch peak allocated values and derives a 2,857,268,224 byte (2.661 GiB, 3.8289%) gap. The raw shards identify these fields as generation_only.production_absolute_peak_allocated_bytes. In every rank, the shared arm previously records common_document_prefill.allocator_after.peak_allocated_bytes = 72,407,176,192, which is larger than 71,765,915,136. Taking the maximum over the recorded prefill, pack, resident-setup, and generation phases gives full-arm peaks of 74,623,183,360 versus 72,407,176,192: a 2,216,007,168 byte (2.064 GiB, 2.9696%) gap and a 1.0306x ratio, not 2.661 GiB/3.83% and 1.0398x.",
+      "why_it_matters": "The paper's central methodological message is that memory denominators and measurement boundaries must be explicit. Omitting the phase boundary from the headline allocator result makes a phase-local production-step peak appear to be a lifecycle peak and changes the quantitative conclusion under the natural full-arm interpretation. This is a claim/evidence mismatch, not merely a cosmetic axis label.",
+      "required_fix": "Choose and state the intended measurement window everywhere. If the claim is post-pack production-step peak allocated memory, relabel the abstract, Figure 2, table, claim map, and conclusion accordingly and explain why common prefill is out of scope. If the claim is full-arm peak allocated memory, recompute each arm as the maximum over all recorded phases and replace the N=32 values and ratios. Ideally report both phase-local and lifecycle peaks.",
+      "verification_test": "For every rank, N, and arm, recompute (a) the maximum peak allocated bytes over common prefill, Q16 pack, resident setup, and generation and (b) the post-pack production-step maximum. Confirm that every manuscript value is explicitly mapped to one of these two quantities and that the N=32 arithmetic matches the raw shards exactly.",
+      "evidence_needed": "The existing raw shards are sufficient to correct or relabel this claim; no new GPU run is required unless the intended lifecycle includes an unrecorded phase.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-SND-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 3 target 3 (pp. 3-4), Table 3 (p. 5), Section 5.1 (pp. 6-7), Section 6 (p. 8), Appendix B, and claim C-OWN-01.",
+      "claim_ids": [
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-GDN",
+        "E-CODE-MF",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The contract says recurrent request states should be disjoint from one another and from the persistent base. The runner's _resident_linear_states function computes final request storage keys and checks request-request intersections, but removes those keys before serialization; only successful completion remains as evidence. There is no runtime request-persistent-base storage-range comparison. Moreover, both ownership arms use the same functional GDN strategy, so cross-arm equality cannot expose a shared GDN ownership defect. The manuscript candidly acknowledges these gaps.",
+      "why_it_matters": "Heterogeneous-state ownership is the motivation for applying the checklist to a hybrid model, yet the recurrent half of the ownership boundary is not independently replayable and one required disjointness relation is never tested. A request-base alias or another common-mode GDN defect could therefore pass all headline relations. This does not invalidate the KV result, but it materially limits the claimed audit contribution.",
+      "required_fix": "Record a privacy-safe replayable witness for GDN storage ranges or stable allocation identities, and directly test every request against every other request and the persistent base before generation and after each relevant update. Add a GDN materialization/share control or a targeted GDN alias mutant so the recurrent ownership checks are shown to be discriminating rather than merely asserted by a pass flag.",
+      "verification_test": "An independent replay should reconstruct all request-request and request-base overlap predicates for all 30 GDN layers and all resident cells. A deliberately shared mutable GDN state must fail the intended ownership target while the clean run passes and leaves the persistent-base digest unchanged.",
+      "evidence_needed": "New runtime telemetry and at least one targeted recurrent-state control or mutation experiment are required.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-SND-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 4.5 (p. 6), Table 4 (p. 6), Section 6 (p. 8), Appendix B, and claim C-MUT-01.",
+      "claim_ids": [
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-CPU-TESTS",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The 28 advertised tamper cases mutate serialized artifacts and exercise validators, not the GPU execution or state-ownership implementation. Appendix B explicitly says its failure map is not a set of executed runtime mutants. The only behavioral oracles compare two layouts using one wrapper/callable and compare fan-outs under the same implementation, so a common-mode defect can pass. No actual ownership bug, code-level mutation, or independent oracle is shown to be detected.",
+      "why_it_matters": "For an audit/testing contribution, demonstrating sensitivity to representative implementation faults is decision-relevant. Structural replay proves that the ledger is self-consistent, but not that the proposed targets catch the classes of ownership errors used to motivate the method. Without such positive controls, the general value beyond this one passing case remains uncertain.",
+      "required_fix": "Execute a small, claim-aligned mutation study covering at least overlapping private reservations, omitted partial-tail COW, mutable GDN aliasing, incorrect position metadata or values, and fallback/full-KV materialization. Report which target detects each mutant, the detection point, and whether clean executions produce false positives. An external semantic reference for at least a tractable subset would further address the common-mode blind spot.",
+      "verification_test": "Each injected fault should fail the preregistered corresponding target before a passing aggregate is emitted, while the unmodified implementation should pass. The paper should include raw mutation artifacts or deterministic tests that independently reproduce these outcomes.",
+      "evidence_needed": "New code-level mutation or independent-reference experiments are required; serialized JSON tampering alone is insufficient.",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R02-SND-04",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "Section 5.1 (p. 6), Reproducibility Statement (p. 8), Appendix D, and claim C-EXACT-01.",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The package stores author-generated SHA-256 digests and runtime torch.equal booleans, but not the underlying logits, KV tensors, or GDN tensors. The supplement explicitly states that it is not a clean GPU-rerun artifact and that independent numerical replay requires the pinned model and PG-19 inputs. I could independently verify cardinalities, digest agreement, source hashes, storage equations, and aggregation, but not recompute the central numeric equality from the supplied artifact.",
+      "why_it_matters": "Exactness is the main empirical result. A self-consistent chain of booleans and hashes is strong provenance, but it is not an independent numerical verification when the same execution pipeline emits both the claim and its digest. This is especially important for a paper whose contribution is auditability and reproducibility rather than a new model result.",
+      "required_fix": "Provide a portable clean-rerun path: pinned public model revision and weight checks, environment lock, exact PG-19 acquisition and window reconstruction, and commands that regenerate the shards. Alternatively or additionally, archive enough compressed/sampled tensor values for an independent offline equality check and obtain a second implementation or third-party replay for the central subset.",
+      "verification_test": "Starting from documented public inputs in a clean environment, an independent party should reproduce the 504 request pairs, runtime full-logit equality, final-state equality, call counts, and the corrected allocator metrics without private paths or author-only artifacts.",
+      "evidence_needed": "A portable artifact update and an independently executed rerun, or independently checkable numeric tensor evidence, are required.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R02-SND-05",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "Section 3 target 5, Table 3, Section 4.3, and claim C-CALL-01.",
+      "claim_ids": [
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SHARDS",
+        "E-CODE-MF"
+      ],
+      "observed_evidence": "All 80,640 recorded attention calls set position_ids_strict_tail_values_checked to false and position_ids_validation_host_syncs to zero. The ledger validates shape, dtype, device, and expected range metadata but does not hash or compare the actual position values or post-RoPE query tensors. The paper discloses this limitation.",
+      "why_it_matters": "The dispatch target is therefore a callable-and-metadata witness, not a full query/position equivalence witness. A common-mode position or post-RoPE query defect can pass the two relational checks, and a layout-specific difference is inferred only indirectly from matching logits.",
+      "required_fix": "Outside the timed path, hash or strictly validate the actual position IDs and post-RoPE query tensors once per request, step, and full-attention layer, and bind those records into the raw shard replay.",
+      "verification_test": "Replaying the shards should show identical actual position and post-RoPE query digests across arms for every paired call, and a deliberately perturbed position value should fail target 5.",
+      "evidence_needed": "New call-level telemetry or a targeted untimed audit pass is required.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is identified for the stated systems audit. The paper uses PG-19 train data, introduces no human-subject collection, and does not make safety or deployment-quality claims. The disclosed compute and broader efficiency externalities are adequate for this scope.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "Correct phase-specific labeling of the allocator result or a full-lifecycle recomputation, with all abstract, figure, table, conclusion, and claim-map numbers aligned to the raw phases.",
+    "Replayable request-request and request-persistent-base GDN storage witnesses across all layers and resident cells, plus a discriminating recurrent-state control.",
+    "A code-level mutation study showing that the checklist detects representative KV, tail-COW, GDN, position, and fallback faults without false positives.",
+    "A portable clean rerun or independent numerical replay that reproduces the central torch.equal results from pinned public inputs.",
+    "Evidence on a second hybrid model, runtime, page/alignment geometry, or realistic scheduler lifecycle would raise the contribution ceiling beyond a narrow reference case."
+  ],
+  "evidence_that_would_lower_score": [
+    "Evidence that the reported allocator values were intended as full-arm peaks without correcting for the larger shared-arm prefill peak.",
+    "A direct GDN storage audit showing request-persistent-base aliasing or request-request overlap at any update point.",
+    "A clean rerun that fails full-logit, logical-KV, GDN, cross-N, or callable-path equality under the frozen protocol.",
+    "Representative ownership mutants that pass the purported corresponding ForkAudit targets.",
+    "Any mismatch between the distributed executed-source closure and the code that actually produced the GPU evidence; no such mismatch was found in the supplied per-file digests."
+  ],
+  "review_limitations": [
+    "The blind-review protocol prohibited external browsing, so related-work novelty was assessed only from the supplied manuscript, bibliography, citation lock, and closest-work matrix.",
+    "I did not perform a GPU/model rerun because the blind artifact does not redistribute the weights, PG-19 text, or full tensors and explicitly does not provide a clean rerun path.",
+    "I inspected the supplied executed source and independently replayed hashes, raw-shard cardinalities, equality digests, cross-N relations, storage equations, and allocator arithmetic; runtime tensor values themselves remain cannot_verify from this snapshot."
+  ]
+}

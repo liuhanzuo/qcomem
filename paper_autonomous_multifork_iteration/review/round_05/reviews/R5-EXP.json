@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "R5-EXP",
+  "round": 5,
+  "snapshot_sha256": "90c20e84de6080c96e38e7bd0f95323159f71e6607a951504b9b938bbe89b60f",
+  "role": "experimental_rigor",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "Within its explicitly narrow one-model, one-runtime scope, the paper provides unusually detailed ownership witnesses, exact cross-arm comparisons, bounded independent numerical checks, matched fault controls, and denominator-aware memory accounting. The central case-study conclusions are credible. Soundness falls short of excellent because the GDN oracle's executed boundary and scale differ from its preregistration, the amendment itself is unavailable, and the generic audit claim is validated only through one custom adapter and directly targeted faults.",
+    "presentation": "The manuscript consistently separates established results from exclusions, distinguishes memory estimands, and provides a strong cohort-to-claim table. Evaluation is nevertheless laborious because the artifact maps contain stale or unresolved paths and locations, and Figures 1 and 2 contain very small labels; Figure 1 also has visibly crowded or truncated bottom text at final manuscript size.",
+    "contribution": "A phase-aware ownership and evidence contract for heterogeneous KV and recurrent state is useful, and the frozen package is more auditable than typical systems case studies. However, most ingredients are established techniques, while the claimed integration has only one Qwen3.5/vLLM/Torch-GDN instantiation, one sequential schedule, and no independent runtime transfer. This supports a credible but narrow contribution rather than a broadly validated ICLR-level auditing standard."
+  },
+  "paper_summary": "ForkAudit is an executable audit contract for prefix-fork ownership in hybrid LLMs containing token-indexed attention KV and recurrent GDN state. Its Qwen3.5-35B-A3B case study crosses full-copy versus shared-document KV with materialized versus borrowed immutable GDN bases at three fan-outs. It records phase-aware storage ranges, exact semantic trajectories, selected dense-FP32 attention and NumPy GDN checks, nine targeted live faults, a same-adapter cancellation/reclamation lifecycle, and explicit allocator denominators. The paper deliberately does not claim a new cache policy, scheduler, performance improvement, production capacity result, or cross-runtime standard.",
+  "strongest_verified_contribution": "For one frozen Qwen3.5/vLLM case, the submission binds 96 ownership configurations to pointer-free three-phase storage witnesses and bitwise token, full-logit, logical-KV, and final-GDN comparisons, directly demonstrating the stated request/base and request/peer ownership predicates while keeping allocator and logical-memory denominators separate.",
+  "strengths": [
+    "The experimental claims are unusually well bounded: the paper repeatedly distinguishes relational exactness from independent correctness, selected operator checks from end-to-end validation, and allocator counters from process memory or service capacity.",
+    "The 2-by-2 ownership factorial, three fan-outs, eight frozen books, complete full-logit and state comparisons, fixed-axis projections, and non-vacuous N=1 request-to-base test are well matched to the ownership claims.",
+    "The attention oracle uses held-out, preselected rows spanning different layers and rounds and reconstructs physical document pages plus append shadows rather than trusting the candidate logical KV view.",
+    "The mutation campaign includes separately rebuilt matched-clean controls, explicit expected gates, restoration receipts, and allocator cleanup, and the manuscript appropriately avoids claiming completeness or an incremental detector rate.",
+    "The lifecycle cohort adds cancellation, zero-scrub, exact reservation reuse, and stale-lease rejection while clearly identifying that it remains a same-adapter result.",
+    "The artifact package exposes raw sidecars, hashes, executed source, cohort boundaries, claim maps, and replay code, enabling substantially deeper scrutiny than manuscript-only evaluation."
+  ],
+  "questions": [
+    "When exactly was the GDN scope amendment written relative to inspecting any candidate outputs or oracle errors, and can the authors provide its exact bytes and timestamped binding rather than only SHA-256 747539fc565c97c5004c64b1251dc0338c29cd6457c7e14a3ace7e9f3d8364f6?",
+    "Why does the GDN preregistration require in-reference q/k normalization and query_scale=1.0 while the executed capture starts after native normalization and records query_scale=0.08838834764831845? Which parts of the original success criterion remain genuinely preregistered?",
+    "Can the same abstract audit contract be instantiated on a second independently implemented hybrid model or runtime without changing its mandatory record schema and decision predicates?",
+    "Beyond reaching the gate that directly names each injected mutation, which faults cause observable semantic or lifecycle failures when that gate is suppressed? How would the contract detect a realistic defect not designed one-to-one from its assertions?",
+    "Were the N=32 allocator endpoints repeated in fresh processes or under randomized cell order, and if not, what evidence excludes priming, cleanup, or allocator-history effects on the headline 4.90-to-2.23 GiB delta?",
+    "Can the authors provide a snapshot-local global experiment registry mapping every E-* identifier to an existing path and update all claim and method locations to the submitted manuscript?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R5EXP-001",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "novelty"],
+      "location": "Abstract; Sections 1, 3 (runtime-independent decision rule), 4.1-4.5, 5.3, 6; Appendix Tables 3, 8, 9, and Section J",
+      "claim_ids": ["C-OWN-01", "C-RR2-FACT-01", "C-RR2-MUT-01", "C-RR4-LIFECYCLE-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-LIFECYCLE-TRANSFER", "E-RR4-DETECTOR-TWO-FAULT-DEBUG-D"],
+      "observed_evidence": "All principal experiments use one Qwen3.5 checkpoint, the same vLLM attention adapter, the Transformers Torch GDN path, H20 hardware, and sequential round-major execution on one CUDA stream. The lifecycle result changes geometry and exercises cancellation but explicitly reuses the same adapter. Each of the nine formal faults is constructed to violate the directly corresponding named gate; after that gate, detector_path_completed_after_gate is false for all nine formal rows. The M8/M9 debug further shows only an injected sentinel for M8 and one ordinary assertion for M9.",
+      "why_it_matters": "The paper's primary contribution is the audit contract rather than the case-study mechanism. A single custom implementation with one-to-one gate mutants establishes internal consistency and targeted sensitivity, but not that the proposed record schema is portable, complete enough to be useful on an independent implementation, or able to find realistic defects not derived from its own assertions. This is the main evidence ceiling on contribution and external validity.",
+      "required_fix": "Instantiate the frozen contract on at least one independently implemented hybrid model/runtime or materially independent adapter. Predeclare the record mapping, obligations, clean controls, and a mixed fault suite before observing candidate results. Include at least some realistic faults not defined by simply disabling the gate that names them, and report false positives, intended versus observed gates, and downstream semantic or lifecycle consequences where execution can safely continue.",
+      "verification_test": "A reviewer should be able to run the same contract-level replay over the second implementation, verify that mandatory schema and predicates were fixed before outputs, observe passing clean cells, and confirm detection or explicit non-detection of the predeclared independent fault suite without changing the decision rule post hoc.",
+      "evidence_needed": "Raw and replayable second-implementation artifacts, frozen protocol and fault specifications, clean and faulty outcomes, and a cross-adapter comparison of which obligations required adaptation.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5EXP-002",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "reproducibility", "limitations_responsible_claims"],
+      "location": "Abstract; Sections 3 and 4.3; Section 5.3; Appendix Table 11; evidence/gdn_transition_oracle_replay/preregistration.json and raw/capture-manifest.json",
+      "claim_ids": ["C-RR4-GDN-ORACLE-01"],
+      "evidence_ids": ["E-RR4-INDEPENDENT-GDN-ORACLE"],
+      "observed_evidence": "The supplied preregistration requires use_qk_l2norm_in_kernel=true, reproduction of epsilon-1e-6 normalization inside the reference, and captured query_scale=1.0. The executed capture instead records a post-native-q/k-normalization boundary, use_qk_l2norm_in_kernel=false, and query_scale=0.08838834764831845 from inverse square root of width 128. The manuscript acknowledges a scope amendment, but the reviewer package contains only its hash, not the amendment text or independently inspectable chronology. Rows, faults, and tolerances appear unchanged.",
+      "why_it_matters": "The four numerical matches remain valid conditional checks at the executed boundary, but the repeated description of the oracle as predeclared is incomplete: a scientifically important operator boundary and scaling rule changed. Without the amendment, reviewers cannot determine whether this was a legitimate pre-output mechanical correction or a response to observed disagreement.",
+      "required_fix": "Include the exact scope-amendment object, its creation time and immutable pre-execution binding, and a clear preregistration-versus-execution diff. Preferably perform a fresh run under a new preregistration whose q/k boundary, normalization responsibility, and scale exactly match the executed oracle.",
+      "verification_test": "The amendment bytes must match the cited SHA-256, verifiable receipts must place it before the successful capture and before inspection of oracle outcomes, and a fresh replay must satisfy an internally consistent preregistration without semantic amendments.",
+      "evidence_needed": "The missing amendment, timestamp or detached receipt chain, failed-attempt chronology if applicable, and ideally a fresh preregistered rerun.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5EXP-003",
+      "severity": "major",
+      "dimensions": ["reproducibility", "experimental_rigor", "clarity"],
+      "location": "evidence/claim_evidence_map.tsv; evidence/method_provenance.tsv; evidence/package_closure_audit.json; Appendix K",
+      "claim_ids": ["C-OWN-01", "C-POOL-01", "C-MEM-01", "C-DENOM-01", "C-RR4-LIFECYCLE-01", "C-RR4-GDN-ORACLE-01"],
+      "evidence_ids": ["E-CODE-KERNEL", "E-CODE-MF", "E-CODE-GDN", "E-MF-SUMMARY", "E-MF-SHARDS", "E-RR4-LIFECYCLE-TRANSFER", "E-RR4-INDEPENDENT-GDN-ORACLE"],
+      "observed_evidence": "The snapshot does not contain the global evidence/experiment_registry.json that package_closure_audit.json reports validating. The available RR2 registry entry uses evidence_id RR2-W-ANON-R4 rather than the E-* identifiers used by the claim map. The first ten method-provenance rows point to a nonexistent supplement_anonymous/code directory, although similarly named executed sources exist elsewhere. Several manuscript locations are stale, including references to Section 5.5 and Appendix F for material now appearing in Section 5.4 or Appendix I.",
+      "why_it_matters": "ForkAudit's central claimed value is executable traceability. Raw evidence appears present, but stale or absent mappings force reviewers to reconstruct provenance manually and make the submitted closure audit non-reproducible from the snapshot as packaged. This is more consequential here than an ordinary supplemental-navigation problem.",
+      "required_fix": "Ship a snapshot-local global experiment registry resolving every evidence ID to exact existing files and digests; rewrite method-provenance paths to the included executed-source locations; update all manuscript section, table, and appendix references; and regenerate the closure audit against the frozen submission directory itself.",
+      "verification_test": "A strict validator run from the submission root should resolve every claim evidence ID, method source path, symbol, manuscript location, and replay command without external aliases or missing files, and the regenerated audit should be included and hash-bound in MANIFEST.json.",
+      "evidence_needed": "Corrected registry and maps plus a snapshot-local validation report whose inputs and outputs are themselves included in the manifest.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5EXP-004",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims"],
+      "location": "Section 5.4, Table 1; Appendix Table 5; Sections 6 and J",
+      "claim_ids": ["C-MEM-01", "C-DENOM-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-MF-SUMMARY", "E-MF-SHARDS"],
+      "observed_evidence": "The paper reports one deterministic observation per rank-configuration cell, fixed cell order, and identical rank values. It correctly avoids confidence intervals and distinguishes allocated from reserved and NVML memory, but supplies no fresh-process repeat or order-sensitivity experiment for the headline allocator delta.",
+      "why_it_matters": "The final allocated-byte result is likely dominated by tensor geometry and is therefore credible, but identical observations under the same allocation schedule do not establish robustness to allocator priming, incomplete cleanup, or execution-order history.",
+      "required_fix": "Either describe the number as a single-run deterministic accounting result rather than a median, or repeat the N=32 cells in fresh processes under reversed or randomized arm order and report exact or bounded variation.",
+      "verification_test": "Fresh-process repeats should reproduce the final allocated deltas within a predeclared tolerance, and arm-order changes should not materially alter the full-copy versus shared-document contrast.",
+      "evidence_needed": "Per-repeat allocator traces, process initialization receipts, cell-order records, and cleanup checks.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R5EXP-005",
+      "severity": "minor",
+      "dimensions": ["clarity", "reproducibility", "limitations_responsible_claims"],
+      "location": "Figures 1 and 2 and their captions; source/figures/imagegen_round5_candidates/IMAGEGEN_ASSET_RECORD.json; reproducibility and ethics statements",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The asset record identifies AI-generated base imagery with deterministic technical overlays, but the manuscript contains no explicit paper-level disclosure of generative-AI use. At final PDF size, multiple technical labels in Figures 1 and 2 are very small, and Figure 1's bottom annotation is crowded and visibly truncated or concatenated.",
+      "why_it_matters": "The numerical authority is correctly separated from the explanatory imagery, but transparent AI-use disclosure is a venue-compliance matter and the current figure rendering obstructs verification of the intended ownership relations.",
+      "required_fix": "Add the required generative-AI-use disclosure, explicitly identifying the illustrative base imagery and deterministic overlays, and regenerate the figures with larger labels and an unclipped bottom annotation.",
+      "verification_test": "The final PDF should contain a clear disclosure and all figure labels should remain readable and complete at 100% page view and in grayscale.",
+      "evidence_needed": "Revised manuscript text and visually inspected final-size figure assets.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific research-ethics concern is apparent. The study uses PG-19 training text only for controlled systems execution and makes no downstream quality, safety, privacy, or deployment claims. The missing generative-AI disclosure is treated as a presentation and venue-compliance issue rather than an ethics violation.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A preregistered, replayable application of the unchanged audit contract to a second independently implemented hybrid model or runtime.",
+    "A fresh GDN oracle run whose preregistration exactly matches the executed normalization boundary and scale, preferably with broader windows, layers, and transition positions.",
+    "A blinded fault campaign containing realistic defects not defined one-to-one from the named gates, with false-positive and downstream-consequence reporting.",
+    "A snapshot-local registry and closure audit that resolve every claim, evidence identifier, method source, and manuscript location.",
+    "Fresh-process allocator repeats showing that the headline memory contrast is insensitive to cell order and allocator history."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of the supplied raw-first replay, storage-witness checks, or numerical sidecar recomputation.",
+    "Evidence that the GDN scope amendment was authored after examining successful-run outputs or that rows, faults, or tolerances were changed after observing results.",
+    "A second schedule or geometry revealing shared mutable GDN state, cross-request interference, or tail-COW corruption that the current gates miss.",
+    "Material variation or reversal of the memory contrast under fresh-process or reordered measurements.",
+    "Discovery that supposedly independent reference code imported or reproduced candidate implementation logic beyond the disclosed captured-input boundary."
+  ],
+  "review_limitations": [
+    "I reviewed only the frozen round-05 submission and did not inspect previous reviews, author response content, target scores, or repository history.",
+    "To preserve the read-only review constraint, I inspected the supplied manuscript, source, manifests, maps, preregistrations, derived summaries, and selected raw metadata but did not execute the replay scripts or regenerate GPU experiments.",
+    "I did not independently browse or comprehensively verify the broader literature; novelty assessment is limited to the paper's cited positioning and the supplied ICLR KV-cache calibration guidance."
+  ]
+}

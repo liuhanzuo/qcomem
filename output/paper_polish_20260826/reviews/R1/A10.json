@@ -1,0 +1,159 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "3ec51ae6ffcf87653a3cf81af085bb834be3c6c87b953736487d0e0c9fe089b1",
+  "role": "novelty_positioning",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "匹配数据顺序的四个重复、三次独立随机初始化负对照和大量边界说明是认真之处，但训练只到 458 步且仍未收敛，生成评价只覆盖一个提示与一个 checkpoint seed，两个臂均明显退化；MAUVE 未形成结果、drift 重算门失败，因而可支持的只是非常局部的描述性观察。",
+    "presentation": "论文结构清楚，表格把训练预算、生成网格、退化输出坐标和推断上限放在一起；10 页逐页视觉检查未见裁切。不过正文反复强调什么不构成结论，反映核心科学问题与可用证据之间仍有较大落差。",
+    "contribution": "论文明确声明 companion fields 不是新指标、signal layer 不是新 decoder、随机初始化不是竞争基线，最终贡献只是一份 135M 单提示负对照的报告模板。相对于文中相关工作，这不足以构成 ICLR 级的新方法、实证规律或有广泛影响的评测基准。"
+  },
+  "paper_summary": "本文比较由 SmolLM2-135M 转换而来的 masked-diffusion 模型在 AR 预训练初始化与随机初始化下的短程训练。两臂各训练约 30M tokens/458 steps；四个匹配数据顺序重复的末次记录损失相差 2.262 nats，三次新随机权重初始化也保留损失差的符号。生成实验仅用提示“To be or not to be”、seed-42 checkpoint 对、两个温度和每格 32 个样本；AR-init 输出多为短标点/换行残片，random-init 多为词循环。论文尝试用 teacher PPL、长度、alphabetic yield、top-word share、MAUVE、drift 和 entropy 记录退化，但明确不作质量排序或能力结论。",
+  "strongest_verified_contribution": "最稳健的结果是固定初始化 checkpoint 后，四个数据顺序/训练随机性重复均显示 random-init 的最后记录 masked-denoising loss 高于 AR-init，平均差 2.262 nats、配对 t 区间 [2.220, 2.305]；三次独立随机权重 draw 的差值 2.300、2.281、2.272 nats 也同号（PDF pp.4–5，Tables 3–4、Figure 2）。这验证了该短预算配置下的损失符号，但不支持收敛速度或生成质量结论。",
+  "strengths": [
+    "PDF pp.3–5 将固定初始化、数据顺序重复和独立随机权重 draw 清楚分开，避免把 n=4 的配对方差误称为随机初始化方差。",
+    "PDF pp.6–8 同时报告 emitted length、alphabetic-word count、top-word share、长度截断 PPL 与短 stub，而没有把低 PPL 直接等同于更好文本。",
+    "失败结果被保留：PDF p.8 Table 9 明示 drift 重算的 12.6%–18.1% 聚合误差及 56.8% 最坏误差，MAUVE 也因配置/数值问题不进入结论。",
+    "限制写得诚实：PDF pp.8–9 明确说明单提示、单 checkpoint、仍在变化的损失、退化输出及无独立质量锚。"
+  ],
+  "questions": [
+    "这篇论文希望回答的 ICLR 级科学问题究竟是什么：初始化影响短程优化、退化生成的测量，还是一个报告规范？当前三者都被主动限定为非方法、非质量结论。",
+    "能否在多个预先指定提示、checkpoint、采样种子和训练阶段上，用人工或独立质量标注验证 emission companion fields 的判别效度？",
+    "为何将固定 30M-token 预算下的 AR 预训练初始化与从头随机初始化作为主要对照；是否可加入参数量/训练阶段匹配、随机预训练初始化或训练到可比 loss 的对照？",
+    "能否重跑 drift 与 MAUVE，并提供 principal random-init 的真实权重种子和 step-0 记录？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A10-I1",
+      "severity": "critical",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "PDF pp.1–3，Abstract、§1–§2 与 Table 1；PDF p.8，§5；PDF p.9，Conclusion",
+      "claim_ids": [
+        "paper-level contribution",
+        "negative-control reporting unit"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Equation 1",
+        "Table 11"
+      ],
+      "observed_evidence": "论文反复声明这些字段不是新 metric、signal schema 不是新 decoder、random-init 不是竞争 baseline，且没有质量排序、capability 或训练发现。相对于 Table 1 所列最近工作，新增内容主要是把长度、字母词产出和词集中度并列报告在一个极窄 pilot 中。",
+      "why_it_matters": "负结果可以重要，但需要揭示反直觉、可泛化的现象或提供可复用且经验证的方法。当前最强正结果只是预训练初始化在极短预算下比随机初始化损失低，这一方向本身预期性很强；报告字段也未被证明能解决实际选择问题。",
+      "required_fix": "明确一个可证伪的核心研究问题，并用多模型/多提示/多训练阶段证据回答；若贡献是测量方法，则需定义并验证其相对现有退化指标的增量效度。",
+      "verification_test": "在预先固定的数据集与提示套件上比较 companion bundle 与标准重复度、长度、distinct-n、人工质量标签的预测/诊断性能，并在独立模型上复现。",
+      "evidence_needed": "跨设置效度研究、强基线和清晰的新增科学命题。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I2",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "PDF p.4，§3.3 与 Table 2；PDF pp.6–7，§4.2、Tables 5–8；PDF pp.8–9，§5–§7",
+      "claim_ids": [
+        "emission-coordinate diagnosis",
+        "PPL/emission complementarity"
+      ],
+      "evidence_ids": [
+        "Table 5",
+        "Table 6",
+        "Table 7",
+        "Table 8"
+      ],
+      "observed_evidence": "生成评价仅有一个提示、一个 seed-42 checkpoint pair、两个温度和每格 32 个样本；两臂输出都明显退化。AR-init 在 τ=0.7 只有 1/32 样本达到 128 tokens，PPL 排序随 teacher、温度和长度 cap 改变，且没有独立人工质量锚。",
+      "why_it_matters": "在长度和退化模式严重不同的条件下，PPL 与简单 emission 统计看似“互补”可能只是测量了样本长度/循环形态，不能说明它们对一般生成质量或初始化比较有判别力。",
+      "required_fix": "扩展到多提示、多生成 seed、多 checkpoint 和至少一个独立人工/任务质量锚；按 continuation 级而不是只按 cell 汇总集中度，并预先规定长度处理。",
+      "verification_test": "在独立保留集上评估各指标与盲人工偏好/任务成功的相关、校准及错误案例；用层级 bootstrap 同时覆盖 prompt、checkpoint 和 sample。",
+      "evidence_needed": "多提示重复、逐样本统计、人工质量标签与独立验证集。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I3",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp.3–5，§3.2、§4.1，Tables 2–4、Figure 2；PDF p.9，Table 11",
+      "claim_ids": [
+        "short-horizon loss advantage"
+      ],
+      "evidence_ids": [
+        "Figure 2",
+        "Table 3",
+        "Table 4",
+        "Table 11"
+      ],
+      "observed_evidence": "两臂仅训练 458 步/约 30M tokens，曲线仍在变化；比较的是保留大量 AR 预训练信息的初始化与从头随机权重。四个重复只改变数据顺序/训练随机性，三次独立 weight draws 也仅给出同一短预算下的三个差值，符号检验 n=4 的最小单侧 p 为 0.0625。",
+      "why_it_matters": "这一设计无法区分初始化带来的预期起点优势、学习速度和最终可达性能，也没有给出等 loss、等计算到收敛或更有竞争力的初始化对照。",
+      "required_fix": "加入 step-0 和密集学习曲线，训练到接近收敛或比较达到相同 loss/质量所需计算；增加多个权重 seed 和合理的中间初始化基线。",
+      "verification_test": "预先定义曲线 AUC、time-to-threshold 和最终窗口效应，在足够多的独立权重 draw 上给出层级区间，并检查差异是否在匹配训练阶段后仍存在。",
+      "evidence_needed": "长程学习曲线、step-0、更多独立初始化和阶段匹配对照。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I4",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "PDF p.4，Table 2；PDF p.8，Tables 9–10；PDF p.9，Reproducibility Statement",
+      "claim_ids": [
+        "trajectory diagnostics",
+        "reproducibility"
+      ],
+      "evidence_ids": [
+        "Table 9",
+        "Table 10",
+        "Reproducibility Statement"
+      ],
+      "observed_evidence": "drift scalar/top-k 重算相差 12.6%–18.1%，最坏记录误差 56.8%，因此没有 drift effect；MAUVE 未记录；principal random-init 使用 ambient RNG 且没有 seed 参数，step 0 也未记录；冻结时无经验证的外部匿名 URL。",
+      "why_it_matters": "失败的量化检查不能支持轨迹结论，缺失权重种子又使主要随机初始化无法从头重建。只提供 checkpoint 哈希可验证现有文件，却不能复现产生过程或检验独立 draw 变异。",
+      "required_fix": "修正并重跑 drift/MAUVE，记录完整配置和误差门；为所有权重、训练与生成随机源提供明确种子，加入 step-0，发布可访问的匿名工件。",
+      "verification_test": "独立环境从记录种子生成相同初始权重，重跑诊断后 scalar/top-k 差异低于预设 1% 门，并从公开工件复算所有主表。",
+      "evidence_needed": "可执行匿名工件、完整 RNG provenance、修正后的诊断输出。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未见需要升级的伦理风险；论文已提示训练语料可能带有隐私、许可和代表性偏差，但本研究不涉及人类受试者或上线流量。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R1 独立完成，仅用于内部投稿前质量控制；未与任何其他评审者或评审代理通信，也未查看其输出。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "跨多个提示、checkpoint、随机种子和模型验证 emission companion bundle 对独立质量标签的增量效度。",
+    "提供长程或等阶段训练比较，证明初始化结果不只是预期的短程起点差异。",
+    "修复 drift/MAUVE 管线并通过预先规定的重算误差门。",
+    "发布可访问、可从种子重建 principal random-init 的匿名工件。"
+  ],
+  "evidence_that_would_lower_score": [
+    "多提示重复显示 emission 坐标或退化模式随提示/seed 任意改变，无法稳定诊断。",
+    "训练延长或阶段匹配后 2.262-nat 差异消失或反转。",
+    "独立重算不能复现主要损失端点或暴露更多序列化/轨迹错位。",
+    "人工质量评估显示所提 companion fields 相对标准重复度指标没有增量信息。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的 10 页冻结 PDF；未读取源码、匿名工件、训练日志或任何其他评审输出。",
+    "按隔离任务约束未联网，未独立核验外部引文、相关工作覆盖完整性或匿名工件可访问性；新颖性判断仅相对于 PDF 自述的相关工作。",
+    "逐页视觉核查未发现裁切或无法解析页面。"
+  ]
+}

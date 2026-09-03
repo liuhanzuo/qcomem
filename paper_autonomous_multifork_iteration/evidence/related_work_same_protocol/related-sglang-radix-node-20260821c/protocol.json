@@ -1,0 +1,52 @@
+{
+  "schema": "forkaudit-related-serving-preregistration-v1",
+  "system": "sglang-0.5.17-qwen35-radix-extra-buffer",
+  "model": "Qwen3.5-35B-A3B@59d61f3",
+  "data_sha256": "1553739496b3c209988de56a4ccf574d407379b6b7937ddfafacbe66925069fe",
+  "source_revision": "5e628be450b7e67fb7ae6e201bd6d8f7056f7672",
+  "datasets": ["qasper", "2wikimqa"],
+  "source_indices": [6, 7, 8, 9],
+  "world_size": 8,
+  "hardware": "8x NVIDIA H20-3e; one independent server and workload per GPU",
+  "input_token_cap": 4096,
+  "max_new_tokens": 32,
+  "decoding": {"temperature": 0.0, "seed_base": 20260820},
+  "timing_boundary": "OpenAI completions streaming client wall-clock",
+  "streaming_usage_policy": "Request include_usage and continuous_usage_stats; accept completion-token counts only from server usage objects; fail closed on explicit streaming error objects; allow an empty decoded text only for the one-token cache-prime request",
+  "environment": {
+    "sglang": "0.5.17",
+    "installation": "prebuilt isolated node-local venv from pinned official CUDA 12.9 wheels; exact pip freeze and pip check retained before model output",
+    "official_release_commit": "2948168"
+  },
+  "processor_view": {
+    "policy": "run-private copy of the six frozen tokenizer/config files plus the hash-pinned official Qwen3.5 preprocessor_config.json; original model directory remains unchanged",
+    "requests": "text only",
+    "readiness_probe": "successful /model_info response followed by the workload client's real OpenAI completion warmup"
+  },
+  "cache_geometry": {
+    "mamba_scheduler_strategy": "extra_buffer in both phases",
+    "page_size_tokens": 64,
+    "cache_report": true,
+    "metrics": true
+  },
+  "phases": {
+    "cache_off": "fresh server with --disable-radix-cache; extra_buffer scheduling retained",
+    "cache_on": "fresh server with radix cache enabled; document-only priming before measured document+query"
+  },
+  "metrics": [
+    "mean answer F1",
+    "median TTFT",
+    "median TPOT",
+    "median generated tokens per second",
+    "request-level cached tokens and Prometheus token counters",
+    "cache-on versus cache-off prediction equality"
+  ],
+  "claim_boundary": {
+    "same_serving_panel_only": true,
+    "not_directly_comparable_to_in_process_comem_timing": true,
+    "main_table_row_requires_observed_cache_hits_and_prediction_equality": true,
+    "no_continuous_batching_or_multi_request_throughput_claim": true,
+    "environment_install_time_excluded": true,
+    "no_best_possible_sglang_performance_claim": true
+  }
+}

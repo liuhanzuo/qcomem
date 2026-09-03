@@ -1,0 +1,88 @@
+% P7 QUANT-GATE — Table 2: uncertainty / robustness / design-power ledger.
+% Panel A is now MASKED-primary (C11): every robustness statistic is recomputed on the
+% corrected pad-masked outcome labels. The historical unmasked (pad-polluted) values are
+% demoted to a clearly-labelled "superseded" block, per the six-seat panel (P1). Extra rows:
+% corrected Fisher-z (Spearman SE 1.06/sqrt(n-3)), masked LOO range, masked drop-top, the
+% outcome-noise envelope (R42) and the joint 2D (predictor x outcome) bootstrap (R44).
+% Repro: r31_paper_numbers.py (R31_PAPER_NUMBERS.json), r42_noise_envelope.py (R42_NOISE_ENVELOPE.json),
+%        r43_masked_ladder.py (R43_MASKED_LADDER.json), r44_turnover_prompt_bootstrap.py (R44_TURNOVER_PROMPT_BOOTSTRAP_{1.7B,4B}.json).
+\begin{table}[t]
+\centering
+\caption{Uncertainty, robustness and design-power ledger (all correlations over \emph{masked}
+labels, C11). Panel~A is per carrier; the top block is the masked primary ladder (corrected
+Fisher-$z$ uses the Spearman SE $1.06/\sqrt{n-3}$; C5), the middle block adds the
+noise-envelope and joint predictor$\times$outcome bootstraps (C12), and the bottom block retains
+the superseded unmasked (pad-polluted) values for audit. Panel~B is the cross-carrier
+difference. Every interval is over \emph{probed blocks of one model}, so it quantifies sampling
+of layers, not of independent runs or models (C4); the \emph{projected} column of Panel~B is
+analytic design planning for unexecuted \texttt{zh} cells (C8), not a measured result.}
+\label{tab:uncertainty-ledger}
+\setlength{\tabcolsep}{5pt}
+{\footnotesize
+\begin{tabular}{lcc}
+\toprule
+\multicolumn{3}{l}{\textbf{Panel A --- per-carrier readout (masked primary)}} \\
+Quantity (over probed blocks) & Qwen3-4B & Qwen3-1.7B \\
+\midrule
+$\rho$(turnover, degradation), rank (masked)      & $+0.559$            & $+0.118$ \\
+Pearson $r$(turnover, degradation) (masked)       & $+0.463$            & $+0.016$ \\
+Fisher-$z$ 95\% CI, Spearman SE (masked)          & $[-0.060,+0.868]$   & $[-0.548,+0.693]$ \\
+Bootstrap percentile 95\% CI on $\rho$ (masked)   & $[-0.118,+0.928]$   & $[-0.466,+0.613]$ \\
+Permutation $p$ (two-sided, $B{=}20000$) (masked) & $0.031$             & $0.373$ \\
+Leave-one-block-out range of $\rho$ (masked)      & $[+0.427,+0.718]$   & $[-0.018,+0.261]$ \\
+Drop dominant block, $\rho$ (masked)              & $+0.427$ (block 35) & $+0.261$ (block 27) \\
+Largest single-block degradation (masked)         & $+0.473$ (block 35) & $+0.400$ (block 27) \\
+Second-largest $|$degradation$|$ (masked)         & $0.108$ (block 1)   & $0.044$ (block 4) \\
+\midrule
+Outcome-noise envelope $P(\rho{>}0)$ $^{(\mathrm{C12})}$  & $0.9997$   & $0.594$ \\
+Envelope $5$th percentile of $\rho$ (noise)       & $0.273$             & $-0.264$ \\
+Joint 2D (predictor$\times$outcome) $P(\rho{>}0)$ $^{(\mathrm{C12})}$ & $0.998$ & $0.593$ \\
+\midrule
+\multicolumn{3}{l}{\emph{Superseded (unmasked, pad-polluted; C11) --- audit only}} \\
+$\rho$(turnover, degradation), rank               & $+0.594$            & $-0.109$ \\
+Fisher-$z$ 95\% CI (Pearson SE)                   & $[+0.031,+0.871]$   & $[-0.665,+0.525]$ \\
+\bottomrule
+\end{tabular}
+}
+
+\smallskip
+\vspace{2pt}
+{\footnotesize
+\begin{tabular}{lcc}
+\toprule
+\multicolumn{3}{l}{\textbf{Panel B --- cross-carrier difference and design power (layer-level)}} \\
+Quantity & measured (2 cells) & projected (${+}$\texttt{zh}) \\
+\midrule
+$\Delta z = z(\text{4B}) - z(\text{1.7B})$ (masked) & $+0.513$         & --- \\
+$\Delta z$ boot.\ 95\% CI, lower edge over 8 seeds   & $[-0.88,-0.78]$  & --- \\
+$\Delta z$ boot.\ 95\% CI, upper edge over 8 seeds   & $[+2.06,+2.17]$  & --- \\
+Seeds whose $\Delta z$ CI excludes $0$ (masked)      & $0$ of 8         & --- \\
+Fisher SE of $\Delta z$                             & $0.486$          & $0.317$ \\
+Registered gate AUROC (masked) $^{(\mathrm{F})}$       & $0.800$          & $0.567$ \\
+AUROC, depth baseline (block index) (masked)       & $0.686$          & $0.500$ \\
+Noise floor (max within-cell std)                    & $0.013$          & $0.019$ \\
+$|\delta| \le$ one noise width (masked)              & $7/12$           & $4/11$ \\
+Masked rank-repro vs.\ saved labels $^{(\mathrm{C11})}$ & $0.74$        & $0.88$ \\
+Runs / hosts of the decisive readout, $\max|\Delta|$& 3 / 3, $0$       & --- \\
+\bottomrule
+\end{tabular}
+}
+
+\smallskip
+\begin{minipage}{\textwidth}
+\footnotesize\raggedright
+\emph{Reconstruction and method sensitivity.} Masked ladder:
+\texttt{r43\_masked\_ladder.py} $\rightarrow$ \texttt{R43\_MASKED\_LADDER.json}; noise envelope:
+\texttt{r42\_noise\_envelope.py} $\rightarrow$ \texttt{R42\_NOISE\_ENVELOPE.json}; joint 2D
+prompt$\times$outcome bootstrap: \texttt{r44\_turnover\_prompt\_bootstrap.py} $\rightarrow$
+\texttt{R44\_TURNOVER\_PROMPT\_BOOTSTRAP\_\{1.7B,4B\}.json} (predictor resampled over the 64
+prompts per family, outcome over the measured within-cell spreads, $10^4$ draws each; C12).
+Rank/CI/LOO/power series for the same cells: \texttt{r31\_paper\_numbers.py} $\rightarrow$
+\texttt{R31\_PAPER\_NUMBERS.json} (sha16 \texttt{6c26aced50960e6d}). The $\Delta z$ seed-envelope
+note, partial-$\rho$ bootstrap CIs, pre-registered correlation rule and depth-reweight note are
+consolidated in Appendix Table~\ref{tab:app-provenance}; the two pre-registered gate bands and
+their verdicts in Appendix Table~\ref{tab:app-gate}. Effective cross-run sample is $1$ (C9);
+no interval independently excludes zero on 4B at $n{=}12$ (C5); a single label flip moves the 4B
+AUROC across $[0.639,0.889]$ (F, C12).
+\end{minipage}
+\end{table}

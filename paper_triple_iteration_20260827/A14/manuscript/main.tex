@@ -1,0 +1,410 @@
+\documentclass{article}
+
+\usepackage{iclr2026_conference,times}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,booktabs,tabularx,graphicx,microtype,float}
+\usepackage[hidelinks]{hyperref}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\setlength{\textfloatsep}{5pt plus 2pt minus 1pt}
+\setlength{\floatsep}{4pt plus 2pt minus 1pt}
+\setlength{\intextsep}{5pt plus 2pt minus 1pt}
+\setlength{\dbltextfloatsep}{5pt plus 2pt minus 1pt}
+\setlength{\dblfloatsep}{4pt plus 2pt minus 1pt}
+\setlength{\abovecaptionskip}{4pt plus 1pt minus 1pt}
+
+\newcommand{\sconf}{\texttt{s\_conf}}
+\newcommand{\rinj}{\texttt{rand\_inject}}
+\newcommand{\ainj}{\texttt{anti\_inject}}
+\newcommand{\finj}{\texttt{fixed\_inject}}
+\newcommand{\mcu}{\texttt{mc\_uniform}}
+\newcommand{\pp}{\,\mathrm{pp}}
+\newcommand{\II}{\mathbb{1}}
+\newcommand{\srcv}{\textsc{sr/cv}}
+
+\title{An Exploratory Descriptive Audit of\\
+Multiple-Choice Scoring Protocols for\\
+LLaDA-8B on GSM8K-MC}
+\author{Anonymous Authors}
+
+\begin{document}
+\lhead{Under review as a conference paper at ICLR 2026}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+Multiple-choice accuracy for a diffusion language model depends on the scoring
+protocol as well as the model.  We study this dependence in one bounded
+model--task setting:
+LLaDA-8B-Instruct with constructed four-choice GSM8K-MC pools.  In the
+foregrounded matched-draw comparison, the source manuscript reports that a
+confidence-ordered ground-truth-injection scorer (\sconf{}) exceeds a uniform
+random-mask Monte Carlo reference (\mcu{}) by $13.0\pp$ on the $n{=}400$
+pool.  A separately identified, post-selected matched-forward-call-count
+sensitivity reports the same $13.0\pp$ gap, and a displayed 128-draw point
+reports $9.0\pp$.  On a reported disjoint $n{=}819$ pool, fixed left-to-right
+injection is reported to exceed \sconf{} by $5.62\pp$ in aggregate, while the
+direction reverses at answer position~0.  These are exploratory descriptive
+contrasts on named finite pools conditional on recorded scorer realizations.
+All empirical numbers are source-reported and cannot be independently verified
+from the current package; no experiment or analysis was rerun for this
+revision.  The disclosed summaries describe setting-local differences among
+whole protocols, not an individual mechanism, stochastic-policy
+expectation, actual-cost comparison, or cross-bed law.
+\end{abstract}
+
+\paragraph{Evidence notation.}
+Throughout, \srcv{} means \emph{source-reported; cannot be independently
+verified from the current package}.  Every empirical numerical measurement in
+the abstract, prose, tables, and appendix has \srcv{} status.  Algebraic
+identities and declared protocol constants are not empirical measurements.
+The timestamped registration, complete hypothesis ledger, and complete
+defined-arm outcome matrix are absent.  Accordingly, every reported analysis
+in this paper is exploratory and descriptive; no prospective, confirmatory, or
+complete-reporting status is claimed.
+
+\section{Introduction}
+\label{sec:intro}
+
+A masked diffusion language model does not by itself determine a
+multiple-choice accuracy.  A scorer must decide which candidate tokens remain
+masked, in what order tokens are revealed, whether known candidate tokens are
+fed back, how many model calls are used, and how token losses become one option
+score.  Changing that tuple changes the measurement instrument.
+
+We conduct an exploratory descriptive audit of the outcome subset currently
+disclosed for one LLaDA-8B-Instruct $\times$ GSM8K-MC model--task setting.  The source defines
+five protocol tuples, but the available summaries report outcomes for only
+four; no outcome for \ainj{} is disclosed.  The contribution is not a new
+scorer, a complete defined-arm comparison, or a component-level causal result.
+It is a bounded organization of reported comparisons that (i) separates
+nominal draw matching from a forward-call-count sensitivity, (ii) conditions
+stochastic comparisons on the recorded realizations, and (iii) places a
+fixed-order aggregate next to its answer-position-0 reversal.
+
+At first use below, \sconf{} means confidence-ordered ground-truth-token
+injection, \mcu{} means uniform random-mask Monte Carlo without injection,
+\rinj{} means ground-truth injection in one recorded random reveal order,
+\finj{} means ground-truth injection in fixed left-to-right order, and
+\ainj{} means maximum-loss-first ground-truth injection; $L_i$ denotes the
+candidate-token length.  Table~\ref{tab:endpoint-hierarchy}
+is the canonical map of the disclosed results.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.1pt}
+\caption{Canonical map of disclosed results.  All effects are \srcv{} and
+exploratory descriptive quantities.  Positive signs follow the contrast in
+column two.  The source defines five protocols, but this table covers only the
+four with disclosed outcomes; it is not a prospective endpoint hierarchy.}
+\label{tab:endpoint-hierarchy}
+\begin{tabularx}{\textwidth}{@{}P{0.16\textwidth}P{0.20\textwidth}P{0.15\textwidth}P{0.16\textwidth}Y@{}}
+\toprule
+Status & Explicit contrast & Pool / evidence ID & Reported effect & Interpretation boundary \\
+\midrule
+Foregrounded descriptive & $\sconf{}-\mcu{}$, $n_{{\rm mc},i}=L_i$ & $n=400$; E11 & $+13.0\pp$ & Nominal scoring-draw match only \\
+Post-selected sensitivity & $\sconf{}-\mcu{}$, $2L_i/2L_i$ calls & $n=400$; E12 & $+13.0\pp$ & Forward-call-count sensitivity at one tested point \\
+Displayed higher-budget point & $\sconf{}-\mcu{}$, $n_{\rm mc}=128$ & $n=400$; E12 & $+9.0\pp$ & One reported point; no curve inference \\
+One-schedule comparison & $\sconf{}-\rinj{}$ & fresh $n=819$; E13 & $+12.58\pp$ & Conditional on one recorded random schedule \\
+Fixed-order comparison & $\finj{}-\sconf{}$ & fresh $n=819$; E14 & $+5.62\pp$ & Aggregate reverses at position~0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+This map prevents two common overreads.  First, the matched-$L$ row is
+foregrounded because it matches nominal scoring draws, not because an
+accessible registration establishes prospective status.  Second, neither the
+random-order nor fixed-order comparison identifies a general benefit of a
+reveal policy.  Both are conditional finite-pool observations under the
+particular choice constructions described below.
+
+\section{Closest Work and Contribution Boundary}
+\label{sec:related}
+
+LLaDA introduced the masked-diffusion model family used here
+\citep{nie2025llada}, and masked diffusion language modeling provides the
+broader objective and sampling context \citep{sahoo2024mdlm}.  The closest
+verified scorer source is iLLaDA \citep{nie2026illada}.  It defines a
+deterministic confidence-based multiple-choice surrogate that repeatedly
+reveals the ground-truth candidate token with greatest model confidence and
+sums its log probabilities.  The paper explicitly treats that score as a
+task-specific surrogate rather than a likelihood estimate and compares it
+with a likelihood-style baseline on PIQA, ARC-Challenge, and HellaSwag.  It
+does not report the present paired same-item audit, nominal-draw versus
+forward-call accounting, random-mask budget curve, reveal-order comparison,
+or GSM8K-MC construction analysis.  Our contribution is therefore an audit of
+the measurement protocol, not the invention of confidence-guided scoring.
+
+Prior work also shows that answer position can affect multiple-choice
+selection \citep{zheng2024selection}.  That result motivates caution around
+our position reversal but does not study masked-diffusion ground-truth-token
+injection or its call accounting.  The current citation lock verifies these
+closest-work boundaries; a bibliography-wide metadata and sentence-support
+audit remains incomplete.
+
+\section{Study Definition}
+\label{sec:setup}
+
+\paragraph{Bed and evidence boundary.}
+The source manuscript describes one frozen LLaDA-8B-Instruct checkpoint and
+four-choice pools derived from GSM8K \citep{cobbe2021gsm8k}.  It reports two
+historical balanced pilots, an exactly answer-position-balanced $n=400$ pool,
+and a disjoint fresh $n=819$ pool with approximate position balance.  The
+fresh pool mixes 336 near-miss items and 483 items whose distractors were drawn
+from a fixed answer pool.  Arms are paired within each named pool and use the
+same recorded choice set.  The current package contains neither item
+identifiers nor construction code, so pool membership, disjointness, prompts,
+and choice construction cannot be independently checked.
+
+The source describes BF16 inference without generation or temperature.
+Confidence and fixed schedules are deterministic.  The random-order result
+uses one stored schedule realization; the random-mask reference uses one
+stored collection of mask draws at each reported budget.  The underlying
+orders and draws are not in the current package.  Method statements in this
+section are therefore manuscript-described rather than code-verified.
+
+\paragraph{Defined protocols and disclosed-outcome boundary.}
+For candidate tokens $y_{1:L_i}$, an injected arm reads a token loss, reveals
+the known candidate token at a selected position, feeds that token into later
+steps, and sums the per-step losses.  \sconf{} selects the minimum-loss
+position, \ainj{} the maximum-loss position, \rinj{} a seeded-random order,
+and \finj{} a fixed left-to-right order.  The non-injected \mcu{} arm samples
+a masked subset of size $k\sim\mathrm{U}\{1,\ldots,L_i\}$ on each draw,
+rescales the partial-mask loss by $L_i/k$, and averages across draws.  All arms
+select the option with minimum reported score, with first-index tie breaking.
+These are five source-defined protocols.  The disclosed outcome summaries used
+below cover \sconf{}, \mcu{}, \rinj{}, and \finj{}; the current package contains
+no reported \ainj{} outcome, so this paper does not present a complete
+five-protocol comparison.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3.2pt}
+\caption{Manuscript-described decomposition of the five defined protocols.
+Only four have disclosed outcome summaries in this paper.  The implementation
+and call traces are absent, so the accounting cannot be independently
+verified.}
+\label{tab:arms}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Arm & Reveal schedule & GT feedback & Reported calls per candidate \\
+\midrule
+\sconf{} & minimum loss first & yes & $L_i$ score $+L_i$ select \\
+\rinj{} & recorded random order & yes & $L_i$ \\
+\ainj{} & maximum loss first & yes & $L_i$ score $+L_i$ select \\
+\finj{} & fixed left-to-right & yes & $L_i$ \\
+\mcu{} & random masked subsets & no & $n_{\rm mc}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The paper uses a \emph{forward call} only as the source manuscript's model-
+invocation accounting unit.  Equality in that count does not establish
+equality of FLOPs, latency, memory, throughput, or energy.  This is the only
+resource-accounting claim made in the paper; no broader equivalence is implied.
+
+\paragraph{Finite-pool, realized-schedule estimand.}
+Let $\mathcal P$ be one named finite pool and let $\omega$ denote the complete
+recorded realization of every stochastic scoring choice: random-mask subsets
+for \mcu{} and reveal orders for \rinj{}.  For deterministic arms, $\omega$ is
+empty.  The target is
+\begin{equation}
+\Delta_{\mathcal P,\omega}(A,B)
+=\frac{1}{|\mathcal P|}\sum_{q\in\mathcal P}
+\left[\II\{A_{\omega}(q)=y_q\}-\II\{B_{\omega}(q)=y_q\}\right].
+\label{eq:finite-pool-estimand}
+\end{equation}
+It is a descriptive contrast for the realized item set and scorer traces, not
+an expectation over a source population, mask streams, or random schedules.
+For a printed contrast $A-B$, $b$ counts items on which $A$ is correct and $B$
+is incorrect, while $c$ counts the reverse direction; hence
+$\widehat\Delta=(b-c)/n$ and $m=b+c$ is the total discordant count.  These are
+arithmetic summaries of the fixed realized record.  Because the declared
+target supplies no item-sampling, assignment, or scorer-randomness model, this
+paper omits the source manuscript's confidence intervals, $p$-values, and
+cross-pool test and gives them no inferential role.  The absent registration
+and complete outcome ledger likewise preclude prospective or prespecified-
+family labels.
+
+\section{Descriptive Reference-Budget Comparisons}
+\label{sec:result1}
+
+Table~\ref{tab:gt-result} reports the foregrounded matched-$L$ comparison and
+three other displayed budget points on the same named $n=400$ pool.  E11
+designates the missing
+matched-$L$ record; E12 designates the missing $2L$ and 128-draw records; E10
+designates the missing single-draw record.  These are opaque paper-local IDs,
+not resolvable artifacts in the current package, and no crosswalk is
+available.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.4pt}
+\caption{\srcv{} exploratory descriptive reference-budget contrasts on the
+reported $n=400$ pool.  For each printed \sconf{}-minus-reference contrast,
+$b$ counts \sconf{}-only correct items and $c$ reference-only correct items.
+No interval or test is used.}
+\label{tab:gt-result}
+\begin{tabularx}{\textwidth}{@{}YrrrrY@{}}
+\toprule
+Reference budget (ref./\sconf{} reported calls) & $n$ & Acc.\ pair (\sconf{}/ref.) & $b/c$ & $\widehat\Delta$ & Status \\
+\midrule
+Single draw ($1/2L$) & 400 & 42.75/28.75\% & 113/57 & $+14.0\pp$ & displayed point (E10) \\
+$n_{{\rm mc},i}=L_i$ ($L/2L$) & 400 & 42.75/29.75\% & 106/54 & $+13.0\pp$ & foregrounded descriptive (E11) \\
+$n_{{\rm mc},i}=2L_i$ ($2L/2L$) & 400 & 42.75/29.75\% & 109/57 & $+13.0\pp$ & post-selected sensitivity (E12) \\
+$n_{\rm mc}=128$ ($128/2L$) & 400 & 42.75/33.75\% & 82/46 & $+9.0\pp$ & displayed higher-budget point (E12) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+At the foregrounded matched-$L$ point, both arms receive $L_i$ nominal scoring
+draws, but
+the manuscript ledger assigns \sconf{} another $L_i$ schedule-selection calls.
+The source-reported finite-pool gap is $+13.0\pp$.  The post-selected $2L/2L$
+row has the same reported gap but a different discordance record.  Conditional
+on the manuscript's unverified call ledger, this sensitivity addresses only
+the explanation that the reference is lower because it receives fewer
+counted forward calls at that tested point.  It neither becomes a second
+headline result nor isolates feedback, reveal order, or estimator choice.
+
+The 128-draw row has the smallest reported gap on the displayed
+curve.  The reference changes with budget, so the four rows are operating
+points of one protocol replacement rather than independent replications.
+Nothing here supports a dose-response form or behavior between or beyond the
+tested budgets.
+
+\section{Descriptive Reveal-Order Results}
+\label{sec:reveal-order}
+
+Reveal-order evidence addresses two different questions and is reported in
+two directions.  Table~\ref{tab:random-order} uses \sconf{} minus \rinj{} and is
+conditional on one recorded random schedule.  Table~\ref{tab:fixed-order}
+uses \finj{} minus \sconf{} throughout, so a positive value always favors fixed
+left-to-right reveal.
+
+\subsection{One recorded random schedule}
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4.3pt}
+\caption{\srcv{} contrasts for \sconf{} minus \rinj{}.  These rows concern one
+recorded schedule realization, not the expectation over random schedules.
+Here $m=b+c$ is the total number of discordant items for the printed contrast.
+The pooled row combines different named pools and is only a disclosure.}
+\label{tab:random-order}
+\begin{tabular}{@{}lrrrl@{}}
+\toprule
+Pool & $n$ & $\widehat\Delta$ & $m$ & Status \\
+\midrule
+Fresh & 819 & $+12.58\pp$ & 305 & post-selected exploratory (E13) \\
+$n=400$ pilot & 400 & $+3.75\pp$ & 141 & undetermined \\
+Pooled disclosure & 1219 & $+9.68\pp$ & 446 & exploratory; not a common effect \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The fresh and pilot rows report different descriptive magnitudes under the
+stored schedules.  Because the pools differ and the declared target provides
+no cross-pool probability model, the pooled row is not interpreted as a common
+effect and no cross-pool test is used.  We also do not average over schedules
+or infer that confidence ordering is generally better than random ordering.
+Multi-schedule evaluation remains an evidence blocker.
+
+\subsection{Fixed left-to-right reveal and the position reversal}
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3.7pt}
+\caption{\srcv{} contrasts for \finj{} minus \sconf{}; positive values favor
+fixed order.  The position-0 row is adjacent to the aggregate so its reversal
+is explicit.  Here $b$ counts fixed-only correct items and $c$ confidence-only
+correct items; no interval or test is used.}
+\label{tab:fixed-order}
+\begin{tabular}{@{}lrrrl@{}}
+\toprule
+Scope & $n$ & $b/c$ & $\widehat\Delta$ & Status \\
+\midrule
+Fresh aggregate & 819 & 145/99 & $+5.62\pp$ & exploratory aggregate (E14) \\
+Fresh, answer position 0 & 199 & 21/46 & $-12.56\pp$ & post-hoc subgroup (E14) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The fresh aggregate favors fixed order descriptively, whereas the
+answer-position-0 subgroup favors \sconf{}.  Construction-stratified summaries
+also differ: the source reports fixed-order margins of $2.98\pp$ in the
+near-miss stratum and $7.45\pp$ in the answer-pool stratum (Appendix
+Table~\ref{tab:fresh-strata-app}).  The position analysis is post-hoc, and no
+tie-robust interaction analysis is available.  The opposite signs describe
+the realized fresh-pool record; they do not establish a general answer-position
+mechanism or show that confidence ordering is generally unnecessary.
+
+\section{Limitations, Availability, and Disclosure}
+\label{sec:limitations}
+
+\paragraph{Scientific scope.}
+The study covers one checkpoint and constructed four-choice pools from one
+task.  The foregrounded protocol swap changes feedback, masking path,
+estimator, and reported
+call count together.  The random-order result conditions on one unavailable
+schedule trace, while the fixed-order result depends on construction and
+answer position.  No displayed descriptive quantity identifies a component
+cause or an expectation over scorer randomness.  Cross-model, cross-task,
+multi-seed, and independently constructed-pool behavior remain unmeasured
+here.
+
+\paragraph{Unresolved evidence blockers.}
+The current package cannot resolve three evidence-dependent actions: recovery
+or replay of the central paired records and exact protocol implementation;
+disclosure of the complete evaluated-arm outcome matrix and decision
+chronology; and multi-realization evaluation plus a disjoint-pool replication
+of the matched-$L$ comparison.  No missing artifact was reconstructed, and no
+experiment or new analysis was run to address these blockers.
+
+\paragraph{What the current package contains.}
+The authoring directory inspected for this revision contains
+\texttt{main.tex}, \texttt{appendix\_refine5.tex}, \texttt{refs.bib}, the
+local ICLR/BibTeX and vendored style files, and current build products.  It
+also contains seven legacy pre-rendered PDF/PNG figure assets but no
+figure-generation script; none of those assets is included by the current
+\LaTeX{} source.  The directory does not contain the item-level experimental
+records, recorded schedules, machine-readable registrations, protocol or
+analysis code, environment lock, or an ID-to-file crosswalk required to verify
+E10--E15.  Thus the empirical values were neither rerun nor independently
+recomputed for this revision.
+
+\paragraph{AI assistance disclosure.}
+AI tools assisted with language editing, \LaTeX{} refactoring, and isolated
+internal pre-submission review for this revision.  The authors remain
+responsible for the manuscript's claims and evidence boundaries.  AI
+assistance did not provide experimental records, generate new measurements,
+or verify the source-reported results.
+
+\section{Conclusion}
+
+In this exploratory descriptive audit, the foregrounded matched-$L$
+\sconf{}--\mcu{} row reports $+13.0\pp$ on the named $n=400$ pool.  The
+$2L/2L$ row is a post-selected forward-call-count sensitivity, and the
+128-draw row is one displayed higher-budget point.  Separately, fixed order is
+reported to have higher aggregate accuracy on the fresh pool while having
+lower accuracy in the answer-position-0 subgroup.  Conditional on the named
+pools and recorded scorer realizations, these disclosed summaries describe
+nonidentical protocol outputs; they do not establish a general ordering.
+Missing records, complete-arm outcomes, chronology, implementations, and
+multi-realization evidence prevent stronger empirical or causal conclusions.
+
+\bibliography{refs}
+\bibliographystyle{iclr2026_conference}
+
+\appendix
+\raggedbottom
+\input{appendix_refine5}
+
+\end{document}

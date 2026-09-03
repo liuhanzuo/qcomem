@@ -1,0 +1,145 @@
+{
+  "reviewer_id": "a11-r2-novelty",
+  "round": 2,
+  "snapshot_sha256": "33c6a81aa1581f2b00e5c2f7cce8ff126d15749e57380103d0eb50ccac0ca39f",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within the explicitly stated count-exchangeable replay model, the posterior-flip construction, tower-property argument (Section 4, pp. 4--5), and exact-DP evaluation are coherent and are accompanied by a proof and registered result artifacts. The paper appropriately does not extend this to ordered deployment. However, the aggregate snapshot identity is not reproducible under the algorithm stated in MANIFEST.json, and the practical endpoint remains only replay agreement with a binary pass-count vote.",
+    "presentation": "The central model, endpoint, and limitations are unusually explicit (Sections 3 and 8; Table 2). The main text is readable, but the novelty argument is compressed into a small related-work set, while the very long appendix introduces several secondary sensitivity and repair claims that make it difficult to distinguish the central contribution from exploratory extensions.",
+    "contribution": "A calibrated finite-population posterior certificate for full-vote disagreement is a useful and carefully delimited formulation for count-exchangeable replay. Its current contribution is nevertheless narrow: posterior conditioning plus the tower property gives the core certificate once the fitted mixture model and replay endpoint are assumed, and the supplied closest-work analysis does not establish where this construction sits relative to Bayesian sequential decision/stopping and finite-population sequential inference. The empirical result is also not an online self-consistency or answer-correctness result."
+  },
+  "paper_summary": "The paper models each task by its total number of binary successful rollouts, fits a mixture over those totals on FIT data, and stops a uniformly random replay prefix when the posterior probability that its binary majority disagrees with the corresponding full-N binary pass-count majority is at most alpha. It proves conditional replay validity by the tower property, selects a finite family using CAL empirical-Bernstein bounds, and reports replay count reductions on OMR plus two additional count-replay carriers. It explicitly limits its claims to count-exchangeable replay and uses synthetic ordered-drift stress tests only as specified failure-domain diagnostics.",
+  "strongest_verified_contribution": "The strongest verified contribution is the precise, reproducible-in-principle formulation of a posterior full-vote-disagreement certificate under a finite count-exchangeable replay model, together with a held-out count-replay evaluation showing that conditioning on the observed prefix can substantially reduce the expected replay budget relative to its fixed-k controls (Section 4; Table 1; claim C01/C02).",
+  "strengths": [
+    "The novelty boundary is materially more careful than is typical: Sections 2--3 and Table 2 explicitly distinguish the proposed count-exchangeable replay endpoint from ordered online stopping, conformal coverage, and confidence sequences.",
+    "The core claim is not merely heuristic. Section 4 states the posterior object and a short pointwise tower-property proof, while Appendix B gives an exact dynamic program rather than relying on Monte Carlo for the main replay quantities.",
+    "The paper does not hide the practical endpoint mismatch: Abstract lines 41--44 and Section 8 state that flip is binary pass-count replay disagreement, not delivered-answer correctness, tokens, latency, cancellation, or ordered deployment.",
+    "The empirical comparison is informative for the stated model: Table 1 separates the advantage of prefix adaptivity from the shared mixture-aware fixed-budget procedure, and the OpenR1/RLVE cases help demonstrate that the benefit depends on resolvable structure rather than always producing a large saving."
+  ],
+  "questions": [
+    "What prior Bayesian sequential-decision, posterior-predictive stopping, or finite-population sequential-inference formulations are closest to c_H(x,k), and which mathematical or selection component remains distinct after a direct comparison?",
+    "Can the authors state in the introduction and Table 2 whether novelty is a new theorem, a new deployment-relevant stopping objective, or a new application/validation of standard posterior predictive reasoning to count-replay?",
+    "Will the released manifest be regenerated so that its documented aggregate-hash algorithm exactly reproduces snapshot_sha256, and will the procedure be tested independently of the manifest producer?",
+    "Is there an actual published ASC/ESC implementation that can be evaluated on the same replay endpoint, or should all comparative wording make clear that WINDOW3 is only the paper's ESC-style instantiation rather than a result about ESC?"
+  ],
+  "issues": [
+    {
+      "issue_id": "NOV-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "citation_integrity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 2, pp. 2--3; Table 2 / Appendix C, p. 14; literature/closest_work_matrix.md",
+      "claim_ids": [
+        "C01"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "The supplied closest-work matrix contains self-consistency/ASC/ESC/MARS, conformal prediction, confidence sequences, design effects, and beta-binomial background. It contains no direct comparison to Bayesian posterior-predictive sequential decisions/stopping or finite-population sequential inference, even though the central object in Eq. (2) is a posterior probability of a terminal label differing from the observed prefix label and Theorem 1 is its conditional-expectation consequence. The paper makes no explicit 'first' claim, but the supplied material is insufficient to verify that the conceptual contribution is genuinely distinct rather than a specialized application of established Bayesian stopping reasoning.",
+      "why_it_matters": "This is the decision-driving novelty uncertainty. The work may be a valuable LLM/replay instantiation, but without a nearest-neighbor comparison a reviewer cannot determine whether the theorem/formulation is a new contribution, an adaptation, or primarily an empirical case study; these imply different Contribution scores.",
+      "required_fix": "Add a focused closest-work search and comparison covering the nearest Bayesian sequential-decision/posterior-predictive and finite-population sequential-inference formulations. State exactly which assumption, endpoint, theorem, or FIT/CAL selection layer differs. If no conceptual separation remains, reframe novelty honestly as the count-replay application and validation rather than an implied new general stopping principle.",
+      "verification_test": "A reviewer can map each component of Eq. (2), Theorem 1, and the FIT/CAL layer to named closest references and can identify a non-overlapping claimed component, with source-backed local comparison sentences.",
+      "evidence_needed": "Verified metadata and local-support checks for the nearest Bayesian/sequential-inference literature, plus an explicit component-by-component comparison.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "NOV-02",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Title; Abstract lines 13--44; Contributions 1--4 on pp. 2--3; Sections 3 and 8, pp. 3 and 9",
+      "claim_ids": [
+        "C01",
+        "C02",
+        "C04"
+      ],
+      "evidence_ids": [
+        "EV-MISSING-ORDER",
+        "EV-MISSING-ENDPOINT",
+        "EV-MISSING-COST"
+      ],
+      "observed_evidence": "The abstract and title frame the result as adaptive early stopping for majority-vote rollouts, but the paper itself specifies that every measurement is disagreement of corresponding binary pass-count replay decisions and 1-mean(k)/N (Abstract lines 41--44; Section 8 lines 443--449). The provided claim-evidence map marks online gold-correctness and operational-cost evidence as missing. These boundaries are candid, but they mean the practical contribution cannot be judged as an online self-consistency improvement.",
+      "why_it_matters": "The narrow replay endpoint is scientifically legitimate, but it limits both significance and the extent to which the method is a new capability for LLM inference. The present framing risks readers treating a full-vote replay certificate as evidence of stopped-answer quality or real compute savings despite the stated caveat.",
+      "required_fix": "Promote the replay qualifier into the title/first abstract sentence and the opening contribution statement, and separate the formal replay contribution from any prospective deployment motivation. A later revision seeking a stronger practical claim needs naturally ordered rollouts, delivered-answer correctness, and measured cost/cancellation telemetry; absent those, do not describe the result as deployment-ready early stopping.",
+      "verification_test": "The title, abstract, introduction, Table 2, and conclusion consistently identify the endpoint as count-exchangeable binary pass-count replay, with no sentence that can reasonably be read as a demonstrated online accuracy or operational-cost result.",
+      "evidence_needed": "No new evidence is needed for the reframing. Stronger practical claims would require an ordered, gold-evaluated online experiment with actual cost telemetry.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "REP-01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility"
+      ],
+      "location": "MANIFEST.json, fields hash_algorithm and snapshot_sha256",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "All 112 listed file hashes recompute correctly. However, hashing the stated sorted '<file-sha256><two spaces><snapshot-path><LF>' lines gives 474193173378d2b09c35d8b5fc18253944b057d4420eb7d1e32b044624c780a9, not the declared 33c6a81aa1581f2b00e5c2f7cce8ff126d15749e57380103d0eb50ccac0ca39f. The declared value is reproduced when entries are sorted by snapshot_path, so the manifest documentation and actual aggregate procedure disagree.",
+      "why_it_matters": "A snapshot hash is intended to establish precisely which evidence was reviewed. The individual files appear intact, but a third party following the documented aggregate procedure cannot verify the advertised snapshot identity.",
+      "required_fix": "Correct either the algorithm description or the aggregate hash, regenerate the manifest deterministically, and add a clean-environment verification command/test that checks both every member hash and the aggregate hash.",
+      "verification_test": "Following the exact documented command/order on the frozen directory reproduces snapshot_sha256 and reports zero per-file mismatches.",
+      "evidence_needed": "A regenerated manifest and an independently rerun aggregate-hash transcript.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "NOV-03",
+      "severity": "minor",
+      "dimensions": [
+        "novelty",
+        "clarity",
+        "citation_integrity"
+      ],
+      "location": "Section 2, p. 3; Table 1 and text on pp. 6--8; Table 2 / Appendix C, p. 14",
+      "claim_ids": [
+        "C02",
+        "C05"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469"
+      ],
+      "observed_evidence": "The paper carefully calls WINDOW3 an 'ESC-style' rule, but its closest published adaptive methods are not directly evaluated on the stated endpoint. The strongest adaptive comparison is therefore a constructed window heuristic and fixed-k controls. In addition, Table 1 itself shows FIXED-EB has a slightly larger count reduction at alpha=0.10 (84.4% versus 84.0%), while the prose otherwise emphasizes dominance at selected levels.",
+      "why_it_matters": "The result supports a mechanism-specific comparison against the supplied controls, not a broad empirical novelty or superiority claim over the published early-stopping literature. Precision here prevents an otherwise careful positioning section from overreaching.",
+      "required_fix": "State prominently that the direct empirical comparisons are to controls and an ESC-style instantiation under a distinct replay endpoint. Either implement closest published methods when their rules can be faithfully instantiated on that endpoint, or explain why no direct comparison is meaningful and avoid literature-wide superiority language. Keep all dominance claims endpoint- and alpha-specific.",
+      "verification_test": "Every comparative claim names the comparator, endpoint, alpha level, and whether it is a published method or a paper-defined instantiation; Table 1's alpha=0.10 exception remains visible in the summary text.",
+      "evidence_needed": "Either a faithful common-endpoint evaluation of the closest published rules or a source-supported incompatibility explanation and narrower prose.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No distinct human-subject, privacy, or misuse issue is established by the supplied snapshot. The main responsible-claims concern is scientific: replay agreement and rollout-count reduction should not be represented as deployed answer quality or operational savings, a limitation the paper already states.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the specified frozen submission snapshot and rubric.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A verified nearest-work analysis that demonstrates a concrete conceptual/theoretical separation from Bayesian posterior-predictive stopping and finite-population sequential inference, or an honest reframing that makes the application contribution clearly evaluable.",
+    "A corrected, independently reproducible snapshot manifest.",
+    "For a score above 6 on practical significance, naturally ordered rollout experiments evaluating stopped delivered-answer correctness and actual inference/cancellation costs, with comparisons that faithfully cover the nearest adaptive self-consistency methods."
+  ],
+  "evidence_that_would_lower_score": [
+    "A closest prior method that already gives the same posterior terminal-vote-disagreement rule and adaptive validity under the same assumptions, without a demonstrated new selection or empirical component.",
+    "A failure of the stated count-exchangeable assumptions, proof, or registered replay artifacts.",
+    "Evidence that manuscript language or external use treats the replay flip/count endpoints as online correctness or measured operational savings."
+  ],
+  "review_limitations": [
+    "I reviewed only the supplied frozen snapshot, as required; I did not browse external literature. Thus NOV-01 identifies an unverified novelty boundary rather than asserting that a particular omitted prior work is dispositive.",
+    "I did not re-execute the experiments or access unavailable raw carrier data. The assessment of reported results relies on the manuscript and included reviewer-safe evidence artifacts.",
+    "The aggregate snapshot hash mismatch is a reproducibility finding: it does not imply any individual listed file was modified, because all 112 listed per-file hashes recomputed successfully."
+  ]
+}

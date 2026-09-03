@@ -1,0 +1,130 @@
+{
+  "schema_version": "forkaudit-gdn-preregistration-execution-diff-v1",
+  "experiment_id": "RR4-GDN-ORACLE-20260819A",
+  "classification": "verified_bounded_post_hoc_captured_input",
+  "classification_basis": {
+    "successful_execution_matches_original_preregistration_exactly": false,
+    "scope_amendment_exact_bytes_available_locally": true,
+    "scope_amendment_exact_bytes_in_reviewer_replay_package": false,
+    "scope_amendment_immutable_preexecution_binding_mechanically_verified": false,
+    "predeclared_result_claim_authorized": false,
+    "bounded_captured_input_result_claim_authorized": true,
+    "reason": "The successful execution followed an invalid clean control and used an amended q/k capture boundary and query scale. A local filesystem timestamp and a hash embedded in later products do not establish an immutable pre-execution receipt for the exact amendment bytes."
+  },
+  "source_receipts": {
+    "original_preregistration": {
+      "path_outside_reviewer_package": "evidence/gdn_transition_oracle_20260819a/preregistration.json",
+      "path_in_reviewer_package": "preregistration.json",
+      "raw_sha256": "f1a1091acbd946bd2e85657bbdf26bc5ff360c585928431d16d81f801bd0013e"
+    },
+    "local_scope_amendment": {
+      "path_outside_reviewer_package": "evidence/gdn_transition_oracle_20260819a/rerun_c_scope_amendment.json",
+      "raw_sha256": "747539fc565c97c5004c64b1251dc0338c29cd6457c7e14a3ace7e9f3d8364f6"
+    },
+    "successful_capture_manifest": {
+      "path_in_reviewer_package": "raw/capture-manifest.json",
+      "reviewer_safe_raw_sha256": "cc25f72f2edffe951deb562fc27d8405603749a0fae82fd05e3cc4211f90029a",
+      "registered_unredacted_raw_sha256": "d1cd27d07a3e7c49bd30f8666f3c92118c09745c9eaeccc247aa446bd551098d"
+    },
+    "successful_oracle_result": {
+      "path_in_reviewer_package": "expected/original-oracle-result.json",
+      "raw_sha256": "a8d3e8b87d006063edc77608a01e1977baa0f109c1ab0b8a0b49edddd27b194c"
+    }
+  },
+  "preregistration_vs_successful_execution": {
+    "changed_fields": [
+      {
+        "field": "reference_requirements.qk_semantics",
+        "original_plan": "Require native use_qk_l2norm_in_kernel=true and reproduce eps=1e-6 normalization",
+        "successful_execution": "capture q/k after native BF16 l2norm; reference receives post-normalization FP32 arrays and sets use_qk_l2norm_in_kernel=false",
+        "scientific_effect": "moves the independently recomputed boundary downstream of native q/k normalization"
+      },
+      {
+        "field": "reference_requirements.query_scale",
+        "original_plan": "Require captured native query_scale=1.0",
+        "successful_execution": "query_scale=0.08838834764831845 from native_default_inverse_sqrt_key_width, i.e. 1/sqrt(128)",
+        "scientific_effect": "changes the recurrence input scaling used by the successful clean comparison"
+      },
+      {
+        "field": "executed_source.runner_sha256",
+        "original_plan_source_sha256": "8f61cfb3ae5faeb4b6c970b7f0a9c618ee604830b0e1ca10025a17d7c9250e0c",
+        "successful_execution_source_sha256": "7d3821060df685bc5dc800761ca862ee88b703137b65f110e339b42b4b6c53ad",
+        "scientific_effect": "capture implementation changed after the invalid clean control"
+      },
+      {
+        "field": "executed_source.reference_sha256",
+        "original_plan_source_sha256": "a108f65275b7e17a04c6a85a863cdd1845582b75fa6fc0a6e68c07d3b88b193e",
+        "successful_execution_source_sha256": "fa67941b2c7b822d7966e98aa3bf0b8a40610ff593cc020fa0b5f7e43ce50147",
+        "scientific_effect": "reference implementation changed after the invalid clean control"
+      }
+    ],
+    "reported_unchanged_fields": [
+      "source_selection",
+      "selected_layers_0_10_20_38",
+      "selected_coordinates",
+      "seeded_faults",
+      "tolerances",
+      "model_id_and_revision"
+    ],
+    "unchanged_field_evidence": "The local amendment declares these fields unchanged and the reviewer replay preserves the original preregistration plus successful row identifiers, fault names, coordinates, and tolerances. This does not upgrade the successful run to a predeclared result."
+  },
+  "chronology": [
+    {
+      "order": 1,
+      "event": "original_preregistration_file_created",
+      "observed_local_time": "2026-08-19T12:04:06+08:00",
+      "time_evidence": "mutable_local_filesystem_metadata",
+      "scientific_status": "plan_only"
+    },
+    {
+      "order": 2,
+      "event": "initial_resource_route_failed_before_execution",
+      "job_id": 243874,
+      "trial_id": 1862454,
+      "scientific_status": "not_executed"
+    },
+    {
+      "order": 3,
+      "event": "first_gpu_clean_control_executed_and_failed",
+      "job_id": 243971,
+      "trial_id": 1862695,
+      "submitted_at": "2026-08-19T13:40:42+08:00",
+      "completed_at": "2026-08-19T13:47:09+08:00",
+      "scientific_status": "invalid_clean_control_failed",
+      "is_scientific_evidence": false
+    },
+    {
+      "order": 4,
+      "event": "scope_amendment_file_observed_locally",
+      "observed_local_birth_time": "2026-08-19T13:59:01+08:00",
+      "observed_local_modified_time": "2026-08-19T13:59:58+08:00",
+      "time_evidence": "mutable_local_filesystem_metadata_only",
+      "immutable_preexecution_receipt": false
+    },
+    {
+      "order": 5,
+      "event": "amended_gpu_rerun_submitted",
+      "job_id": 243982,
+      "trial_id": 1862737,
+      "submitted_at": "2026-08-19T14:01:33+08:00",
+      "scientific_status": "executing_amended_program"
+    },
+    {
+      "order": 6,
+      "event": "amended_gpu_rerun_completed",
+      "job_id": 243982,
+      "trial_id": 1862737,
+      "completed_at": "2026-08-19T14:07:32+08:00",
+      "scientific_status": "verified_bounded_post_hoc_captured_input",
+      "clean_rows_passed": 4,
+      "seeded_wrong_transitions_rejected": 4
+    },
+    {
+      "order": 7,
+      "event": "reviewer_replay_package_created",
+      "observed_local_time": "2026-08-19T14:47:16+08:00",
+      "time_evidence": "mutable_local_filesystem_metadata",
+      "note": "The replay package includes the amendment hash through the capture manifest but not the exact amendment bytes or a trusted pre-execution timestamp."
+    }
+  ]
+}

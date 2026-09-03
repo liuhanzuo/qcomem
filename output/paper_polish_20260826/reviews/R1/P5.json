@@ -1,0 +1,151 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "61cb32cfc2143449d9d418c67ae71814cbca1a9fda188facac641abe0285f565",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "对本文实际限定的合成 E1 population，时间干预、FIT/hold-out 分离、64 个配对 seed、精确二项界和记录级 checkpoint 相等性均支持所报告事实。主要缺口不是内部算术错误，而是载体把 healthy margin 结构性固定为零、shock 又使 clean argmin 恰好位于冲击前，因此完美检测和回滚是高度设计化的，不能支持实际部署检测。作者已诚实收窄主张。",
+    "presentation": "这是四篇中最清楚的一篇：Figure 1 直接显示时序干预，Tables 2-6 将观测、边界和下一步证据分开，摘要和结论一致，图表没有视觉缺陷。",
+    "contribution": "时间控制的 endpoint-shock protocol 和对 detection-versus-selection 的诚实分解有方法学价值；但 gate 只在 {last,best-val} 中选择，且 64/64 shocked 情况下与 best-val/early-stop 完全相同，健康假警报又被设计排除。当前没有新 checkpoint 能力，也没有现实 detector operating point，故贡献窄且偏增量。"
+  },
+  "paper_summary": "论文在一个合成五分类 transformer 任务上构造最后四分之一训练期才激活的标签翻转冲击。last-margin m 定义为最终 calibration loss 与历史最小值之差；阈值由 4 个独立 FIT seed 的 healthy/shocked 轨迹冻结，随后在每臂 64 个 hold-out seed 上结算。所有 shocked run 被检测、所有 healthy run 未报警，gate 相对 last 将 outer loss 平均降低 0.3395。然而所有 shocked 轨迹都在冲击前一刻达到最小值，gate、best-val 和 early-stop 在 64/64 run 上返回完全相同的 checkpoint；所有 healthy 轨迹又严格单调下降，使 m 恒为零。因此论文支持的是一个受控 shock 下的 endpoint 污染报警与相对 last 回滚，不支持优于既有 selector 或现实 false-alarm 性能。",
+  "strongest_verified_contribution": "最强的已验证贡献是一个时间上真正分离 clean prefix 与 late label shock 的冻结结算：第 2 页显示 64/64 shocked 轨迹的 argmin 均在 epoch 8、shock 于 epoch 9 开始，第 4-5 页用成对 outer-loss 结果量化 damaged last 与 pre-shock checkpoint 的差异，并明确证明 gate 与 best-val/early-stop 完全同值。",
+  "strengths": [
+    "第 2-3 页将干预对象比例（25% examples）与干预时间比例（最后 25% epochs）明确区分，避免把静态噪声误称为时间冲击。",
+    "FIT seed 与 64 个 hold-out seed 分离；第 5 页 Table 4 给出 64/64 与 0/64 对应的保守单侧 Clopper-Pearson 界，而不是只报 1.0/0.0 点估计。",
+    "第 4 页 Table 3 和 §5.1 明确报告 gate-best-val、gate-early-stop 在 64/64 记录上的精确相等，没有把相等包装成显著性优势。",
+    "第 5-7 页主动把 m 恒为零识别为设计排除，并把 E2（使 best-val 失败）与 E6（自然非单调 healthy carrier）写成决策性下一步证据。",
+    "全稿叙述紧凑、图表可读、主张边界在摘要、结果、限制和结论中一致。"
+  ],
+  "questions": [
+    "如果部署管线已经保存并部署 best-val，last-margin alarm 除了给出一个事后 flag 之外带来什么新的决策能力？该 flag 的独立成本/价值如何衡量？",
+    "能否在冻结规则下运行 E2，使 clean argmin 被 shock 覆盖或位移，从而让 gate 与 best-val 的行为真正可分？",
+    "能否用自然非单调的 healthy 训练轨迹校准阈值并报告 ROC/PR 或预先指定 operating point，而不是 m 恒为零的设计 population？",
+    "阈值仅由每种模式 4 个 FIT seed 的 max/min 中点确定；对 shock 比例、强度、开始时间或普通优化噪声轻微变化时，阈值稳定性如何？",
+    "与训练轨迹异常检测、change-point/drift detection、early stopping、checkpoint monitoring 和 label-noise/poisoning detection 文献相比，本文“last margin”报警的精确增量是什么？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P5-R1-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "PDF 第 1 页贡献列表（第 42-47 行）、第 3 页 §3.2（第 121-126 行）、第 4 页 Tables 2-3 与第 5 页 §5.5.1",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "gate(m,τ) 只能返回 last 或 best-validation；在全部 64 个 shocked hold-out run 上，gate、best-val 与 early-stop 都返回 epoch 8，outer loss 和 accuracy 逐记录完全相同。",
+      "why_it_matters": "当前方法没有发现既有 selector 找不到的 checkpoint，也没有提高其质量。相对一个有意选择的弱部署默认 last 的 0.3395 改善，不能单独构成新的 checkpoint policy；剩余新意只是一个事后报警位。",
+      "required_fix": "执行能使 gate 与 best-val/early-stop 分离的冻结 E2，或把论文重定位为检测协议/负结果短文，并量化报警本身在已有 best-val 管线中的独立决策价值。",
+      "verification_test": "预先固定的 E2 上至少存在足够多的可分 run，且 gate 相对所有已注册 selector 的配对结果和错误代价被完整报告；若仍完全同值，删除 checkpoint-policy 新颖性暗示。",
+      "evidence_needed": "新的可分离 shock 实验、逐 run selector identity 和配对 outer 指标。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R1-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF 第 5 页 §5.3-5.4、Figure 3/Table 5，以及第 6-7 页 §6-7",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "704/704 healthy 相邻转移均严格下降，64/64 healthy 的 argmin 在最后 epoch，因此 m 在 healthy population 中恒为 0；shock margins 与 frozen τ 完全分离。",
+      "why_it_matters": "0/64 FAR 不是对检测器抗正常训练波动的检验，而是载体结构的直接结果。没有非零 healthy margin 分布，就不能评估实际部署最关键的阈值权衡。",
+      "required_fix": "在具有自然随机非单调性的真实或至少更具挑战性的 healthy carrier 上重新冻结阈值，并报告事先规定的误报约束、召回界及阈值敏感性。",
+      "verification_test": "healthy hold-out 中存在预先可接受的非退化 m 分布，阈值仍在未用于拟合的 run 上满足误报上界，同时对多个 shock 条件保留召回。",
+      "evidence_needed": "E6 或等价的现实 healthy 轨迹、独立 FIT/settlement split、完整 margin 分布。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R1-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "significance"
+      ],
+      "location": "PDF 第 3 页 §3.3/Table 1、第 6-7 页 §7 Limitations 1 与 4",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "τ=0.1354 由每臂仅 4 个 FIT seed 的 max-healthy 与 min-shocked 中点得到，且 FIT 与 settlement 使用同一个合成机制；只测试 25% examples 在最后三 epoch 被确定性循环翻标的一个强 shock。",
+      "why_it_matters": "完美分离可能高度依赖这一单一效应大小和时间位置。阈值对正常噪声、较弱/较早/不同类型 shock 的运输性完全未知，当前结果更接近机制自检而非 detector validation。",
+      "required_fix": "冻结一个覆盖 shock 强度、比例、开始时间和至少一种非标签翻转事件的测试网格，并增加 FIT seed 或采用不依赖极值中点的预定义校准准则。",
+      "verification_test": "所有网格条件在盲 hold-out 上报告置信界与失败条件；阈值不因删除任一 FIT seed 或轻微机制变化而跨越主要性能结论。",
+      "evidence_needed": "多条件外推实验、FIT leave-one-out 阈值稳定性和失败案例。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P5-R1-04",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "citation_integrity",
+        "significance"
+      ],
+      "location": "PDF 第 1-2 页 §2 Related Work（第 50-82 行）",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "相关工作主要覆盖 SWA、EMA、model soups 和一篇 robustness 引文；PDF 没有定位训练曲线异常/变化点检测、概念漂移、早停与 checkpoint selection、label-noise/poisoning detection 或训练监控文献。",
+      "why_it_matters": "论文的主要产出是一个标量报警而非新 checkpoint，因此其新颖性必须相对于检测与监控文献建立，仅与模型平均方法区分不足以证明贡献独特。",
+      "required_fix": "扩充 closest-work 定位，明确 last-margin 相对既有 loss-rise、change-point、patience/early-stop 和数据污染报警的输入、时机、监督信息和新增证据。",
+      "verification_test": "引言中的每条新颖性主张都能在相关工作中找到具体最近邻与逐项差异；若 last-margin 是已有启发式，应将贡献改为时间控制的审计协议而非新 detector。",
+      "evidence_needed": "经核验的最近邻文献及局部支持；本审稿未联网确认具体优先权。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "P5-R1-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF 标题、摘要与第 6 页 Limitation 1",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "标题称“true temporal endpoint data-quality shock”，但干预实际发生在训练最后三个 epoch 内，不是训练结束后的外部 endpoint 事件；正文限制段对此作了说明。",
+      "why_it_matters": "尽管“temporal”相对于静态污染是准确的，“endpoint shock”容易让读者误解为部署后或训练完成后事件。",
+      "required_fix": "在标题或摘要首次出现处改为 late-training endpoint corruption/shock，并用一句话明确它发生在训练内。",
+      "verification_test": "不阅读方法细节的读者也不会把事件理解为训练后事故。",
+      "evidence_needed": "无需新实验，仅需术语修订。",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究使用程序生成的合成序列和确定性标签翻转，不涉及个人数据或人体参与者；未发现需升级的伦理问题。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；该子代理未与任何其他评审通信，也未接触作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "E2 在冻结规则下使 gate 与 best-val/early-stop 可分，并显示独立的 checkpoint 或决策价值。",
+    "E6 在自然非单调 healthy 轨迹上给出非退化误报分布，且独立 hold-out 仍满足预先规定的 FAR/recall 界。",
+    "多种 shock 时机、强度和类型下的阈值运输结果，而非单一完全可分条件。",
+    "完整 closest-work 分析证明时间控制审计协议或报警信号相对既有监控方法的明确增量。"
+  ],
+  "evidence_that_would_lower_score": [
+    "在非单调 healthy carrier 上出现高误报，或阈值对删除一个 FIT seed 极不稳定。",
+    "在更弱或稍早 shock 下 gate 与 last 均失败且没有可解释的报警边界。",
+    "相关工作核验显示 last-minus-best-loss 报警与回滚规则已有直接等价先例。",
+    "原始记录无法复现 64/64 selector identity 或 Table 3 的配对差异。"
+  ],
+  "review_limitations": [
+    "按任务约束仅使用 PDF 内相关工作，不联网检索；因此具体优先权与遗漏文献只能作为待核验的新颖性风险。",
+    "未读取匿名 workspace、代码或 128 条原始 hold-out 记录，无法独立验证执行与逐记录相等性，只能评价 PDF 的内部证据。"
+  ]
+}

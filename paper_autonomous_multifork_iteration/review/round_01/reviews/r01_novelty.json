@@ -1,0 +1,158 @@
+{
+  "reviewer_id": "r01_novelty",
+  "round": 1,
+  "snapshot_sha256": "192c747fc60119ef4aa7051ded3b868a11371856ca7a7f4cf737a91b43a5caca",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within its deliberately narrow scope, the paper aligns its claims with the recorded evidence and carefully distinguishes self-consistency from semantic correctness. The main qualification is that the central hybrid-ownership target is only partially witnessed: GDN ownership is fixed across arms and request-to-base storage disjointness is not directly checked. The audit's ability to expose real runtime ownership faults is also not experimentally demonstrated.",
+    "presentation": "The manuscript is exceptionally explicit about contribution type, denominators, blind spots, and unsupported claims. The argument and evidence boundaries are easy to follow. The principal presentation weakness is in positioning rather than prose: Table 1 compares mainly against serving mechanisms and one generic testing survey, not against the closest audit, differential-testing, ownership-verification, or systems-measurement methods.",
+    "contribution": "The executable artifact and evidence discipline are useful, but the paper itself establishes that block sharing, partial-tail copy-on-write, hybrid cache management, metamorphic relations, and denominator distinctions are prior art. Its claimed novelty is their combination in an audit checklist, yet that combination is neither positioned against direct testing/audit precedents nor validated through runtime fault injection or transfer beyond one model/runtime case. This supports a narrow reference-audit contribution rather than a clearly substantial ICLR contribution."
+  },
+  "paper_summary": "ForkAudit is an executable reference audit for many continuations sharing a long prefix in a hybrid Qwen3.5 model. It compares a source-retaining materialized-KV control with a shared-document KV layout while holding the functional GDN strategy fixed, checks cross-layout and cross-fan-out self-consistency, records callable and ownership evidence, and separates analytic page-pool accounting from PyTorch allocator peaks. The paper explicitly disclaims a new kernel, scheduler, cache policy, semantic oracle, speedup, or production-capacity result.",
+  "strongest_verified_contribution": "A carefully provenance-bound single-case audit that maps KV ownership, partial-tail handling, same-callable dispatch, relational self-consistency checks, and memory-denominator accounting to machine-readable artifacts, while reporting exact agreement and unusually clear limits on what that agreement establishes.",
+  "strengths": [
+    "The novelty boundary is stated honestly: Sections 1-2 and Table 1 explicitly recognize prefix sharing, hybrid prefix caching, and metamorphic testing as prior art and avoid presenting ForkAudit as a serving method.",
+    "The citation lock uses primary proceedings or official sources, qualifies Hydragen and Qwen appropriately, and identifies Marconi as the closest hybrid-state serving precedent.",
+    "The paper separates deterministic allocation arithmetic, framework allocator measurements, and unmeasured process/service capacity, avoiding a misleading universal memory-efficiency claim.",
+    "The negative cross-backend gate and absence of a speed claim demonstrate disciplined positioning rather than selective promotion of favorable measurements.",
+    "The artifact maps claims to evidence IDs and records both what is verified and what remains open, making the narrow contribution auditable."
+  ],
+  "questions": [
+    "What is the closest published audit, differential-testing, property-testing, or ownership-verification framework for ML/GPU serving systems, and which specific ForkAudit targets are absent from it?",
+    "Because GDN handling is identical in both arms, what hybrid-specific failure can the current experiment detect that the same checklist on a pure Transformer could not?",
+    "Can the authors inject runtime faults for mutable GDN aliasing, overlapping KV reservations, partial-tail overwrite, wrong position or mask contracts, and fallback/full-KV concatenation, then show which audit targets detect each fault?",
+    "Is ForkAudit intended to be a model-agnostic evaluation protocol, a reusable Qwen/vLLM artifact, or a report of one implementation case? Which parts have evidence of transfer?",
+    "Beyond this controlled topology, what primary-source evidence establishes denominator-explicit accounting as a new methodological contribution rather than good systems-reporting practice?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R01-NOV-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "citation_integrity"
+      ],
+      "location": "pp. 2-3, Section 2 and Table 1; contribution statement on p. 2",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Table 1 compares ForkAudit with PagedAttention, SGLang/Prompt Cache, Marconi, SCBench, and a general metamorphic-testing survey. The included citation lock explicitly says these sources do not establish ForkAudit's novelty or the adequacy of its chosen invariants. The manuscript also acknowledges that block sharing, prefix reuse, hybrid-cache policy, and metamorphic relations are prior art, leaving only their combination as the novelty claim.",
+      "why_it_matters": "A conjunction of known engineering and testing practices is not established as a distinct research contribution without comparison to the nearest audit/testing methods. The current mechanism-oriented related work cannot rule out that ForkAudit is a careful instantiation of standard differential, metamorphic, alias, and measurement checks.",
+      "required_fix": "Add support-verified primary literature on differential/metamorphic testing of ML or GPU systems, state/alias ownership verification, cache-correctness testing, and systems-memory measurement. Replace the coarse mechanism table with a feature-level closest-work comparison and state precisely which audit capability, relation, or evidence contract is new; narrow the novelty claim if direct overlap is found.",
+      "verification_test": "An independent citation audit can map every claimed novel ForkAudit target to the revised primary-source matrix, and the manuscript identifies at least one concrete capability not present in the closest direct audit/testing baselines without relying on absence-of-wording arguments.",
+      "evidence_needed": "Full support-checked primary sources and a closest-work matrix spanning state types, ownership/alias checks, oracle type, fault model, dispatch provenance, denominator accounting, and demonstrated runtime scope.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-NOV-02",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "p. 2 contributions; p. 3 Section 3 target 3; p. 5 Table 3; pp. 6 and 8 Sections 5.1 and 6",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-UNSUPPORTED-GDN"
+      ],
+      "evidence_ids": [
+        "E-CODE-MF",
+        "E-CODE-GDN",
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "Only full-attention KV ownership changes between Source+Materialize and Shared-Document. Both arms use the same functional GDN strategy, the paper disclaims any recurrent-sharing benefit, and the archived evidence lacks a direct request-to-persistent-base GDN storage-range check.",
+      "why_it_matters": "Hybrid heterogeneous state is the motivation and main distinction from ordinary Transformer KV sharing, but the experiment does not causally evaluate that distinction. Most positive results would remain essentially unchanged in a Transformer-only audit, so the contribution beyond prior hybrid cache work is unclear.",
+      "required_fix": "Either add a factorial KV-share/GDN-share study with a materialized-GDN control and direct request-to-base storage checks, or consistently reframe the work as a full-attention KV audit demonstrated inside a hybrid model and remove heterogeneous-state auditing as a principal novelty claim.",
+      "verification_test": "A 2x2 ownership experiment independently varies KV and GDN sharing, includes direct range/alias witnesses, and reports the expected relation for each arm; alternatively, a claim audit confirms that every headline contribution is narrowed to the actually varied KV ownership factor.",
+      "evidence_needed": "New artifact-backed hybrid ownership controls and direct storage evidence, or a manuscript-wide claim-narrowing audit.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-NOV-03",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "p. 6 Section 4.5; p. 8 Section 6; p. 11 Appendix B/Table 6",
+      "claim_ids": [
+        "C-MUT-01",
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "The 17 governance tests and 28 tamper cases exercise serialized artifacts, validators, helpers, and launchers. Appendix B explicitly says its failure map is not a set of executed runtime mutants. The core GPU evaluation is a positive clean-run comparison, so it does not show that the seven-target checklist detects the ownership, dispatch, or lifecycle failures it is designed to audit.",
+      "why_it_matters": "For a paper whose central contribution is an audit methodology, demonstrated fault sensitivity is decision-relevant evidence. Clean-run parity and schema fail-closure do not establish diagnostic value beyond conventional assertions or show that each added target contributes unique protection.",
+      "required_fix": "Inject representative runtime faults, including shared mutable recurrent state, request-to-base aliasing, overlapping KV reservations, partial-tail overwrite, incorrect position/mask contracts, and fallback/full-KV concatenation. Ablate audit targets and report a detection matrix, false negatives, and expected blind spots.",
+      "verification_test": "The frozen artifact contains reproducible runtime mutants whose failures are detected by the predicted checks; target ablations demonstrate which failures escape, and the paper does not infer completeness from the tested set.",
+      "evidence_needed": "New runtime fault-injection results and an artifact-backed audit-target ablation matrix.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-NOV-04",
+      "severity": "minor",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "clarity"
+      ],
+      "location": "p. 1 abstract; p. 2 third contribution; pp. 6-7 Sections 5.2-5.3; p. 8 conclusion",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The 12.33x pool ratio follows deterministically from the chosen source-retaining allocation equations, while the 3.83% allocator difference is measured for one deliberately non-production control topology. The paper appropriately acknowledges both facts, but still presents denominator-explicit accounting as a headline contribution without positioning it against systems-measurement methodology.",
+      "why_it_matters": "The contrast is a useful cautionary illustration, but current evidence does not establish a new empirical law or broadly applicable measurement method. Treating it as a primary contribution risks overstating significance despite the otherwise careful caveats.",
+      "required_fix": "Frame the ratio primarily as an audit illustration unless direct measurement-methodology literature and multi-system evidence establish a broader contribution; clearly separate the deterministic equation from the measured allocator residual in all headline locations.",
+      "verification_test": "The abstract, contribution list, results, and conclusion consistently label the ratio as case-specific accounting, or new cross-system evidence and verified related work justify a general denominator methodology claim.",
+      "evidence_needed": "Support-checked measurement-methodology citations and, for a general claim, results across multiple implementations or allocator/process denominators.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No novelty-specific ethics concern is apparent in the frozen submission.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A primary-source, support-verified comparison to direct audit, differential-testing, ownership-verification, and systems-measurement precedents that isolates a genuinely absent capability.",
+    "A reproducible runtime fault-injection and audit-target ablation study showing that ForkAudit catches meaningful failures missed by simpler token-parity or output-only checks.",
+    "A factorial experiment that independently varies KV and recurrent-state ownership, directly checks request-to-base aliasing, and thereby validates the hybrid-specific contribution.",
+    "Transfer evidence on another hybrid model, runtime, scheduler, or lifecycle condition demonstrating that the protocol yields new findings rather than only documenting one implementation.",
+    "Evidence that the denominator ledger changes conclusions across realistic implementations or measurement layers, rather than only illustrating arithmetic for the chosen source-retaining topology."
+  ],
+  "evidence_that_would_lower_score": [
+    "A direct prior system or testing framework already combining the same ownership, differential/metamorphic, dispatch, and denominator checks.",
+    "Representative runtime mutants that pass the advertised checks despite falling inside their claimed sensitivity boundary.",
+    "A direct storage audit showing recurrent request state aliases the persistent base or other requests in the current implementation.",
+    "Independent recomputation showing the reported exactness or allocator ledger does not hold under the frozen protocol.",
+    "Evidence that the checklist cannot be instantiated outside the single Qwen3.5/vLLM case without substantial redesign."
+  ],
+  "review_limitations": [
+    "The blind-review scope was restricted to the frozen submission snapshot and required rubric; no parent workspace, prior review, or external literature search was inspected.",
+    "The snapshot includes citation locks, bibliographic records, and a closest-work matrix but not the full texts of the cited primary sources, so support and novelty verification is limited to those locked summaries and the manuscript's own comparisons.",
+    "This novelty/positioning review did not rerun the large GPU experiment or independently inspect every raw shard."
+  ]
+}

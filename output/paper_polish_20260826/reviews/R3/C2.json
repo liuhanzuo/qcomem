@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "33380752971af33cdffd66c902f0b47bc87490a3e29c35c63920b2751cc5f13e",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "同检索块的 j=12 与 j=0 成对比较、逐题 McNemar 计数和 reader 敏感性为负方向提供了可信证据。然而主要风险差区间的“exact conditional”构造没有包含随机 discordance 总量，五臂 E−A 也同时改变了低层可见上下文；标题中的 matched/pre-registered 强度高于当前识别。",
+    "presentation": "论文把方向估计、深度归因与系统计量分开，并在表1、表2、表3中列出控制与不可复用边界。28页较长，但主数字、读出约定、选择过程和系统范围都能追踪，图表渲染清晰。",
+    "contribution": "单层 hidden-state cache 加 BM25 top-k 的组合及其负结果有一定经验价值，尤其是显示同块重前向在 qa1 上优于 j=12 cache。可是只覆盖一个8B模型、一个单事实合成任务、oracle selector 和固定深度；没有端到端 serving 优势或现有系统基线，贡献范围有限。"
+  },
+  "paper_summary": "本文研究 CoMem：长文档按块在第j层保存 residual activation，查询时用 BM25 取 top-k 块并只重算上层。核心 BABILong qa1 同检索比较在100个样本上将 j=12 cache 与 j=0 原 token 重前向配对；4k、cap160 下准确率48%对75%，差+27个百分点，cap512 下方向相同。预先声明的深度曲线也总体指向 cache 越深读出越差。五臂 A/D/R/C/E 试图把深度与块独立编码、位置重定位分开，但 E 与 A 的低层注意范围仍不同。系统侧在128k、约6.7k token 固定读长下，j=12 相对 j=0 的峰值显存仅低约0.3GB，read/prefill break-even 约26次查询；decode 每 token 重建上层 pack，故未测端到端延迟或吞吐。",
+  "strongest_verified_contribution": "表2的同检索、同查询、同 decoder 成对比较最可信：在冻结 reader 下，j=0 重前向在两个注册 cap 上均优于 j=12 cache；逐题 discordant counts 的 exact McNemar 检验强烈拒绝零差。即便主要区间构造需修正，论文列出的更宽 Newcombe 交叉检查仍排除0，因此该单模型、qa1、oracle-selector 范围内的方向性负结果较稳健。",
+  "strengths": [
+    "表1明确区分 direction、attribution、serving 三种 estimand，避免把质量差、内存差和端到端性能混成一个 Pareto 结论。",
+    "表2使用100/100 content-hash 配对并报告 b/c discordant counts，使读者可以复核 exact McNemar 方向检验。",
+    "论文主动披露4k效应量是从有效长度中选择的最大显著量级，并把可复用结论降为方向而非通用+27个百分点。",
+    "reader convention、cap、深度 sweep 与非配对 Newcombe 敏感性均被保留，未掩盖答案解析依赖。",
+    "系统章节明确说明0.68秒只到 read/prefill、persistent hidden/text/index 随上下文增长、0.3GB不是一般内存收益。"
+  ],
+  "questions": [
+    "为何把条件于观测 discordance 数的 Clopper–Pearson 重缩放区间称为总体 paired risk difference 的主要95%区间？",
+    "在 A 与 E 之间，A 的底层只看选中 pack，而 E 的 h12 在连续全文上写入；作者如何据此声称只改变 cache depth？",
+    "4k为何在看到2k/4k/8k结果及 reader 变体后成为标题量级的主 cell；是否存在完全独立的固定 cell 复现？",
+    "每个 cell 是否仅有一个确定性生成 seed？若模型/解析链含随机性，题目配对如何覆盖 run-to-run 变异？",
+    "在 decode 每 token 重建 upper-band pack 且 BM25/index 成本未端到端测量时，CoMem相对可部署基线的实际系统假设是什么？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C2-R3-01",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor"],
+      "location": "第5.1节表2（PDF第6页）及附录J.1、表16（PDF第27–28页）",
+      "claim_ids": ["primary-paired-risk-difference-CI"],
+      "evidence_ids": ["Table-2", "Table-16"],
+      "observed_evidence": "主要区间先对 c/(b+c) 做 Clopper–Pearson，再乘以观测 discordance 比例(b+c)/n，得到 mnt160 的[+17.7,+30.5]和 mnt512 的[+14.1,+28.7]个百分点；该构造把随机的(b+c)/n固定为观测值。",
+      "why_it_matters": "条件检验可用于 McNemar 零假设，但这种重缩放没有传播 discordance 总量的抽样不确定性，因此不是总体 paired risk difference 的无条件95%区间。它会让效应量区间显得过窄。",
+      "required_fix": "用对全部四个配对单元计数有效的 matched-pair risk-difference 区间或以题目为单位的配对 bootstrap 作为主区间，并将当前构造准确标为条件区间。",
+      "verification_test": "对两个注册 cap 重算至少一种有覆盖保证的配对风险差区间；报告覆盖模拟或标准方法引用，并检查方向结论与效应量表述是否变化。",
+      "evidence_needed": "四格配对计数、修正区间和重算脚本输出。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R3-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第4节五臂定义与第5.2节表3（PDF第4、7页）",
+      "claim_ids": ["depth-itself-costs", "five-arm-attribution"],
+      "evidence_ids": ["Table-3-E2"],
+      "observed_evidence": "E−A 在4k和16k分别约−28、−36个百分点，但A的底层在选中 pack 上重前向，E的 h12 则在连续全文上下文中写入；论文第5.2节也承认低层 attended context set 仍不同。另一些分开的 dense/re-forward control 与j=0相差不显著，被描述为残余因素最多约6个百分点。",
+      "why_it_matters": "E−A不只改变 cache depth，因而不能识别“depth itself”的因果效应。其他 cell 未显著不等于对该混杂量给出6个百分点上界，尤其这些 cell并非同一反事实对照。",
+      "required_fix": "把结论改为特定部署管线的联合差异，或新增低层注意范围完全相同、只在读取起始深度上变化的对照。删除由非显著性推导的残余上界。",
+      "verification_test": "在相同选中 pack、相同位置和相同写入上下文上比较 j=0 与 j=12；以预先声明的等价/非劣界限直接估计每个非深度因素。",
+      "evidence_needed": "真正单因素的逐题配对臂和预先声明的归因分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R3-03",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims"],
+      "location": "摘要、第4节注册说明及第5.1节选择 caveat（PDF第1、4、6页）",
+      "claim_ids": ["pre-registered-headline-magnitude", "4k-primary-cell"],
+      "evidence_ids": ["Table-2", "Appendix-Table-8"],
+      "observed_evidence": "原计划的1k锚点在查看决定性 cell 前移至4k，但论文同时说明4k的+27个百分点是2k/4k/8k有效长度和 reader 结果中选择出的量级；没有对该选择做推断校正或独立复现。",
+      "why_it_matters": "方向在多个 cell 上一致可以作为探索性稳健性，但把最大显著量级放入标题/摘要会产生选择后夸大。事前冻结分析规则不等于该效应量未被选择。",
+      "required_fix": "将4k数值明确降为选择后的描述，主张只保留跨注册 cap 的方向；或在未查看的固定任务/长度上做一次前瞻复现并以该 cell 为主。",
+      "verification_test": "在独立数据或模型上预先冻结单一长度、reader、cap与区间方法；一次性揭盲并报告结果，或对现有搜索空间做同时区间。",
+      "evidence_needed": "独立前瞻复现或选择感知的同时推断。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R3-04",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "第4节实验设置、第5.1节表2及第6节局限（PDF第4、6、9页）",
+      "claim_ids": ["cached-depth-negative-result-generality"],
+      "evidence_ids": ["Table-2", "Appendix-Table-5"],
+      "observed_evidence": "所有 load-bearing 结果来自Qwen3-8B、BABILong qa1、oracle selector、每 cell 100题和单一训练自由管线；没有多模型、多任务、多随机 seed 或部署 BM25 的同样 matched 复现。",
+      "why_it_matters": "单事实合成任务和 oracle selection 有利于隔离方向，却不能判断该损失是否出现在真实检索误差、多跳任务、不同架构或 cache-aware 模型中。标题的“cached-depth read-out”容易被读成更一般的系统边界。",
+      "required_fix": "缩窄标题和结论到当前 model/task/reader，或至少在另一个模型家族、一个非合成任务和实际 BM25 selector 上预先复制方向。",
+      "verification_test": "预先定义跨模型一致性准则，并报告每个新 setting 的配对 discordant counts、选择感知区间及 reader 审计。",
+      "evidence_needed": "多模型、多任务、实际 selector 的独立配对结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R3-05",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "reproducibility"],
+      "location": "第5.3节 serving account（PDF第7–8页）与附录B/H（PDF第13、21–23页）",
+      "claim_ids": ["serving-value", "memory-saving", "break-even-26"],
+      "evidence_ids": ["Appendix-Table-7", "E1-memory-check"],
+      "observed_evidence": "相同约6657-token读长下j=12与j=0峰值仅差约0.3GB，来自median-of-three且打印粒度0.1GB；0.68秒在prefill/read结束，decode每token重建upper pack。BM25/index延迟、持久存储、端到端吞吐及可部署先验基线均未完整测量。",
+      "why_it_matters": "约26次查询的 break-even 只适用于截断的prefill账本，不能支持系统实用性；未测成本可能大于0.3GB/0.26秒量级，且没有端到端比较说明该方案值得部署。",
+      "required_fix": "实现可复用上层KV的端到端 decode，纳入选择、索引、存储和并发成本，并与至少一个公开的KV压缩/检索基线及 full-context 比较延迟、吞吐、峰值和质量。",
+      "verification_test": "在固定硬件、预热与并发下运行足够重复，报告分布而非三次中位数；用端到端总成本重算 break-even 并做敏感性分析。",
+      "evidence_needed": "端到端系统测量、基线实现、重复试验原始分布和完整成本账本。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究涉及模型推理效率和公开基准，不涉及个人数据或人类受试者。主要责任性风险是把特定负结果或截断成本账本推广成一般部署结论；论文已有较多范围限定。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "用有效的无条件 matched-pair 风险差区间重算后，两个注册 cap 的方向和量级仍稳健。",
+    "真正只改变读取深度的单因素臂复现 E−A 方向，从而识别 depth attribution。",
+    "在独立模型与真实检索任务上前瞻复制该负方向，且不依赖选中的4k cell。",
+    "完整端到端 serving benchmark 显示明确质量—资源权衡并优于有意义基线。"
+  ],
+  "evidence_that_would_lower_score": [
+    "有效配对区间或多 seed 复现后，关键方向不再稳定。",
+    "控制低层注意范围后，所谓深度损失大幅缩小或消失。",
+    "实际 BM25 和端到端 decode 成本使 break-even 或资源优势消失。",
+    "独立复核发现4k/reader选择时序与文中注册叙述不一致。"
+  ],
+  "review_limitations": [
+    "仅审阅指定冻结 PDF；按隔离要求未访问代码、运行工件、逐题输出、预注册文件或硬件日志，故 content-hash 配对、时间顺序和系统数字未外部执行复核。",
+    "未联网，未核验外部引文、相关工作优先权、模型/基准版本或公开讨论；相关不确定性不应被解释为已验证。",
+    "已完整读取指定 KV-cache 校准说明，并逐页视觉核查28页 PDF；未见影响解读的渲染缺陷。"
+  ]
+}

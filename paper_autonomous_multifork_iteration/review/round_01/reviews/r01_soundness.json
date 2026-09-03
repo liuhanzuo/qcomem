@@ -1,0 +1,187 @@
+{
+  "reviewer_id": "r01_soundness",
+  "round": 1,
+  "snapshot_sha256": "192c747fc60119ef4aa7051ded3b868a11371856ca7a7f4cf737a91b43a5caca",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The paper's deliberately narrow KV-layout self-consistency and measured-denominator claims are largely correct: I replayed the eight raw shards through the supplied aggregate validator, recovered exact_fraction=1.0 and the stated cross-N result, reproduced all three figure PDFs and both generated tables byte-for-byte, and independently checked the headline page and allocator arithmetic. Soundness is not excellent because the hybrid ownership contract lacks the direct GDN request-to-base storage witness it asks for, the only successful behavioral oracles are same-implementation relations with an acknowledged common-mode blind spot, and one denominator counterfactual is arithmetically wrong.",
+    "presentation": "The manuscript is unusually candid, well structured, and visually legible; it repeatedly separates self-consistency from semantics and page pools from allocator or service memory. A good rather than excellent score reflects the erroneous counterfactual on page 7, an incomplete dispatch-boundary description, and ambiguity between original-byte, anonymous-derivative, and latest-build hashes in the packaged provenance records.",
+    "contribution": "The executable ledger and denominator discipline are useful, but the ingredients are established and the evidence is one same-callable, one-model, one-schedule reference case. With no successful independent semantic oracle, no production-scheduler study, no factorial KV/GDN ownership comparison, and no executed runtime fault mutants, the current artifact offers limited new knowledge beyond a careful implementation audit and deterministic allocation accounting."
+  },
+  "paper_summary": "ForkAudit proposes a seven-target audit checklist for many continuations sharing a long prefix in a hybrid attention/GDN language model. The frozen Qwen3.5-35B-A3B case compares a source-retaining materialized full-attention KV layout with shared document pages while holding a functional GDN strategy and the recorded vLLM Python attention callable fixed. Across 504 paired request instances it records exact token, full-logit, logical-KV, and GDN-digest agreement, plus bounded cross-fan-out consistency. It separately reports deterministic full-attention page-pool accounting and absolute PyTorch allocated peaks, explicitly disclaiming semantic correctness, recurrent-sharing benefit, latency, throughput, NVML, and service-capacity claims.",
+  "strongest_verified_contribution": "The strongest verified contribution is the auditably bounded combination of same-callable KV-layout equivalence and denominator-explicit memory reporting. Raw replay validates all 504 request pairs, 4,032 paired logit steps, 80,640 attention-call records, 248 non-vacuous cross-N comparisons, the measured N=32 peaks of 74,623,183,360 versus 71,765,915,136 bytes, and the controlled pools of 2,960 versus 240 MiB. The supplied generator reproduces the paper's figures and tables exactly from the anonymous shards.",
+  "strengths": [
+    "The claims are exceptionally well bounded: the paper does not turn cross-layout equality into semantic correctness, cross-N equality into a complete isolation proof, or a page-pool ratio into service capacity.",
+    "The main measured equations are correct and replayable: a BF16 K/V page is 0.25 MiB, the source-retaining pools are 80+90N and 80+5N MiB, and the N=32 allocator delta is 2,857,268,224 bytes or 3.8289% of the materialized peak.",
+    "The source closure directly implements partial-tail COW, disjoint shared-arena private reservations, fresh-arena storage separation, fixed callable dispatch, and runtime torch.equal comparisons before serialization.",
+    "Coverage denominators are not inflated: the paper distinguishes 504 repeated request instances from 256 unique queries and identifies exactly 128 queries and 248 comparisons with non-vacuous cross-N coverage.",
+    "Negative and supporting results are handled responsibly: failed cross-backend validation and the absence of latency gains are reported without being converted into positive claims.",
+    "The rendered PDF is clean and the ownership, exactness, and memory figures make the stated boundaries easy to inspect."
+  ],
+  "questions": [
+    "Can the authors archive per-tensor GDN storage intervals for the persistent base and every resident request before the first update and after every functional rebind, including N=1, rather than retaining only final request digests?",
+    "In the page-7 counterfactual, why is the optimized contrast stated as 80N MiB? With 85N MiB on the materialized side and 80+5N MiB on the shared side, the difference is 80(N-1) MiB.",
+    "Can the audit demonstrate sensitivity with executed runtime mutants such as an overlapping private reservation, omitted partial-tail COW, a request that retains a mutable GDN-base alias, and a wrong position or mask contract?",
+    "Do the authors have a successful independent semantic reference for any representative subset, or can they provide a principled tolerance analysis explaining why the failed HF-eager/vLLM gate should not be interpreted as evidence about the custom path's semantics?",
+    "Can the call ledger bind actual position-id and Q-tensor values, or should target 5 be narrowed to metadata-level callable and contract provenance?",
+    "Can the build record and generated metric provenance explicitly distinguish original pre-redaction hashes from anonymous-derivative hashes and bind the exact submitted source/PDF pair?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R01-SND-001",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "significance"
+      ],
+      "location": "Section 3 target 3 and Figure 1 (pp. 3-4); Section 4.2 and Table 3 (p. 5); Section 5.1 (p. 6); Section 6 (p. 8); supplement code qcomem_vllm_paged_multifork_resident.py, _seed_tensor_memo and _resident_linear_states; run_qcomem_qwen35_vllm_paged_multifork_resident.py, _measure_arm",
+      "claim_ids": [
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-GDN",
+        "E-CODE-MF",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The logical contract requires recurrent request states to be disjoint from both other requests and the persistent base. Request construction deliberately memoizes every prefix tensor during deepcopy, so GDN tensors initially alias the base until functional updates rebind them. The runtime helper obtains final request storage keys and checks request-request intersection, but removes those keys before serialization and never intersects any request with persistent-base storage. Raw GDN rows therefore contain only one combined SHA-256 and tensor_count=60. At N=1 the only implemented final disjointness check is vacuous. The manuscript accurately acknowledges the missing request-base check, but Figure 1 and the audit's hybrid-state motivation still rely on this ownership transition.",
+      "why_it_matters": "An unchanged base digest is a value-immutability witness, not an alias witness. A request can remain storage-aliased to some base tensor, especially around the first functional update, without being excluded by the archived evidence. This leaves the specifically hybrid part of the ownership contract only partially audited and prevents an offline reviewer from replaying even the request-request storage assertion.",
+      "required_fix": "Instrument all 60 GDN tensors per request with normalized storage base, offset, extent, and mutability phase. Compare request-request and request-base intervals at construction, after the first query update, and after every continuation; archive the comparisons or non-sensitive normalized ownership IDs. Include N=1 and add a deliberate request-base alias mutant that the gate rejects. If this cannot be run, narrow the contribution, figure, and contract to a KV-ownership audit with observed common GDN behavior rather than a heterogeneous-state ownership witness.",
+      "verification_test": "Replay every arm, N, rank, request, layer, state family, and step from the new ledger; require zero interval overlap for mutable request states, constant persistent-base values, complete 60-tensor coverage, and deterministic rejection of an injected base-alias mutant. The N=1 case must have a non-vacuous request-base assertion.",
+      "evidence_needed": "New instrumented GPU shards plus source and mutation-test records that preserve request-base and request-request GDN range comparisons.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-SND-002",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "technical_soundness"
+      ],
+      "location": "Abstract (p. 1); Section 3 targets 6-7 (p. 3); Sections 5.1 and 5.4 (pp. 6-7); Section 6 (pp. 7-8); Appendix B (p. 11)",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-UNSUPPORTED-SEMANTIC"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-HF-NEG",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "Every successful behavioral comparison uses the same custom full-attention callable and the same GDN strategy. Cross-arm equality detects layout-specific differences, while cross-N equality detects only N-dependent changes for half of the unique queries. The attempted independent HF-eager/vLLM gate fails, and the 28 mutation cases target serialized artifacts and validators rather than injecting ownership, mask, position, or scheduler faults into executed GPU behavior. The manuscript discloses these boundaries and does not falsely claim semantic correctness.",
+      "why_it_matters": "The narrow claims remain defensible, but the evidence cannot show that ForkAudit detects realistic common-mode implementation errors or that its passing reference case is semantically correct. Without a successful orthogonal oracle or executed mechanism-level mutants, the work is closer to a well-engineered self-consistency ledger than a validated general audit methodology, which materially limits its ICLR contribution and score ceiling.",
+      "required_fix": "Add executed runtime mutants targeted to each claimed invariant and show that the corresponding gate fails. Also provide at least one independent semantic reference on a representative subset, with a preregistered tolerance justified for backend numerics; alternatively, keep the present scope but substantially narrow the methodological contribution and title. A factorial KV-share/GDN-share control would further separate the two state mechanisms.",
+      "verification_test": "Each injected fault must cause the predicted invariant to fail without relying only on edited serialized booleans. A separate reference implementation must reproduce tokens and meet a justified logit/state tolerance on frozen cases, with raw evidence and failure thresholds archived.",
+      "evidence_needed": "New runtime fault-injection results and an independent semantic-oracle run, or a narrower claim architecture that no longer presents the current case as validating a broader audit method.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-SND-003",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Section 5.2, counterfactual paragraph spanning pp. 6-7 (main.tex lines 439-444)",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The paper correctly derives the measured source-retaining pools as 80+90N and 80+5N MiB. It then says that removing the retained source makes the materialized side 85N MiB and changes the attention-pool contrast to 80N MiB. Holding the shared side fixed, the actual difference is 85N-(80+5N)=80(N-1) MiB; at N=1 both sides are 85 MiB and the difference is zero.",
+      "why_it_matters": "This does not alter the measured 12.33x or 3.83% headlines, but it is a direct algebraic error in a paper whose contribution emphasizes denominator-exact accounting and could misstate the production-like counterfactual by 80 MiB.",
+      "required_fix": "Replace 80N MiB with 80(N-1) MiB when referring to the difference against the shared pool, and report the N=32 optimized counterfactual as 2,720 versus 240 MiB, an 11.33x ratio and a 2,480 MiB difference. If 80N was intended to denote materialized document bytes rather than a contrast, relabel it explicitly.",
+      "verification_test": "Add a symbolic or unit check for all stated formulas and verify N=1, N=32, ratios, and differences against the generated capacity table.",
+      "evidence_needed": "No new experiment; corrected algebra and regenerated text-level audit checks suffice.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-SND-004",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "Section 3 target 5 (p. 3); Table 3 and Section 4.3 (p. 5); supplement raw attention-call ledgers and MultiForkHitLedger.attention_forward",
+      "claim_ids": [
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The ledger strongly establishes use of the same process-local Python callable, signature, query shape, append delta, no materialized mask, and no dense concatenation. It does not hash the actual Q tensor, records position_ids_strict_tail_values_checked=false in every production call, and does not fingerprint the compiled Triton kernel. The paper discloses the binary gap but describes the two arms as using the same query and position contracts more strongly than the archived values support.",
+      "why_it_matters": "Callable identity is not input identity or compiled-code identity. This does not overturn end-to-end cross-arm equality, but it weakens target 5 as an independently replayable dispatch-provenance claim and leaves additional common-mode pathways beyond the boundary stated in Table 3.",
+      "required_fix": "Archive per-call hashes of the post-RoPE Q tensor and position IDs, or run a strict value check outside the timed region and bind it to each frozen schedule. Expand Table 3's boundary to say explicitly that only Python-callable and metadata-level contracts are recorded and compiled dispatch is unverified.",
+      "verification_test": "Recompute Q and position-id digest equality across arms for all corresponding calls, verify canonical contiguous position tails for every distinct call geometry, and confirm a position perturbation fails the ledger.",
+      "evidence_needed": "Instrumented call-ledger values or a narrower claim; a compiled-binary fingerprint is desirable but not required if the claim remains Python-level.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-SND-005",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "Reproducibility Statement (p. 8); Appendix D (p. 12); generated/artifact_metrics.json; generated/manuscript_evidence_audit.json; build_record.json/build_record.json; MANIFEST.json",
+      "claim_ids": [],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The snapshot manifest itself verifies, and replaying the included anonymous shards reproduces every figure and table byte-for-byte. However, the packaged artifact_metrics.json and manuscript_evidence_audit.json bind the original pre-redaction summary/shard hashes, whereas replay from the included derivative emits the anonymous hashes; that namespace distinction is not encoded in those generated JSON files. In addition, the build record's latest source and PDF hashes do not match the submitted main.tex and main.pdf hashes in MANIFEST.json, indicating that the exact final build is not the one recorded as latest.",
+      "why_it_matters": "No numerical claim changed, but an audit paper should have an unambiguous end-to-end provenance chain. A reviewer cannot currently tell from the generated files alone whether a hash denotes original evidence, the anonymous derivative, or the exact submitted build.",
+      "required_fix": "Label original and derivative hash namespaces explicitly, regenerate the metric/audit records from the distributed derivative or bind both versions, and add a final build record whose source/PDF hashes exactly match the submitted MANIFEST entries.",
+      "verification_test": "From a clean unpacked snapshot, verify every anonymous shard hash, rerun the aggregate and artifact generator, reproduce all figure/table hashes, rebuild the manuscript, and require the resulting source/PDF hashes to equal the final recorded build and manifest values.",
+      "evidence_needed": "Package-only regeneration and updated provenance metadata; no new GPU run is required.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern was identified. The work measures systems behavior on PG-19 train data, makes no human-subject, safety, privacy, or deployment-quality claim, and acknowledges the broader dual-use implications of lowering inference cost.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A complete, archived GDN ownership ledger proving request-base and request-request non-overlap across construction and every rebind, including N=1, with an alias mutant rejected.",
+    "Executed runtime fault mutants demonstrating that each audit target detects the ownership, COW, position, mask, and lifecycle defects it is intended to detect.",
+    "A successful independent semantic oracle on a representative frozen subset with justified numerical tolerances, rather than only same-implementation equality.",
+    "A factorial KV-share/GDN-share experiment or a second hybrid model/runtime showing which conclusions transfer beyond the single reference case.",
+    "Correction of the optimized-pool counterfactual and a clean provenance/build chain that reproduces the exact submitted artifacts."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any per-tensor evidence of a mutable request GDN state overlapping the persistent base or another request, especially in the N=1 or first-update cases.",
+    "Failure to reproduce the raw-shard aggregation, exactness relations, page equations, or submitted figures/tables from the frozen anonymous package.",
+    "Full-tensor reruns showing unequal logits, logical KV, or GDN state despite the archived equality booleans and digests.",
+    "Evidence that actual query, position, mask, or compiled-kernel behavior differed between arms while the Python callable descriptor remained the same.",
+    "Reframing the current results as production throughput, capacity, recurrent-sharing benefit, or semantic correctness without new evidence."
+  ],
+  "review_limitations": [
+    "The snapshot archives hashes and runtime equality booleans rather than the full logits, KV tensors, or GDN tensors, so I could replay comparisons and aggregation but not independently recompute model values.",
+    "I did not have the pinned Qwen weights, PG-19 text, eight H20 GPUs, or frozen CUDA environment needed to rerun inference; the review instead audited the immutable source closure and raw serialized evidence.",
+    "The blind-review constraint precluded inspecting repository history, prior rounds, author plans, or external hidden evidence.",
+    "My primary specialty was technical soundness; novelty assessment is limited to the manuscript's supplied positioning and the review calibration material."
+  ]
+}

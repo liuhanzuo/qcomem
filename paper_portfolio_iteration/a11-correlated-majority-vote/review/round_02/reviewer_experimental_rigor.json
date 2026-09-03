@@ -1,0 +1,98 @@
+{
+  "reviewer_id": "a11-r2-experimental",
+  "round": 2,
+  "snapshot_sha256": "33c6a81aa1581f2b00e5c2f7cce8ff126d15749e57380103d0eb50ccac0ca39f",
+  "role": "experimental_rigor",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within the explicitly count-exchangeable replay model, the posterior certificate, FIT/CAL/TEST selection logic, exact-DP evaluation, and reported OMR/RLVE/OpenR1 readouts form a coherent and unusually well scoped chain. The supplied package, however, does not permit an independent end-to-end rerun of the central carrier results, and the empirical evidence does not establish an ordered online guarantee.",
+    "presentation": "The paper is readable and unusually explicit about what its flip and saving endpoints are not. Tables and limitations make the central scope checkable, though the appendices are dense and the large number of secondary sensitivity analyses can obscure the simpler empirical claim.",
+    "contribution": "The exact conditional replay certificate and adaptive-versus-fixed comparison are useful. Its current practical significance is narrower than the title-level early-stopping motivation: the evidence establishes binary pass-count replay agreement and mean sampled-rollout reduction, not delivered-answer correctness or realized serving cost."
+  },
+  "paper_summary": "This paper models each task by its full-N binary pass count and proposes BAYES-H, which stops when a fitted-mixture posterior probability that the current prefix majority disagrees with the corresponding full-N pass-count majority is below alpha. It proves replay-model validity, selects rules through a problem-level FIT/CAL/TEST protocol, and reports exact replay flip/count endpoints on OMR plus two additional count-replay carriers. Synthetic order perturbations and fitted-mixture TV analyses are presented as bounded, non-deployment diagnostics.",
+  "strongest_verified_contribution": "For the stated count-exchangeable replay endpoint, the paper provides a concrete conditional certificate and a properly separated FIT/CAL/TEST comparison: the supplied OMR artifact reports BAYES-H at alpha=0.05 with 0.0249 replay full-vote flip and 80.9% replay rollout-count reduction, versus 15.6% for FIXED-HOEF and 46.9% for FIXED-EB (C02; EV-OMR-R469).",
+  "strengths": [
+    "The main protocol separates fitting, calibration/selection, and a single TEST readout; the paper does not use TEST to tune the reported rule family.",
+    "The comparison includes a distribution-free fixed-budget control, a mixture-aware fixed-budget ablation that isolates adaptivity, and a deliberately non-certified window heuristic; the alpha=0.10 exception where FIXED-EB has slightly greater saving is disclosed rather than hidden.",
+    "The paper distinguishes exact replay quantities from Monte Carlo checks and labels the synthetic margin thresholds exploratory rather than confirmatory.",
+    "The manuscript states the central endpoint boundary repeatedly: full-vote agreement is neither gold correctness nor token, latency, cancellation, or ordered-online evidence."
+  ],
+  "questions": [
+    "Can the authors release an anonymous, self-contained derived-count carrier (or a downloader plus immutable split IDs), the primary FIT/CAL/TEST and drift scripts, and an environment lock so C02/C03 can be regenerated from a clean machine rather than only checked against supplied JSON?",
+    "On a newly frozen naturally ordered rollout carrier, does BAYES-H preserve delivered-answer correctness relative to the full-N answer majority while reducing generated tokens, wall-clock latency, and post-cancellation work? Please report the same endpoints for fixed-budget and actual ASC/ESC/MARS implementations where applicable.",
+    "Can the practical comparison be sharpened by either running the cited ASC/ESC/MARS methods under matched carrier and budget conditions or making especially prominent that WINDOW3 is only an ESC-style instantiation rather than an evaluation of the cited ESC method?"
+  ],
+  "issues": [
+    {
+      "issue_id": "ER-1",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "reproducibility"],
+      "location": "Section 6; Appendix G; artifacts/REPRO_README.md carrier and reproduction-command sections; evidence/experiment_registry.json entries EXP-OMR-R469 and EXP-DRIFT-R469",
+      "claim_ids": ["C02", "C03"],
+      "evidence_ids": ["EV-OMR-R469", "EV-DRIFT-R469"],
+      "observed_evidence": "The registry labels the central OMR and drift experiments 'supplied_artifact_not_rerun'. The README identifies required carrier parquet files and primary scripts at external workspace paths, while this reviewer snapshot contains result JSONs/checksums but not the raw/derived task rows, split identifiers, or the primary r469 launcher. Thus the printed quantities are locally traceable descriptive artifacts but cannot be independently regenerated from this snapshot.",
+      "why_it_matters": "This is not evidence that any reported number is wrong. It is a reproducibility boundary: a reviewer cannot audit duplicates, task filtering, split construction, input parsing, or the actual selection path that produced the central empirical result, so experimental confidence cannot reach the level suggested by the otherwise precise artifacts.",
+      "required_fix": "Provide a reviewer-safe, self-contained reproduction route: immutable raw data or a documented downloader, derived K vectors if licensing requires, exact problem IDs and FIT/CAL/TEST assignments, the primary analysis and drift scripts, dependency/environment lock, and one command that regenerates the named result JSONs.",
+      "verification_test": "In a clean anonymous environment, retrieve/build the declared inputs and regenerate the central OMR FIT/CAL/TEST and drift JSONs; verify their hashes or all claimed numeric fields and confirm that the released split IDs are disjoint and match the manuscript counts.",
+      "evidence_needed": "Executable inputs, split manifests, source code, and an environment specification; no new scientific result is required for this issue.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "Abstract lines 21-44; Sections 3 and 6; Section 8(i); evidence/claim_evidence_map.tsv C04; evidence/experiment_registry.json EXP-ORDERED-CORRECTNESS-COST",
+      "claim_ids": ["C02", "C04"],
+      "evidence_ids": ["EV-OMR-R469", "EV-MISSING-ORDER", "EV-MISSING-ENDPOINT", "EV-MISSING-COST"],
+      "observed_evidence": "All main carriers supply count-replay endpoints. The paper explicitly says OMR has no rollout order, does not compare a stopped answer against gold correctness, and does not measure generated tokens, latency, cancellation acknowledgement, or post-cancellation work. The registry records the necessary ordered-correctness-cost experiment as planned and unexecuted. The synthetic E1/E2/E3 order mechanisms are useful descriptive stress tests, but they are constructed from counts and cannot validate natural serving order.",
+      "why_it_matters": "The theorem remains sound for its stated replay model, and the paper honestly declares this boundary. Nevertheless, the evidence does not yet establish that the proposed early stopper is useful or safe for the real ordered majority-vote deployment motivating the work. This limits the current empirical contribution rather than constituting a contradiction of the qualified replay claims.",
+      "required_fix": "Add a preregistered or frozen naturally ordered rollout evaluation with a gold/verifiable correctness evaluator and serving telemetry. Compare the stopped delivered decision with the actual full-N decision and report correctness, generated-token count, latency, cancellation success/post-cancellation work, and the same measures for matched baselines.",
+      "verification_test": "On a held-out ordered carrier, the method must meet its declared full-vote-disagreement level and show the claimed correctness/cost trade-off against full-N and fixed-budget baselines; raw ordered traces and calculation code should permit audit.",
+      "evidence_needed": "A new ordered online experiment with gold or verifiable task outcomes and operational telemetry.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-3",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "significance", "clarity"],
+      "location": "Section 2 (related work), Section 5 (Baselines), Table 2, and Table 1 WINDOW3 row",
+      "claim_ids": [],
+      "evidence_ids": ["EV-OMR-R469"],
+      "observed_evidence": "The empirical baseline called WINDOW3 is explicitly an 'ESC-style' heuristic, while Table 2 characterizes ASC/ESC as implementation-specific and MARS as a distinct endpoint. Consequently the snapshot does not provide a matched empirical comparison against the cited methods themselves.",
+      "why_it_matters": "The paper does not falsely claim that it beats those implementations, so this is not an error. But readers motivated by practical adaptive self-consistency cannot infer comparative performance against the most closely named alternatives from a custom window heuristic alone.",
+      "required_fix": "Either implement and tune applicable cited baselines under the same replay protocol and compute budgets, or further foreground that the empirical comparison establishes a certificate-versus-fixed-budget result, not superiority to ASC, ESC, or MARS implementations.",
+      "verification_test": "For any added baseline, release its configuration and show matched risk/count results on the held-out carrier; otherwise check that abstract, introduction, and captions make the restricted comparison explicit.",
+      "evidence_needed": "Either matched baseline runs or claim-narrowing edits.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No special human-subject or sensitive-data concern is evidenced in the snapshot. The main responsible-use concern is scientific: deployment should not be inferred from the count-replay certificate before ordered correctness and operational-cost evidence exists; the paper already states this limitation.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the frozen reviewer snapshot and supplied rubric.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A reproducible anonymous package that regenerates the central FIT/CAL/TEST and drift results from pinned inputs and split manifests.",
+    "A held-out, naturally ordered online evaluation showing delivered-answer correctness and actual token/latency/cancellation savings at the declared disagreement levels.",
+    "Matched evaluations of applicable published adaptive self-consistency baselines, or a clearer claim boundary if such comparison is not meaningful."
+  ],
+  "evidence_that_would_lower_score": [
+    "A rerun that cannot reproduce the stated splits, certificate selection, or headline replay numbers.",
+    "Ordered traces showing systematic violation of the stated flip level under the deployment conditions portrayed as relevant.",
+    "Evidence that the custom WINDOW3 comparison has been represented as an evaluation of the cited ESC implementation."
+  ],
+  "review_limitations": [
+    "I assessed only the frozen snapshot and did not inspect raw carrier data, external workspace paths, prior reviews, or author plans.",
+    "The supplied artifacts support local consistency checks but, as documented in the snapshot itself, cannot establish raw-data provenance or ordered-online behavior."
+  ]
+}

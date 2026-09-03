@@ -1,0 +1,133 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "b564bcaf9926acc12ba3c30bbf4ff09ab48b02dd88130b866bf3ef5eb432e625",
+  "role": "experimental_rigor",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 1,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "配对、按 decode 聚类的自助法以及风险/排序量纲的区分总体合理，但载荷最大的正确性标签无法追溯到原始提取流程。第 8 页表 10 报告在 200 条人工等价审计中有 30% 标签翻转，且原始提取阶段标签未保存；这使 AUROC 与 risk@coverage 的共同结果变量缺乏可校准的有效性。解码的 remasking 策略、生成种子和提示模板也未记录，无法重新生成事件流。",
+    "presentation": "论文对探索性与注册性分析、检测与等价性、共享观测与独立证据做了较清楚的区分，表格和图在逐页视觉检查中均可读；但 R1--R5、H2、PL、RES 等多层标签和大量修订后诊断使主结论较难提取，且“aligned”措辞掩盖了 AUROC 与风险分析仍采用不同聚合层级。",
+    "contribution": "冻结事件流上比较三种置信度读出并并列报告排序与选择效用，是有价值的测量案例；然而证据只来自一个模型、一个任务、每题一次解码，主要正结果又是事后对齐的探索性差异。当前结果不足以形成可推广的顶会级方法或经验结论。"
+  },
+  "paper_summary": "本文在一个冻结的 LLaDA-8B-Instruct × GSM8K 事件流（974 题、每题一次解码）上比较 commit、first 与 all 三种 in-decoding 置信度汇总。探索性配对分析显示 commit 相对 all 的 AUROC 增量为 0.0278（95% CI [0.0123, 0.0438]），但在覆盖率 0.2、0.5、0.8 上的配对风险差均有跨零区间；仅覆盖率 0.8 的 TOST 支持 ±1 个百分点范围内的等价。论文据此主张排序分离不等于风险门控效用提升，并提出需要前瞻性重复验证。该谨慎结论在统计表述上基本诚实，但标签有效性和解码可复现性缺陷直接限制了其可信度。",
+  "strongest_verified_contribution": "第 5--6 页表 5--8 将同一批 decode 上的排序量（AUROC）和实际选择效用（risk@coverage）分开，并用相同 decode 聚类重采样展示：可检测的 AUROC 差异并不自动转化为在预定覆盖率上的已解析风险差异。这个负向测量提醒在本冻结数据上得到直接支持。",
+  "strengths": [
+    "对同一 decode 的读出采用配对比较，并以 decode 为聚类单位重采样，避免把 token/block 行错误当成独立样本。",
+    "明确区分显著性检测、80% 功效敏感度标签和 TOST 实用等价结论，没有把跨零区间表述为等价。",
+    "第 3--5 页对 ties、retained-set、残差协方差和共享观测进行了边界审计，并明确指出若干诊断不是独立证据。",
+    "第 6、8--9 页主动披露单模型单任务、无重复生成、原始标签与解码配置不可恢复等关键限制。",
+    "逐页视觉核查显示 14 页均完整、无裁切或乱码，图表与公式可读。"
+  ],
+  "questions": [
+    "第 8 页所述 200 条人工等价审计中的 30% 标签翻转，分别有多少条会改变 commit/all 的 AUROC 差和三个覆盖率下的风险差？能否提供以双人盲标共识为金标准的完整敏感度分析？",
+    "为什么将“aligned”用于表 5 的整组对比，而 AUROC 是 decode 级汇总分数排序、risk 却先按 block 计算再跨八个 block 平均？若两者使用完全相同的 decode 级分数与 retained set，结论是否保持？",
+    "第 14 页表 16 显示配对 AUROC 为 post-alignment；对齐规则是在看到哪些效果量之后确定的，是否存在其他尝试过但未报告的 readout/coverage/aggregation 组合？",
+    "能否恢复或重新运行至少一个完整解码批次，记录 prompt、remasking policy、generation seed 和软件/模型哈希，并在前瞻性锁定的 1 pp 等价界限下复验？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A23-I1",
+      "severity": "critical",
+      "dimensions": ["technical_soundness", "experimental_rigor", "reproducibility"],
+      "location": "第 5 页第 4 节首段；第 8 页表 10；第 9 页第 6 节",
+      "claim_ids": ["R3", "R4", "R5"],
+      "evidence_ids": ["Table 5", "Table 8", "Table 9", "Table 10"],
+      "observed_evidence": "原始提取阶段的正确性标签没有保留，当前数字来自对冻结预测文本的事后 canonical extractor 重跑。作者抽查 200 条并与另一个提取器比较，标签翻转率达 30%，主要由 last_num 分支分歧驱动；作者明确称其只是噪声上界而非校准估计。",
+      "why_it_matters": "所有 AUROC、风险覆盖曲线和 TOST 都以该二元正确性标签为结果变量。30% 的未校准分歧远大于主效应（风险差多在 1 个百分点内、AUROC 差 0.0278），因此方向和决策均可能由标签规则决定。",
+      "required_fix": "在预先定义、与读出分数无关的规则下建立人工金标准（优先覆盖全部 974 条，至少采用概率抽样并双人盲标、分歧仲裁），报告各提取器的混淆矩阵，并以金标准标签重算全部主分析。",
+      "verification_test": "锁定标签协议后，独立复算者应从冻结回答生成同一标签；在金标准标签上重新估计 commit-all 的 AUROC 差、三个覆盖率风险差及 TOST，并报告标签不确定性的敏感度区间。",
+      "evidence_needed": "逐题预测文本、各提取器输出、盲标记录与仲裁结果，以及从标签到表 5/8/9 的可执行映射。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I2",
+      "severity": "critical",
+      "dimensions": ["reproducibility", "experimental_rigor"],
+      "location": "第 5 页第 4 节；第 9 页 Data and analysis release；第 9 页结论",
+      "claim_ids": ["Frozen-bed analysis", "Replication requirement"],
+      "evidence_ids": ["Table 10", "event-stream SHA identifiers"],
+      "observed_evidence": "论文明确指出 remasking policy、generation seed 和 prompt template 均未记录，因此包括作者在内无人能重建该 decode bed；原始 event-stream bundle 的释放还取决于项目数据管理员决定。",
+      "why_it_matters": "commit/first 的定义直接依赖 remasking 与修订轨迹。只可重复分析现有流、不可重复生成该流，无法排除结果是某个未记录解码配置或随机实现的偶然产物。",
+      "required_fix": "从明确版本的模型与数据重新生成前瞻性床，完整记录并发布 prompt、remasking 算法及参数、随机种子、软件环境、模型/数据/输出哈希和逐步事件流。",
+      "verification_test": "第三方从配置和种子重新执行后，应逐项匹配事件流哈希或在预先声明的随机重复协议下复现方向与效应区间。",
+      "evidence_needed": "可执行解码配置、版本锁、模型与数据标识、每题种子、原始事件流及完整性哈希。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I3",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "第 1 页摘要；第 8 页第 6 节；第 9 页结论",
+      "claim_ids": ["General readout comparison", "R3"],
+      "evidence_ids": ["974-decode frozen bed", "Table 5", "Table 8"],
+      "observed_evidence": "证据仅包含一个模型、GSM8K 一个任务、一个温度和每题一次生成；没有跨生成种子、候选样本、任务或模型重复。论文自己估算，1 pp 界限的决定性重复约需 1960--2820 个 decode。",
+      "why_it_matters": "题目抽样自助法只能量化对这组冻结回答的题目不确定性，不能量化解码随机性或跨床外推。当前区间不足以支持一般性的 readout 一致性判断。",
+      "required_fix": "按预先锁定的读出和标签协议，在至少一个新模型/任务及每题多个独立生成种子上重复；样本量应达到文中功效目标，并分解题目与生成随机效应。",
+      "verification_test": "前瞻性重复中同时报告每个床和分层汇总的 AUROC 差、相同聚合层级的 risk 差与 TOST；检查方向、效应异质性和覆盖率依赖。",
+      "evidence_needed": "新床的功效分析、独立种子、逐题逐生成记录和预注册分析代码。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I4",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "clarity"],
+      "location": "第 2 页式 (1) 与 2.1 节；第 5 页表 5；第 11--12 页附录 A.1--A.2",
+      "claim_ids": ["Aligned rank and selection contrasts"],
+      "evidence_ids": ["Equation 1", "Table 5", "Algorithm 1"],
+      "observed_evidence": "AUROC 使用每个 decode 跨八个 block 平均后的单一分数进行排序；risk@coverage 则按 block 分别形成风险后再跨 block 平均。两者虽然共享 decode 与 readout，却没有共享完全相同的排序单位和聚合算子。",
+      "why_it_matters": "聚合层级本身可改变排序、保留集合和风险，因而 AUROC 与 risk 的差异不能只归因于评价量纲不同。“aligned”会让读者误以为除了指标外其余估计目标完全相同。",
+      "required_fix": "增加真正同单位的主对比：用同一 decode 级分数与同一 retained set 同时计算 AUROC 和风险；或明确将现有分析称为部分对齐并把 block 聚合差异列为潜在解释。",
+      "verification_test": "在共享 decode 级排序下重算三个覆盖率的风险差；若结论不变，报告与原表 5 的差值及 retained-set 重叠。",
+      "evidence_needed": "每个 decode 的 block 级和汇总 readout、各覆盖率 retained-set 与两种聚合规则的并排结果。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I5",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 6 页表 8；第 13--14 页附录 C/E",
+      "claim_ids": ["R3 practical equivalence", "Aligned AUROC separation"],
+      "evidence_ids": ["Table 5", "Table 8", "Table 16"],
+      "observed_evidence": "配对 AUROC 是看到既有分析后的 post-alignment 探索性对比；±1 pp 的 TOST 界限也在原始效应估计之后、重算之前确定。三个覆盖率中只有 0.8 接受等价，0.2 与 0.5 均不确定。",
+      "why_it_matters": "事后确定对比与等价界限会引入选择自由度，且单一高覆盖率等价不能概括整个风险曲线。压力测试和置换稳定性不能代替独立的确认性重复。",
+      "required_fix": "把现有结果明确限定为假设生成；在独立数据上预注册读出、聚合、覆盖率、1 pp 界限、多重性控制和标签协议后复验。",
+      "verification_test": "独立重复需在预定 family 上同时给出校正后的检测与 TOST 决策；只有预定覆盖率全部达到相应门限时才作曲线级结论。",
+      "evidence_needed": "带时间戳的预注册、独立冻结床和完整 family-level 结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文分析公开基准上的模型输出，未涉及人类受试者、私密用户数据或实时部署；当前主要风险是若将单床置信度读出直接部署为拒答门控，会在未校准分布上造成错误安全感，论文已部分承认需目标分布重校准。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "以盲标金标准重算后，commit-all 的 AUROC 与风险结论在预注册分析中保持，且标签敏感度不足以改变决策。",
+    "可完整重生成的新床记录全部解码元数据，并在每题多种子及至少一个额外模型/任务上复现。",
+    "使用完全相同 decode 级排序与 retained set 后，排序分离而低覆盖风险未解析的现象仍存在。",
+    "达到文中功效目标的前瞻性样本在预定覆盖率上给出明确的检测或实用等价结论。"
+  ],
+  "evidence_that_would_lower_score": [
+    "金标准标签使 AUROC 增量消失、反向，或使任一风险/TOST 决策改变。",
+    "恢复或新建解码床后结果对 remasking、prompt 或生成种子高度不稳定。",
+    "共享 decode 级聚合后所谓排序与效用分离主要由原先的 block 聚合不一致解释。",
+    "原始事件流或结果表无法由声明的分析代码和哈希资产复算。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的冻结 PDF；未访问代码、事件流、模型、数据或任何作者侧工件，因此不能实际复算表中数值。",
+    "按隔离要求未联网，未核验外部引文、数据许可、模型卡或文中所称发布资产是否存在及可访问。",
+    "已全文阅读并逐页视觉核查全部 14 页；页面渲染完整，未见裁切、乱码或不可辨识图表。"
+  ]
+}

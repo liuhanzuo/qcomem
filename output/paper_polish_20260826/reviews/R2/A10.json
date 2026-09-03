@@ -1,0 +1,186 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "3ec51ae6ffcf87653a3cf81af085bb834be3c6c87b953736487d0e0c9fe089b1",
+  "role": "technical_soundness",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "主要 arms 的同预算实现和每个 endpoint 均写得清楚，作者也没有把退化输出解释为质量。但 n=4 paired-t 区间建立在无法检验的正态假设上，稳健的同号检验仍未达 0.05；三次随机初始化的 percentile bootstrap 下界也不能支撑总体随机权重结论。生成、PPL 与轨迹诊断只有一个 prompt/checkpoint pair，且 drift 重算失败。",
+    "presentation": "10 页稿件结构紧凑，表 2、4–11 将配置、数值与限制配对，图表清晰无版面缺陷。对 MAUVE 未记录、PPL teacher/cap 反号、无质量锚点和 ambient initialization seed 丢失均有显著披露。",
+    "contribution": "将 emission length、alphabetic yield 和 concentration 与 PPL 并列是合理工程记录习惯，但论文明确既不提出新 metric、训练方法或 decoder，也没有质量结论。预训练权重在极短训练预算下胜过从零初始化以及两个退化输出表面不同，科学新颖性和影响均很低。"
+  },
+  "paper_summary": "论文比较同一 SmolLM2-135M masked-denoising 架构的 AR-pretrained initialization 与一个 fixed random initialization。四个 data-order/training seeds、30.0M tokens 后，random−AR 的 last-logged loss gap 均约 2.24–2.29 nats；另有三个 fresh random draws 的 loss gap 仍为正。生成只使用 seed-42 checkpoint pair、一个提示、两个温度和每 cell 32 个样本，两臂均退化：AR-init 多为短标点残片，random-init 多为长单词循环。不同 teacher、length cap 和温度可改变甚至反转 PPL 排序；MAUVE 未记录，drift recomputation gate 失败。",
+  "strongest_verified_contribution": "第 5–6 页表 4–7 最可靠地提供了一个透明的负控档案：在固定两组 initialization checkpoints 下，四个 data-order runs 的 random−AR step-450 loss 差均为正；同时，同一 prompt 的冻结输出显示 teacher PPL 与 emitted length/repetition 可给出不同读法，且 PPL 排序对 teacher、cap 和 temperature 敏感。该证据只支持配置级工程诊断，不支持质量或总体初始化效应。",
+  "strengths": [
+    "清楚区分 data-order repeats 与 random-weight draws，没有把四个重复误称为权重初始化方差。",
+    "报告 paired-t 区间同时给出最小可达 one-sided sign-test p=0.0625，使小样本边界可见。",
+    "没有从未记录的 MAUVE 值构造比率，也明确说明两个退化 arms 均不能作为质量优胜者。",
+    "对 teacher dependence、length construction、单 prompt、短训练 horizon、failed drift gate 和缺失 ambient seed 均有直接限制。"
+  ],
+  "questions": [
+    "在 n=4 且差值分布无法检验时，为何把 paired-t 95% CI 作为主要重复性证据，而不是把同号但 p=0.0625 作为主结论？",
+    "三个 fresh random draws 的 bootstrap lower bound 等于观测最小值；是否计算过精确同号检验或展示该区间对 population mean 的实际覆盖？",
+    "若两臂本来都被判定退化且无独立质量标签，单 prompt 的 emission fields 除描述输出外如何验证任何 metric complementarity 或诊断效用？",
+    "principal random-init checkpoint 的 ambient RNG seed 丢失；匿名 bundle 是否实际包含该 checkpoint bytes，还是只有 SHA 与派生输出？",
+    "AR-init 已接受大规模预训练、random-init 从零开始，却只训练 30M tokens；这一几乎必然的 short-horizon loss gap 对 dLLM 研究给出了什么可证伪的新结论？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A10-R2-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor"
+      ],
+      "location": "第 1 页摘要与贡献 1；第 5 页图 2、表 4与 §4.1",
+      "claim_ids": [
+        "same-signed loss separation",
+        "statistically repeated loss gap",
+        "paired 95% CI"
+      ],
+      "evidence_ids": [
+        "Table 4",
+        "four paired data-order seeds"
+      ],
+      "observed_evidence": "四个差值为 2.2814、2.2893、2.2394、2.2391，paired-t 区间极窄为 [2.2196,2.3050]；但 n=4 无法可靠检验差值正态性，精确 one-sided sign test 的最小 p 仍为 0.0625。四次还共享同一对固定 initialization checkpoints。",
+      "why_it_matters": "t 区间的精度主要反映这一个固定权重对下 data-order 差值很稳定，不能支持更广的重复性或初始化效应。以它作为 headline CI 容易掩盖有效独立单位极少、稳健检验未过阈值。",
+      "required_fix": "将四次结果表述为描述性 fixed-pair consistency，并以 sign/randomization interval 为主；增加足够多、预先设定的 paired runs，使 robust paired inference 有可用分辨率。",
+      "verification_test": "预注册 seeds 和主统计量；报告 sign/permutation、t 与 bootstrap 敏感性，并证明结论不依赖正态假设或单个 seed。",
+      "evidence_needed": "更多独立 paired runs 与稳健小样本推断。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 3–4 页 §3.2与表 3；第 8–9 页 §5–6、表 11",
+      "claim_ids": [
+        "multi-init negative control",
+        "loss-side sign survives random initializations",
+        "bootstrap 95% CI lower bound"
+      ],
+      "evidence_ids": [
+        "Table 3",
+        "init seeds 11/22/33"
+      ],
+      "observed_evidence": "仅三个 fresh random draws，gap 为 2.300、2.281、2.272；论文用 percentile bootstrap 给出下界 2.272>0。三点 bootstrap 的尾部基本退化为观测极值，无法评估权重分布尾部；三次同号的 one-sided sign p 为 0.125。",
+      "why_it_matters": "该结果不能以 95% 置信度推广到随机初始化总体，也不能说明 emission mode 稳定；事实上两次 loop、一次 gray 已显示 draw dependence。",
+      "required_fix": "撤下 population-CI 语言，把三点列为 pilot；用足够多独立 weight seeds、独立 data orders 和层级模型/随机化检验分离 draw 与 run 方差。",
+      "verification_test": "交叉 weight_seed×data_seed 设计，在 draw 级留一法和符号检验下方向仍稳定，并报告 draw-level emission mode 分布。",
+      "evidence_needed": "更大多初始化、交叉随机效应实验。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "第 3–8 页 §3.3–5；表 5–10",
+      "claim_ids": [
+        "emission-coordinate complementarity",
+        "negative-control pilot",
+        "trajectory diagnosis"
+      ],
+      "evidence_ids": [
+        "Table 5",
+        "Table 6",
+        "Table 9",
+        "Table 10"
+      ],
+      "observed_evidence": "生成证据来自一个 prompt、seed-42 checkpoint pair、每 cell 32 continuations；无人工或独立质量 anchor。两臂都退化，PPL 在 teacher/cap/temperature 下改变或反号。drift scalar/top-k totals 又相差 12.6%–18.1%，没有误差界。",
+      "why_it_matters": "输出长度与词频当然能区分短 stub 和重复 loop，但这不验证它们能诊断质量、训练状态或一般 degeneration，也不建立相对 PPL 的增量效度。轨迹机制因 failed gate 不能解释。",
+      "required_fix": "在多 prompts、checkpoints、weight draws 与至少一个人工/任务质量锚点上预先定义退化标签，评价各字段的 discriminative/增量效度；修复 drift 记录后独立复跑。",
+      "verification_test": "按 prompt 和 checkpoint 留出测试，比较 PPL-only 与 PPL+E 对 blind degeneration labels 的性能；drift 重算必须通过预定容差。",
+      "evidence_needed": "多样生成样本、独立标签与修复后的 trajectory records。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "第 4 页表 2；第 9 页 Reproducibility Statement",
+      "claim_ids": [
+        "reproducible negative-control pilot",
+        "fixed random initialization"
+      ],
+      "evidence_ids": [
+        "random-init checkpoint SHA",
+        "anonymous artifact manifest"
+      ],
+      "observed_evidence": "principal random weights 由 host ambient RNG 产生且 seed 未记录；step 0 也未记录。文稿没有 verified external anonymous URL，只列 checkpoint SHA 和本地匿名 bundle 信息，未明确保证权重 bytes 可取得。",
+      "why_it_matters": "若 checkpoint 不随包发布，第三方无法重建这个唯一 fixed draw，标题中的 reproducible 只适用于派生表格而非核心训练条件。SHA 能验证已有 bytes，不能从零恢复 bytes。",
+      "required_fix": "发布匿名 checkpoint 或精确 RNG state/初始化脚本，使权重逐 tensor 重建；提供外部可访问 artifact 与端到端验证命令。",
+      "verification_test": "干净环境重建 principal draw，所有 272 tensors 的 digest 与给定 checkpoint 相同，并复现 step-10/450 endpoints。",
+      "evidence_needed": "checkpoint bytes 或完整 RNG state、公开 artifact 和第三方重放。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-R2-05",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 1–3 页 §1–2；第 8 页 §5–7",
+      "claim_ids": [
+        "matched initialization study",
+        "engineering deliverable",
+        "bed-scoped contribution"
+      ],
+      "evidence_ids": [
+        "30M-token training bed",
+        "AR-init versus random-init"
+      ],
+      "observed_evidence": "AR-init 继承已预训练 SmolLM2 权重，random-init 从零开始，两者只训练 30M tokens/458 steps，loss 仍在变化；作者明确不提出新训练发现、metric、decoder、质量排序或跨床结论。",
+      "why_it_matters": "预训练初始化在极短预算下低于随机初始化是预期负控，而不是足以改变领域认识的发现。剩余 deliverable 是把常规表面统计量并列报告，尚无采用或性能证据。",
+      "required_fix": "把工作定位为 artifact/engineering note，或提出并验证一个可迁移、可证伪的问题，例如不同预训练适配方案在匹配收敛预算和多质量锚点下的系统比较。",
+      "verification_test": "在 matched compute-to-convergence、多模型/规模和独立任务上验证新的主假设，并相对最近 AR-to-diffusion baselines 量化增量。",
+      "evidence_needed": "具有外部效度的训练与评估实验。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "没有人类受试者或私有用户数据；FineWeb-Edu 的许可、隐私与代表性风险在文中简要披露。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审目录、作者计划、编辑上下文、旧稿或历史评分。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "扩大并交叉 weight-seed/data-seed 设计，用稳健推断确认 loss 结论。",
+    "在多 prompt/checkpoint/model 上引入独立 degeneration/quality labels，验证 emission fields 的增量效度。",
+    "发布可重建的 initialization checkpoint/RNG state，并修复 drift recomputation。"
+  ],
+  "evidence_that_would_lower_score": [
+    "更多 weight draws 使 loss gap 或 emission pattern 不稳定。",
+    "独立质量标签显示新增 emission fields 不提供可用诊断信息。",
+    "principal checkpoint 无法发布或重建，导致核心负控不可复现。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、软件包行为、模型 checkpoint 或数据许可。",
+    "仅审阅冻结 PDF；未读取或执行匿名 bundle、checkpoints、scripts、trajectory dumps 或 preregistration。",
+    "未用外部资料判断 MAUVE 的实现细节；评审只依据稿件明确报告的未记录状态。",
+    "PDF 共 10 页，已全文阅读并逐页视觉核查；无缺页、裁切或不可辨认图表。"
+  ]
+}

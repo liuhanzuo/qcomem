@@ -1,0 +1,188 @@
+{
+  "reviewer_id": "r00-soundness",
+  "round": 0,
+  "snapshot_sha256": "691d902c895efbc2a85bc13d08b072d02cf33b81aa967c3c6fd5e9fa0f7cec58",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The page-capacity derivation and the reported same-kernel equality, cross-N consistency, call counts, and allocator arithmetic are internally correct and agree with the raw shards. However, the central oracles establish implementation self-consistency rather than semantic correctness: an N-invariant error shared by both arms passes both oracles, and no successful independent reference is provided. Moreover, both arms use the same GDN ownership strategy, so the hybrid-state claim lacks a recurrent-state materialization control.",
+    "presentation": "The manuscript is unusually explicit about denominators, serial execution, source retention, non-independence of repeated queries, and unsupported speed claims. Remaining precision problems include overstating what cross-N testing detects, calling 4,032 paired comparisons generation steps although 8,064 arm-specific model steps ran, and describing a supplementary implementation that is not dependency-complete in the frozen package.",
+    "contribution": "An executable ownership checklist and denominator-aware audit are useful, and the negative results are responsibly reported. The current evidence is nevertheless a narrow single-model, single-schedule reference case; it does not validate the recurrent-sharing contrast, production concurrency hazards, or either arm against an independent semantic oracle."
+  },
+  "paper_summary": "ForkAudit specifies seven ownership and measurement invariants for forking continuations from a shared prefix in a hybrid attention/recurrent LLM. Its Qwen3.5-35B-A3B case study compares source-retaining materialized-KV and shared-KV arms on eight PG-19 books at fan-outs from 1 to 32, checks output/state digests and request invariance across fan-out, and separates analytic attention-page capacity from PyTorch allocator peaks.",
+  "strongest_verified_contribution": "The controlled full-attention experiment is internally coherent and auditable: independent replay of the supplied shards confirms 504 request pairs, 4,032 paired logit comparisons, 5,040 logical-KV layer pairs, 80,640 fused-attention calls, no recorded cross-arm or cross-N mismatch, and the exact N=32 arithmetic of 2,960 versus 240 MiB and a 2,857,268,224-byte PyTorch peak gap.",
+  "strengths": [
+    "The page derivation is correct: a BF16 K/V page is 0.25 MiB, the ten-layer document allocation is 80 MiB, and two private pages per request cost 5 MiB.",
+    "The raw shard hashes match the aggregate bindings, and replay of trajectories, final-state digests, and capacity fields found no internal inconsistency.",
+    "The implementation visibly performs partial-tail copy-on-write and allocates disjoint request reservations in the shared arena.",
+    "The paper clearly disclaims throughput, latency, NVML, admitted-capacity, concurrent-kernel, and optimized-production-baseline conclusions.",
+    "The failed cross-backend gate and absence of latency speedup are reported rather than suppressed."
+  ],
+  "questions": [
+    "What independent oracle establishes that either same-kernel arm implements the intended model semantics, rather than merely that both arms and all fan-outs share the same deterministic error?",
+    "Can the authors provide a materialized or from-scratch GDN-prefix control so that recurrent-state sharing, rather than only KV sharing, is actually varied?",
+    "Can the runtime record direct storage-range disjointness between every post-update request GDN tensor and the persistent GDN base, including after each generation step?",
+    "Can the authors supply a dependency-closed source bundle containing the integration, functional-stack, data-audit, fair-control, atomic-write, and launcher modules imported by the provided runner and tests?",
+    "Why are 4,032 paired full-vocabulary comparisons described as generation steps when the two arms execute 8,064 model steps?"
+  ],
+  "issues": [
+    {
+      "issue_id": "SND-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Introduction lines 68-85; contract invariants 6-7 at lines 175-180; Results lines 326-330 and 387-399; Discussion lines 404-410",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-HF-NEG"
+      ],
+      "observed_evidence": "Fresh/share equality compares two executions of the same fused backend, and the cross-N replay compares the same implementation under different resident counts. The cross-backend diagnostic failed and no high-precision or independently implemented oracle replaced it. Thus an incorrect but deterministic position offset, mask convention, K/V permutation, or recurrent update shared across arms and invariant in N would pass both headline oracles. The statement that cross-N testing addresses the general shared-corruption failure mode is therefore too broad.",
+      "why_it_matters": "The observed equality and isolation claims are valid as self-consistency results, but they do not establish semantic correctness of the reference implementation. This distinction is central to a paper presented as a correctness-first audit protocol.",
+      "required_fix": "Narrow the claim to N-dependent interference detection and explicitly enumerate N-invariant common-mode errors that remain invisible. Preferably add an independent semantic oracle, such as a small layer-level identical-QKV FP32 reference for paged attention plus from-scratch recurrent-state recomputation.",
+      "verification_test": "Inject a deterministic common-mode defect into both arms, such as a one-token position shift or identical K/V block permutation. Demonstrate that the existing two oracles can pass, then demonstrate that the added independent oracle rejects the defect.",
+      "evidence_needed": "Reference outputs or states, numerical tolerances fixed before evaluation, raw comparison results, and mutation cases covering common-mode errors.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "SND-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract lines 37-47; contract lines 151-179; qcomem_vllm_paged_multifork_resident.py lines 335-388; Discussion lines 419-422",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-MF",
+        "E-CODE-GDN",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The fresh and reuse constructors differ in full-attention arena ownership, but both call install_native_functional_linear_cache and use the same persistent-prefix GDN strategy. The paper itself acknowledges that the experiment does not isolate recurrent-prefix sharing. Consequently, cross-arm equality supplies no control for the recurrent component of the advertised hybrid ownership contrast.",
+      "why_it_matters": "Handling heterogeneous KV and recurrent state is the main distinction from ordinary Transformer prefix sharing. Without varying GDN ownership, the central hybrid claim is materially less supported than the title, abstract, and contract suggest.",
+      "required_fix": "Add at least a GDN-materialized control, ideally a 2-by-2 KV-share/GDN-share factorial design. If that experiment is unavailable, consistently reframe the empirical result as KV ownership equivalence with observational checks on a common functional-GDN implementation.",
+      "verification_test": "For identical document and queries, compare shared-GDN requests with independently materialized or recomputed GDN prefixes, checking per-step logits, tokens, every recurrent/conv tensor, persistent-base immutability, and storage ownership.",
+      "evidence_needed": "New controlled executions that vary recurrent ownership while fixing kernels, inputs, scheduling, and KV ownership.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "SND-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "Contract private-ownership invariant at lines 166-170; run_qcomem_qwen35_vllm_paged_multifork_resident.py lines 373-409 and 633-637",
+      "claim_ids": [
+        "C-OWN-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-GDN",
+        "E-CODE-MF",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The runtime helper checks pairwise storage disjointness only among final request GDN states. It does not check each request against the persistent base, and it removes storage keys before serialization. At N=1 the pairwise check is vacuous. Persistent digest stability proves unchanged values, not absence of storage aliasing.",
+      "why_it_matters": "A request tensor that still aliases persistent prefix storage is precisely the ownership failure the contract claims to rule out. Final digest equality and request-request disjointness do not exhaust that case.",
+      "required_fix": "At the ownership transition and after every step, check tensor storage ranges for each request against both the persistent base and every other request. Persist per-layer pass/fail evidence and test mutations that force one request to retain a base alias.",
+      "verification_test": "Replace one request's conv or recurrent tensor with a persistent-base tensor while leaving values unchanged; the revised ownership validator must fail for N=1 as well as larger fan-outs.",
+      "evidence_needed": "Per-layer, per-state-family base-disjointness records and mutation-test output from the GPU-relevant ownership path.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "SND-04",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Reproducibility statement lines 447-455; artifact map lines 532-557; qcomem_vllm_paged_multifork_resident.py lines 23-38; run_qcomem_qwen35_vllm_paged_multifork_resident.py lines 25-55",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-CALL-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "The supplied runner and tests import qcomem_joint_policy, qcomem_qwen35_functional_stack, qcomem_qwen35_vllm_paged_integration, qcomem_vllm_paged_fair_control, and run_downstream, but these source files are absent from the frozen snapshot. The missing integration module contains the conversion and backend-registration boundary needed to verify the model-to-kernel path. The launcher tested by the launcher tests is also absent. Hash entries for external files do not permit source inspection or clean execution.",
+      "why_it_matters": "The most delicate connection between the Transformers model, cache conversion, RoPE/position contract, and fused backend cannot be reconstructed from the submitted code. The included governance tests are not runnable as a dependency-closed package.",
+      "required_fix": "Bundle the exact hashed dependency closure, launcher, environment specification, and a clean command for replaying aggregation and CPU tests. Correct artifact paths to the actual packaged layout.",
+      "verification_test": "Unpack the supplement in a clean environment with no access to the authors' repository, import the runner, run all 17 governance tests, and replay the aggregate from the eight packaged shards.",
+      "evidence_needed": "Dependency-complete source files whose hashes match the execution ledger, plus clean-environment test logs.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "SND-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Abstract lines 43-46; Table 2 lines 294-320; scripts/validate_manuscript_evidence.py lines 81-101",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The 4,032 value equals 504 request pairs times eight steps, while both arms actually execute 8,064 model steps. In contrast, the 80,640 fused-call count includes both arms. Calling 4,032 the number of generation steps mixes paired comparisons with executed events.",
+      "why_it_matters": "This does not change the equality result, but it makes the scale and counting denominator inconsistent.",
+      "required_fix": "Report 4,032 paired full-vocabulary step comparisons and 8,064 arm-specific model steps, or define the counting convention explicitly wherever the number appears.",
+      "verification_test": "Recompute counts as 8 ranks times the sum of fan-outs times 8 generated steps times one paired comparison or two arm executions, and ensure all manuscript labels use the corresponding denominator.",
+      "evidence_needed": "No new experiment; only corrected counting and labels.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent for this systems-audit study using an existing public-domain book corpus and no human-subject collection.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A successful independent semantic oracle that detects common-mode mask, position, K/V-layout, and recurrent-update defects.",
+    "A materialized-GDN or factorial KV-share/GDN-share experiment with exact per-step state comparisons.",
+    "Direct persistent-base versus request-state storage-disjointness evidence, including N=1 and mutation tests.",
+    "A dependency-complete supplement whose tests and aggregate replay succeed in a clean environment.",
+    "Production-scheduler experiments covering concurrent execution, cancellation, reclamation, and multiple documents would further raise contribution and external-validity confidence."
+  ],
+  "evidence_that_would_lower_score": [
+    "Demonstrating that an actual mask, position, cache-layout, or recurrent semantic defect is present despite passing both current oracles.",
+    "Finding any request GDN tensor that aliases mutable persistent-base storage after its ownership transition.",
+    "Failure of the raw shard aggregate or reported equality flags to reproduce from the exact execution code and environment.",
+    "Evidence that the allocator baselines did not recover as recorded or that non-PyTorch allocations materially reverse the stated scoped memory comparison."
+  ],
+  "review_limitations": [
+    "The isolated snapshot did not include raw logits or state tensors, so runtime torch.equal results could not be numerically recomputed offline.",
+    "The model weights, PG-19 token data, and GPU environment were not present, so the formal GPU run could not be rerun.",
+    "Several imported implementation modules were absent from the snapshot, limiting source-level verification of integration and position-handling semantics.",
+    "Broader related-work accuracy was assessed only from the frozen manuscript and bibliography, without external literature search."
+  ]
+}

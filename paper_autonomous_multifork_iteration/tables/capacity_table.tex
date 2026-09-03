@@ -1,0 +1,23 @@
+\begin{table}[H]
+\caption{Memory scaling under three explicitly named estimands. The controlled pool retains the common source in both arms and is therefore a controlled contrast, not an optimized production full-copy baseline. Post-pack and full recorded-lifecycle PyTorch peaks are allocator counters, not NVML usage or service capacity.}
+\label{tab:capacity}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.0pt}
+\begin{tabular}{@{}r rr rr rr@{}}
+\toprule
+& \multicolumn{2}{c}{Controlled pool (MiB)} & \multicolumn{2}{c}{Post-pack prod. peak (GiB)} & \multicolumn{2}{c}{Full lifecycle peak (GiB)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+$N$ & Materialize & Shared & Materialize & Shared & Materialize & Shared \\
+\midrule
+1 & 170 & 85 & 64.896 & 64.813 & 67.434 & 67.434 \\
+2 & 260 & 90 & 65.048 & 64.881 & 67.434 & 67.434 \\
+4 & 440 & 100 & 65.345 & 65.011 & 67.434 & 67.434 \\
+8 & 800 & 120 & 65.936 & 65.270 & 67.434 & 67.434 \\
+16 & 1520 & 160 & 67.126 & 65.792 & 67.434 & 67.434 \\
+32 & 2960 & 240 & 69.498 & 66.837 & 69.498 & 67.434 \\
+\bottomrule
+\end{tabular}
+\vspace{1mm}
+\parbox{0.97\textwidth}{\footnotesize The source-retaining analytic pool is exactly $80+90N$ MiB for Source+Materialize and $80+5N$ MiB for Shared-Document. The post-pack production peak is the maximum of resident setup and generation after the phase reset. The full recorded-lifecycle peak is the maximum over prefill, Q16 pack, resident setup, and generation. Values were identical across all eight ranks; this deterministic run does not support a stochastic confidence interval.}
+\end{table}

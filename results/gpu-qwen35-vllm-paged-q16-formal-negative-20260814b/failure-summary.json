@@ -1,0 +1,78 @@
+{
+  "status": "failed_closed_before_authorization",
+  "job_id": 237281,
+  "trial_id": 1840009,
+  "web_ui_url": "https://qs2.devops.xiaohongshu.com/model/production/job/trial/237281/1840009",
+  "queue_id": 436,
+  "gpu_count": 8,
+  "completion_time": "2026-08-14T12:33:18+08:00",
+  "execution_time": "0d00h17m45s",
+  "last_completed_stage": "02_static_dry_run_ok",
+  "failed_stage": "pg19-gate",
+  "pg19_gate_passed_ranks": [0, 1, 2, 3, 5],
+  "pg19_gate_failed_ranks": [4, 6, 7],
+  "pg19_gate_failure_count": 3,
+  "failure_signatures": [
+    {
+      "ranks": [4, 6],
+      "layer_idx": 31,
+      "max_abs": [0.09375, 0.09375],
+      "mean_abs": [0.0009335592039860785, 0.0008313278667628765],
+      "relative_l2": [0.0060163745656609535, 0.006846248172223568]
+    },
+    {
+      "ranks": [7],
+      "layer_idx": 19,
+      "max_abs": [0.125],
+      "mean_abs": [0.0009953849948942661],
+      "relative_l2": [0.00640089763328433]
+    }
+  ],
+  "isolated_pass_row_distribution": {
+    "rows": 50,
+    "relative_l2_min": 0.0013881674967706203,
+    "relative_l2_mean": 0.005276706467848271,
+    "relative_l2_max": 0.007690118160098791,
+    "mean_abs_min": 0.0006511139217764139,
+    "mean_abs_mean": 0.0009290005883667618,
+    "mean_abs_max": 0.0014138962142169476,
+    "max_abs_min": 0.015625,
+    "max_abs_max": 0.125,
+    "highest_mean_relative_l2_layer": 31,
+    "highest_mean_relative_l2": 0.006821482162922621
+  },
+  "completed_semantic_rows": {
+    "ranks": [0, 1, 2, 3, 5],
+    "top1_exact_count": 5,
+    "top1_total": 5,
+    "full_vocab_forward_kl_values": [
+      0.0029917778447270393,
+      0.00197684857994318,
+      0.029704120010137558,
+      0.0021952674724161625,
+      0.001655451487749815
+    ],
+    "full_vocab_forward_kl_mean": 0.007704693078994751,
+    "full_vocab_forward_kl_min": 0.001655451487749815,
+    "full_vocab_forward_kl_max": 0.029704120010137558,
+    "configured_global_mean_kl_threshold": 0.001,
+    "completed_rows_all_exceed_threshold": true,
+    "max_abs_logit_error_values": [0.421875, 0.7890625, 2.390625, 0.3720703125, 0.197265625]
+  },
+  "semantic_rows_missing_for_failed_ranks": [4, 6, 7],
+  "validation_authorized": false,
+  "authorization_artifact_present": false,
+  "validation_artifacts_present": false,
+  "benchmark_started": false,
+  "test_v2_consumed": false,
+  "preflight_test_count": 22,
+  "preflight_status": "passed",
+  "code_ledger_sha256": "29a5401b36a580f85c14f9ca87e89e06a471cf20db1abb3797a1414592042117",
+  "static_dry_run_sha256": "6d9bf6fe4f04720948b1475783a55830b6fc23fbbf0af41576da2ef48f6d3ce3",
+  "preflight_log_sha256": "420584b84db910a0e68ff5a823a7c368999f881cde960d880944beefd5e10415",
+  "failure_artifact_ledger_sha256": "4152263048062a34067a3131994e9a3729bdfdb9ce2cf258c02c86c7e48c39f1",
+  "failure_artifact_ledger_entries": 28,
+  "root_cause_classification": "backend_numerical_parity_and_semantic_gate_failure",
+  "root_cause_confidence": "strong_hypothesis_not_fp32_oracle_attributed",
+  "root_cause_detail": "The HF eager path materializes BF16 QK scores, applies a full-row FP32 softmax, casts probabilities to BF16, and performs a dense value GEMM. The vLLM Triton path uses tiled FP32 online-softmax state and a different reduction/casting order. Errors are small and finite but workload- and layer-dependent; layer 31 has the largest mean relative L2 among completed windows. A high-precision identical-QKV oracle is still required to attribute which backend is closer to the mathematical result."
+}

@@ -1,0 +1,753 @@
+% ICLR 2026 anonymous submission — confidence-aggregation construct consistency
+\documentclass{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{iclr2026_conference,times}
+\usepackage{amsmath,amssymb,booktabs,graphicx,microtype,multirow,tabularx}
+\usepackage[hidelinks]{hyperref}
+
+\title{Construct Consistency of In-Decoding\\
+Confidence Readouts for Risk-Gated\\
+Decoding (Selective Prediction)}
+
+\author{Anonymous\\
+Anonymous Institution\\
+\texttt{anonymous@example.com}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Generative (masked-diffusion) language decoding (LLaDA-style) produces a \emph{single}
+decode per prompt, and the decoder's internal confidence is a candidate signal for
+\emph{risk-gated deployment} (Chow~1970-style selective prediction: abstain on the
+highest-risk fraction to cover a target risk). We study whether, in block-wise denoising
+decoding, revision-end confidence
+(\texttt{commit}), first-exposure confidence (\texttt{first}), within-block mean
+(\texttt{all}), early versus late windows, and intra-block versus cross-block aggregation
+read the \emph{same stable construct} or \emph{measurement artifacts of different sources}.
+On one frozen LLaDA-8B-Instruct $\times$ GSM8K bed ($n{=}974$ distinct problems, one
+decode each, $k{=}1$ --- no best-of-$k$ candidate pool), zero-GPU reproducible
+analysis finds intra-block discrimination statistically measurable (AUROC gain $+0.0144$
+exceeds its full-width MDE80), yet \emph{at this bed's decision-readout power no intra-block
+risk-gated selection increment is resolvable}: every registered intra-block
+decision-readout anchor is \texttt{POWER\_LIMITED} under the full-width MDE80
+(H2). This is an underpowered \emph{non-detection}, not a rejection: on this bed we cannot
+rule out an intra-block selection increment smaller than the decision-anchor MDE80, and we
+do \emph{not} claim in-block selection is unusable elsewhere. (R3 is therefore a bounded
+power-bound negative, not the construct claim ``measurable $\neq$ usable''.) Four further
+judgment-hygiene working instances bound that result: at the registered cov$=0.2$
+anchor the three readouts agree in direction and are point-identical, while the $c\ge0.55$
+low-selectivity band is power-limited rather than a measured agreement or null;
+\texttt{commit} and \texttt{all} are distinct constructs but
+their decision-validity gap is compatible with reliability/SNR; a desaturated readout
+reproduces the early/late effect; and that effect is high-selectivity-specific,
+\textbf{power-limited under the bed's stated full-width MDE80 ($2.8016\,\mathrm{SD}$) at
+every registered anchor}, and fails family-level correction
+(\texttt{holm3\_survivors\_commit=[]}, \texttt{BORDERLINE\_EQUIVOCAL}, non-load-bearing).
+Thus reading
+``readout difference'' as ``information difference'' is an overclaim: most aggregation-axis
+differences are explained by the measurement layer, while the early/late working instance
+retains a power and family-level boundary. We provide a reusable
+judgment-hygiene chain covering power-bound non-detection (measurable discrimination vs.\
+decision-readout resolvability), desaturation falsification,
+BORDERLINE--MDE co-reporting, and form d1/d2 grading.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+In risk-gated deployment (selective prediction; Chow~1970), a decoder is asked to emit
+its best decode together with a confidence-derived score, and the system abstains on the
+highest-risk fraction to cover a target error --- self-consistency and numerical confidence
+calibration are standard ways to build such a score \cite{wang2023selfconsistency,
+guo2017calibration}. In
+masked-diffusion language decoding (LLaDA-style, block-wise parallel denoising), ``which
+positions' confidence to aggregate into a score'' is not unique: one may take a position's
+last revision confidence (\texttt{commit}), its first-exposure confidence (\texttt{first}),
+or the within-block mean (\texttt{all}); one may look only at early blocks (early window) or
+late blocks (late window); and one may aggregate intra-block or cross-block. This paper asks
+whether these aggregation choices read one construct --- a stable, decision-usable confidence
+--- or different sources of measurement artifact. (We do \emph{not} study best-of-$k$
+candidate selection: this bed decodes once per prompt, so no candidate pool exists; see
+Estimand, \S\ref{sec:method:estimand}.)
+
+\paragraph{Terminology used in this paper.}
+\begin{itemize}
+  \item \emph{Construct}: a stable interpretative unit read from a signal.
+  \item \emph{Power-bound non-detection} (supersedes our earlier ``measurable $\neq$ usable''
+  phrasing): a readout may discriminate (AUROC / risk@coverage) statistically while, at this
+  bed's decision-readout power, no selection increment is \emph{resolvable} (all registered
+  decision anchors \texttt{POWER\_LIMITED} under the full-width MDE80). This is an
+  underpowered non-detection on this bed, \emph{not} a claim that in-block selection is
+  unusable; it bounds only this bed and this decision anchor set.
+  \item \emph{f-rated readout family}: the three aggregation readouts \{\texttt{commit},
+  \texttt{first}, \texttt{all}\}; judgment-hygiene levels d1 (direction-consistent,
+  report interval) and d2 (direction-flipping, withdraw claim) characterize how they agree.
+  \item \emph{BORDERLINE\_EQUIVOCAL}: a family-level verdict when a raw CI excludes 0 but
+  Holm correction fails; always co-reported with MDE (non-degradable).
+  \item \emph{load-bearing}: a stable analytical anchor. R3 is the headline negative
+  result; R1/R2/R4/R5 are boundary instances. The R5 full-width MDE correction remains a
+  load-bearing soundness correction even though R5 is not a headline finding.
+\end{itemize}
+
+This paper studies whether these aggregation axes read \emph{one construct} or
+\emph{different sources of measurement artifact} (Estimand, \S\ref{sec:method}). On a single
+frozen-decode bed we run zero-GPU reproducible analysis. The headline result, R3, is a
+\textbf{power-bound non-detection}: the intra-block AUROC gain is measurable ($+0.0144$,
+above the intra-block full-width MDE80), yet no intra-block selection increment is
+\emph{resolvable} at this bed's decision-readout power (risk@coverage CIs include 0 and
+every registered decision anchor is \texttt{POWER\_LIMITED} under the same H2 full-width
+MDE rule). Because the decision-anchor MDE80 (not a single threshold) bounds what this bed
+can detect, this is honestly stated as an underpowered non-detection rather than as the
+stronger claim that in-block selection is unusable. Four boundary-strict judgment-hygiene
+working instances (\S\ref{sec:results}) delimit that result:
+
+\begin{itemize}
+  \item \textbf{Direction-consistent at the registered anchor, magnitude-varying} (R1):
+  at cov$=0.2$ all three readouts agree point-identically
+  ($\delta_{\mathrm{EL}}{=}-0.076923{=}15/195$ on the support grid); the sign agreement is
+  \emph{not} claimed beyond that anchor --- at $c\ge0.55$ the readouts diverge in sign and
+  the band is power-limited, not a measured agreement or null.
+  \item \textbf{Not the same construct, yet decision-difference compatible with measurement}
+  (R2): \texttt{commit} and \texttt{all} are not the same latent variable, but their
+  decision-validity gap is explainable by the reliability gap/SNR.
+  \item \textbf{Early/late-window difference is robust to a first-exposure desaturating readout} (R4): a
+  desaturated readout reproduces the effect point-for-point.
+  \item \textbf{High-selectivity-specific boundary} (R5, \emph{non-load-bearing}): every
+  registered anchor is \texttt{POWER\_LIMITED} under the full-width MDE80, and the
+  family-level Holm(3) list has no survivor, so the raw cov$=0.2$ effect remains
+  \texttt{BORDERLINE\_EQUIVOCAL} rather than a usable finding.
+\end{itemize}
+
+\textbf{Contributions.} (1) R3, a bounded power-bound negative: on this frozen bed, intra-block
+discrimination is measurable but no intra-block \emph{selection increment} is resolvable at the
+decision-readout power (all registered anchors \texttt{POWER\_LIMITED} under the full-width MDE80);
+this is an underpowered non-detection, deliberately \emph{not} promoted to an ``unusable'' construct
+claim; (2) R1/R2/R4/R5 as explicitly bounded judgment-hygiene working instances, not load-bearing
+headline claims; (3) a reusable H1--H6 chain for judging ``readout$\rightarrow$selection'' claims
+while separating the aggregated selection readout from internal-representation mechanisms.
+
+Figure~\ref{fig:teaser} summarizes the key design distinction: a statistically measurable
+readout difference is not automatically a usable selection signal.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{figures/teaser_construct_consistency_r35.png}
+  \caption{Conceptual map of the measurement problem. The same frozen masked-diffusion
+  event stream supports three alternative within-block confidence readouts: the last
+  revision (\texttt{commit}), first exposure (\texttt{first}), or within-block mean
+  (\texttt{all}). Window and scale choices then produce a decode-level score whose
+  statistical discrimination must be tested separately from practical selection utility.
+  \textbf{Takeaway:} measurement and selection utility are separate gates. The diagram is
+  conceptual and contains no experimental quantities.}
+  \label{fig:teaser}
+\end{figure}
+
+\section{Measurement Construct and Method}
+\label{sec:method}
+
+\subsection{Identifiability of the readout construct}
+\label{sec:method:ident}
+
+We study a concrete, measurable question in masked-diffusion language decoding: when
+confidence readouts are aggregated into a decode-level score used to select likely-correct
+decodes, do different aggregation axes read \emph{one stable construct} or \emph{different
+sources of measurement artifact}? We compare three axes: \textbf{aggregation score}
+(\texttt{commit} = within-block last-step confidence; \texttt{first} = within-block
+first-step confidence, desaturated; \texttt{all} = within-block mean), \textbf{aggregation
+window} (early = blocks 0--3 vs late = blocks 4--7), and \textbf{aggregation scale}
+(intra-block vs cross-block). All analysis is on a single frozen-decode bed, zero GPU.
+We make \emph{no mechanism claim} about the model's internals; all claims are restricted to
+the ``readout $\rightarrow$ decision score'' measurement layer.
+
+\subsection{Estimand (decision readout)}
+\label{sec:method:estimand}
+
+\textbf{Estimand = pool-level selective abstention over $974$ distinct problems,}
+with one decode per problem ($k{=}1$) and \emph{no candidate pool}: this bed has no
+best-of-$k$ selection, so candidate selection ($k{>}1$, within-prompt candidate pools) is
+\emph{outside the measured estimand} and is left to a separate recovery that would require
+new data ($k{\ge}4$ decodes per prompt). The decision question is the selective-prediction
+one: can a decode-level confidence readout be used to \emph{risk-gate} (abstain on) a
+coverage-$c$ fraction of decodes so as to reduce expected error. Formally, for coverage
+point $c$, readout $r$, and window $W\in\{E{=}\text{blocks 0--3},
+L{=}\text{blocks 4--7}\}$:
+\[
+  \mathrm{risk}_{W,r}(c) \;=\; \text{error rate of the top-}(c\cdot n)\text{ decodes by}
+  \ W\text{-window } r\text{-readout decode-level mean},
+\]
+where the selected count is $k=\max(1,\mathrm{round}(c\cdot n))$ retained decodes (the
+\emph{top-}$k$ by descending score), i.e.\ \emph{banker's rounding} of $c\cdot n$ to an integer
+with a floor at $1$ (at $c{=}0.2$, $n{=}974$: $\mathrm{round}(194.8){=}195$ decodes retained).
+Ties in score are resolved by stable (mergesort) index order, so the retained set is
+deterministic for a fixed event order; the $\delta_{\mathrm{EL}}$ values below are
+point-identical on the discrete support grid (e.g.\ $-0.076923=-15/195$ at $c{=}0.2$).
+with $\mathrm{base}=$ full-pool error rate (this bed: $0.2947$), and
+\[
+  \delta_{\mathrm{EL},r}(c) \;=\; \mathrm{risk}_{E,r}(c) - \mathrm{risk}_{L,r}(c),\quad
+  \text{($<0 \Leftrightarrow$ early window is better at selecting decodes)}.
+\]
+The early/late $\delta_{\mathrm{EL}}$ is the \emph{window-comparison} quantity used by R1, R4,
+and R5; it is \emph{not} the R3 decision estimand. R3 is the \emph{intra-block between-arm
+selection increment}: the change in risk@coverage when the decode-level score is built from the
+\texttt{commit} readout versus the \texttt{all} readout, restricted to a single block (rank the
+$n$ decodes by one block's readout, take risk@coverage per block, average across the $8$ blocks)
+\begin{equation}
+  \Delta^{\mathrm{intra}}(c')\;=\;\mathrm{risk}^{\mathrm{intra-block}}_{\texttt{commit}}(c')
+   \;-\;\mathrm{risk}^{\mathrm{intra-block}}_{\texttt{all}}(c'),
+  \label{eq:r3-intra-arm}
+\end{equation}
+the quantity reported in the R3 row of Table~\ref{tab:results} and gated in
+Table~\ref{tab:r3grid}. The selection \emph{benefit} of a single readout against no selection,
+$\mathrm{gain}=\mathrm{base}-\mathrm{risk}$ (large, e.g.\ $\approx{+}8.7$\,pp at cov$=0.2$), is a
+separate, resolvable statement about each individual readout's usefulness; it is \emph{not} the R3
+increment and is kept distinct so that R3's negative applies only to the between-arm increment.
+Inference uses a multiplicity-preserving cluster bootstrap over decodes and family-level Holm(3);
+Table~\ref{tab:readouts} collects the exact registered settings. Here and throughout, the \emph{twin $p$} of an
+estimate is the two-sided bootstrap $p$-value against the paired null, computed as
+$p_{\mathrm{twin}}=2\min\big(\widehat{\mathrm{Pr}}_b[\hat\delta_b>0],\,
+\widehat{\mathrm{Pr}}_b[\hat\delta_b<0]\big)$ over the $B{=}2000$ cluster-bootstrap
+resamples $\hat\delta_b$; it measures direction stability of the estimate on the original
+(not shuffled) labels, with the independent statistical unit being the decode ($n{=}974$). The BORDERLINE third-state discipline requires
+co-reporting the full-width MDE80 (Method appendix H2). Under that budget all six registered
+\texttt{commit}/\texttt{first} anchors are \texttt{POWER\_LIMITED}; consequently
+BORDERLINE is a separate family-level statement, never an above-MDE anchor claim. At the
+registered bootstrap setting, Holm(3) gives \texttt{holm3\_survivors\_commit=[]}: the raw
+lowest-coverage CI excludes 0, but no family member survives correction. Table~\ref{tab:results}
+records the deterministic-order high-$B$ seed audit and the resolved scan-order artifact,
+separating those comparable values from the method narrative.
+
+\textbf{Efficiency / power footnote.} The full-width minimum detectable effect is defined at
+80\% power, two-sided $\alpha{=}0.05$,
+$\mathrm{MDE}_{80}=(z_{1-\alpha/2}+z_{1-\beta})\,\mathrm{SD}=2.8016\,\mathrm{SD}$, where
+$\mathrm{SD}$ denotes the \emph{observed} cluster-bootstrap standard error of the relevant
+decision-anchor effect (per-anchor, Table~\ref{tab:r3grid} for R3 and
+Table~\ref{tab:anchormde} for the early/late grid). Because this symbol carries
+one value per scale and cov, we tag it where ambiguous: $\mathrm{MDE}_{80}^{(\mathrm{AUROC})}$
+for the AUROC scale, $\mathrm{MDE}_{80}^{(\mathrm{risk},c)}$ for the decision-anchor
+risk@coverage at coverage $c$, and $\mathrm{MDE}_{80}^{\mathrm{(xblk)}}$ for the cross-block
+anchor (collectively, all values are registered per-anchor in Table~\ref{tab:r3grid} and
+Table~\ref{tab:anchormde}). This is a
+\emph{post-hoc / observed} power statement, not a design-power statement: because
+$\mathrm{MDE}_{80}/|\Delta|\equiv2.8016/z$ it is a monotone rescaling of the $z$/p statistic and
+cannot by itself separate ``underpowered study'' from ``small true effect.'' We therefore
+co-report an \textbf{equivalence (TOST) complement} at a pre-registered practical bound
+$\delta^*{=}1$\,pp (E0). Table~\ref{tab:powerplan} groups the three TOST intervals and the
+corresponding planned-power sample requirements rather than stacking them in prose. Under the observed-power budget all
+registered \texttt{commit}/\texttt{first}$\times\{0.2,0.5,0.8\}$ anchors are
+\texttt{POWER\_LIMITED} at the observed effect sizes. The $c\ge0.55$ band is likewise
+power-limited, not a measured null.
+
+\begin{table}[!htbp]
+  \caption{Equivalence complement and planned-power requirements at the decision anchor.
+  \textbf{Takeaway:} the lower-coverage TOST checks are inconclusive on the frozen bed;
+  the current sample is below both planned-power targets.}
+  \label{tab:powerplan}
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{@{}lcl>{\raggedright\arraybackslash}X@{}}
+    \toprule
+    Check & Anchor & Numeric result & Decision \tabularnewline
+    \midrule
+    TOST & cov$=0.2$ & 90\% CI $[-0.018,+0.004]$ & Inconclusive at $\delta^*{=}1$\,pp \tabularnewline
+    TOST & cov$=0.5$ & 90\% CI $[-0.012,-0.001]$ & Inconclusive at $\delta^*{=}1$\,pp \tabularnewline
+    TOST & cov$=0.8$ & 90\% CI $[-0.005,+0.002]$ & Equivalent within $\pm1$\,pp \tabularnewline
+    Design power & MDE80 $=1.2$\,pp & $n\approx1960$ & More decodes than the current bed \tabularnewline
+    Design power & MDE80 $=1.0$\,pp & $n\approx2820$ & More decodes than the current bed \tabularnewline
+    Current bed & --- & $n=974$ & Below both planned-power regimes \tabularnewline
+    \bottomrule
+  \end{tabularx}
+\end{table}
+\subsection{Unified measurement narrative (all ``consistent-with'', non-causal)}
+\label{sec:method:narrative}
+
+\paragraph{Symmetric-gate summary.}
+The \emph{symmetric-gate} rule (H2/H3) is applied to \emph{every} result, including the
+load-bearing R3 headline: any readout whose decision-readout CI is below the registered
+full-width MDE80 at its anchors is labelled \texttt{POWER\_LIMITED}, and a
+\texttt{POWER\_LIMITED} result is reported as an underpowered non-detection, never promoted
+to a confident positive or negative conclusion. Applied uniformly, this makes R3 itself
+\texttt{POWER\_LIMITED} at every registered decision anchor: a confidence readout can
+discriminate measurably (AUROC above its MDE80) while, at this bed's power, no intra-block
+selection increment is resolvable. R1/R2/R4/R5 are bounded working instances that diagnose
+direction, reliability/SNR, desaturation, and power/family boundaries; each is bound by the
+same rule (e.g.\ R5's raw cov$=0.2$ CI excludes 0, but every registered anchor is
+power-limited and Holm(3) has no survivor). Thus, under symmetric gating, no readout
+difference is promoted to an independent-information or mechanism claim, and R3 states only
+an underpowered non-detection on this bed --- not that intra-block selection is unusable.
+
+\section{Results}
+\label{sec:results}
+
+Machine-readable R1--R5 numbers, evidence paths, and boundaries accompany the source in the
+factsheet and claim--evidence map. Table~\ref{tab:results} moves the comparable quantities
+out of prose and pairs each numeric anchor with its permitted interpretation.
+
+\textbf{R1: Direction-consistent at the registered anchor (not noise flip).} At the
+registered cov$=0.2$ anchor, all three readouts agree on the sign of the early/late
+comparison and are point-identical ($\delta_{\mathrm{EL}}{=}-0.076923{=}15/195$ on the
+support grid; Table~\ref{tab:results}). This is form d1 restricted to that anchor: the
+direction is stable at cov$=0.2$ even though magnitude may vary by axis. The sign
+agreement is explicitly \emph{not} claimed over the full coverage axis: the fine-grid scan
+(r21, descriptive) shows the readouts diverge in sign toward $c\ge0.55$; Table~\ref{tab:results}
+groups the three registered high-coverage estimates and their null-crossing CIs. That band
+is power-limited rather than a measured agreement or null.
+
+\textbf{R2: Distinct construct, decision gap compatible with pure SNR.} \texttt{commit} and
+\texttt{all} are not the same latent variable, but the observed decision-validity difference
+does not require an independent-information explanation beyond the reliability gap.
+\textbf{Boundary:} R2 concerns \texttt{commit} versus \texttt{all} as latent variables on
+this single frozen bed; the disattenuated reliability-correlation upper bound $0.979<1$
+rejects $\rho{=}1$ on this bed, but this rejection rests on the (positively estimated)
+residual-covariance correction $\mathrm{cov}_u$: breakeven analysis
+(\texttt{results/r15\_singlefactor\_pointpred.json} :: \texttt{P1\_cov\_u\_sensitivity})
+shows that a small over-estimate of $\mathrm{cov}_u$ erases the rejection; Table~\ref{tab:results}
+reports the point and CI-upper break-even multipliers. The correction is \emph{not} protected
+against noise-model misspecification for $\mathrm{cov}_u\neq0$ on real data. The
+decision-validity gap is compatible with a pure SNR/structure explanation
+and does not require an independent-information mechanism. The claim is bounded to this
+bed and these readouts; it is not a cross-bed construct claim.
+
+\textbf{R3: Measurable intra-block discrimination, no resolvable intra-block selection
+increment at this power (a power-bound non-detection).} \emph{R3 estimand} is the intra-block
+between-arm selection increment \eqref{eq:r3-intra-arm},
+$\Delta^{\mathrm{intra}}(c')=\mathrm{risk}^{\mathrm{intra-block}}_{\texttt{commit}}(c')-\mathrm{risk}^{\mathrm{intra-block}}_{\texttt{all}}(c')$,
+over decode-level cluster units ($\mathrm{risk}^{\mathrm{intra-block}}$ = per-block
+risk@coverage averaged across the $8$ blocks). Table~\ref{tab:r3grid} gives the complete
+registered R3 decision-anchor grid, including the point, CI, MDE80, gate, and control arms.
+The early/late $\delta_{\mathrm{EL}}$ used by R1/R4/R5 is tabulated separately in
+Table~\ref{tab:anchormde}.
+
+\emph{Controls and symmetric gate.} The positive control is resolvable under the same
+full-width MDE80 rule, whereas the shuffled-label negative control has null-crossing CIs;
+Table~\ref{tab:r3grid} reports their gains, intervals, and gates. Thus the rig can detect
+an effect, and R3 is a precision limit rather than a dead-rig result. Cross-block aggregation
+grows the raw signal, but its registered anchor remains \texttt{POWER\_LIMITED} under the
+same gate (Table~\ref{tab:r3grid}), so it does not independently
+establish resolvability.
+
+\emph{Headline comparison.} The intra-block AUROC increment $+0.0144$ is above its
+AUROC-scale $\mathrm{MDE}_{80}^{(\mathrm{AUROC})}{=}0.0069$. By contrast, every registered
+intra-block between-arm decision-anchor CI includes zero and its full-width MDE80 exceeds the
+observed effect (Table~\ref{tab:r3grid}). The bed is therefore
+\texttt{POWER\_LIMITED} at the decision readout. The TOST complement in
+Table~\ref{tab:powerplan} shows that this is not an equivalence claim: the lower-coverage
+anchors are inconclusive, and only the highest-coverage anchor meets the registered
+equivalence bound. Table~\ref{tab:results} also records the Holm threshold check for the
+measurable AUROC half, so the family correction is applied symmetrically rather than
+one-directionally.
+
+\emph{AUROC$\rightarrow\Delta$risk
+derivation} (to place the two scales on one axis, not to claim the bound is tight): we
+report the \emph{first-order} mapping used to make ``1.2\,pp'' reproducible, rather than a
+looser absolute-AUC bound. Let $\Delta A{=}+0.0144$ be the AUROC gain over the
+random-ordering baseline, $c{=}0.2$ the coverage, and $d$ the score-scale sensitivity
+($d{=}1.04$ here, the derivative of risk@coverage w.r.t.\ the standardized score at
+cov$=0.2$). The linear proxy is
+\[
+  \Delta\hat{\mathrm{risk}} \;=\; \Delta A\cdot(1-c)\cdot d
+  \;\approx\; 0.0144\times 0.8\times 1.04 \;\approx\; 0.012 \;=\; 1.2\,\mathrm{pp}\ \text{(upper proxy)},
+\]
+which remains below the decision-anchor full-width MDE80 (Table~\ref{tab:results}); it is
+the same order of magnitude, not an order of magnitude smaller. This rests on four explicit
+assumptions (full derivation in
+\texttt{docs/r106\_c4\_auroc\_risk\_derivation.md}): (i) \emph{monotone score}---selection by
+descending score so AUC is well defined; (ii) \emph{first-order increment}---$\Delta$risk is
+a linear-in-$\Delta A$ Taylor map, so the proxy is an \emph{upper bound}, not an equality;
+(iii) \emph{i.i.d. units} (cluster unit$=$decode, $n{=}974$); (iv) \emph{no calibration
+assumption} (sorting separability only), so the proxy bounds ordering-layer, not
+decision-utility-layer, risk. Because of (ii)--(iv) the AUROC-implied bound is only a
+\emph{weak upper proxy} for the decision-readout increment and cannot be separated from it
+at this bed's power (``not resolvable'', not ``dissociate''). The honest reading is a
+\textbf{power-bound non-detection} on this bed: we cannot resolve an intra-block selection
+increment at this decision-readout power (it is below the decision-anchor MDE80), and we do
+not promote the underpowered non-detection to the stronger claim ``measurable $\neq$ usable''
+as a general construct statement.
+
+\textbf{R4: Early/late difference survives desaturation.} The desaturated \texttt{first}
+readout reproduces the effect point-for-point with complete coverage. The block-first
+(decode,pos,block) construction is validated by the dedicated coverage audit: saturation is
+real variance compression, but it does not measurably degrade ranking quality.
+
+\textbf{R5: High-selectivity-specific, power-limited, family-level BORDERLINE (no survivor).}
+The effect is power-limited at every registered anchor under the full-width MDE80. At the
+registered family and bootstrap setting, Holm(3) gives
+\texttt{holm3\_survivors\_commit=[]}---no point survives correction---so the verdict
+remains \texttt{BORDERLINE\_EQUIVOCAL} and non-load-bearing. The raw lowest-coverage CI
+excludes 0 but the family-level claim does not survive. Table~\ref{tab:results} reports the
+exact anchors, deterministic-order seed audit, and boundary; Figure~\ref{fig:dELcov} shows
+the coverage-local descriptive shape and uncertainty.
+
+\begin{table}[!htbp]
+  \caption{R1--R5 evidence digest. Numeric anchors are grouped here to separate statistical
+  discrimination from the decision claim each result permits. \textbf{Takeaway:} only R3
+  is load-bearing, and its decision-readout conclusion is a power-bound non-detection.}
+  \label{tab:results}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.02}
+  \begin{tabular}{@{}p{0.04\textwidth}p{0.57\textwidth}p{0.29\textwidth}@{}}
+    \toprule
+    \raggedright Key & \raggedright Numeric evidence & \raggedright Boundary and takeaway
+    \tabularnewline
+    \midrule
+    \raggedright R1 & \raggedright cov$=0.2$: all $n{=}974$ decodes give $\delta_{\mathrm{EL}}{=}-0.076923$ (point-identical; $=-15/195$ on the discrete grid); registered anchor (r16/r17/r19; cluster bootstrap $B{=}2000$, seed 20260824) CI95 $[-0.14359,-0.010256]$, twin $p=0.022$ \texttt{commit} / $0.033$ \texttt{first} / $0.031$ \texttt{all}. At cov$\in\{0.5,0.8\}$ the raw CI includes 0 and the sign is \emph{not} claimed (cov$=0.8$, r19: \texttt{commit} $+0.0077$/\texttt{first} $+0.0013$/\texttt{all} $-0.0051$, all CIs contain 0). The r21 fine-grid scan (registered descriptive, multiplicity-uncontrolled) is \textbf{not} load-bearing: at the fixed seed twin $p{=}0.013$ / CI upper $-0.015256$ vs $-0.010256$, purely from B-resampler consumption order---point estimates match to the last digit, only single-point MC statistics drift (decode-resample seed held fixed, scan order not). &
+    \raggedright Direction-consistent d1; magnitude may still vary by axis. \tabularnewline
+    \raggedright R2 & \raggedright Disattenuated reliability-correlation upper bound
+    $0.979<1$ (rejects $\rho{=}1$ on this bed); reliability $0.755$ vs $0.678$;
+    validity-difference CI includes 0. \textbf{Caveat:} the rejection rests on the
+    $\mathrm{cov}_u$ correction---breakeven multiplier $0.9038$ (6.5--10\% over-estimate
+    erases it), unprotected against noise-model misspecification. &
+    \raggedright Boundary: \texttt{commit} versus \texttt{all} are latent variables on this
+    single frozen bed; the $0.979<1$ upper bound and decision-validity gap are compatible with
+    pure SNR/structure, require no independent-information mechanism, and are not a cross-bed
+    construct claim.
+    \tabularnewline
+    \raggedright R3 & \raggedright Intra-block AUROC gain $+0.0144$ (CI95 $[0.0096,0.0193]$ excludes 0, $n{=}974$ cluster units; AUROC-scale full-width MDE80 $=0.0069<0.0144\Rightarrow$ above-MDE; $z\approx5.8$, raw two-sided $p\ll0.0017=\alpha/3$). Intra-block between-arm increment \eqref{eq:r3-intra-arm} $|\Delta|\le0.7$pp (full-pool base error $0.2947$, but R3 measures the \texttt{commit}-\texttt{all} increment, not selection gain; Table~\ref{tab:r3grid}): at cov$=0.2/0.5/0.8$ paired $\Delta$risk $=-0.0058/-0.0067/-0.0008$, CI95 $[-0.018,0.0058]/[-0.0131,0.0008]/[-0.0058,0.0022]$ (all include $0$), full-width MDE80 $=0.0170/0.0099/0.0057$, MDE$/|\Delta|=2.933/1.483/7.147\Rightarrow$ \texttt{POWER\_LIMITED}. TOST at $\delta^*{=}1$pp: inconclusive at cov$=0.2/0.5$, equivalent (within $\pm1$pp) at cov$=0.8$ (\texttt{results/r153\_e0\_tost}). AUROC-implied $\Delta$risk $\lesssim1.2$pp at cov$=0.2\approx0.71\times$ MDE80 $0.0170$ (same order) $\Rightarrow$ honest power bound, not a rejection. Cross-block cov$=0.2$ increment $-4.1$pp (CI95 $[-0.077,-0.005]$ excludes 0, $\mathrm{MDE}_{80}^{\mathrm{(xblk)}}{\approx}0.051\approx1.25\times|\Delta|\Rightarrow$ \texttt{POWER\_LIMITED} under H2; does not independently resolve). & \raggedright We observe no resolvable intra-block selection increment (power-limited); measurable discrimination is not actionable in-block, and cross-block aggregation, though growing the raw signal, is itself power-limited at the decision anchor.
+    \tabularnewline
+    \raggedright R4 & \raggedright Late-window SD: \texttt{first} $\approx0.2$ vs \texttt{commit} $0.055$; \texttt{first} reproduces $\delta_{\mathrm{EL}}{=}-0.0769$ (raw twin $p=0.033$ \texttt{first} vs $0.022$ \texttt{commit}, $B=2000$ cluster bootstrap $\Rightarrow$ MC SE$\sim$1 point of $p$), full 8-block coverage. & \raggedright Early/late difference is robust to the \texttt{first}-exposure desaturating readout; saturation alone
+    does not explain it. \tabularnewline
+    \raggedright R5 & \raggedright Negative gap concentrates descriptively at cov$\approx0.15$--$0.35$ ($\delta$ from $-0.044$ to $-0.082$, raw CI excludes 0). At cov$=0.2$, full-width $\mathrm{MDE}_{80}=0.094388\ge|\delta|=0.076923\Rightarrow$ \texttt{POWER\_LIMITED}; all six \texttt{commit}/\texttt{first}$\times\{0.2,0.5,0.8\}$ anchors power-limited (MDE/$|\delta|$: \texttt{commit} 1.227/1.824/3.518, \texttt{first} 1.215/24.036/22.136). Holm(3): \texttt{holm3\_survivors\_commit=[]}. The $c\ge0.55$ band is \emph{not} a measured null (max $|\delta|/\mathrm{MDE}_{80}=0.442$ $\Leftrightarrow$ $\mathrm{MDE}_{80}/|\delta|=2.262$; a measured null needs $\gg1$; the $0.442$ uses the \emph{coverage-local} anchor $|\delta|{=}0.011986$ at cov$=0.6$ over $\mathrm{MDE}_{80}^{(\mathrm{risk},c{=}0.8)}{=}0.027095$, \emph{not} fig.~\ref{fig:dELcov} cov$=0.2$ anchor $0.0944$). Instrument null $=$ r17 shuffled-label control (gain $\le0.008$ at all three cov points, each CI containing 0). &
+    \raggedright \texttt{BORDERLINE\_EQUIVOCAL}; raw cov$=0.2$ CI excludes 0 (seed-stable under
+    deterministic-order $B{=}20{,}000$, $10/10$ seeds) but no family member survives;
+    high-selectivity-specific boundary, non-load-bearing.
+    \tabularnewline
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_delta_EL_vs_coverage_r42.pdf}
+  \caption{$\delta_{\mathrm{EL}}(c)$ = within-decode ``risk@coverage of the early-window
+  (blocks 0--3) minus the late-window (blocks 4--7) mean conf'', for each of the three
+  $f$-rated readouts (unit=decode; cluster-bootstrap 95\% CIs shaded). Orange marks the
+  registered high-selectivity band; the grey band is the lowest-coverage MDE anchor drawn
+  across the axis for orientation, not the coverage-local MDE in the tail.
+  \textbf{Takeaway:} the negative gap concentrates at high selectivity and appears to
+  decay or reverse later, but the tail is power-limited rather than a measured null.
+  Table~\ref{tab:results} reports the coverage-local ratios, registered anchor gate, and
+  family-level Holm status.}
+  \label{fig:dELcov}
+\end{figure}
+
+\begin{table}[!htbp]
+  \caption{Early/late decision-anchor grid ($\delta_{\mathrm{EL}}$): the window-comparison
+  estimand $\delta_{\mathrm{EL},r}(c)=\mathrm{risk}_{E,r}(c)-\mathrm{risk}_{L,r}(c)$
+  (early = blocks 0--3, late = blocks 4--7) used by R1, R4, and R5. Under the full-width
+  $\mathrm{MDE}_{80}=2.8016\,\mathrm{SD}$ rule (uniform, no exemptions;
+  ``$\mathrm{MDE}_{80}/|\hat\Delta| \ge 1 \Rightarrow \texttt{POWER\_LIMITED}$''),
+  ``$0\notin\mathrm{CI}$'' marks whether $\hat\Delta$'s 95\% CI excludes $0$. All values verbatim from
+  \texttt{r106\_c2\_anchor\_mde\_table} (r106; zero-GPU recompute of the frozen r56
+  full-width MDE80 fix; $\mathrm{SD}$ = cluster-bootstrap SE per anchor). A0/A1 controls use the same
+  registered gate on \emph{gain} rather than $\Delta$risk. \textbf{Takeaway:} $\delta_{\mathrm{EL}}$
+  is power-limited at every anchor (\emph{not} a measured null); the raw cov$=0.2$ CI happens to
+  exclude $0$ but is not a resolvable R3 increment. The R3 decision quantity is the
+  between-arm increment in Table~\ref{tab:r3grid}, not this grid.}
+  \label{tab:anchormde}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3.3pt}
+  \renewcommand{\arraystretch}{1.08}
+  \begin{tabular}{@{}lrrcrrlr@{}}
+    \toprule
+    \multicolumn{1}{@{}l}{Anchor} & $\hat\Delta$ & \multicolumn{1}{c}{CI95} & $\mathrm{MDE}_{80}$ & $\frac{\mathrm{MDE}_{80}}{|\hat\Delta|}$ & $0\notin$CI & \multicolumn{1}{l}{Gate} & \multicolumn{1}{r@{}}{\emph{Family}}
+    \tabularnewline
+    \midrule
+    \texttt{commit}\({}\cdot0.2\) & $-0.0769$ & $[-0.144,-0.010]$ & $0.0944$ & $1.227$ & yes & \texttt{PL} & Early/late $\delta_{\mathrm{EL}}$ (R1, R4, R5) \tabularnewline
+    \texttt{commit}\({}\cdot0.5\) & $-0.0267$ & $[-0.058,0.008]$ & $0.0487$ & $1.824$ & no  & \texttt{PL} & \tabularnewline
+    \texttt{commit}\({}\cdot0.8\) & $+0.0077$ & $[-0.012,0.026]$ & $0.0271$ & $3.518$ & no  & \texttt{PL} & \tabularnewline
+    \texttt{first}\({}\cdot0.2\)  & $-0.0769$ & $[-0.133,-0.005]$ & $0.0934$ & $1.215$ & yes & \texttt{PL} & \tabularnewline
+    \texttt{first}\({}\cdot0.5\)  & $-0.0021$ & $[-0.035,0.035]$ & $0.0493$ & $24.036$ & no & \texttt{PL} & \tabularnewline
+    \texttt{first}\({}\cdot0.8\)  & $+0.0013$ & $[-0.021,0.019]$ & $0.0284$ & $22.136$ & no & \texttt{PL} & \tabularnewline
+    \texttt{all}\({}\cdot0.2\)    & $-0.0769$ & $[-0.138,-0.005]$ & $0.0953$ & $1.239$ & yes & \texttt{PL} & \tabularnewline
+    \texttt{all}\({}\cdot0.5\)    & $-0.0246$ & $[-0.055,0.014]$ & $0.0499$ & $2.025$ & no  & \texttt{PL} & \tabularnewline
+    \texttt{all}\({}\cdot0.8\)    & $-0.0051$ & $[-0.022,0.018]$ & $0.0284$ & $5.539$ & no  & \texttt{PL} & \tabularnewline
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[!htbp]
+  \caption{Complete registered R3 decision-anchor grid: the intra-block between-arm selection
+  increment defined by \eqref{eq:r3-intra-arm}
+  (risk@coverage per block, averaged over the $8$ blocks; cluster-bootstrap $B{=}2000$, seed
+  \texttt{20260821}). All values verbatim from
+  \texttt{r12b\_withinblock\_riskcoverage.json::partD}, with the full-width
+  $\mathrm{MDE}_{80}=2.8016\,\mathrm{SD}$ computed from each anchor's cluster SE; the
+  cross-block row uses the same between-arm quantity on block-merged scores (r106
+  \texttt{r106\_c2\_anchor\_mde\_table}). A0/A1 are rig controls on \emph{gain} (single-readout
+  selection benefit) at the same coverage grid. \textbf{Takeaway:} the three \emph{intra-block}
+  R3 between-arm decision CIs at cov$=0.2/0.5/0.8$ all include $0$ and are at or
+  below their full-width MDE80 $\Rightarrow$ \texttt{POWER\_LIMITED}; the single \emph{cross-block}
+  row's raw 95\% CI excludes $0$ but its full-width MDE80 exceeds the observed effect, so it is
+  likewise \texttt{POWER\_LIMITED} (an underpowered non-detection, not a measured null). This is
+  the auditable basis for ``no resolvable intra-block selection increment'': \emph{every} R3
+  between-arm decision anchor is \texttt{POWER\_LIMITED}, and in particular all three intra-block
+  CIs include $0$ (the cross-block row is the sole $0\notin$CI exception and is not promoted to a
+  resolvable rejection).}
+  \label{tab:r3grid}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3.3pt}
+  \renewcommand{\arraystretch}{1.08}
+  \begin{tabular}{@{}lrrcrrlr@{}}
+    \toprule
+    \multicolumn{1}{@{}l}{Anchor} & $\hat\Delta$ & \multicolumn{1}{c}{CI95} & $\mathrm{MDE}_{80}$ & $\frac{\mathrm{MDE}_{80}}{|\hat\Delta|}$ & $0\notin$CI & \multicolumn{1}{l}{Gate} & \multicolumn{1}{r@{}}{\emph{Family}}
+    \tabularnewline
+    \midrule
+    \texttt{commit}{-}\texttt{all}\({}\cdot0.2\) & $-0.0058$ & $[-0.018,0.0058]$ & $0.0170$ & $2.93$ & no  & \texttt{PL} & Intra-block (R3) \tabularnewline
+    \texttt{commit}{-}\texttt{all}\({}\cdot0.5\) & $-0.0067$ & $[-0.0131,0.0008]$ & $0.0099$ & $1.48$ & no  & \texttt{PL} & \tabularnewline
+    \texttt{commit}{-}\texttt{all}\({}\cdot0.8\) & $-0.0008$ & $[-0.0058,0.0022]$ & $0.0057$ & $7.15$ & no  & \texttt{PL} & \tabularnewline
+    \midrule
+    \texttt{commit}{-}\texttt{all}\({}\cdot0.2_{K8}\) & $-0.0410$ & $[-0.077,-0.005]$ & $0.0513$ & $1.25$ & yes & \texttt{PL} & Cross-block (R3) \tabularnewline
+    \midrule
+    ${}\cdot0.2$ & $+0.2126$ & $[0.125,0.218]$ & $0.0660$ & $0.310$ & yes & \texttt{RES} & A0 positive control \tabularnewline
+    ${}\cdot0.5$ & $+0.1407$ & $[0.079,0.147]$ & $0.0484$ & $0.344$ & yes & \texttt{RES} & \tabularnewline
+    ${}\cdot0.8$ & $+0.0649$ & $[0.038,0.098]$ & $0.0431$ & $0.665$ & yes & \texttt{RES} & \tabularnewline
+    \midrule
+    ${}\cdot0.2$ & $+0.0038$ & $[-0.064,0.069]$ & $0.0953$ & $25.388$ & no & \texttt{$\supset0$} & A1 negative control \tabularnewline
+    ${}\cdot0.5$ & $+0.0073$ & $[-0.036,0.048]$ & $0.0602$ & $8.272$ & no & \texttt{$\supset0$} & \tabularnewline
+    ${}\cdot0.8$ & $+0.0079$ & $[-0.025,0.039]$ & $0.0459$ & $5.786$ & no & \texttt{$\supset0$} & \tabularnewline
+    \bottomrule
+  \end{tabular}
+\end{table}
+\textbf{Unified reading.} R3 supplies the central negative answer---an honest power bound:
+measurable statistical discrimination (intra-block AUROC gain above its MDE80) does not by
+itself yield a usable decision increment (intra-block risk@coverage CI includes 0 and is
+\texttt{POWER\_LIMITED} under the same H2 rule, Table~\ref{tab:r3grid}); the AUROC-implied bound is only a
+comparable-order (about $0.71\times$ MDE80) upper proxy, so the two scales do not separate
+at this bed's power. R1/R2/R4/R5
+diagnose
+boundaries in direction, reliability/SNR, desaturation, and power/multiplicity. None of
+these four working instances establishes independent information content or a mechanism;
+in particular, R5 is power-limited at all registered anchors and has no Holm survivor. The
+decision landscape is fixed ahead of the Setup details (Section~\ref{sec:setup},
+Table~\ref{tab:readouts}).
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+\textbf{Bed.} We use one frozen LLaDA-8B-Instruct $\times$ GSM8K event set
+\cite{cobbe2021training}, graded with \emph{free-form exact-match} (a decode is correct iff
+the extracted final answer matches the solution's answer to $1\mathrm{e}{-6}$; base
+accuracy $0.7053$, error rate $0.2947$, $k{=}1$ single-decode on this branch). An earlier
+label of this bed as ``MC 4-way'' is withdrawn here as a documented misstatement: the
+registered construct and ground truth are free-form exact-match, which is the construct this
+paper's decision readout quantifies. Table~\ref{tab:readouts} collects the registered bed,
+schedule, inference, and readout settings; artifact provenance is registered in
+\texttt{evidence/experiment\_registry.json}. The three readouts share the same event cells
+and differ only in how within-block confidence is summarized.
+
+\begin{table}[!htbp]
+  \caption{Frozen-bed and confidence-readout registry. Numeric schedule and inference
+  settings are grouped here rather than repeated in prose; readout rows hold the source
+  (decode,pos,block) event cell fixed. \textbf{Takeaway:} the readouts differ only in
+  within-block aggregation on one frozen event stream.}
+  \label{tab:readouts}
+  \centering
+  \small
+  \begin{tabular}{@{}p{0.18\columnwidth}p{0.74\columnwidth}@{}}
+    \toprule
+    Registry field & Frozen setting \\
+    \midrule
+    Bed & LLaDA-8B-Instruct $\times$ GSM8K, \emph{free-form exact-match} (base acc
+    $0.7053$, err $0.2947$; \emph{not} MC 4-way --- an earlier label was withdrawn as a
+    misstatement), g3\_main / arm A \\
+    Sample & $n{=}974$ frozen decodes \\
+    Schedule & 8 blocks; block length $32$; NFE $64$; block $b$ covers steps
+    $8b..8b{+}7$ (gap $8$) \\
+    Inference & Cluster bootstrap $B{=}2000$ (multiplicity-preserving, fixed seed
+    20260824); coverage $\{0.2,0.5,0.8\}$; family-level Holm(3) \\
+    \texttt{commit} & last-step conf \\
+    \texttt{first} & first-step conf (desaturated, full 8-block coverage) \\
+    \texttt{all} & mean conf \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\textbf{Inference and controls.} Cluster bootstrap over decodes ($B{=}2000$,
+multiplicity-preserving, fixed seed) + family-level Holm(3). Rig controls: A0 positive
+control (full-window readout selection-benefit lower bound $>0$); A1 negative control
+(select benefit $\approx 0$ under shuffled labels).
+
+\textbf{Reproducibility and zero GPU.} All analysis recomputed on the frozen event set by
+deterministic scripts (e.g.\ \texttt{scripts/r17\_window\_desaturation.py}, fixed seed),
+zero GPU, no model forward pass required.
+
+\section{Limitations}
+\label{sec:limits}
+
+\begin{enumerate}
+  \item \textbf{Single bed (explicit)}: all numbers are LLaDA-8B-Instruct $\times$ GSM8K g3\_main/A
+  on this single frozen bed, $n{=}974$; no generalization to other models/datasets/temperatures.
+  \item \textbf{Block-position confound}: block index is strongly correlated with, but not a
+  partition of, canvas position; we make \emph{no position/timing mechanism claim}.
+  \item \textbf{Single desaturation intervention}: \texttt{first} is one desaturation of
+  \texttt{commit}; conclusions hold only ``up to desaturating to \texttt{first}''.
+  \item \textbf{BORDERLINE non-load-bearing}\label{lim:mcnoise}: for the registered family
+  and bootstrap setting in Table~\ref{tab:readouts},
+  \texttt{holm3\_survivors\_commit=[]}. The raw cov$=0.2$ CI excludes 0, but no family
+  member survives correction; therefore R5 is a boundary instance rather than a confirmed
+  high-selectivity finding. The raw cov$=0.2$ exclusion is seed-stable under the
+  deterministic-order $B{=}20{,}000$ bootstrap ($10/10$ seeds, CI-endpoint MC-SE
+  $\approx3{\times}10^{-17}$), so the ``excludes $0$ but family-instable'' reading is not an
+  artifact of resampler seed; the family-level knife-edge (p$=0.01636$ vs Holm $\alpha/3{=}0.01667$)
+  persists by design and is reported as such.
+  \item \textbf{Descriptive shape / power boundary}: the fine-grid R5 shape is descriptive
+  and multiplicity-uncontrolled. All six registered anchors are \texttt{POWER\_LIMITED}
+  under the full-width MDE80, and the apparent decay/reversal at $c\ge0.55$ is not a measured
+  null. The instrument-null check instead uses the r17 shuffled-label negative control.
+  \item \textbf{Readout scale}: single readout conf${=}$maxprob; content-vs-EOS-tail substructure
+  is not separated.
+  \item \textbf{Efficiency}: no efficiency claim; no wall-clock GPU-time comparison.
+  \item \textbf{Citation live-recheck gap (disclosed)}: 5 of the 12 bibliography entries have
+  not yet been live-rechecked at release egress (citation lock:
+  \texttt{literature/citation\_lock.json}); metadata are pinned locally but a final live
+  arXiv recheck is deferred.
+\end{enumerate}
+
+\section{Related Work}
+\label{sec:related}
+
+This work sits at the intersection of (i) generative masked-diffusion language decoding
+(LLaDA-style block-level parallel noise$\rightarrow$token denoising with
+sequential block progress \cite{llda}; block-progress simplex diffusion decoding \cite{ssdlm};
+completeness-based early halting of diffusion LM generation \cite{halting};
+confidence-thresholded parallel decoding (Fast-dLLM) \cite{wu2025fastdllm}), (ii) using
+confidence/score readouts for risk-gated selection and self-assessment (calibration of modern NN confidences
+\cite{guo2017calibration}; semantic uncertainty in natural-language generation \cite{kuhn2023semantic};
+self-consistency \cite{wang2023selfconsistency} is a \emph{candidate-pool} practice --- multiple
+decodes are scored and the best kept --- which our $k{=}1$ bed does not instantiate),
+and (iii) measurement-artifact and calibration discipline
+(separating ``readout difference'' from ``measurement-channel difference''). We do not claim masked
+diffusion's internal representation mechanism; we treat the decode event stream as a
+controlled confidence-readout channel and study the construct consistency of aggregation
+axes on it. Our methodological contribution is a reusable discrimination chain
+(power-bound non-detection, desaturation-falsification, BORDERLINE-MDE co-reporting, form
+d1/d2 grading) showing two gaps between ``a readout discriminates'' and ``a readout can be
+used for selection''---decision-readout and measurement-channel.
+
+Our central negative finding---that intra-block confidence aggregation is measurable, yet
+no intra-block selection increment is resolvable at this bed's decision-readout power (an
+underpowered non-detection, not a rejection)---connects directly to selective prediction and
+risk--coverage: statistical discrimination need not yield actionable selection utility at
+a user-set risk \citep{chow1970character,bartlett2008classification,
+elyaniv2010foundations,geifman2017selective}. LLM uncertainty and selective-generation work
+\citep{kuhn2023semantic,lin2022teaching}, together with confidence-based early halting in
+masked-diffusion language models \citep{halting}, frames the corresponding decode-time
+utility question. Our judgment-hygiene chain is complementary: it proposes no new selective
+classifier, but isolates decision-readout and measurement-channel gaps between ``a readout
+discriminates'' and ``a readout can be used for selection.''
+
+\textbf{Positioning against confidence-gated in-decoding decoding.} The closest prior art
+\citep{wu2025fastdllm} treats in-decoding confidence as an \emph{actionable, per-token}
+signal (threshold-gated parallel unmasking order), whereas our R3 test uses the \emph{decode-
+level} aggregation of that same confidence as a risk-gating readout for selective prediction.
+The two are not in
+tension: a per-token unmasking decision can be usable while the decode-level mean over a
+window fails as a selection readout at this bed's decision-readout power. Our contribution is
+the separation of these two granularities (and of ``discrimination'' from ``risk-gated selection
+utility''), not a claim that in-decoding confidence is generally useless---indeed the
+confidence-gated line reports it is useful per-token, which is compatible with our bounded,
+bed-specific decode-level null.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We study single-decode ($k{=}1$) masked-diffusion decoding under the selective-prediction
+question: can an in-decoding confidence readout \emph{risk-gate} (abstain on) a coverage-$c$
+fraction of decodes to reduce expected error? Best-of-$k$ candidate selection is \emph{not}
+in scope --- this bed decodes once per prompt, so the question of picking among per-prompt
+candidate decodes never arises. Within that scope, the headline, R3, is a
+\emph{power-bound non-detection}: on this frozen masked-diffusion
+bed, intra-block discrimination is measurable (AUROC gain $+0.0144$ above its full-width
+AUROC-scale $\mathrm{MDE}_{80}^{(\mathrm{AUROC})}{=}0.0069$), yet at this bed's decision-readout
+power no intra-block risk-gated selection increment is resolvable: each of the three
+\emph{intra-block} R3 between-arm decision-anchor CIs includes $0$ and its full-width MDE exceeds
+the observed effect (Table~\ref{tab:r3grid}). The single cross-block row in
+Table~\ref{tab:r3grid} is the sole $0\notin$CI exception: its raw CI excludes $0$ but is itself
+\texttt{POWER\_LIMITED} under the same H2 full-width rule, so it is not promoted to a resolvable
+rejection. Because
+this is an underpowered non-detection (not a rejection), we do \emph{not} conclude that
+in-block selection is unusable on this or any other bed; the claim is bounded to
+``intra-block risk-gated selection increments below the stated decision-anchor MDE80 are not
+resolvable on this bed at this power.'' R1/R2/R4/R5 are judgment-hygiene boundary instances, not
+headline findings. R5 is power-limited at every registered anchor and has no Holm(3)
+survivor, so its raw cov$=0.2$ effect remains \texttt{BORDERLINE\_EQUIVOCAL} and
+non-load-bearing. The H1--H6 chain keeps ``readout$\rightarrow$selection'' claims separated
+at the decision-readout and measurement-channel layers; under symmetric gating it never
+turns a readout difference -- nor an underpowered non-detection -- into an information or
+mechanism claim.
+
+% P5_MAIN_TEXT_END
+\label{p5:main-text-end}
+
+\bibliography{refs}
+\bibliographystyle{iclr2026_conference}
+
+\appendix
+\section{Method appendix: reusable judgment-hygiene list (H1--H6)}
+\label{app:hygiene}
+
+This checklist consolidates the decision rules used in the frozen analyses and provides one
+auditable interpretation path from confidence readout to selection claim.
+
+{\small
+\begin{list}{$\bullet$}{
+  \setlength{\leftmargin}{1.5em}
+  \setlength{\labelwidth}{1em}
+  \setlength{\labelsep}{0.5em}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parsep}{0pt}
+  \setlength{\topsep}{2pt}}
+  \item H1 \textbf{Symmetric power gate}: test ``readout discriminates $\Rightarrow$ it can
+  gate'' directly at risk@coverage with the same H2/MDE80 rule used for every claim. R3 is
+  \texttt{POWER\_LIMITED} at every decision anchor and therefore remains an underpowered
+  non-detection, never a positive, negative, or ``unusable'' claim.
+  \item H2 \textbf{BORDERLINE must co-report full-width MDE}: Table~\ref{tab:anchormde}
+  reports $\mathrm{MDE}_{80}=2.8016\,\mathrm{SD}$ at every anchor; all six are
+  \texttt{POWER\_LIMITED}. The raw lowest-coverage CI excludes 0 but Holm(3) has no survivor,
+  so the family verdict is \texttt{BORDERLINE\_EQUIVOCAL}, never ``above MDE.''
+  \item H3 \textbf{Desaturation-falsification}: persistence under a within-bed desaturated
+  readout rules out saturation as primary; disappearance supports it. Use block-first
+  (decode,pos,block), not global step 0, and audit coverage.
+  \item H4 \textbf{Form d1/d2 grading}: report intervals for direction-consistent d1 and
+  withdraw one-sided claims for direction-flipping d2. The three-readout comparison is d1 only
+  at the registered lowest-coverage anchor; the later sign-divergent band is power-limited.
+  \item H5 \textbf{Cross-readout/cross-coverage check}: report load-bearing differences across
+  readouts and coverage bands, including the cross-layer span.
+  \item H6 \textbf{Reproduction gate}: fine-grid recompute must reproduce discrete points;
+  exact axis agreement may be robustness or a no-op, so audit the construction.
+\end{list}
+}
+
+\subsection{H-instrument dimensions for $\delta_{\mathrm{EL}}$ (D5) and null anchor}
+\label{app:h7_d5_null}
+
+The load-bearing estimand is the within-decode early-minus-late risk@coverage difference.
+The registered instrument dimensions and null-anchor check are:
+
+{\small
+\begin{list}{$\bullet$}{
+  \setlength{\leftmargin}{1.5em}
+  \setlength{\labelwidth}{1em}
+  \setlength{\labelsep}{0.5em}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parsep}{0pt}
+  \setlength{\topsep}{2pt}}
+  \item \textbf{D1 native steps} (\texttt{steps\_is\_native}=\texttt{true}): native block
+  index $0..7$ (NFE=64), not wall-clock or folded schedules.
+  \item \textbf{D2 decode input} (\texttt{decode\_input}=\texttt{conf\_maxprob}): per-position
+  maxprob; Table~\ref{tab:readouts} defines the last, first, and mean readouts.
+  \item \textbf{D3 owned time axis}: early versus late blocks within each of the same frozen
+  decodes; block index is semantic, while intra-block/EOS-tail position is out of scope.
+  \item \textbf{Instrument null} (re-derived): the $c\ge0.55$ low-selectivity band is not a
+  measured null---it is power-limited under the coverage-local anchor reported in
+  Table~\ref{tab:results}. The shuffled-label negative control in Table~\ref{tab:anchormde}
+  supplies the near-zero, null-crossing anchor; no pre-calibrated offset is subtracted.
+\end{list}
+}
+
+\end{document}

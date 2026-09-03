@@ -1,0 +1,152 @@
+{
+  "reviewer_id": "R3-NOVELTY-PDF",
+  "round": 3,
+  "snapshot_sha256": "a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The 2-by-2 ownership design, phase-aware storage witnesses, cross-fan-out checks, selected FP32 attention oracle, and matched-clean mutation controls form a careful validation of the paper's explicitly bounded claims. Confidence is reduced by the lack of an independent GDN oracle and, more importantly, by the absence of a clean terminal-closure run for the evidence package (p. 9, Reproducibility Statement).",
+    "presentation": "The paper is unusually explicit about contribution type, estimands, witness boundaries, negative results, and limitations. Sections 2-6, Tables 1-5, and Figure 1 make the argument easy to reconstruct. The main localized presentation weakness is that Figure 2's four exactness cells are not labeled by the two ownership axes.",
+    "contribution": "The executable, phase-aware audit is potentially useful, but the paper expressly identifies block sharing, prefix reuse, hybrid-cache policy, metamorphic testing, and denominator separation as prior art and claims their combination as the novelty (pp. 2-3, Section 2 and Table 1). With validation confined to one model/runtime/schedule and authored live mutants, the current evidence establishes a rigorous case-specific artifact more clearly than a broadly distinct evaluation standard."
+  },
+  "paper_summary": "The paper proposes ForkAudit, an executable audit contract for forked inference in hybrid LLMs containing paged full-attention KV state and recurrent GDN state. It separates document and request ownership, requires phase-aware alias and disjointness witnesses, records dispatch provenance, checks cross-arm and cross-fan-out equivalence, distinguishes memory denominators, and tests gate sensitivity with live faults. A Qwen3.5-35B-A3B case study reports bitwise-equivalent trajectories for four KV-by-GDN ownership cells at N in {1, 8, 32}, eight selected FP32 attention-oracle passes, nine detected mutants, and lower final allocated memory from shared document KV.",
+  "strongest_verified_contribution": "The most strongly supported contribution in the PDF is the phase-aware ownership contract that distinguishes permissible immutable GDN-base aliasing at setup from mandatory request-private mutable state after first transition, couples this with direct range witnesses and tail-COW checks, and reports memory by explicit allocator and page denominators (pp. 3-8, Sections 3-5, Tables 3 and 5).",
+  "strengths": [
+    "The novelty boundary is unusually candid: the paper states that it is not a cache policy, kernel, scheduler, completeness proof, or production-capacity study (pp. 1-3).",
+    "The factorial design isolates KV ownership from GDN setup ownership, and the N=1 request-base test avoids relying on a vacuous peer comparison (pp. 5-6, Sections 4.2 and 5.1).",
+    "The paper supplements relational equivalence with selected independently implemented FP32 attention calculations and matched-clean live mutation controls (p. 7, Figure 2 and Table 4).",
+    "Memory claims keep page allocation, PyTorch allocation, lifecycle peaks, and unmeasured process/service capacity separate (pp. 5 and 7-8, Sections 4.4 and 5.4).",
+    "Limitations and negative evidence are reported directly, including the fixed backend, absent scheduler measurements, failed cross-backend gate, and incomplete package closure (pp. 8-9 and p. 13, Section 6, Reproducibility Statement, and Appendix D)."
+  ],
+  "questions": [
+    "For each of the seven audit targets in Section 3, which specific obligation is absent from the closest prior system or testing framework, and which interaction among targets constitutes the non-obvious contribution rather than an assembly of standard checks?",
+    "Has the unchanged ForkAudit contract been applied to an independently developed hybrid runtime or found a naturally occurring defect, rather than only detecting authored mutants in the reference implementation?",
+    "Can the complete RR2 experiment be regenerated in a fresh, bytecode-disabled run whose governance tests and final recursive package audit both pass while reproducing the headline digests and memory values?",
+    "What precisely makes the eight PG-19 books and attention rows 'held-out,' how were they selected before RR2, and where is the preregistration of row selection and the 0.005 tolerance recorded?",
+    "Would the authors add an independent representative GDN-transition oracle, or explicitly replace 'semantic exactness' with 'cross-arm bitwise equivalence' wherever independent recurrent correctness is not established?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R3NOV-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "pp. 1-3, Introduction contribution list, Section 2, and Table 1; p. 9, Conclusion",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The paper says block sharing, prefix reuse, hybrid-cache policy, metamorphic relations, and memory-denominator separation are prior art, then locates novelty in their combination as an evidence-gated audit. Table 1 gives short qualitative relations to PagedAttention, SGLang/Prompt Cache, Marconi, SCBench, MT-DLComp/CRADLE, and DNNMem, but it does not map the seven contract obligations component-by-component to prior work or establish which combination is technically non-obvious.",
+      "why_it_matters": "Because the paper disclaims a new mechanism, policy, kernel, scheduler, and completeness result, acceptance depends heavily on whether the audit contract itself constitutes sufficiently distinct and consequential knowledge. The current positioning makes the boundary honest but not yet decisive.",
+      "required_fix": "Add a primary-source comparison matrix mapping every contract target and evidence type to the closest prior systems and testing work. Identify the exact new interaction, formal obligation, or executable guarantee supplied by ForkAudit. If no individual conceptual element is new, consistently frame the contribution as a validated systems artifact or evaluation protocol and substantiate why the integration changes practice.",
+      "verification_test": "A reviewer should be able to trace every claimed-new contract property to a precise comparison against the closest cited work and state, in one sentence, what capability or knowledge was unavailable before ForkAudit. The abstract, contribution list, Table 1, and conclusion must use the same novelty boundary.",
+      "evidence_needed": "Section-level primary-source comparisons for the closest audit, testing, hybrid-cache, and memory-accounting work; broader literature verification was unavailable in this PDF-only review.",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R3NOV-02",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "pp. 4-5, Section 4.1 and Table 2; p. 7, Section 5.3 and Table 4; p. 8, Section 6; p. 9, Conclusion",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The contract is evaluated on one Qwen3.5 model, one vLLM attention backend, a Torch GDN path, one hardware family, one page size, one partial-tail geometry, one sequential schedule, and nine authored mutants at N=2. Section 6 explicitly says transfer to another model, runtime, scheduler, or lifecycle is untested, while the conclusion nevertheless advocates a stronger evaluation standard for hybrid-cache studies.",
+      "why_it_matters": "A single reference implementation can show internal coherence and fault sensitivity, but it does not yet show that the contract transfers, catches realistic defects, or improves evaluation beyond the environment in which it was designed. This limits both practical significance and the empirical support for the standard-setting claim.",
+      "required_fix": "Apply the frozen contract to at least one independently developed hybrid model/runtime or a materially different lifecycle and report which checks transfer unchanged, which require adaptation, and whether a naturally occurring or independently seeded defect is exposed. If such evidence is unavailable, narrow the conclusion to a reference-case audit and avoid general standard-setting language.",
+      "verification_test": "A second setting should execute the same named contract targets with auditable receipts, include clean controls, and demonstrate either successful transfer or a clearly analyzed failure. Alternatively, every broad recommendation must be explicitly presented as a hypothesis rather than an established standard.",
+      "evidence_needed": "New cross-runtime, cross-model, or realistic lifecycle evidence, preferably involving an implementation not authored around the audit.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3NOV-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "p. 9, Reproducibility Statement; pp. 13-14, Appendix E",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The scientific W run completed, but its final recursive package audit rejected Python bytecode created after execution. A bytecode-disabled follow-up stopped before GPU execution because governance tests retained stale command-string expectations. The anonymous derivative supports offline replay rather than independent GPU execution, and Appendix E states that most runtime tensors are hash-only and that the private absolute-path ledger is bound only by hash and size.",
+      "why_it_matters": "The primary contribution is an executable, evidence-gated audit, so failing to demonstrate one clean end-to-end run with terminal package closure directly weakens the provenance claim even though the paper reports that registered source hashes still match. PDF-only access prevents independent adjudication of whether the failure is purely administrative.",
+      "required_fix": "Complete a fresh frozen run after repairing the governance tests and disabling or preregistering bytecode generation. Require the scientific shards, aggregate, detached receipts, and final recursive package audit to close successfully in the same run, and report whether all headline results reproduce.",
+      "verification_test": "A fresh-process execution should pass every governance and terminal-closure check and reproduce the reported exactness outcomes, oracle bounds, mutation outcomes, and Table 5 values from a single internally consistent manifest.",
+      "evidence_needed": "A clean terminal-closure log, frozen manifest, detached receipt, and reproducibility comparison against the current RR2 results.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3NOV-04",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "p. 4, Section 4.1; pp. 6-7, Sections 5.1-5.2 and Figure 2; p. 8, Section 6",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Both ownership arms use the same Transformers Torch GDN implementation. The independent numerical oracle covers one selected full-attention row per book and explicitly does not reimplement GDN or the end-to-end model. Nevertheless, Section 5.1 is titled 'semantically exact' and Figure 2 labels all cells 'EXACT.'",
+      "why_it_matters": "The evidence decisively supports cross-arm equality of recorded recurrent trajectories, but a common-mode GDN arithmetic error would survive those comparisons. Readers may interpret 'semantic exactness' as independent correctness rather than equivalence under a shared implementation.",
+      "required_fix": "Either add an independent oracle for representative GDN transitions or consistently qualify the claim as cross-arm bitwise equivalence, including in the Section 5.1 heading, Figure 2, and conclusion.",
+      "verification_test": "Every exactness statement should specify whether it means equality between ownership arms or agreement with an independently implemented numerical reference; if a GDN oracle is added, its inputs, tolerance, selection, and results must be independently bound.",
+      "evidence_needed": "Claim-narrowing using current evidence, or new independent GDN-transition evidence.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3NOV-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "p. 7, Figure 2 center panel",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The center panel shows four green 'EXACT' boxes but does not label the rows and columns as full-copy/shared-document KV and materialized/borrowed GDN. The reader must infer the mapping from Figure 1 and surrounding prose.",
+      "why_it_matters": "The four-cell factorial is the central experimental object, so its summary figure should expose the factors directly.",
+      "required_fix": "Add explicit KV and GDN axis labels or name all four cells in the Figure 2 center panel.",
+      "verification_test": "Figure 2 should be interpretable without consulting Figure 1 or the body text.",
+      "evidence_needed": "A revised figure using the existing results.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No ethics concern requiring escalation is evident from the PDF. The work studies systems behavior on PG-19 and appropriately notes that it does not evaluate safety, bias, privacy, or deployment quality.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. The subagent had PDF-only manuscript access and followed the supplied rubric and calibration material.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A clean, fresh end-to-end RR2 rerun that passes governance and terminal package closure while reproducing all headline results.",
+    "Successful application of the unchanged core contract to an independently developed hybrid runtime or model, ideally exposing a naturally occurring or independently seeded defect.",
+    "A component-level primary-source novelty comparison that identifies a distinct technical obligation or non-obvious interaction not already provided by the closest systems and testing work.",
+    "An independent GDN-transition oracle for representative states, or fully consistent narrowing of exactness claims to cross-arm equivalence."
+  ],
+  "evidence_that_would_lower_score": [
+    "Artifact inspection revealing that source, shard, receipt, or aggregate hashes do not bind to the reported run.",
+    "A clean rerun failing to reproduce the exactness, oracle, mutation, or memory results.",
+    "Evidence that a prior audit or testing framework already implements the same phase-aware contract and evidence ledger without a substantive distinction.",
+    "Failure of the contract to transfer to a second hybrid runtime without a principled account of which assumptions broke."
+  ],
+  "review_limitations": [
+    "The review was restricted to the provided PDF; no source code, supplementary artifacts, raw tensors, manifests, logs, or repository evidence were inspected.",
+    "The declared snapshot hash was used as provided and repository-level snapshot identity was not independently verified.",
+    "Broader literature search and citation verification were unavailable, so novelty is assessed only relative to the positioning and references visible in the PDF and the supplied calibration document.",
+    "Reported experimental outcomes, hashes, and artifact claims therefore could not be independently reproduced or authenticated."
+  ]
+}

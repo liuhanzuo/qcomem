@@ -1,0 +1,42 @@
+# Closest-work matrix
+
+Audit date: 2026-08-22. ``Verified'' below means metadata and the local
+relationship sentence were checked against the original paper or an official
+publisher/dataset record; it does not validate this manuscript's experimental
+claims. All citekeys active in the current manuscript are locked in
+`citation_lock.json`; the four background-only entries below do not supply the
+paper's central theorem or empirical evidence.
+
+| Work | Task / assumptions | Method and reported endpoint | Relationship to this work | Verification |
+|---|---|---|---|---|
+| Wang et al. (ICLR 2023), *Self-Consistency Improves Chain of Thought Reasoning in Language Models* | Sample multiple reasoning paths and select the most consistent answer. | Introduces sample-and-marginalize self-consistency for reasoning. | Supplies the full-budget majority-vote setting; it does not provide this paper's count-exchangeable flip certificate. | Verified against [OpenReview record/PDF](https://openreview.net/forum?id=1PL1NIMMrw). |
+| Aggarwal et al. (EMNLP 2023), *Adaptive-Consistency* | Adaptive per-question sampling for reasoning and code generation. | Uses a lightweight stopping criterion to vary the number of samples. | Closest sequential adaptive-sampling baseline; the revised text no longer attributes a particular confidence proxy beyond the source-supported lightweight criterion. | Verified against the [ACL Anthology record](https://aclanthology.org/2023.emnlp-main.761/). |
+| Li et al. (ICLR 2024), *ESC* | Early stopping for self-consistency on multi-step reasoning. | Proposes an early-stopping self-consistency process and a performance--cost control scheme. | The manuscript evaluates an ESC-style window instantiation on its own replay carrier; it must not generalize that outcome to all ESC settings. | Verified against the [OpenReview paper](https://openreview.net/forum?id=ndR8Ytrzhh). |
+| Chen et al. (arXiv 2026), *MARS* | Parallel test-time scaling with active traces and partial checkpoints. | Estimates trace switching and uses a conservative bound on future vote movement; reports full-budget-vote matching and token results. | Adjacent but structurally distinct: MARS is parallel trace stopping, while BAYES-H is a sequential count-exchangeable replay certificate. The former ``offline router'' characterization was removed. | Verified against the [original arXiv record](https://arxiv.org/abs/2606.12935). |
+| Snell et al. (ICLR 2025), *Scaling LLM Test-Time Compute Optimally Can Be More Effective Than Scaling Model Parameters* | Allocate nontrivial inference-time compute as a function of prompt difficulty. | Studies compute-optimal test-time scaling, including a best-of-$N$ comparator. | Background for adaptive test-time allocation; it is not a flip-certificate baseline. | Verified against the [original arXiv record](https://arxiv.org/abs/2408.03314). |
+| Moshkov et al. (arXiv 2025) / NVIDIA OpenMathReasoning card | Mathematical-reasoning corpus with TIR-related metadata. | Official card defines `pass_rate_72b_tir` as a pass rate out of 32 Qwen2.5-Math-72B-Instruct TIR generations and records CC-BY-4.0. | Supports carrier field and license description only. It does not provide chronological rollout order, online returned-answer evaluation, or operational telemetry. | Verified against the [official NVIDIA dataset card](https://huggingface.co/datasets/nvidia/OpenMathReasoning) and its [pinned card revision](https://huggingface.co/datasets/nvidia/OpenMathReasoning/blob/d0650f6ae5c5da48a04dc452a85d2b83d6aebaf0/README.md). |
+| Maurer and Pontil (COLT 2009), *Empirical Bernstein Bounds and Sample-Variance Penalization* | Data-dependent, variance-sensitive concentration for bounded quantities. | Gives empirical-Bernstein confidence bounds. | Supports invoking an empirical-Bernstein layer for bounded per-task replay flips; exact theorem constants/application still rely on this manuscript's proof and must be checked separately in review. | Verified for metadata and high-level support against the [original arXiv record](https://arxiv.org/abs/0907.3740). |
+| Vovk, Gammerman, and Shafer (2005), *Algorithmic Learning in a Random World* | Conformal prediction under exchangeability. | Develops marginally valid predictive inference from exchangeable observations. | Background for the exchangeability contrast only; it does not supply the manuscript's count-mixture posterior certificate. | Verified against the [Springer book record](https://link.springer.com/book/10.1007/b106715). |
+| Howard et al. (AoS 2021), *Time-Uniform, Nonparametric, Nonasymptotic Confidence Sequences* | Sequential inference with time-uniform coverage. | Develops anytime-valid confidence sequences. | Background for the anytime-valid contrast; the manuscript instead certifies a fixed finite rule family with an empirical-Bernstein/Bonferroni layer. | Verified against the [official Annals of Statistics issue PDF](https://www.imstat.org/publications/aos/aos_49_2/aos_49_2.pdf), DOI `10.1214/20-AOS1991`. |
+| Kish (1965), *Survey Sampling* | Complex survey sampling and design effects. | Canonical source for design-effect reasoning. | Background for the statement that pooled dependence corrections summarize a different object from the task-difficulty mixture. | Metadata checked against the [WorldCat record](https://search.worldcat.org/title/Survey-sampling/oclc/173268); the local high-level design-effect relation was checked against an [official Statistics Canada discussion](https://www150.statcan.gc.ca/n1/pub/12-001-x/2015002/article/14236/02-eng.htm). |
+| Skellam (JRSS B 1948), beta-binomial derivation | Binomial success probability varies between sets of trials. | Derives the beta-binomial overdispersion model. | Supports the overdispersion background only; the manuscript explicitly says the count-exchangeable task-mixture certificate targets a different functional. | Verified against the [Oxford Academic record](https://academic.oup.com/jrsssb/article/10/2/257/7026529), DOI `10.1111/j.2517-6161.1948.tb00014.x`. |
+
+## Round-4 closest adjacent work
+
+| Work | Task / assumptions | Method and reported endpoint | Relationship to this work | Verification |
+|---|---|---|---|---|
+| Rossell and Müller (Biostatistics 2013), *Sequential stopping for high-throughput experiments* | Bayesian high-throughput measurement batches with fitted hierarchical models. | Posterior-utility stopping for differential-expression classification. | Bayesian sequential-stopping antecedent, not a held-out finite-population replay-loss calibration guarantee for a fitted score. | Scoped primary-source check in closest_work_round4.md. |
+| Novikov (Kybernetika 2010), *Optimal sequential procedures with Bayes decision rules* | General discrete-time sequential decision processes. | Bayes-risk/average-sample-number constrained procedures. | Broad Bayesian sequential-stopping antecedent, not a hypergeometric full-vote replay target or FIT/CAL screen. | Scoped primary-source check in closest_work_round4.md. |
+| Waudby-Smith and Ramdas (NeurIPS 2020), *Confidence sequences for sampling without replacement* | Fixed finite population in uniformly random order; binary prefixes are hypergeometric. | Frequentist time-uniform finite-population confidence sequences. | A CS whose plausible final counts lie on one side of the full-$N$ majority threshold yields a direct same-endpoint WoR-CS majority stopper. It is not evaluated here; the contribution is only model-assisted FIT/CAL screening, with no claimed CS or efficiency separation. | Scoped primary-source check in closest_work_round4.md. |
+
+## Positioning boundary
+
+The nearest work supports a careful, narrow novelty statement: independent FIT
+and CAL task sets freeze and screen a finite family of plug-in fitted scores by
+exact task-level replay loss. The oracle conditional identity remains a true
+$H_\star$ model result, not a fitted-score or online-deployment guarantee. The
+paper does not establish a first online early stopper, a new confidence
+sequence, an efficiency separation from the direct WoR-CS majority stopper, or
+an optimal stopping principle. A same-endpoint CS comparison remains open;
+online correctness-and-cost claims remain blocked on
+EXP-ORDERED-CORRECTNESS-COST.

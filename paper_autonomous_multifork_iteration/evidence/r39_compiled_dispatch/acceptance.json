@@ -1,0 +1,76 @@
+{
+  "schema_version": "forkaudit-r39-compiled-dispatch-acceptance-v2",
+  "version": "20260826g",
+  "all_required": true,
+  "detached_package_requirements": {
+    "r29_fixture_ledger": "r29-fixtures.sha256",
+    "required_fixture_count": 3,
+    "fresh_extract_source_ledger": "pass",
+    "fresh_extract_fixture_ledger": "pass",
+    "fresh_extract_unit_tests": "7/7 pass without external repository files"
+  },
+  "per_call_requirements": {
+    "vllm_entrypoint": "vllm.v1.attention.ops.triton_unified_attention.unified_attention",
+    "compiled_launches": "exactly one",
+    "selected_artifact": [
+      "artifact_id",
+      "compiler_hash",
+      "metadata_sha256",
+      "complete per-file SHA-256 manifest",
+      "PTX present",
+      "cubin present"
+    ],
+    "selected_configuration": [
+      "num_warps",
+      "num_ctas",
+      "num_stages"
+    ],
+    "autotune": "no-autotuner-observed, or a final selected Autotuner config equal to the selected CompiledKernel configuration"
+  },
+  "gdn_requirements": {
+    "expected_entrypoint": "transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeGatedDeltaNet.forward",
+    "expected_selected_kernel": "transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.torch_chunk_gated_delta_rule",
+    "selected_kernel_calls_per_gdn": 1,
+    "functional_conv_rebind_calls_per_gdn": 1,
+    "functional_recurrent_rebind_calls_per_gdn": 1,
+    "required_source_bindings": [
+      "Transformers accelerate forward wrapper",
+      "Transformers Qwen3.5-MoE GDN forward",
+      "Transformers Qwen3.5-MoE torch_chunk_gated_delta_rule",
+      "qcomem install_native_functional_linear_cache",
+      "qcomem functional conv update",
+      "qcomem functional recurrent update"
+    ],
+    "compiled_kernel_claim": "not applicable to this frozen eager fallback and not claimed"
+  },
+  "replay_requirements": {
+    "detached_candidate_import": false,
+    "run_local_source_snapshot": true,
+    "required_verdict": "pass",
+    "required_negative_controls": [
+      "receipt-config-tamper",
+      "receipt-artifact-id-tamper",
+      "missing-required-ptx",
+      "extra-unreceipted-artifact",
+      "compiled-artifact-substitution",
+      "gdn-runtime-source-substitution",
+      "gdn-cache-rebind-source-substitution"
+    ],
+    "formal_omission_controls": [
+      "one missing attention receipt rejected",
+      "one missing GDN receipt rejected by total and phase closure"
+    ],
+    "control_basis": "copies of the actual captured receipt, cache artifacts, Transformers source, and qcomem cache-rebind source",
+    "all_negative_controls": "rejected"
+  },
+  "formal_execution_binding": {
+    "r29_result": "completed, formal-evidence-eligible, scientifically valid, and bound to the frozen design",
+    "semantic_sidecar": "full SHA-256 and exact record-byte coverage",
+    "expected_attention_calls": 120,
+    "expected_document_prefill_gdn_calls": 180,
+    "expected_request_cell_gdn_calls": 360,
+    "expected_gdn_calls": 540,
+    "receipt_count_policy": "exact equality separately for document-prefill and request-cell phases; exact phase order and linear-layer order; no missing or extra calls",
+    "required_output": "formal-aggregate.json with status=pass and formal_evidence_eligible=true"
+  }
+}

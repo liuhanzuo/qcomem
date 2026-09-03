@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "319da71b563edd52d9f4d3e6303bcedcc188048744461a33c9d87c7bebb866dc",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "v1 最佳常量 floor 与 v2 分选项数置换零假设在代数上定义清楚，MMLU-Pro 非法 A–J 均匀零假设也被主动撤回并修复。可是主计数依赖大量相关的逐 cell 未校正判断，v1 bootstrap 固定了数据选择出的 winning letter，v2 阈值又是在看到塌缩形状后冻结；当前证据仍属探索性。",
+    "presentation": "论文极其透明地保留修复账本、敏感性与失败前提，但28页中大量版本、阈值、零假设和表格来回交叉引用，使最核心的研究问题与主分析被审计细节淹没。图表本身清晰可读。",
+    "contribution": "把 nominal chance 与构造特定、可实现的 input-blind floor 区分开有实践价值，arm-conditional permutation 也给出一个有用诊断。但其统计量与 κ/置换零假设关系已知，当前新意主要在应用与报告规则；对“healing”或广泛损伤规律的实证支持不足。"
+  },
+  "paper_summary": "本文主张多选评测不能只以名义随机机会为基线。v1 使用对整个构造固定、输入盲的最佳常量字母 floor；v2 在每个选项数层内置换 gold，使零期望保留具体模型臂的预测边际，并指出 Δperm 等于 κ 的分子。MMLU-Pro 中，非 OLMo 损伤臂从10/12个点估计高于 chance 降至3/12个高于 floor；按95%区间为3/12对1/12，做 BH/Bonferroni 后两边均为0/12。五个较小基准的85个指定损伤 cell 中，只有9个在区间标准上高于 floor，且都来自 healed OLMo-2。论文还公开撤回了对 MMLU-Pro 使用非法十字母均匀零假设的早期读法，并将27-cell v2 结果标为在观察形状后预注册的规则。",
+  "strongest_verified_contribution": "最扎实的结果是第3节的构造分解与表1的 matched-standard 重算：同一批 MMLU-Pro cell 在完全相同的点估计、区间和多重性标准下，从 nominal chance 换成最佳常量 floor 后，许多“高于机会”标签消失；经 BH/Bonferroni 后非 OLMo 的12个 cell 在两种基线下都没有显著清除。这证明参考基线选择可以实质改变未经校正的叙述，同时也限制了作者能宣称的显著结果。",
+  "strengths": [
+    "第3节明确区分 arm-independent v1 与 arm-conditional v2，且证明常量预测器在 v2 下恰为零，避免混用两个不同问题。",
+    "发现 MMLU-Pro 选项数可变后，作者撤回 A–J 均匀零假设，并在表7、表8报告合法性修复及方向变化。",
+    "表1把 chance 与 floor 放在同一证据标准下，另列95%区间和 BH/Bonferroni，避免只比较不对称的点估计计数。",
+    "论文主动说明 v1 paired bootstrap 固定 winning letter、当前缺少 selection-aware 联合重采样，并将此列为后续工作。",
+    "局限性明确承认 OLMo 是唯一 heal 家族，family、regime、depth、corpus 与 exposure 相互混杂。"
+  ],
+  "questions": [
+    "为什么不在每个 item bootstrap 样本中重新计算 gold marginal 并重新选择最佳常量字母，从而直接给出 selection-aware 的 Δfloor 区间？",
+    "表1的17个和85个指定损伤 cell 是否在任何结果可见之前完整冻结？这些 cell 共享题目且同一模型深度嵌套，主结论如何控制这种依赖？",
+    "v2 的0.10 materiality bar 和相对恢复前提具体在看到哪些量之后冻结；是否存在完全未查看的独立留出 cell？",
+    "既然 OLMo 与非 OLMo 的损伤/恢复制度不同，论文为何仍把“9/85均为 healed OLMo”作为方向性证据，而不是纯描述性观察？",
+    "对 MMLU-Pro 而言，最佳常量 floor 本身未显著偏离合法平衡零假设时，作者希望其扮演决策阈值还是总体参数估计；两者的误差语义如何区分？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C1-R3-01",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "limitations_responsible_claims"],
+      "location": "第4节“Designated damaged cells, and multiplicity”与第5节表1（PDF第6–8页）",
+      "claim_ids": ["headline-cell-counts", "off-mmlu-concentration"],
+      "evidence_ids": ["Table-1", "Table-12", "Table-15"],
+      "observed_evidence": "论文突出17个 MMLU-Pro 与85个 off-MMLU 指定损伤 cell 的逐 cell 清除计数；这些分析共享同一批题目、模型家族和嵌套深度。表1显示在12个非 OLMo MMLU-Pro cell 上实施 BH/Bonferroni 后，chance 与 floor 两边均为0/12。",
+      "why_it_matters": "未经整体误差控制的“多少 cell 清除”会随阈值、依赖结构和样本精度显著变化，不能支撑整体方向或跨基准普遍性。逐 cell 计数的集中现象也不是一个预先定义的全局检验。",
+      "required_fix": "预先指定一个全局或层级估计目标，以 item 为共享重采样单位并对模型/深度嵌套建模；报告 family-wise 或 FDR 控制后的结论，并把未经校正计数降为描述性。",
+      "verification_test": "对全部指定 cell 进行共享 item 的联合 bootstrap/置换或层级模型，检验 floor 替换导致的总体标签/效应变化，并在预先声明的错误率下复核结论。",
+      "evidence_needed": "逐 item、逐 cell 预测及统一的依赖感知多重性分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R3-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor"],
+      "location": "第3.3节 reference-choice rule 与第5节表1后说明（PDF第5、8页）；复现性说明（PDF第11页）",
+      "claim_ids": ["v1-above-floor-interval"],
+      "evidence_ids": ["Table-1", "Table-15"],
+      "observed_evidence": "v1 floor 取经验 gold marginal 中占比最高的字母，但 paired bootstrap 条件于观测到的 winning letter；论文承认 selection-aware joint resample 未用于主结果。",
+      "why_it_matters": "最佳常量是由同一数据选择出的最大值。固定胜者会忽略字母胜者在重采样中的切换和 max 操作的不确定性，尤其会影响紧邻 floor 的 cell，并可能让区间偏窄。",
+      "required_fix": "在每次以 item 为单位的联合重采样中重新计算所有 gold letter 比例、重新选择最大常量，再与同一重采样中的模型准确率做差。",
+      "verification_test": "对表15所有 MMLU-Pro cell 输出 selection-aware 区间，并列出相对当前 verdict 发生变化的 cell；主结论应以新分析为准。",
+      "evidence_needed": "逐 item gold/prediction 记录和每次重选 winning letter 的联合 bootstrap 结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R3-03",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "limitations_responsible_claims"],
+      "location": "第3.3节 v2 materiality rule（PDF第5–6页）与第5节表2、图2（PDF第8–9页）",
+      "claim_ids": ["v2-materiality-gate", "v2-27-cell-result"],
+      "evidence_ids": ["Table-2", "Figure-2", "Table-17", "Table-18"],
+      "observed_evidence": "0.10 materiality bar 及相关前提是在作者已经看到 collapse defect 的形状后冻结；27个现有 cell 也已存在。论文坦率地将其称为对规则的预注册，而非对当前数据的前瞻验证。",
+      "why_it_matters": "在已见数据上选择阈值和判定结构会把当前 re-analysis 保留为探索性证据；即使代码与规则随后冻结，也不能恢复对同一 cell 的前瞻错误率解释。",
+      "required_fix": "将当前27-cell结果明确标为 hypothesis-generating，并在完全未查看的模型、深度或基准上前瞻冻结阈值、family 与主结局。",
+      "verification_test": "对独立留出集合只运行一次预注册流程，报告所有 cell 与统一多重性校正；在揭盲前验证样本量和锚点前提。",
+      "evidence_needed": "带时间戳的前瞻协议及独立验证数据结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R3-04",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "limitations_responsible_claims"],
+      "location": "第4节模型与结构损伤（PDF第6页）、第5节 off-MMLU 结果（PDF第8–9页）及附录A局限表4（PDF第13页）",
+      "claim_ids": ["healing-concentration", "damage-law"],
+      "evidence_ids": ["Table-1-off-MMLU", "Table-4-limitations"],
+      "observed_evidence": "OLMo-2 使用 prune-then-heal checkpoint，而其他家族只做 truncate-only；同时 family、绝对/相对深度、训练语料与 exposure 均不同。区间上清除 floor 的9/85 cell 全来自 OLMo，但不存在同家族、同深度的 healed/unhealed 因果对照。",
+      "why_it_matters": "该集中现象不能区分 healing、家族特性、层数或额外训练暴露。把它解释为恢复机制证据会超出设计可识别范围。",
+      "required_fix": "将现有结果限制为描述性，或在同一基础模型、相同保留深度和相同评测条件下随机/匹配比较 prune-only 与 prune-then-heal，并控制训练 token 暴露。",
+      "verification_test": "预先注册同家族 factorial 对照，报告逐 item 配对差异与交互项；若做不到，删除所有暗示 healing 因果效应的表述。",
+      "evidence_needed": "同家族匹配 checkpoint、训练暴露记录和配对评测。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R3-05",
+      "severity": "minor",
+      "dimensions": ["technical_soundness", "clarity"],
+      "location": "第3.1–3.3节与附录表7–9、表14–15（PDF第4–5、14–20页）",
+      "claim_ids": ["literal-floor-decision-rule"],
+      "evidence_ids": ["Table-7", "Table-8", "Table-14", "Table-15"],
+      "observed_evidence": "对七个构造中的多数，经验最佳常量 floor 与合法平衡零假设之间的差异没有被精确识别；论文仍把观测 max floor 作为硬判定线，同时把 E[f-hat] 仅作敏感性。",
+      "why_it_matters": "经验 max 可以作为该固定题集上的决策规则，但若读者把它理解为总体输入盲能力参数，其抽样噪声会导致边界 cell 翻转。当前决策论与统计推断语义交织。",
+      "required_fix": "明确区分固定题集的运营阈值与总体参考参数；同时报告 floor 的选择感知不确定性，并避免把未能区分两种参考的结果称为“校准已建立”。",
+      "verification_test": "在主表并列固定题集判定和总体参数区间，验证所有叙述均与相应语义一致。",
+      "evidence_needed": "选择感知 floor 区间和修订后的判定语义。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究使用公开基准和基础模型输出，未见人类受试者或敏感个人数据。主要风险是把输入盲 floor 误读为模型能力或把混杂的 healing 观察过度因果化；这属于报告边界而非独立伦理警报。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "selection-aware 联合 bootstrap 后，核心 chance→floor 结论在预先规定的多重性控制下仍稳定。",
+    "在完全未查看的独立模型/基准 cell 上前瞻验证 v2 materiality rule。",
+    "同家族同深度的 prune-only 与 prune-then-heal 对照能够识别 healing 效应。",
+    "以共享 item 为单位的全局/层级分析支持跨 cell 的总体结论，而不依赖未校正计数。"
+  ],
+  "evidence_that_would_lower_score": [
+    "重新选择 winning letter 的 bootstrap 使关键 above-floor cell 消失或方向不稳定。",
+    "独立前瞻验证中 v2 gate 的 materiality 或锚点前提不能复现。",
+    "审计发现 designated cell family、阈值或报告规则在结果可见后有未披露改动。",
+    "逐 item 重算无法复现表1、表15或多重性校正数字。"
+  ],
+  "review_limitations": [
+    "仅审阅指定冻结 PDF；按隔离要求未访问论文所述逐 item prediction、代码、checker、表格源或预注册文件，因此无法执行联合 bootstrap 或验证时间顺序。",
+    "未联网，未核验外部引文、相关工作优先权、模型/基准版本或公开讨论；相关不确定性不应被解释为已验证。",
+    "已逐页视觉核查28页 PDF，未发现图表截断；对版面负担的评价来自正文与附录的整体可读性。"
+  ]
+}

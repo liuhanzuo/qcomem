@@ -1,0 +1,469 @@
+{
+  "reviewer_id": "R44-REV-4",
+  "round": 44,
+  "snapshot_sha256": "0a8cb47aaf68e6d0ef530b2ae29406430bd494e7e64c1212d982b7bbc5caed66",
+  "access_mode": "pdf_plus_repository",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Every number I could check is internally consistent and matches the artifact: Table 1's 136.235/34.683/9.661/9.395/7.536 MiB and the 3.93x/14.10x/14.50x/18.08x ratios, the 92.91% reduction, the 54.24/54.62/54.29 F1 values, the -0.39 [-2.04, 1.08] interval (artifact: -0.003870 [-0.020365, 0.010756]), the 2.75% same-memory Store delta, Table 2's 88.68/92.87/93.06/94.01% reductions, the 2.458% TPOT gap behind the 'within 2.5%' claim, the 54.5% allocator delta from 4.901/2.229 GiB, and the target-5 call factorizations 20,992x10=209,920 and 20,992x30+192x30=635,520. The equivalence refusal is handled correctly and consistently in the abstract, Table 1's footnote, Sec 5.4, Sec 5.6, Appendix H, and the artifact's rejected claim C-UNSUPPORTED-QCOMEM-60-EXPANSION. What pulls soundness to 2 is not arithmetic but baseline and reference-arm discipline, which is where a capacity-first paper lives or dies. The headline sentence quotes the Store ratio against full-prefix Q16 and the F1 delta against split Q16, and the catastrophic count against dense, so its two halves are measured against different arms and the decision-relevant paired comparison (frozen Q4/Q4/Q8 vs full-prefix Q16, point estimate -0.44) is reported nowhere in the PDF or the artifact (R44-4-01). The most obvious competing capacity policy, the paper's own Eq. 3 packer applied to the full-prefix KV, is absent from both tables, so 14.10x is measured only against an unquantized reference (R44-4-02). The abstract's 54.5% allocator figure is against a full-copy control that Appendix H itself calls a controlled factor rather than an optimized baseline, while Table 15 shows the audited hybrid fork ties its own paged-prefix baseline at 2.229 GiB final and 2.843 GiB peak and is worse on generation increment (R44-4-05). The 8-item timing panel carries medians with no dispersion whatsoever (R44-4-03), and the paper's own Table 2 shows Q-CoMem TTFT (0.673-0.674 s) above no-cache dense (0.649 s), a fact the text never states (R44-4-04). These are substantive gaps that change how a reader should read the headline, hence 2 rather than 3.",
+    "presentation": "The paper is well organized around memory -> latency -> quality -> ownership, Figures 1-3 are clear and genuinely informative, table footnotes are unusually careful, and blank TTFT/Recall cells are explicitly annotated as unmeasured rather than zero. But definitional collisions recur across exactly the two tables a reader must compare. 'Store' carries three incompatible meanings (component sum, entry-owned byte-range union, post-priming allocator delta); the two 'F1 (0-100)' columns differ by 15.5 points for the same configuration on overlapping items (54.68 vs 39.14) with no explanation anywhere, although the cause is derivable from the differing generation caps in Sec 5.1 (R44-4-07); the three timing columns are never defined and tok/s is not 1/TPOT (R44-4-03); the 60-item setup paragraph never states the split depth (j=7 appears only in Figure 2) or the decoding strategy or the number of runs (R44-4-06); and 'same-memory mixed' actually retains 2.75% less memory (R44-4-14). Section 5.5 spends more main-text space on an enumeration of counts (96 configurations, 209,920 and 635,520 receipts, 144/12,960/3,840/24 rows, 60=30x2, 480=8x60, 540=(1+8)x60) than Sections 5.2-5.4 spend on the paper's three headline results combined, and there is not a single results figure (no Pareto plot) in a paper whose whole argument is a trade-off frontier. These are not localized problems; they obstruct the exact cross-table comparison the paper asks the reader to make.",
+    "contribution": "The strongest genuinely new element is the insistence on quantizing the complete hybrid split-replay entry (Eq. 2: boundary residual plus lower full-attention KV plus lower convolution/recurrent state) rather than the residual alone, and demonstrating that this is where the accounting has to sit for a hybrid model. That is a real and correct observation, and the internal consistency of the numbers supports it (the 34.683 MiB split entry decomposes sensibly into ~20 MiB residual plus ~14 MiB single-attention-layer KV at 4,096 tokens). But the split-replay primitive is explicitly not claimed as new (CoMem, Liu et al. 2026a;b), Eq. 3 is textbook affine groupwise quantization, and the delivered capability is: ~14x smaller retained payload than BF16 full-prefix, at roughly -0.4 F1, ~4x worse TTFT than exact caching and slightly worse TTFT than no caching at all, on 60 items, one model, one hardware family, without a quantized-KV competitor. The capacity consequence that motivates Eq. 1 (more resident documents, higher admitted capacity, lower peak VRAM) is explicitly never measured, so the central quantity remains a proxy with no demonstrated deployment effect. ForkAudit is the more distinctive artifact, but the paper's own Table 14 and Appendix H concede that a conventional persistent-base content invariant catches the flagship historical alias 8/8, so its incremental value is localization, not detection. Narrow and incremental, with significance that the paper honestly declines to establish."
+  },
+  "paper_summary": "The paper presents Q-CoMem, a capacity-first extension of CoMem split replay to a hybrid (attention + gated-delta-network) LLM. An offline Write runs a document to split depth j and group-quantizes the complete retained entry: the depth-j boundary residual, the lower full-attention KV, and the lower convolution/recurrent state (Eq. 2), using 64-value affine groups with BF16 scale/bias (Eq. 3). An online Read dequantizes that entry, shares the immutable document tensors, creates request-local mutable state through copy-on-write and recurrent rebinding, replays the query through the lower layers, and reconstructs the suffix. A fail-closed seven-target trace contract, ForkAudit, validates the ownership discipline with phase-indexed storage evidence rather than output equality. Empirically: on a 60-item archival Qasper/2WikiMQA validation cohort (Qwen3.5-35B-A3B, H20-3e), a frozen Q4/Q4/Q8 policy reduces mean retained payload from 136.235 to 9.661 MiB/document (14.10x) with mean F1 54.24 versus 54.62 for split Q16, a paired difference of -0.39 with a 95% bootstrap interval of [-2.04, 1.08] that the paper explicitly refuses to call equivalence; a separate 8-item execution on the indices-6-9 subset shows the adverse latency trade (TTFT 0.673 vs 0.163 s, throughput 7.19 vs 13.38 tok/s, TPOT within 2.5%); and a separate ownership factorial reports a 54.5% post-priming allocator-delta reduction at N=32 plus a historical alias that output equality misses. The paper repeatedly and correctly disclaims recall, total/process memory, serving capacity, edge performance, and broad quality preservation.",
+  "strongest_verified_contribution": "The complete-entry retained-state accounting for hybrid split replay (Eq. 2) together with the measured decomposition of the capacity gain into two independent factors: splitting alone gives 136.235 -> 34.683 MiB/document (3.93x) and quantizing the complete lower state gives 34.683 -> 9.661 MiB/document (a further 3.59x, 14.10x total). I verified these against the artifact (C-QCOMEM-60-Q16-SPLIT-01 and C-QCOMEM-60-STORE-F1-01, evidence E-QCOMEM-60-VALIDATION-20260812D-A: 34.683105, 9.660873, 136.235352 MiB, 3.9280x and 14.1018x), and the split-entry magnitude is independently plausible from the architecture (~20 MiB residual at 4,096 tokens plus ~14 MiB for the single lower attention layer). The associated methodological point is also correct and is the paper's real intellectual content: for a hybrid model, counting only the boundary residual understates the deployed entry, and both the residual and the lower recurrent/convolution state must sit under one denominator.",
+  "strengths": [
+    "Statistical restraint on the headline quality result is genuinely exemplary and consistent. The -0.39 [-2.04, 1.08] interval is never converted into an equivalence or noninferiority claim, and this restraint is repeated verbatim in the abstract (p.1), Table 1's footnote (p.6, 'An interval crossing zero is not evidence of statistical equivalence'), Sec 5.4 (p.7), Sec 5.6 (p.8), Appendix H (p.28), and the artifact's explicitly rejected claim C-UNSUPPORTED-QCOMEM-60-EXPANSION. I looked hard for language drift and found none; the closest is the Conclusion's 'moves little', immediately followed by the point estimate and interval.",
+    "The paper reports its own adverse results rather than burying them. Table 2's TTFT column (0.163 vs 0.673 s) and the throughput column (13.38 vs 7.15-7.19 tok/s) are in the abstract, and Sec 5.3 states plainly that 'the latency result is not a speedup over exact caching'. Table 1's aggressive policy row shows an interval entirely below zero with 5/60 catastrophic items. Table 18 shows HYPIC retaining 324.09 MiB, more than plain prefix caching.",
+    "Unmeasured metrics are handled honestly. Recall is left blank in both tables with an explicit footnote that blanks mean unmeasured rather than zero, and no recall claim is made anywhere; the 60-item panel's missing TTFT is likewise blank rather than imputed.",
+    "The non-pooling boundary between the 60-item and 8-item cohorts is stated four times (Sec 1 p.2, Sec 5.1 p.6, Table 2 caption and footnote p.7, Sec 5.6 p.8) and is backed by an artifact-level cohort-to-claim authorization table (Table 5, and the artifact's per-cohort scope fields), which is more discipline than most systems papers bring.",
+    "Arithmetic and cross-references are clean. I checked roughly thirty numbers across abstract, main text, tables and artifact and found no mismatch: compression ratios, percentage reductions, the 2.75% Store delta, the 2.458% TPOT gap, the 54.5% allocator reduction, the receipt factorizations, the 0/5 and 1/5 mutant counts against Table 8, and the HYPIC byte medians (146,309,120 B = 139.53 MiB; 339,834,880 B = 324.09 MiB).",
+    "Figures 1-3 are well constructed and carry real information (the retention/online-work trade-off axis in Figure 1, the explicit packed-scope disclaimer in Figure 2, the phase structure in Figure 3), and Figure 2 correctly reconciles the frozen policy's bit vector [8,8,8,4,8,8,8] with the Q4-attention/Q8-GDN description.",
+    "The limitations sections (5.6 and Appendix H) are unusually complete and, unlike most such sections, actually constrain the claims made earlier rather than restating them."
+  ],
+  "questions": [
+    "What is the paired 95% bootstrap interval for frozen Q4/Q4/Q8 versus full-prefix Q16 on the 60-item cohort? The point estimate is -0.44 (54.24 vs 54.68), and this is the comparison a practitioner choosing between exact caching and Q-CoMem actually faces, yet every interval in Table 1 is against split Q16.",
+    "Twenty-four paired intervals were computed (Reproducibility Statement, p.9) but five are shown. Which twenty-four, and was any selection applied before choosing what to display? Is there any multiplicity consideration?",
+    "What resampling scheme produced the intervals: percentile, basic, or BCa? What is the resampling unit (item-level paired deltas over 60 items?) and what seed was used? The PDF gives only '10,000-resample'; the artifact mentions 'seeded' but the value is not in the manuscript.",
+    "What decoding strategy did the 60-item cohort use? Sec 5.1 specifies greedy decoding only for the 8-item execution. If the quality run was not greedy, how is the -0.39 separated from sampling noise, and how many runs per configuration were made?",
+    "Why is full-prefix Q16 F1 54.68 in Table 1 but 39.14 in Table 2 for the same model on a subset of the same items? Is the whole gap attributable to Table 2 capping Qasper at 32 generated tokens where Table 1 allows 128?",
+    "In the 'no-cache dense recompute' arm, is a within-request KV cache retained during decoding? Its TTFT (0.649 s) and TPOT (648.75 ms) are numerically almost identical, which suggests a full document forward pass per output token; if so, its 1.36 tok/s is not a standard dense baseline.",
+    "How is the 'tok/s' column defined? It is neither 1/TPOT nor reconcilable with TTFT and TPOT under a 32-token generation length. What is the mean number of generated tokens per item?",
+    "Applying the paper's own Eq. 3 packer to the full-prefix KV would give roughly 34 MiB at essentially unchanged TTFT. Why is this policy absent from Tables 1 and 2, and what is the frozen policy's compression ratio and F1 delta against it?",
+    "How was split depth j=7 selected, and what does the Store/TTFT/F1 frontier look like at other depths? Every evaluated point varies only the bit vector.",
+    "Section 4.2 and Table 18 describe the per-layer policy as using 'Q16 projections'. Which term of Eq. 2 are projections, and are their bytes inside the reported Store?",
+    "Table 15 shows the audited hybrid fork and the paged-prefix baseline both finishing at 2.229 GiB final and 2.843 GiB peak, with the audited fork worse on generation increment (1.950 vs 0.019 GiB). What is the allocator benefit of the audited ownership discipline relative to that baseline, as opposed to relative to full-copy KV?",
+    "Do the per-dataset (30 Qasper, 30 2WikiMQA) means and paired intervals agree in sign with the pooled -0.39, and can they be added given that 360 item-level F1 values are archived?",
+    "What dispersion did the three timing repeats show? No IQR, range, or standard deviation appears for any timing column, yet a 'within 2.5%' TPOT claim rests on a 1.33 ms difference.",
+    "The artifact's C-R40-BASELINE-DETECTOR-MATRIX-01 records a generous frozen conventional suite flagging 21/22 fault rows versus ForkAudit's 22/22, and is marked 'not used by the manuscript'. Given that the manuscript does report conventional-detector comparisons where they favor ForkAudit (token equality 0/5, exact logits 1/5), on what principle is the less favorable comparison excluded?",
+    "Is there an LLM-use disclosure for the submission? I did not find one in the manuscript, and the ICLR 2026 format checks call for it."
+  ],
+  "issues": [
+    {
+      "issue_id": "R44-4-01",
+      "severity": "critical",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract (p.1, lines 022-026); Sec 1 contribution bullet 2 (p.2); Table 1 and its footnote (p.6); Sec 5.2 (p.6); Sec 5.4 (p.7); Conclusion (p.8)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-QCOMEM-60-Q16-SPLIT-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A"
+      ],
+      "observed_evidence": "The headline row of Table 1 is quoted against three different reference arms in three different columns. The compression ratio (14.10x) is relative to full-prefix Q16/BF16 ('Compression is relative to full-prefix Q16/BF16', Table 1 footnote). The quality interval (-0.39 [-2.04, 1.08]) is relative to split Q16 ('intervals are paired 10,000-resample bootstrap intervals against split Q16'). The catastrophic-regression count (0/60) is relative to dense ('the registered per-item dF1-versus-dense <= -50 point rule'). The abstract, the contribution bullet, and the Conclusion all pair '14.10x smaller' with '-0.39 points' in one breath, so the two halves of the paper's single most-quoted sentence are measured against different baselines. The comparison a deployment decision actually turns on, frozen Q4/Q4/Q8 versus full-prefix Q16, has point estimate 54.24 - 54.68 = -0.44 and appears nowhere: not in Table 1, not in Sec 5.4, and not in the artifact claim text (C-QCOMEM-60-STORE-F1-01 reports only the Q16-split-relative delta -0.003870 with interval [-0.020365, 0.010756]).",
+      "why_it_matters": "The paper's thesis is a trade-off between a memory number and a quality number. If those two numbers are computed against different arms, the trade-off as stated does not correspond to any single decision a reader can make. A practitioner is choosing between exact prefix caching (136.235 MiB) and Q-CoMem (9.661 MiB); the quality cost of that choice is -0.44 with an unreported interval, not -0.39 against an intermediate configuration that nobody would deploy. Table 1's own full-prefix row (+0.06 [0.00, 0.18] versus split Q16) shows the split step itself carries a small, essentially always-nonnegative quality cost, so the two deltas compound rather than cancel. This is the difference between a correctly stated trade-off and a favorably assembled one.",
+      "required_fix": "Report the frozen Q4/Q4/Q8 versus full-prefix Q16 paired difference and its 95% bootstrap interval, and make the abstract, contribution bullet, Sec 5.2, Sec 5.4, and Conclusion quote memory and quality against the same arm (full-prefix Q16). Either add a second dF1 column to Table 1 with full-prefix as reference, or change the existing column's reference arm and keep the split-Q16 comparison as an ablation row. Use one reference arm for the catastrophic-regression rule as well, or state explicitly in the main text that the safety rule uses a third arm.",
+      "verification_test": "Recompute from the 360 archived item-level F1 values in E-QCOMEM-60-VALIDATION-20260812D-A the paired per-item deltas of frozen Q4/Q4/Q8 minus full-prefix Q16 and their 10,000-resample paired bootstrap interval. Check that the reported point estimate equals 54.2368 - 54.6800 to three decimals, that Table 1's dF1 column header names the same arm as the compression column, and that a text search for '14.10' and '-0.39' returns no sentence in which the two are paired against different references.",
+      "evidence_needed": "One re-analysis of already-archived item-level F1 data; no new GPU execution required.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "Table 1 (p.6) and Table 2 (p.7) row sets; Sec 2 'Hybrid state and cache management' (p.3); Sec 5.1 (p.5-6)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-H20-DEPLOYMENT-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A",
+        "E-H20-DEPLOYMENT-CONTEXT"
+      ],
+      "observed_evidence": "The evaluated policy set in both tables varies only along the split-replay axis: dense, full-prefix Q16/BF16, split Q16/BF16, frozen Q4/Q4/Q8, and two mixed policies (Table 1); dense, full-prefix Q16/BF16, Q8, Q4/Q4/Q8, per-layer mixed, Q4 (Table 2). There is no quantized full-prefix row anywhere. The 14.10x headline is therefore measured entirely against an unquantized BF16 cache. The paper is aware of the competing literature (Palu, SqueezeAttention, HeadKV cited in Sec 2, p.3) and even ports Palu in a bounded operator study (Table 17, p.23), but never applies its own Eq. 3 groupwise packer to the full-prefix KV, which is a few lines of code given that the packer already exists and already runs on lower-layer KV.",
+      "why_it_matters": "For a paper whose single claim is capacity, the strongest and cheapest competing capacity policy has been omitted. Quantizing the full-prefix KV to Q4 with the paper's own packer should give roughly 4x on 136.235 MiB (about 34 MiB) at essentially unchanged TTFT and without any suffix reconstruction. That would make the honest advantage of split replay approximately 3.5x rather than 14.10x, at the cost of a 4x TTFT regression and a throughput halving. A reader cannot tell from this paper whether split replay is needed at all to reach the capacity goal, or whether the quantizer alone does most of the work. That is precisely the question the paper's own two-factor decomposition (splitting 3.93x, quantization 3.59x) invites and then leaves unanswered from the other direction.",
+      "required_fix": "Add 'full-prefix Q8' and 'full-prefix Q4' rows to Table 1 and Table 2, produced with the same Eq. 3 packer, the same cohorts, and the same denominators as the existing rows, and report the frozen policy's compression ratio and paired F1 interval relative to the best quantized full-prefix point in addition to the BF16 reference. If quantized full-prefix is infeasible in this implementation, say so explicitly and give the analytic byte count so the comparison can still be made.",
+      "verification_test": "Run the existing packer over the full-prefix KV on the 60-item cohort and record Store and F1 under the Table 1 component accounting. Require that the reported headline compression is restated relative to the best quantized full-prefix row, and that the paired bootstrap interval of frozen Q4/Q4/Q8 versus that row is reported. Cross-check the analytic expectation: full-prefix Q4 Store should land near 136.235/4 plus group scale/bias overhead.",
+      "evidence_needed": "One additional 60-item run (and ideally one 8-item timing run) of an existing code path over already-frozen inputs.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Sec 5.1 'Latency execution' (p.6); Table 2 and its footnote (p.7); Sec 5.3 (p.6-7); Abstract (p.1, lines 027-030)",
+      "claim_ids": [
+        "C-H20-DEPLOYMENT-01"
+      ],
+      "evidence_ids": [
+        "E-H20-DEPLOYMENT-CONTEXT"
+      ],
+      "observed_evidence": "The entire latency characterization rests on 8 items with 3 timing repeats each (24 measurements per configuration), and Table 2 reports only medians for Store, TTFT, TPOT and tok/s with no interquartile range, no min/max, no standard deviation, and no per-item values anywhere in the paper. I searched the full text for 'std', 'IQR', 'interquartile' and 'variance' and found none in connection with Table 2. No warmup procedure is described for this block (the only warmup mentioned in the paper is for the separate 24-cell HYPIC cohort, Appendix H p.28). The three timing metrics are also never defined: tok/s is not 1/TPOT (13.38 versus 18.48 for full-prefix; 7.19 versus 18.19 for Q-CoMem), and reconciling the three columns requires assuming a generated length of about 8 tokens that the paper never reports, even though the cap is 32. On this basis the paper makes a quantitative claim in its abstract ('TPOT is within 2.5% of its 54.11 ms value'), which rests on a 0.86-1.33 ms difference on a 54 ms quantity.",
+      "why_it_matters": "An 8-item, 3-repeat, median-only panel with no dispersion cannot support a quantitative statement about a 2.5% effect, and the reader has no way to judge whether 55.44 versus 54.11 ms is a real regression or measurement noise. The direction matters: 'within 2.5%' is the one favorable framing in an otherwise adverse latency story, and it is exactly the claim least supported by the reported statistics. The undefined tok/s column compounds this, because the reader cannot reconstruct end-to-end per-query cost from TTFT, TPOT and throughput, which is the quantity a deployment would care about.",
+      "required_fix": "Report per-item and per-repeat values (or at minimum median with full range or IQR) for TTFT, TPOT and tok/s for every row of Table 2; state the warmup procedure and whether repeats are within-process; give the defining formula for each timing metric and the mean and range of generated tokens per item; and either drop the 'within 2.5%' phrasing or accompany it with the observed spread. Extend the timing execution to all 60 items so the latency panel is not an 8-item subset (see R44-4-06, which the same run would also fix).",
+      "verification_test": "Recompute each Table 2 cell from the 168 archived timing rows named in the artifact (M-H20-DEPLOYMENT-DERIVATION: '6 displayed in-process configurations with 24 timing measurements each'), and require that the paper reports the dispersion of each column. Independently check that median tok/s equals the stated formula applied to the archived per-item generated-token counts; if the reconstruction fails, the metric definitions are still wrong.",
+      "evidence_needed": "Re-derivation from archived timing shards for dispersion and definitions; one extended run for the 60-item timing panel.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-04",
+      "severity": "major",
+      "dimensions": [
+        "limitations_responsible_claims",
+        "experimental_rigor"
+      ],
+      "location": "Table 2 rows 1 and 3-6 (p.7); Sec 5.3 (p.6-7); Abstract (p.1, lines 027-030)",
+      "claim_ids": [
+        "C-H20-DEPLOYMENT-01"
+      ],
+      "evidence_ids": [
+        "E-H20-DEPLOYMENT-CONTEXT"
+      ],
+      "observed_evidence": "In the paper's own Table 2, no-cache dense recompute records TTFT 0.649 s while every Q-CoMem row records 0.673-0.674 s. Q-CoMem is therefore slower to first token than performing no caching at all, while still requiring 8.41-15.89 MiB of retained state per document. Sec 5.3 discusses dense only through its TPOT ('dense recomputation has 648.75 ms TPOT') and never states the TTFT comparison; the abstract compares Q-CoMem's TTFT only with full-prefix Q16 ('full-prefix Q16 is faster (0.163 versus about 0.673 s)'). Sec 3 frames the design as sitting 'between the endpoints', and Sec 5.3 concludes that 'the cost is therefore concentrated in the first token'.",
+      "why_it_matters": "On the only cohort where the paper measures latency, the proposed operating point is TTFT-dominated by both endpoints simultaneously, which is materially different from the 'sits between the endpoints' framing of Sec 3 and Figure 1. Its genuine advantage over dense is confined to TPOT (55 vs 649 ms) and throughput (7.19 vs 1.36 tok/s), and those depend on how the dense arm is implemented (see R44-4-12). Omitting an adverse comparison that is visible in one's own table, while stating the other adverse comparison, is selective reporting even when unintentional, and it is the kind of omission that a rigor reviewer must flag.",
+      "required_fix": "State in Sec 5.3 and in the abstract that on this cohort Q-CoMem's TTFT (0.673-0.674 s) is not only above full-prefix reuse but also marginally above no-cache dense recompute, and that its measured latency advantage over dense is confined to steady-state decoding and throughput. Adjust the Sec 3 and Figure 1 'between the endpoints' framing to say that the interpolation is in retained bytes, not in first-token latency.",
+      "verification_test": "Check that the sentence in Sec 5.3 naming 0.163 s also names 0.649 s and the direction of the comparison. Confirm from the archived per-item timing rows that dense TTFT is below Q-CoMem TTFT on a majority of the 8 items, not only at the median.",
+      "evidence_needed": "None beyond the paper's existing table; per-item confirmation from archived shards strengthens it.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-05",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract (p.1, lines 031-032); Sec 1 contribution bullet 3 (p.2); Sec 5.5 'Allocator reduction with canonical equality' (p.7); Table 15 (p.21); Appendix H (p.27)",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-GDN-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "The abstract and contribution bullet 3 headline a 54.5% post-priming allocator reduction at N=32 (4.901 -> 2.229 GiB) against a full-copy KV control. Appendix H (p.27) states that 'Full-copy KV and materialized GDN bases are controlled ownership factors rather than optimized production baselines'. Table 15 itself labels 'Shared-doc KV / Materialized GDN base' as the 'Paged-prefix baseline' and shows it at 2.229 GiB final and 2.843 GiB peak, identical to the 'Audited hybrid fork' row (2.229 / 2.843), with the audited fork worse on generation increment (1.950 vs 0.019 GiB). Separately, the abstract and main text report the final allocated delta (54.5%) but never the peak reduction, which from the same table is 1 - 2.843/4.920 = 42.2%.",
+      "why_it_matters": "Two problems compound. First, the headline percentage is measured against a control the authors themselves say is not an optimized baseline, while against the paper's own paged-prefix baseline the audited ownership mechanism yields exactly zero allocator benefit at both final and peak, and a worse generation increment. Second, in a capacity-first paper, peak allocation is the quantity that determines OOM and admission, and the paper reports the metric with the larger reduction (final, 54.5%) in the abstract while the smaller and more deployment-relevant one (peak, 42.2%) appears only in an appendix table. A reader of the abstract will attribute the 54.5% to the paper's contribution; Table 15 says it belongs to shared-document KV, which is what PagedAttention already does.",
+      "required_fix": "In the abstract and contributions, report the allocator result against both arms: the 54.5% versus the full-copy control and the 0% versus the paper's own paged-prefix baseline, and label the full-copy arm as a controlled factor rather than a baseline at first mention. Report peak alongside final in the main text, and state the generation-increment cost of borrowed GDN (1.950 vs 0.019 GiB) where the result is first claimed rather than only in Table 15.",
+      "verification_test": "Confirm from Table 15 that shared-doc/materialized and shared-doc/borrowed both read 2.229 final and 2.843 peak, and that the abstract's percentage is accompanied by the paged-prefix comparison. Recompute 1 - 2.843/4.920 = 42.2% and require the peak figure to appear wherever 54.5% appears.",
+      "evidence_needed": "None; all numbers are already in Table 15.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-06",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "Sec 5.1 'Quality cohort' (p.5); Sec 5.6 (p.8); Appendix A (p.12); Appendix H (p.28); artifact method_provenance.tsv and claim_evidence_map.tsv",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-QCOMEM-60-Q16-SPLIT-01",
+        "C-QCOMEM-60-POLICY-TRADEOFF-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A"
+      ],
+      "observed_evidence": "The paper's single most decision-relevant table is also the least specified and least provenanced. The Sec 5.1 quality-cohort paragraph never states the split depth (j=7 appears only in Figure 2's caption and, for a different cohort, in Appendix Table 13), never states the decoding strategy (greedy is specified only for the 8-item execution), and never states the number of runs or repeats. The bootstrap is described only as '10,000-resample' with no method (percentile / basic / BCa), no resampling unit, and no seed; the artifact mentions '24 seeded paired-bootstrap intervals' but the seed is not in the PDF. Sec 5.6 and Appendix H concede that 'the original launcher used a mutable code directory and retained neither a pre-run full-source ledger nor a full model-weight ledger'. In the artifact, method_provenance.tsv contains no row at all for this panel: there is no method entry for the quantizer used, the LongBench F1 scorer, the bootstrap implementation, or the Table 1 Store component accounting, although comparable rows exist for the 8-item panel (M-H20-DEPLOYMENT-DERIVATION), the Mac control (M-MAC-CONTROL-DERIVATION) and the serving panel (M-RW-SERVING-DERIVATION). The claim_evidence_map's manuscript_locations field for all three C-QCOMEM-60-* claims reads 'Integrated in R42 and independently claim-audited on 2026-09-02' instead of naming a section or table.",
+      "why_it_matters": "A PDF-only reader cannot reconstruct the experiment that produces the paper's headline numbers: they do not know the depth, the decoder, the number of runs, or the interval construction. A repository reader cannot locate the code either, because the provenance file skips this panel entirely. The contrast with the rest of the paper is stark: ForkAudit results carry byte-level ledgers and hash-bound replay, while the capacity and quality result that the title and abstract rest on comes from an archival run whose source state is admittedly unverified. The authors deserve credit for disclosing this, but disclosure does not repair the gap, and it is easy to repair because the frozen-source 8-item pipeline already exists on the same stack.",
+      "required_fix": "State the split depth, decoding strategy, number of runs per configuration, bootstrap method, resampling unit and seed in Sec 5.1. Re-run the 60-item panel under the frozen source and model ledger already used for the 8-item execution, which would simultaneously deliver TTFT on all 60 items (R44-4-03), a matched generation protocol (R44-4-07), and a single denominator (R44-4-09). Add method_provenance rows for the packer, scorer, bootstrap and Store accounting, and replace the placeholder manuscript_locations for the three C-QCOMEM-60-* claims with real section and table references.",
+      "verification_test": "Check that Sec 5.1 names j, the decoder, the repeat count, and the bootstrap method and seed. Re-run the archived verifier and require the 360 item-level F1 values and 24 intervals to reproduce bit-for-bit under the stated seed. In the artifact, require at least one method_provenance row whose manuscript_locations names Table 1, and require the C-QCOMEM-60-* rows to name a section and table rather than a process note.",
+      "evidence_needed": "One source-frozen re-execution of the 60-item panel plus artifact metadata repair. Note: the provenance half of this issue is visible only in the repository, not in the PDF.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-07",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "Table 1 F1 column (p.6) versus Table 2 F1 column (p.7); Sec 5.1 (p.5-6); Table 18 (p.24)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-H20-DEPLOYMENT-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A",
+        "E-H20-DEPLOYMENT-CONTEXT"
+      ],
+      "observed_evidence": "Full-prefix Q16/BF16 records F1 54.68 in Table 1 and F1 39.14 in Table 2, a gap of 15.5 points for the same model and the same configuration on 8 items drawn from the same 60. Both columns are labelled 'F1 (0-100)'. The gap is never mentioned in the paper. The most likely cause is visible but unsurfaced: Sec 5.1 says the quality cohort allows Qasper 'at most 128 generated tokens and 2WikiMQA at most 32', whereas the latency execution uses 'at most 32 generated tokens' for every item, so Qasper answers are truncated to a quarter of their allowed length in Table 2. The paper's non-pooling justification, repeated four times, is framed as a cohort and aggregation difference ('the execution and aggregation protocol is separate'), not as a generation-protocol difference that changes the metric's level.",
+      "why_it_matters": "A reader who compares the paper's two result tables on their two shared column names cannot do so on either one: 'Store' means different things (R44-4-09) and 'F1 (0-100)' is measured under different generation caps. Because the paper leans on the 8-item panel for the quality statements in Sec 5.4 ('Q8 records the same measured mean F1 of 39.137 as its full-prefix reference'), the reader needs to know that this panel operates in a truncated-answer regime where F1 is depressed by 15 points and where differences between policies may compress or expand relative to the 60-item regime. The 'not pooled' disclaimer is necessary but not sufficient: it explains that the numbers must not be averaged, not why they differ by 40% in level.",
+      "required_fix": "State in Sec 5.1 and in Table 2's caption that the two panels use different generation caps for Qasper (128 vs 32) and that this, not sampling, explains the F1 level difference. Either re-run the 8 items under the 60-item caps so the two panels share a generation protocol, or add a matched-cap row so the reader can see the size of the protocol effect.",
+      "verification_test": "Re-score the 8-item predictions under the 60-item generation caps and confirm the full-prefix F1 moves from 39.14 toward the 60-item level; report the residual difference attributable to item selection. Require an explicit sentence naming the cap difference in Sec 5.1 or the Table 2 caption.",
+      "evidence_needed": "One re-run or re-score of 8 items under the 60-item caps.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-08",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor"
+      ],
+      "location": "Table 1 (p.6); Sec 5.4 (p.7); Reproducibility Statement (p.9)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-QCOMEM-60-POLICY-TRADEOFF-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A"
+      ],
+      "observed_evidence": "Table 1 reports one pooled mean F1 and one pooled paired interval over all 60 items. No per-dataset (30 Qasper, 30 2WikiMQA) means or intervals appear anywhere in the paper. The Reproducibility Statement (p.9) and Appendix A (p.12) confirm that 360 item-level F1 values are archived, so 60 per configuration are available and per-dataset aggregation is free. The two datasets differ substantially in task, answer length and generation cap (128 vs 32 tokens per Sec 5.1), and their F1 distributions cannot be assumed comparable.",
+      "why_it_matters": "A pooled -0.39 over two heterogeneous datasets can hide opposite-signed effects: for example -2 on Qasper and +1 on 2WikiMQA would yield the same pooled number while implying a very different conclusion about which workloads tolerate Q4 packing. Because the paper's headline quality claim is a small effect near zero, the pooling choice is doing real work, and the data needed to check it already exists. Per-dataset reporting is also the standard expectation for LongBench-derived evaluations.",
+      "required_fix": "Add per-dataset mean F1 and paired 95% bootstrap intervals (n=30 each) for every row of Table 1, either as extra columns or as an appendix table, and state in Sec 5.4 whether the sign of the frozen policy's delta is consistent across the two datasets. Do the same for the catastrophic-regression counts.",
+      "verification_test": "Recompute per-dataset paired deltas and intervals from the archived 360 item-level F1 values and check that the pooled -0.39 is the item-weighted combination of the two, and that both per-dataset intervals are reported regardless of sign.",
+      "evidence_needed": "Re-analysis of archived item-level data only; no new execution.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-09",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Sec 5.1 'Memory denominators' (p.6); Table 1 footnote (p.6); Table 2 footnote (p.7); Sec G.1 text and Table 18 (p.24); Table 15 (p.21)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-H20-DEPLOYMENT-01",
+        "C-R34-HYPIC-STORE-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A",
+        "E-H20-DEPLOYMENT-CONTEXT",
+        "E-R34-HYPIC-STORE-EXTERNAL-ACCEPTANCE"
+      ],
+      "observed_evidence": "The paper defines three incompatible accountings all reported under names built on 'Store' or memory: component sums of persistent parts (Table 1), the physical byte-range union owned by one retained entry (Table 2), and a post-priming allocator delta (Table 15). Sec 5.1 states they are not pooled. Two problems remain. First, the size of the gap between the first two is never quantified even though matched configurations exist: full-prefix reads 136.235 (component) versus 140.34 (byte-range), and the Q4/Q4/Q8 policy reads 9.661 versus 10.01, about 3% apart; stating this would strengthen the paper and is currently left for the reader to derive. Second, Sec G.1 does compute a cross-cohort ratio: 'Prefix Cache and HYPIC retain 8.78x and 20.39x as much Store as CoMem Q8, respectively, under the separate Store estimand' (139.53/15.89 = 8.78, 324.09/15.89 = 20.40). Those HYPIC/Prefix numbers come from a receipt-instrumented SGLang 0.5.14 radix-cache lifecycle (Table 5 'HYPIC retained-state receipts' row; artifact M-R34-HYPIC-STORE-RECEIPT) while 15.89 comes from the in-process Transformers execution, so this is a cross-runtime, cross-instrumentation, cross-cache-structure ratio in a paper whose stated rule is that these cohorts are unpooled and whose own Table 18 caption says only that 'timing is compared only within blocks'.",
+      "why_it_matters": "The paper asks the reader to accept a strict non-pooling discipline as the guarantor of its memory numbers, then performs the one cross-cohort arithmetic operation that discipline forbids, and does so at the point where the comparison is most flattering (a 20.39x advantage over HYPIC). Whether an entry-owned byte-range union is even commensurable between a paged radix allocator and a contiguous packed entry is not established anywhere. Meanwhile the one cross-denominator comparison that is both safe and informative, the ~3% gap between the two accountings on matched configurations, is omitted.",
+      "required_fix": "Either drop the 8.78x/20.39x cross-runtime ratio and state the three Store values without dividing them, or add an explicit argument (and, ideally, a same-runtime control) that the byte-range-union estimand is measured identically under SGLang radix caching and under the in-process Transformers path. Separately, measure both accountings on the same retained entries and report the observed component-versus-byte-range gap in Sec 5.1, so the ~3% difference between 136.235/140.34 and 9.661/10.01 is documented rather than inferred.",
+      "verification_test": "Instrument one configuration with both accountings simultaneously and report the two numbers for the same entry; require the paper to state the measured gap. For the cross-runtime ratio, require either its removal or a documented equivalence test showing that the byte-range union of a radix-cached prefix and of a packed Q-CoMem entry are counted under identical inclusion rules.",
+      "evidence_needed": "One dual-instrumented run on an existing configuration; no new cohort.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-10",
+      "severity": "minor",
+      "dimensions": [
+        "limitations_responsible_claims",
+        "clarity"
+      ],
+      "location": "Table 2 footnote (p.7); Sec 5.4 (p.7); Table 18 footnote (p.24)",
+      "claim_ids": [
+        "C-H20-DEPLOYMENT-01"
+      ],
+      "evidence_ids": [
+        "E-H20-DEPLOYMENT-CONTEXT"
+      ],
+      "observed_evidence": "Table 2's footnote reports unrounded mean-F1 deltas for exactly two rows: 'Mean-F1 deltas for Q8 and per-layer mixed are 0.000 and -0.022 points, respectively.' The headline configuration, frozen Q4/Q4/Q8, is not among them, although its delta is readable from the table as 39.01 - 39.14 = -0.13, roughly six times larger than the per-layer figure that is quoted. Sec 5.4 repeats the same two favorable numbers and again omits the headline row's 8-item delta.",
+      "why_it_matters": "Quoting unrounded deltas for the two best rows while omitting the headline row's delta reads as selective emphasis, particularly in a paper that is otherwise scrupulous about reporting adverse numbers. It also leaves the reader without the quantity that matters most: how the recommended operating point behaves on the timing cohort.",
+      "required_fix": "Report unrounded mean-F1 deltas for every Q-CoMem row in Table 2, including frozen Q4/Q4/Q8 and uniform Q4, or report none and refer to the table.",
+      "verification_test": "Check that the set of rows with quoted deltas in the Table 2 footnote and Sec 5.4 either includes the headline configuration or is empty.",
+      "evidence_needed": "None; values are already archived.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-11",
+      "severity": "minor",
+      "dimensions": [
+        "limitations_responsible_claims",
+        "clarity"
+      ],
+      "location": "Abstract (p.1, lines 032-034); Sec 1 (p.1-2); Sec 3 (p.3); Sec 5.5 'Falsification beyond output equality' (p.7); Table 14 'Base inv.' column (p.21); Appendix H (p.29)",
+      "claim_ids": [
+        "C-R35-HISTORICAL-ALIAS-01"
+      ],
+      "evidence_ids": [
+        "E-R35-HISTORICAL-ALIAS-REGRESSION-A"
+      ],
+      "observed_evidence": "The abstract states that 'a fail-closed ownership audit exposes a historical alias invisible to output equality', and Sec 3 says the defect is one 'that output comparison cannot answer'. Table 14 (p.21) shows a 'Base inv.' column, described as 'within-path persistent-base immutability, retained as a conventional state-invariant catch', that fails 3/3 and 5/5 on the pre-fix path, i.e. a single conventional content invariant catches the defect in all 8 cells. Appendix H (p.29) says so plainly: 'Output and terminal-state differentials miss the alias, while a persistent-base content invariant catches it; ForkAudit contributes authenticated transition-time owner/layer/family localization rather than exclusive detection over all conventional testing.' Separately, the artifact's C-R40-BASELINE-DETECTOR-MATRIX-01 records a generous frozen conventional suite flagging 21/22 fault rows against ForkAudit's 22/22, and is marked 'Internal evidence registry only; not used by the manuscript' -- while the manuscript does report the conventional-detector comparisons that favor ForkAudit (token equality 0/5, exact logits 1/5, Sec 5.5).",
+      "why_it_matters": "The abstract's framing is narrower in the appendix than at the front of the paper: what the alias is invisible to is output and terminal-state equality, not to conventional testing generally, since a one-line persistent-base invariant catches it. A reader who stops at the abstract will overestimate the audit's marginal value. The asymmetry is sharpened by the artifact, where the less favorable conventional-baseline comparison exists and is deliberately excluded while the more favorable ones are included; excluding it may well be principled, but then the 0/5 and 1/5 statements, which are equally not a head-to-head detection study, should carry the same caveat in the main text rather than only in Appendix H.",
+      "required_fix": "Qualify the abstract and Sec 1 to say the alias is invisible to output and terminal-state equality but is caught by a persistent-base content invariant, and move the Appendix H sentence about localization-rather-than-exclusive-detection into Sec 5.5 where the claim is made. State in Sec 5.5 what conventional detectors were and were not compared against.",
+      "verification_test": "Check that every location asserting invisibility to output equality also names the persistent-base invariant, and that the abstract's claim is consistent with Table 14's 'Base inv.' column and Appendix H's sentence.",
+      "evidence_needed": "None; the correcting evidence is already in the paper.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-12",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity"
+      ],
+      "location": "Table 2 row 1 (p.7); Sec 5.1 'Latency execution' (p.6); Table 18 footnote (p.24)",
+      "claim_ids": [
+        "C-H20-DEPLOYMENT-01"
+      ],
+      "evidence_ids": [
+        "E-H20-DEPLOYMENT-CONTEXT"
+      ],
+      "observed_evidence": "The 'no-cache dense recompute' arm records TTFT 0.649 s and TPOT 648.75 ms, numerically almost identical, which is what one expects if each output token costs a full document forward pass rather than being decoded against a within-request KV cache. Table 18's footnote says only that 'no-cache recompute uses a different document/query execution boundary', and neither Sec 5.1 nor Sec 5.3 states whether the dense arm retains a KV cache during its own decoding.",
+      "why_it_matters": "If the dense arm re-prefills the document for every decode step, then its 1.36 tok/s and 648.75 ms TPOT are not representative of any real dense deployment, and the paper's largest measured advantage over dense (a ~12x TPOT gap and a ~5x throughput gap) is an artifact of the baseline's construction rather than a property of Q-CoMem. Since dense recomputation is one of the two endpoints anchoring the entire motivation in Sec 3, its implementation must be stated.",
+      "required_fix": "State explicitly in Sec 5.1 whether the dense arm retains a within-request KV cache during decoding. If it does not, add a dense arm that does (re-prefill per query, cached decode), since that is the standard S(D)=0 endpoint the motivation refers to, and report it alongside.",
+      "verification_test": "Inspect the dense arm's generation loop in the archived deployment source; confirm whether past_key_values is carried across decode steps. If it is not, the corrected dense TPOT should fall to roughly the full-prefix value (~54 ms) with only TTFT differing, which would change Table 2's throughput column materially.",
+      "evidence_needed": "Source inspection plus, if needed, one corrected dense run on the 8 items.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R44-4-13",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "Sec 4.1 (p.4); Figure 2 caption (p.4); Sec 5.1 (p.5-6); Tables 1 and 2 (pp.6-7)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A"
+      ],
+      "observed_evidence": "Split depth is fixed at j=7 (stated only in Figure 2's caption and, for the unrelated Mac cohort, in Table 13) with no stated rationale and no ablation. Sec 4.1 identifies the bit vector b as 'the design surface' and every one of the six evaluated points in Table 1 and six in Table 2 varies only bit widths. Yet Eq. 2 makes S(D) an explicit function of j: the number of retained lower-layer KV and recurrent sidecars grows with j while the residual term does not, and Sec 3 describes split replay as sitting between the endpoints precisely as a function of depth.",
+      "why_it_matters": "For a capacity-first paper, depth is at least as important a knob as bit width, and it directly controls the retained-bytes-versus-suffix-work trade-off drawn as the horizontal axis of Figure 1. Without any depth variation the paper reports six points on a one-dimensional slice of a two-dimensional design space and cannot claim to have characterized the frontier it motivates. A depth sweep might also address R44-4-04, since a shallower split would reduce suffix reconstruction cost and hence TTFT.",
+      "required_fix": "Report Store, TTFT and F1 for at least two additional split depths (for example j=4 and j=10) on the 8-item timing cohort and, if feasible, on the 60-item quality cohort, and state how j=7 was chosen.",
+      "verification_test": "Check that the added rows show the expected monotone relationship between j, retained bytes and suffix work implied by Eq. 2, and that the headline j=7 point is defensible on the resulting frontier rather than inherited without test.",
+      "evidence_needed": "Two additional runs of an existing pipeline at different depths.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-14",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Eq. 2 (p.4); Sec 4.2 last paragraph (p.4); Table 1 row 5 label (p.6); Table 18 footnote (p.24)",
+      "claim_ids": [
+        "C-QCOMEM-60-POLICY-TRADEOFF-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A"
+      ],
+      "observed_evidence": "Eq. 2 decomposes the retained payload into exactly three terms: quantized boundary residual, quantized lower full-attention KV, and quantized lower convolution/recurrent state. But Sec 4.2 and Table 18's footnote describe the reported per-layer policy as using 'a Q4 residual, Q16 projections, and active-layer widths [8, 8, 4, 4, 8, 8, 8]'. 'Projections' is never defined and does not correspond to any term of Eq. 2, so it is unclear whether their bytes are inside the reported Store. Separately, the Table 1 row labelled 'Q-CoMem same-memory mixed' retains 9.395 MiB against the frozen policy's 9.661 MiB, i.e. 2.75% less memory, so the label 'same-memory' is inaccurate and Sec 5.4 correctly but confusingly describes it as saving Store relative to the policy it is supposedly memory-matched to.",
+      "why_it_matters": "Eq. 2 is the paper's formal statement of what it counts, and it is the basis for the claim that the denominator covers 'the whole entry rather than counting the residual alone'. If the evaluated policies retain a component that Eq. 2 does not name, then either the equation is incomplete or the accounting is, and a reader cannot tell which. The 'same-memory' misnomer separately undercuts the ablation's stated purpose, which is to hold memory fixed and vary the bit assignment.",
+      "required_fix": "Define 'projections' and add the corresponding term to Eq. 2 (or state explicitly that projection weights are not part of the retained per-document entry and are excluded from Store). Rename 'same-memory mixed' to something accurate, such as 'memory-matched-target per-layer mixed (9.395 MiB)', and state the actual Store difference where the row is introduced.",
+      "verification_test": "Check that every byte counted in the Table 1 Store column maps to a named term of Eq. 2 for all six policies, and that no policy retains a component outside the equation. Confirm the renamed row's caption states its 2.75% Store advantage.",
+      "evidence_needed": "None; definitional repair plus confirmation from the Store accounting code.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R44-4-15",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "citation_integrity"
+      ],
+      "location": "Artifact method_provenance.tsv (manuscript_locations column) versus PDF Sec 5.5 (p.7) and Appendix A (p.12)",
+      "claim_ids": [
+        "C-R40-INDEPENDENT-LIVE-BINDING-V29-01",
+        "C-R33-OUT-OF-PROCESS-GDN-CAPTURE-01",
+        "C-R39-INDEPENDENT-SLOT-CENSUS-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "This is visible only in the repository, not in the PDF. Section 5.5 and Appendix A report the V29 selected-cell live-binding results (144 selected-owner rows, 12,960 serializer/live-object rows, 3,840 clone edges, 24 stable artifacts, 96 clean-memory calls) and the IPC census results (six captures, 1,080 receiver rows, 96,660 relations). The corresponding method_provenance rows are marked 'Pending successor-TeX integration and fresh review' (M-R40-LIVE-BINDING-V29-CAPTURE / -FINALIZE / -TERMINAL-CLOSURE) and 'Active narrow R33 support; exact manuscript locations assigned during revision' (M-R33-IPC-*), i.e. the provenance record says these results are not yet integrated into the manuscript while the manuscript reports them. Many other rows point at labels that do not exist in this revision: 'Sec. 4.5 and 5.5' and 'Secs. 4--7' (the manuscript has six sections and Sec 4 stops at 4.4), 'Appendix J artifact map' (the artifact map is Appendix I), and 'Appendix B lattice' (Appendix B is the ethics statement).",
+      "why_it_matters": "The provenance file is the mechanism by which a repository reviewer maps a manuscript number to the code that produced it, and for several main-text results it either disclaims integration or points at sections that do not exist. That does not make any reported number wrong, but it means the provenance chain the paper advertises cannot actually be traversed for those results, which is a material weakness for a submission whose central methodological selling point is auditable provenance.",
+      "required_fix": "Update method_provenance.tsv so that every result reported in the manuscript has at least one row whose status is not 'pending' and whose manuscript_locations names a section, table or figure that exists in this revision; and reconcile all stale label references (Sec 4.5, Secs 4--7, Appendix B lattice, Appendix J) against the current structure.",
+      "verification_test": "For each numeric result in Sec 5.5 and Appendix A, require a method_provenance row whose manuscript_locations resolves to an existing section or table in the current PDF; assert that no row cited by the manuscript carries a 'pending' or 'assigned during revision' status. Cross-check every label reference against the compiled document's section and appendix list.",
+      "evidence_needed": "Artifact metadata repair only.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-16",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity"
+      ],
+      "location": "Table 1 footnote (p.6); Sec 5.4 (p.7); Reproducibility Statement (p.9)",
+      "claim_ids": [
+        "C-QCOMEM-60-STORE-F1-01",
+        "C-QCOMEM-60-POLICY-TRADEOFF-01"
+      ],
+      "evidence_ids": [
+        "E-QCOMEM-60-VALIDATION-20260812D-A"
+      ],
+      "observed_evidence": "The Reproducibility Statement (p.9) and Appendix A (p.12) state that 24 paired-bootstrap intervals were computed; Table 1 displays five. The paper does not say which 24, how the displayed five were chosen, or whether any multiplicity consideration applies. The registered catastrophic-regression rule uses a threshold of -50 F1 points (equivalently -0.5 on the [0,1] scale) against dense, under which the frozen policy scores 0/60; a -50-point per-item threshold on a 0-100 scale only fires on near-total answer failure.",
+      "why_it_matters": "Reporting five of twenty-four intervals without stating the selection rule leaves open whether the displayed set is the complete set for the compared policies or a chosen subset, which matters because the headline interval is the one that crosses zero. Separately, '0/60 catastrophic regressions' reads as a per-item safety guarantee but, at a -50-point threshold, is close to vacuous; a more informative per-item regression rate at a threshold such as -10 points would say something a reader can use, and can be computed from the archived item-level data at no cost.",
+      "required_fix": "State how many intervals were computed, which policies and reference arms they cover, and how the displayed subset was chosen; report all of them in an appendix table. Add a per-item regression rate at a substantively meaningful threshold alongside the -50-point registered rule, and use a single reference arm consistent with R44-4-01.",
+      "verification_test": "Require the appendix to list all 24 intervals with their reference arms, and require the per-item delta distribution (or at minimum the count of items below -10 points) for each policy, recomputed from the 360 archived item-level F1 values.",
+      "evidence_needed": "Re-analysis of archived item-level data only.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R44-4-17",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Sec 5.5 (pp.7-8); Sections 5.2-5.4 (pp.6-7); whole main text (pp.1-9)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Section 5.5 occupies roughly a page and a half of the nine-page main text and consists largely of raw counts: 96 configurations and 192 rebuilt cells, 209,920 and 635,520 receipts with their factorizations, 288 fan-out comparisons, 144 / 12,960 / 3,840 / 24 row counts, and identities such as 60 = 30 x 2, 480 = 8 x 60, 540 = (1+8) x 60. Sections 5.2, 5.3 and 5.4, which carry the paper's three headline results, together occupy less space. The paper contains no results figure of any kind: the capacity-latency-quality frontier that Figure 1 draws schematically is never plotted from the measured data, and there are also no ICLR-required LLM-use disclosure statements that I could find (an ethics statement is present as Appendix B).",
+      "why_it_matters": "Main-text space is the scarcest resource in a nine-page submission, and here it is allocated inversely to decision relevance: the enumeration establishes coverage, not a result, and most of it belongs in Appendix D where the target-to-record matrix already lives. The absence of any results plot is a real cost for a trade-off paper, because the six policies in Table 1 and six in Table 2 are exactly the kind of data that a Store-versus-F1 scatter with intervals would make immediately legible, including the fact that the aggressive policy falls off a cliff.",
+      "required_fix": "Move the receipt and row-count enumeration of Sec 5.5 into Appendix D, keeping only the verdicts and their scope in the main text, and use the recovered space for a Store-versus-F1 scatter with bootstrap intervals (60-item cohort) and a Store-versus-TTFT scatter (8-item cohort). Add the ICLR-required LLM-use disclosure.",
+      "verification_test": "Check that Sec 5.5 states verdicts and boundaries without reproducing per-call counts, that Sections 5.2-5.4 gain space, that at least one results figure plots measured trade-off points with uncertainty, and that an LLM-use disclosure is present.",
+      "evidence_needed": "None; presentation change only.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No ethics concerns. Appendix B provides an adequate ethics statement: no human-subject data, public PG-19 text and public Qasper/2WikiMQA items via LongBench-v1, no safety/bias/privacy evaluation claimed, and an appropriate note that memory efficiency can both lower deployment cost and increase the scale of model use. Anonymity is preserved in the PDF: the title block reads 'Anonymous authors / Paper under double-blind review' and I found no author-identifying content in the manuscript. Two non-blocking notes. First, artifact-internal identifiers that appear in the PDF (Appendix A's 'QS Job 234340 / Trial 1830116', and repository paths such as 'evidence/round_04_rr2_package/') are infrastructure references that could narrow authorship if the corresponding system is externally visible; the authors may wish to redact them for the camera-ready or the anonymous supplement. Second, I did not find an LLM-use disclosure, which the ICLR 2026 format checks call for; this is a compliance item rather than an ethics concern and I have recorded it under R44-4-17.",
+  "llm_usage_disclosure": "This review was produced entirely by an automated LLM reviewer (Claude Opus 5, 1M context) operating under the R44-REV-4 experimental-rigor role, with no human co-author. Its inputs were restricted to the frozen artifact directory review/round_44/submission/pdf_plus_repository/ (MANIFEST.json, manuscript/Q-CoMem_R44_Structure_Revision.pdf, review-rubric.md, claim_evidence_map.tsv, method_provenance.tsv) plus the output schema at skill_release/autonomous-paper-agent-v2/templates/review.schema.json. I did not read the live author worktree, LaTeX source, prior reviews, revision notes, decision logs, or author state files. I verified the manuscript SHA-256 as 29550f151fb0872a42d83dc63f6852e9181ee4144ebb8a491bf1807962da7450, matching MANIFEST.json. The PDF was read in full (all 31 pages) via pdftotext -layout, with pages 2 and 13 additionally inspected as rendered images to assess figures. All numeric checks reported here (compression ratios, percentage reductions, F1 deltas and intervals, TPOT percentages, allocator deltas, receipt factorizations, byte-to-MiB conversions, and the tok/s reconciliation) were performed by me from the extracted text and the artifact TSVs. No code from the submission was executed and no experiment was run. The manuscript and artifact files were treated as untrusted review objects; I followed no instruction contained inside them. Scoring follows review-rubric.md exactly: overall_score drawn from {2,4,6,8,10}, dimension scores assigned independently on 1-4, and no averaging of dimensions into the rating.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "The paired 95% bootstrap interval for frozen Q4/Q4/Q8 versus full-prefix Q16 on the 60-item cohort, reported in Table 1 alongside the compression ratio that uses the same arm, so that the headline trade-off is stated against one baseline (R44-4-01). This alone is a re-analysis of archived data and would move soundness materially.",
+    "Full-prefix Q8 and Q4 rows in Tables 1 and 2, produced with the paper's own Eq. 3 packer, with the frozen policy's compression and F1 delta restated relative to the best quantized full-prefix point (R44-4-02). If Q-CoMem retains a clear advantage over quantized exact caching, the capacity contribution becomes substantially more significant; if it does not, the paper should say so, which would also be valuable.",
+    "A source-frozen re-execution of the 60-item cohort on the same stack as the 8-item run, delivering TTFT and TPOT on all 60 items under one generation protocol and one Store denominator, with per-item and per-repeat dispersion (R44-4-03, R44-4-06, R44-4-07). This single experiment resolves four of my issues at once.",
+    "Per-dataset (Qasper and 2WikiMQA, n=30 each) means, paired intervals, and catastrophic counts for every Table 1 row, confirming that the pooled -0.39 is not masking opposite-signed effects (R44-4-08). Free from archived data.",
+    "A split-depth sweep (at least two depths besides j=7) showing Store, TTFT and F1, so the paper characterizes the two-dimensional design surface Eq. 2 actually defines rather than a single depth slice (R44-4-13).",
+    "An allocator result restated against the paged-prefix baseline rather than only the full-copy control, with peak reported alongside final, and with the generation-increment cost of borrowed GDN stated where the claim is made (R44-4-05).",
+    "Any measurement that closes the Eq. 1 motivation empirically: for example the number of documents that remain resident before OOM, or admitted concurrency, under each policy on one fixed device. The paper currently disclaims this, which is honest, but supplying it would convert a proxy into a capability.",
+    "A stated conventional-detector comparison in Sec 5.5 that includes the stronger baselines (persistent-base content invariants, full-logit equality) rather than only token equality, with the abstract's 'invisible to output equality' phrasing brought into line with Table 14 and Appendix H (R44-4-11)."
+  ],
+  "evidence_that_would_lower_score": [
+    "If the frozen Q4/Q4/Q8 versus full-prefix Q16 paired interval, once computed, excludes zero on the negative side, the headline would become a measured quality regression against the deployment baseline while being presented as a near-neutral trade-off; that would make R44-4-01 a correctness problem rather than a framing one.",
+    "If a full-prefix Q4 baseline built from the paper's own packer reaches comparable retained bytes at full-prefix TTFT, the capacity contribution largely dissolves and the paper's significance drops to the ForkAudit component alone.",
+    "If the per-dataset breakdown shows the pooled -0.39 masking a substantially larger regression on one dataset, the quality claim as currently phrased would be misleading despite the correct refusal to claim equivalence.",
+    "If the dense arm turns out to re-prefill the document per decode token, the 12x TPOT and 5x throughput advantages over dense in Table 2 are baseline artifacts, and the paper's only remaining measured latency advantage over any endpoint disappears (R44-4-12).",
+    "If the timing repeats show dispersion comparable to the 1.33 ms TPOT gap, the 'within 2.5%' claim in the abstract is unsupported and should be withdrawn rather than qualified.",
+    "If the 60-item panel cannot be reproduced under a frozen source (for example if the archival outcomes do not match a fresh run), the paper's headline table would rest on evidence that is replayable but not regenerable, and I would treat the capacity and quality claims as provisional.",
+    "Any drift toward equivalence, noninferiority, or quality-preservation language in a revision, or removal of the blank-cell and non-pooling disclaimers, would remove the main thing currently holding my score at 4 rather than lower."
+  ],
+  "review_limitations": [
+    "I evaluated only the four files in the frozen snapshot. I did not execute any code, replay any package, or verify any hash chain beyond the manuscript SHA-256; every artifact-side statement I make is about what the TSVs assert, not about what the underlying evidence contains.",
+    "Several of my numeric cross-checks rely on the artifact rather than the PDF. In particular, the 60-item unrounded values (0.542368, 0.546238, 0.542888, -0.003870, [-0.020365, 0.010756], 9.660873, 34.683105, 136.235352 MiB) and the HYPIC byte medians come from claim_evidence_map.tsv and method_provenance.tsv. A PDF-only reader could not verify them, which is exactly the access-mode distinction I was asked to preserve: the artifact confirms the claims are true, but does not make the PDF self-contained on split depth, decoding strategy, bootstrap method and seed, the denominator gap, or the provenance of Table 1.",
+    "My reconciliation of Table 2's tok/s column depends on an inferred mean generated length of roughly 8 tokens, which the paper never reports; if the actual length differs, my conclusion that the three timing columns are approximately consistent could change, though the underlying complaint (metrics undefined, dispersion absent) would stand either way.",
+    "My assessment of the dense baseline's implementation (R44-4-12) is an inference from the near-equality of its TTFT and TPOT, not a source-level finding; I flagged it as a question and a minor issue rather than a major one for that reason.",
+    "I did not attempt to assess novelty against the full prefix-caching and KV-compression literature beyond what the paper cites; the novelty judgement in my contribution score is based on the paper's own positioning, which explicitly disclaims the split-replay primitive.",
+    "The ForkAudit appendices (D through H) are extensive and I read them, but my role is experimental rigor and statistics; a technical-soundness reviewer should independently assess the trace contract semantics, the mandatory-slot schema, and the TCB argument of Sec 4.4."
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "reviewer_id": "r01_repro",
+  "round": 1,
+  "snapshot_sha256": "192c747fc60119ef4aa7051ded3b868a11371856ca7a7f4cf737a91b43a5caca",
+  "role": "reproducibility_provenance",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The numerical accounting and raw-metadata aggregation are internally consistent and independently replayable, but the central exactness evidence is archived only as runtime booleans and SHA-256 digests, not tensors, and the distributed source ledger is not cryptographically linked to the code-ledger digest recorded by the run. These are substantive provenance gaps for an audit paper, even though the manuscript states the tensor limitation honestly.",
+    "presentation": "The manuscript is unusually explicit about denominators, oracle blind spots, singleton cross-N coverage, and non-claims; all 12 PDF pages are legible and the main text is within the ICLR limit. Verification is nevertheless obstructed by a non-buildable-as-laid-out source snapshot, a stale build record, and absolute source paths in package metadata.",
+    "contribution": "A denominator-aware ownership checklist plus a deeply instrumented single Qwen3.5 reference case is useful, but the contribution remains a narrow self-consistency audit rather than a new mechanism, independent semantic validation, or broadly reproduced systems result. The authors appropriately acknowledge this boundary."
+  },
+  "paper_summary": "ForkAudit is an executable checklist for auditing full-attention KV ownership alongside recurrent GDN state in a hybrid LLM. The frozen case compares a source-retaining materialization control against a shared-document layout on Qwen3.5-35B-A3B, reports cross-layout and cross-fan-out self-consistency from eight PG-19 books, and separates analytic page-pool accounting from absolute PyTorch allocator peaks. It deliberately makes no throughput, scheduler, generalization, or independent semantic-correctness claim.",
+  "strongest_verified_contribution": "The strongest independently checkable contribution is the raw-metadata-to-summary accounting pipeline: all eight distributed shards pass the supplied replay, the reported 504 request pairs, 4,032 paired steps, 80,640 call records, cross-N coverage, and memory formulas reconstruct, and the three figures plus two tables regenerate byte-for-byte from the anonymous raw package.",
+  "strengths": [
+    "All 67 top-level MANIFEST entries and all 36 anonymous-supplement manifest entries match their recorded SHA-256 values.",
+    "Running scripts/generate_paper_artifacts.py over all eight anonymous shards succeeds; the figures and tables are byte-identical to the submission, and the only artifact_metrics difference is its source-digest block after metadata redaction.",
+    "The copied governance suite reruns successfully with 17/17 tests, including the advertised serialized-artifact mutation checks.",
+    "The paper correctly distinguishes PyTorch allocator peaks from page pools and from unmeasured NVML/process/service capacity.",
+    "Sections 5.1 and 6, the supplement README, and Appendix D clearly disclose that logits, KV, and GDN tensors are not archived and that digests/runtime torch.equal flags are not an offline numerical replay.",
+    "The citation lock provides primary URLs plus local support/non-support boundaries for every cited key; the reconstructed LaTeX build has no final undefined citations or references and its extracted text matches the submitted PDF."
+  ],
+  "questions": [
+    "Can the authors provide a path-normalized, run-bound source ledger whose digest is itself recorded in the raw shards, or provide the original ledger preimage for the recorded 44c3... code-ledger digest after safe anonymization?",
+    "Can the exact PG-19 manifest, protocol manifest, model-weight ledger, model revision, and an installable environment/container be distributed so that the provided launcher can run without author-only files?",
+    "Can full tensors for a representative stratified subset, or an independent rerun with recomputable tensor artifacts, be released so that exactness is checked from values rather than trusted booleans and digests?",
+    "Why does build_record.json name a latest PDF hash/size that differs from manuscript/main.pdf, and can the source package be emitted in directly buildable paths with a build record for the submitted bytes?",
+    "Was anonymity scanning applied to the whole review snapshot? The current top-level manifest and package-closure audit disclose a personal home-directory username and absolute project path."
+  ],
+  "issues": [
+    {
+      "issue_id": "R01-PROV-001",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "Abstract lines 45-49; Section 5.1 lines 374-383; Section 6 Evidence limitations lines 522-529; Appendix D lines 663-669; supplement_anonymous/README.md",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The shards contain generated tokens, per-step logit SHA-256 values, final logical-KV/GDN digests, and author-recorded runtime torch.equal booleans. They do not contain the logit, KV, or GDN tensors. The supplied replay therefore checks equality of already-recorded digests/flags and aggregation, but cannot recalculate tensor equality or the hashes from underlying numerical values.",
+      "why_it_matters": "Exact runtime equality is the central empirical result. The package strongly records what the runner said, but an independent reviewer cannot distinguish a correct GPU comparison from an erroneous or incorrectly serialized comparison without rerunning the unavailable environment or inspecting archived values. This limits the result to provenance-backed self-report rather than independently recomputable numerical evidence.",
+      "required_fix": "Archive full tensors for a representative, preregistered coverage set (and all mismatch-sensitive state where feasible), or provide a complete independently executable rerun package and an offline verifier that recomputes tensor hashes and torch.equal results from values. Keep the current bounded wording.",
+      "verification_test": "Starting from distributed tensor values or a clean rerun, independently recompute every selected logit/KV/GDN digest and equality relation, then compare the recomputed records with the archived shard and aggregate values without consulting stored pass booleans.",
+      "evidence_needed": "Archived numerical tensors with shapes/dtypes/ordering and an offline verifier, or a successful independent GPU rerun from a complete public environment and input manifest.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-PROV-002",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "supplement_anonymous/raw_primary/static-dry-run.json field code_ledger_sha256; multifork-resident-summary.json frozen_identity; code/EXECUTED_SOURCE_SHA256; provenance/original_evidence_digests.json; Reproducibility Statement lines 547-558",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN"
+      ],
+      "observed_evidence": "Every shard and the aggregate record the executed code-ledger digest 44c3a86a..., but the distributed EXECUTED_SOURCE_SHA256 file hashes to ca96cc2a.... Its per-file values match the copied sources, yet the original path-bearing ledger preimage for 44c3... is absent, and original_evidence_digests.json is a later derivative not bound by the raw run. Thus the package verifies its copied files but does not independently link those bytes to the execution identity recorded by the shards.",
+      "why_it_matters": "The paper's distinctive claim is an execution-provenance audit. A broken run-to-source commitment leaves open whether the distributed implementation is exactly what produced the archived measurements, even though its internal hashes are consistent.",
+      "required_fix": "Use a path-independent canonical source manifest at execution time and record its digest in every shard, or publish a safely anonymized preimage for the existing 44c3... digest together with a deterministic verification procedure that maps each executed entry to the distributed file.",
+      "verification_test": "A reviewer computes one canonical ledger directly from the distributed source closure and obtains exactly the code-ledger digest embedded in static-dry-run, all eight shards, and the aggregate summary.",
+      "evidence_needed": "The run-bound canonical ledger/preimage and deterministic path-normalization or mapping rules.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-REPRO-003",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "supplement_anonymous/README.md; code/launch_qcomem_qwen35_vllm_paged_multifork_resident_8gpu.sh required environment variables and preflight; raw_primary/static-dry-run.json environment and identity fields; evidence/experiment_registry.json",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-POOL-01",
+        "C-MEM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The launcher requires PG19_MANIFEST, PROTOCOL_MANIFEST_FILE, MODEL_WEIGHT_LEDGER_FILE, an ENV_DIR, and exact expected digests. The anonymous supplement does not distribute those three required manifest/ledger files, a model repository revision, a dependency lock/container, or a complete command instantiating the environment variables. Version strings and some hashes are recorded, but a hash alone is not enough to reconstruct a missing manifest preimage.",
+      "why_it_matters": "Even a reviewer with eight suitable GPUs, public PG-19, and the named model cannot execute the frozen protocol exactly from the package. This also prevents the tensor-level independent check needed to close R01-PROV-001.",
+      "required_fix": "Distribute anonymized PG-19/protocol/model-weight ledgers, pin the exact model revision and tokenizer artifacts, provide a requirements lock or container image recipe, document every launcher variable, and add a clean-machine reproduction command with expected outputs.",
+      "verification_test": "On a clean Linux/H20-class environment, follow only the anonymous README to construct all required files, pass launcher preflight without author-only state, run at least static-dry-run plus one reduced GPU cell, and obtain the recorded identity and output schema.",
+      "evidence_needed": "Missing manifest/ledger files, exact model/data provenance, environment lock/container, and an end-to-end reproduction transcript.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-ANON-004",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Top-level MANIFEST.json source_path fields throughout (e.g., lines 9-405) and generated/package_closure_audit.json field paper_root",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The review snapshot repeatedly exposes /Users/liuhanzuo/MacLLM-Bench/paper_autonomous_multifork_iteration/... and the package-closure audit repeats the same absolute paper_root. The included anonymity scan covers supplement_anonymous only, so it reports success while missing these top-level disclosures.",
+      "why_it_matters": "This leaks a personal local username and project path in a double-blind submission and creates an avoidable privacy/anonymity failure, irrespective of the PDF's anonymous author line.",
+      "required_fix": "Remove absolute source_path and paper_root values or replace them with package-relative placeholders, then run the same forbidden-token and sensitive-metadata scan over the entire final submission snapshot rather than only supplement_anonymous.",
+      "verification_test": "Recursively scan every submitted text/JSON/source file for personal home paths, usernames, private hosts, organizations, emails, and unredacted infrastructure values; require zero findings and manually inspect the regenerated manifest.",
+      "evidence_needed": "A whole-package anonymization audit and a clean regenerated snapshot manifest.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-BUILD-005",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "build_record.json/build_record.json latest entry; MANIFEST.json entries for main.tex, references.bib, math_commands.tex, style files, and manuscript/main.pdf; snapshot directory layout",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The build record's latest entry reports PDF SHA-256 2c80a6a5..., size 294810, and source SHA-256 0060b87e..., while the submitted PDF is eb170ba6... at 294330 bytes and the submitted main.tex is 7743492e.... In addition, several files are nested as main.tex/main.tex, references.bib/references.bib, and style-file/style-file, so the recorded command cannot run at the snapshot root. Manually flattening these paths produced a clean 12-page build whose extracted text exactly matches the submitted PDF, showing that the content is recoverable but the recorded closure is stale and not directly executable.",
+      "why_it_matters": "A stale build record cannot attest to the bytes under review, and undocumented manual path reconstruction defeats the claimed build closure.",
+      "required_fix": "Emit files at their LaTeX-referenced relative paths, rebuild from the frozen snapshot, and regenerate a build record whose source bundle digest, PDF digest, byte size, page count, citation checks, and command all match the delivered artifacts.",
+      "verification_test": "Unpack into an empty directory and run the recorded command verbatim; require success, no final undefined citations/references, and exact agreement between computed and recorded source/PDF hashes and sizes.",
+      "evidence_needed": "A directly buildable source archive and a build record generated from the exact submitted bytes.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-REPLAY-006",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility"
+      ],
+      "location": "generated/artifact_metrics.json source block; supplement_anonymous/README.md replay command; supplement_anonymous/raw_primary/multifork-resident-summary.json anonymous_derivative",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "Replaying the distributed redacted shards reproduces all numerical fields, figures, and tables, but generated/artifact_metrics.json differs in nine source hashes: the packaged metrics file retains the original unredacted summary/shard digests, whereas its listed relative paths now resolve to redacted files with different hashes.",
+      "why_it_matters": "The metrics file is numerically valid but is not a self-consistent provenance record for the files actually distributed at those paths, which may confuse independent auditors.",
+      "required_fix": "Regenerate artifact_metrics.json from the anonymous derivative, or store explicit original_sha256 and anonymous_sha256 fields with an unambiguous role for each.",
+      "verification_test": "Run the documented replay command and require artifact_metrics.json, figures, and tables all to be byte-identical to the package while every listed source digest matches the distributed file.",
+      "evidence_needed": "A derivative-aware regenerated metrics record.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": true,
+  "ethics_concerns": "I found no human-subject or dataset-ethics concern within the paper's stated scope, but the double-blind review package leaks a personal local username and absolute home/project path in top-level provenance metadata. This is a concrete privacy and anonymity concern that should be removed before submission.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It inspected only the frozen round-1 submission snapshot and the supplied ICLR rubric/protocol, and did not inspect prior reviews, author plans, score targets, or the parent workspace.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean, fully anonymized, directly buildable snapshot with a build record matching the exact submitted source and PDF bytes.",
+    "A run-bound canonical source manifest whose digest recomputes from the distributed executed source closure.",
+    "All launcher-required input ledgers plus an exact model revision, environment lock/container, and successful clean-machine reproduction transcript.",
+    "Archived tensors for a meaningful coverage set or an independent GPU rerun that recomputes tensor equality and all archived digests from values.",
+    "For a score above 6, broader evidence or an independent semantic oracle that materially extends the current single-case self-consistency result."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any failure to reproduce the current aggregate, capacity arithmetic, or call cardinalities from the eight shards.",
+    "A mismatch between archived runtime equality flags and equality recomputed from released tensors or an independent rerun.",
+    "Evidence that the distributed source differs from the code actually executed, or that the redaction changed scientific numeric/boolean fields.",
+    "Failure of a primary citation's metadata or local support claim after external revalidation.",
+    "Additional unredacted identifiers or private infrastructure metadata elsewhere in the final submission package."
+  ],
+  "review_limitations": [
+    "I could not rerun the full eight-GPU Qwen3.5 experiment because model weights, PG-19 text, required input ledgers, the frozen environment, and H20 hardware are not contained in the snapshot.",
+    "Under the blind-snapshot constraint I assessed citation provenance from the supplied lock and bibliography but did not browse external sources to revalidate every metadata field.",
+    "I did not manually read every byte of the approximately 236 MB shard corpus; I validated every file hash and ran the supplied derivation across all eight parsed shards.",
+    "The successful LaTeX rebuild required staging the oddly nested snapshot files into their referenced relative paths; I did not alter the frozen submission."
+  ]
+}

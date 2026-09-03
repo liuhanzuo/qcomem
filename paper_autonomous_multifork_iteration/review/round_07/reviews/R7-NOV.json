@@ -1,0 +1,82 @@
+{
+  "reviewer_id": "R7-NOV",
+  "round": 7,
+  "snapshot_sha256": "5327aacb5e1e3bb59e70814c4e633ac0d4b0f590336cbeb78a0c6f2ae713560a",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {"soundness": 3, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The bounded claims are unusually careful and well supported. Snapshot provenance passed, and read-only reconstructions of the 96-cell primary factorial, eight attention rows, nine matched fault pairs, four GDN transitions, and eight-rank lifecycle cohort reproduced the reported outcomes. The paper also retains the failed Transformers-runtime transfer as negative evidence. Remaining gaps concern the central contract's incremental diagnostic value and transferability rather than an identified contradiction in the one-runtime case.",
+    "presentation": "The paper clearly distinguishes an audit contract from a cache policy, kernel, scheduler, performance result, or completeness proof. Sections 2–3 and Appendix Tables 8–9 state the novelty boundary particularly well. Evaluation remains dense and artifact-centric, and some decision-critical positioning—especially what existing verification practice would miss—is deferred to qualitative tables rather than demonstrated directly.",
+    "contribution": "The contribution is a careful integration of established block sharing, copy-on-write, recurrent-state ownership, metamorphic relations, numerical spot oracles, mutation testing, and denominator accounting into a replayable audit. This is useful, but the paper explicitly claims no new individual mechanism. Only one runtime-specific adapter provides positive evidence, and the experiments do not establish that ForkAudit catches important failures missed by conventional equality checks or native assertions. The resulting scientific contribution is presently narrow and incremental."
+  },
+  "paper_summary": "ForkAudit proposes a seven-target executable audit contract for request-state ownership in hybrid LLM inference, where token-indexed attention KV and mutable recurrent GDN state have different lifetimes. A Qwen3.5-35B-A3B/vLLM case study crosses full-copy versus shared-document KV with materialized versus borrowed GDN bases, records phase-aware storage and call receipts, checks selected attention and GDN transitions against independent FP32 calculations, injects nine targeted faults, and separates logical, page, allocator, and unmeasured process/service memory denominators. A same-adapter cancellation/reclamation cohort succeeds, whereas a Transformers DynamicCache instantiation fails the dense semantic oracle and is correctly reported as negative transfer evidence.",
+  "strongest_verified_contribution": "A highly auditable, replayable one-model/one-runtime reference case that operationalizes heterogeneous KV/GDN ownership through phase-aware, pointer-free storage witnesses and explicit full/partial/open target decisions. The primary replay reconstructed all 96 factorial configurations, 288 phase artifacts, eight bounded attention-oracle rows, and nine matched fault pairs, while the separate GDN and lifecycle replays also passed.",
+  "strengths": [
+    "The novelty boundary is unusually honest: Section 2, page 3 and Appendix H, Tables 8–9 explicitly identify block sharing, hybrid caching, metamorphic testing, independent backend checking, and denominator separation as prior art.",
+    "Section 3, pages 4–5 gives a concrete contract with typed records and operational full/partial/open decision semantics rather than relying only on matching generated tokens.",
+    "The authors preserve important negative evidence. Section 5.3, page 8 and Appendix Table 11, page 17 report that all eight Transformers-runtime clean rows fail the frozen dense oracle rather than presenting ownership and top-1 agreement as successful portability.",
+    "The paper consistently separates implementation exactness from performance, capacity, scheduler, and generality claims; Sections 4.4, 5.4, and 6 and Appendix Tables 4–5 make the denominators and limitations explicit.",
+    "The snapshot-level provenance audit and the primary, GDN, and lifecycle offline reconstructions passed, providing strong support for the reported bounded case-study facts."
+  ],
+  "questions": [
+    "For each M1–M9 fault, which conventional baseline checks—token equality, full-logit equality, native runtime assertions, allocator checks, or ordinary unit tests—would catch it, and which fault is uniquely caught by a ForkAudit ownership/call predicate?",
+    "Can the same record schema and full/partial/open decision rule be instantiated successfully on a second independent hybrid-model adapter or runtime without importing the Qwen/vLLM ownership helpers?",
+    "At the obligation level, what exactly is absent from Marconi's implementation and validation, rather than merely different in its policy-level research objective?",
+    "Is the intended reusable contribution the abstract record schema, the Qwen/vLLM adapter, the replay validator, or the full evidence-production workflow? Which parts can a new runtime adopt without reproducing case-specific code?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R7-NOV-01", "severity": "major", "dimensions": ["novelty", "significance", "experimental_rigor"],
+      "location": "Section 2, page 3, lines 142–160; Section 4.5, page 6; Figure 3 and Sections 5.1–5.3, pages 7–8; Appendix Tables 6–7, page 15; Appendix I M8/M9 detector debug, page 17",
+      "claim_ids": ["C-RR2-MUT-01", "C-RR4-DETECTOR-LOCAL-01"], "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-DETECTOR-TWO-FAULT-DEBUG-D"],
+      "observed_evidence": "All nine injected faults reach their preassigned ForkAudit gates under passing matched-clean controls, which verifies gate reachability. The paper does not compare these gates against a conventional verification baseline or measure downstream consequences after suppressing each gate. The only suppression debug covers M8 and M9: M9 reaches an existing paired-view assertion, while M8 reaches only an experiment-injected sentinel; both abort before token, logit, cross-arm, or cross-N effects can be observed.",
+      "why_it_matters": "Because every individual ingredient is acknowledged as prior art, the scientific value must come from the integrated audit detecting consequential failures that established checks miss. Intended-gate mutation success alone is partly tautological and does not establish incremental diagnostic capability, reducing both novelty and significance.",
+      "required_fix": "Add a preregistered detector-comparison study over representative faults. Compare ForkAudit with token-only, full-logit, native-runtime, ownership-only, and call-provenance baselines; suppress the target gate where safe; report clean false positives, wrong-gate detections, escaped faults, and downstream semantic or lifecycle consequences. Avoid injected sentinels as evidence of ordinary runtime detection.",
+      "verification_test": "For every evaluated fault, provide a replayable row containing the fault, baseline detector outcomes, ForkAudit outcome, first ordinary downstream failure, clean-control outcome, and artifact binding. At least one practically plausible fault should pass conventional semantic/runtime checks yet be rejected specifically by a ForkAudit obligation, without clean false positives.",
+      "evidence_needed": "New mutation-analysis evidence or an equivalent rigorous analysis of existing raw executions that establishes incremental detection relative to named baseline checks.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-NOV-02", "severity": "major", "dimensions": ["novelty", "significance", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "Section 3 runtime-independent decision rule, page 4, lines 194–205; Section 5.3, page 8, lines 391–400; Section 6, page 9; Appendix Table 10 and Table 11, page 17; Appendix J, page 18",
+      "claim_ids": ["C-OWN-01", "C-RR4-LIFECYCLE-01", "C-R6-RUNTIME-NEG-01"], "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-LIFECYCLE-TRANSFER", "E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE"],
+      "observed_evidence": "The positive factorial and lifecycle results use the same Qwen3.5/vLLM Q16 adapter. The only genuinely different runtime instantiation preserves top-1 and several relational targets but fails the dense semantic oracle on all eight clean ranks with relative L2 values 0.377545–0.933235 against a 0.005 threshold; dispatch provenance is also partial. Thus no second implementation positively validates the supposedly runtime-independent record contract.",
+      "why_it_matters": "Without a clean independent instantiation, it is unclear whether the proposed abstraction is a reusable audit contract or a highly engineered test harness for one adapter. This distinction is central to the paper's novelty and ICLR-level significance.",
+      "required_fix": "Either demonstrate one clean second-runtime or second-hybrid-model instantiation satisfying all applicable mandatory records and bounded semantic checks, or consistently reframe the contribution as a Qwen3.5/vLLM audited case-study artifact and remove language implying that runtime independence has been empirically validated.",
+      "verification_test": "A new adapter must emit the same typed records, pass an independent snapshot-local replay without importing primary ownership helpers, satisfy all applicable targets with no clean false positives, and pass at least one independent numerical boundary. If no such evidence is added, an automated claim audit should find no empirically validated portability or runtime-independent applicability statement.",
+      "evidence_needed": "New positive transfer evidence, or comprehensive claim narrowing that accepts the resulting lower contribution ceiling.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-NOV-03", "severity": "minor", "dimensions": ["novelty", "citation_integrity", "clarity"],
+      "location": "Section 2, page 3, especially lines 125–160; Appendix H, Tables 8–9, page 16", "claim_ids": [], "evidence_ids": [],
+      "observed_evidence": "The paper identifies Marconi as the closest heterogeneous-state caching system and lists precedents for each audit obligation, but its distinction is mostly phrased at the level of research objective or evidence focus. It does not document, obligation by obligation, which witnesses, tests, or artifact checks are present, absent, or unknown in the closest systems. Table 9 therefore establishes that components have precedents more convincingly than it establishes the novelty of their exact integration.",
+      "why_it_matters": "For an integration contribution with no individually new mechanism, precise closest-work differentiation carries much of the novelty argument. Unsupported absence implications can either overstate novelty or leave a genuinely useful contribution underspecified.",
+      "required_fix": "Add a primary-source-backed comparison matrix for the closest systems and testing approaches, distinguishing mechanism, emitted records, ownership/lifetime witnesses, independent numerical checks, mutation methodology, denominator accounting, and artifact replay. Mark unverified cells as unknown rather than absent.",
+      "verification_test": "Every positive or negative closest-work cell cites a specific primary-source section, artifact, or documented experiment; the manuscript then states one concise unit of novelty that remains after all shared cells are removed.",
+      "evidence_needed": "Verified primary-source passages or artifact references for the closest comparisons, particularly Marconi, SCBench, and the cited metamorphic/differential-testing work.", "expected_impact": "medium", "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific ethics violation is apparent. The paper uses PG-19 training text for controlled systems testing, makes no downstream quality or safety claim, and includes a proportionate dual-use/resource statement on page 12.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It had no communication with other reviewers and was restricted to the frozen submission snapshot and the explicitly supplied reviewer rubric and KV-cache calibration files.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean, independently replayable second-runtime or second-hybrid-model instantiation of the same audit schema.",
+    "A preregistered detector matrix showing that specific plausible faults evade conventional semantic or native-runtime checks but are uniquely caught by ForkAudit, with passing clean controls.",
+    "Primary-source-backed obligation-level positioning that demonstrates a distinct reusable contribution beyond Marconi, SCBench, and established metamorphic/differential testing.",
+    "Evidence that the generic schema and validator can be adopted without copying the case-specific Qwen/vLLM adapter."
+  ],
+  "evidence_that_would_lower_score": [
+    "Evidence that a closest prior system already implements essentially the same heterogeneous-state ownership, lifecycle, oracle, mutation, and denominator audit.",
+    "Clean false positives or semantic-oracle failures on additional supposedly supported adapters, indicating that the contract is coupled to the primary implementation.",
+    "Failure of the frozen primary, GDN, or lifecycle replay under an independent environment, or discovery that a reported gate depends on unbound producer assertions rather than replayed raw evidence.",
+    "A broader claim of runtime portability, completeness, serving performance, or production capacity without new supporting evidence."
+  ],
+  "review_limitations": [
+    "Broader literature was not independently searched; novelty assessment is limited to the frozen manuscript, citation lock, and supplied calibration set.",
+    "The positive executions were not rerun on live GPUs. I verified the snapshot manifest and performed the packaged offline primary, GDN, and lifecycle reconstructions."
+  ]
+}

@@ -1,0 +1,1978 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      AUDIT-GATE:
+002   P RE -R EGISTERED E NDPOINT O PERABILITY AUDIT
+003
+004   AS A F IRE -G ATE M ETA -P RIMITIVE
+005
+006
+       Anonymous authors
+007
+       Paper under double-blind review
+008
+009
+010
+011                                               A BSTRACT
+012
+013            Multi-agent research runs produce ﬁre archives: a pre-registration, endpoint code,
+014            and reports claiming a verdict. Such verdicts are usually judged from prose, re-
+015            runs, or producer attestation. This paper is a transparency report on the construc-
+016
+               tion of AUDIT-GATE, a static zero-GPU ﬁrst gate built during one live run: what
+               was pre-registered, what was amended only after observation and why, what still
+017
+               stands, and what drifted. Its decision rule returns exactly one of PASS, FAIL or
+018
+               POSTPONE, and every verdict ships with a re-runnable certiﬁcate; the bundle
+019            is an independent re-run interface — a pinned checker, pinned inputs, and one
+020            command — that any third party can execute, although this submission does not
+021            claim that a third party has already executed it. AUDIT-GATE comprises four
+022            archive-check primitives (endpoint reachability, boxed positive controls, manifest
+023            three-arm acceptance, unreachable-primary-leg archiving), a ﬁve-ﬁeld endpoint
+024            registration rule, a healthy-arm non-degeneracy criterion, and the PRIM5 machine-
+025            string-to-state projection. Its ﬁeld audit has two legs: a frozen-checker six-case
+026            ledger and a pre-registered decisive cell over seven archives external to the audit-
+027
+               ing seat but internal to the same run. The decisive cell separates two provenance
+               tiers: the frozen auditor-transcription tier has 6 PASS, 1 FAIL and 0 POSTPONE;
+028
+               after mechanical extraction and current-verdict synchronization, the current tier
+029
+               has 3 PASS, 2 FAIL and 2 POSTPONE. One calibration remains owed: no inde-
+030            pendently labelled population of ﬁre archives exists in the run, so we report no
+031            detection or false-alarm rate and instead register the design that would measure
+032            them. At the frozen tier, the fourteen ﬁeld units exercise PASS and the FAIL
+033            family but not POSTPONE; eight synthetic defect-injected archives exercise that
+034            third state and every emitting clause. Every state and clause then has an executed
+035            instance except the clause whose zero is its intended reading: an unregistered ver-
+036            dict string. The framework tests mechanical operability, not whether a verdict is
+037            scientiﬁcally right.
+038
+039
+040
+      1    I NTRODUCTION
+041
+      A ﬁre claim says that a pre-registered decision point ﬁred. In a multi-agent run, such claims arrive
+042
+      as archives — a frozen pre-registration, consumer scripts, and result reports — and reviewers must
+043   decide whether to believe them. The usual instruments drift in the same direction: prose drifts from
+044   its artifacts; re-running analysis answers a question about today’s code rather than the registered one;
+045   and self-attestation is exactly the channel a reward-seeking agent would use, whose stated reasons
+046   need not track the computation performed (Turpin et al., 2023). A ﬁrst gate that persuasive writing
+047   cannot pass is missing. Figure 1 states the shape the object took by the end of the run. Our claim
+048   is deliberately archaeological: we report how AUDIT-GATE was built inside one live run, including
+049   post-observation amendments as ﬁndings of the construction (Tables 12 and 8), not as defects.
+050   We observed a sharper, strictly zero-GPU question. Many ﬁre archives fail before any statistical
+051   question is even reachable: the registered readout has no computor in any consumer script; the gate
+052   reports a rate over an empty denominator; the manifest references artifacts that are simply not on disk
+053   and are not marked absent; the “healthy” arm whose zero calibrates a threshold is a deterministic
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+073
+      Figure 1: The audit in one picture. A ﬁre archive enters as ﬁles (pre-registration, consumer scripts,
+074
+      manifest, reports); a ﬁxed sequence of static checks is applied without a GPU or a model; each check
+075
+      may terminate with a machine string, which a registered projection maps onto exactly one of PASS,
+076   FAIL, POSTPONE (Section 2.7); and the verdict ships with a re-runnable certiﬁcate — a frozen
+077   script plus record-time anchors — so that an independent party can recompute it. The illustration is
+078   a qualitative schematic produced with an image generator and audited element by element against
+079   Section 2; it contains no quantitative values, no data and no experimental result. Figure 4 gives the
+080   same chain with each check’s exact terminal verdict.
+081
+082
+      replay of the same path, so its zero was built rather than measured. None of these require a GPU, a
+083
+      model, or a statistical argument to detect. They require reading ﬁles.
+084
+085   AUDIT-GATE is the audit layer built around that observation. It maps a ﬁre archive to one of three
+086   verdicts — PASS, FAIL, POSTPONE — using only ﬁlesystem- and string-level facts, and it requires
+087
+      that the verdict ship with a re-runnable certiﬁcate: a frozen script that recomputes the same verdict
+      from anchors pinned at record time. Our contributions are:
+088
+089
+            1. A meta-primitive layer (Section 2): four primitives PRIM1–PRIM4, the G1 endpoint quin-
+090            tuple (readout, side, n, threshold, path_id), the G2 non-degenerate-healthy-arm criterion,
+091            a disambiguation of when a consumption verdict is evaluated, and PRIM5, which closes the
+092            verdict domain by pinning the projection from raw machine strings onto the three states.
+093
+            2. A re-runnable certiﬁcate discipline: a verdict counts only if a frozen script reproduces it
+094            and every anchor is pinned to its record-time location. The bundled pin, checker, and one-
+095            command replay form an independent re-run interface that a third party can execute; we do
+096            not claim that one already has. We separate record-time semantics from today’s write-time
+097            re-pinning and disclose every disagreement.
+098         3. A two-ledger ﬁeld audit (Section 3): a six-case ledger over real in-run ﬁre archives, plus
+099            a decisive cell whose pre-registration was frozen before it ran and which replays the au-
+100            dit over seven external archives, including one true detection and one deliberate non-kill.
+101            Because the live corpus turned out to exercise only two of the three states, we add eight
+102            synthetic defect-injected archives that exercise the third and close the anchor enumeration
+103            (Section 3.3), and we report the resulting coverage gap explicitly rather than describing the
+104            observed verdict set as non-vacuous.
+105
+106
+      Two framing clauses hold throughout. Mechanical operability is not empirical soundness: a PASS
+      may still be statistically wrong, and we make no claim about an archive’s science. The verdict
+107
+      map, PRIM3 enumeration, G2 predicate, and tier reading changed after observation; we disclose
+
+
+                                                        2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      these changes rather than pretending the current shape was pre-registered. Appendix H is the single
+109   current-verdict statement.
+110
+111
+112   2     F RAMEWORK
+113
+114   Objects. A ﬁre archive A consists of a pre-registration, a set of consumer scripts C(A) that are
+115
+      supposed to compute the registered reading, a manifest M (A) of referenced artifacts, and reports.
+      The audit target is not the reading but the verdict: can a second machine, given only A as it was
+116
+      recorded, recompute the same three-state outcome? Figure 4 ﬁxes the order in which the checks of
+117
+      this section are applied and names the terminal verdict each one may emit.
+118
+119
+      2.1   G1: THE ENDPOINT QUINTUPLE
+120
+121   Every registered endpoint must be pinned as
+122
+123                               e = (readout, side, n, threshold, path_id),
+124   and a missing ﬁeld returns POSTPONE with the minimal reﬁll, never a bare “insufﬁcient sample”.
+125   Thresholds are meaningful only within one path_id; cross-path differences are outside that end-
+126   point’s calibration. Appendix G gives the full path identity and the decisive cell’s per-unit registra-
+127   tions.
+128
+129   2.2   PRIM1–PRIM4
+130
+131   PRIM1 (reachability envelope). The endpoint side, readout, and n must be pinned. Let [L, U ]
+132
+      be the two-sided 95% Clopper–Pearson interval (Clopper & Pearson, 1934) for k successes in n
+      trials at α = 0.05, and let θ be the registered threshold. An endpoint is design-decidable when at
+133
+      its registered n some observable outcome either crosses θ or certiﬁes equivalence, and observed-
+134
+      decided when the observed interval actually does so:
+135
+136                LO : U ≤ θ;       HI : L ≥ θ;        ABS (TOST) : [L, U ] ⊆ [θ − δ, θ + δ]
+137
+      for a pre-registered margin δ > 0. The retired singleton-intersection reading [L, U ] ∩ {θ} trivialized
+138   at n = 1: it made every such endpoint automatically “decided.” Under TOST, n = 1 is never
+139   automatically observed-decided, and an unregistered δ is a post-hoc zone. An interval satisfying no
+140   branch yields POSTPONE with a minimal-reﬁll obligation. For the degenerate zero column k = 0,
+141                                                         ( )1/n
+142                                         U (n) = 1 − α2          ,
+143
+144   so the reﬁll is the integer n⋆ = min{ n : U (n) ≤ θ }. The exercised numeric instance and its
+145   checked reﬁll are reported in Table 11 (PTSD-2); the runner recomputes n⋆ by search rather than
+146   reciting it.
+147   PRIM2 (boxed positive control). Every gate must carry at least one must-FAIL arm built from a
+148   known-illegal input, boxed away from the primary data, with the acceptance criterion that the must-
+149   FAIL arm ﬁres on all of its cases while the anti-pass arm ﬁres on none. A positive control that passes
+150   unconditionally has zero evidential strength, and the audit reports FAIL rather than a passing gate.
+151
+      PRIM3 (manifest three-arm acceptance). For every artifact referenced by a manifest, exactly
+152
+      one of three arms applies: present with matching hash (PASS); present with drifted hash and no
+153   recorded cause (FAIL); absent without an explicit ABSENT marker (FAIL). The third arm is the one
+154   that produced this framework’s own constructive self-FAIL, case F3 of Section 3.1; we make no
+155   claim that it is the most productive arm, because in our corpus no detecting arm ﬁred more than
+156   once (Figure 2). These three arms are the states the ﬁeld corpus produced; the decision is really
+157   a function of four record-time facts, and Section 3.3 closes the enumeration at ﬁve states, adding
+158   drift-with-a-recorded-cause (PASS) and absent-with-a-marker (POSTPONE).
+159   PRIM4 (unreachable primary leg). If the primary leg’s self-test corpus is unreachable in the round
+160   being claimed — zero scorable rows, empty manifest — the negative-result archiving verdict holds
+161   automatically, and re-labelling the failed primary run as a sensitivity analysis is forbidden.
+
+
+                                                        3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      2.3   G2: WAS THE ZERO MEASURED OR CONSTRUCTED ?
+163
+164   Gates that calibrate on “the healthy arm shows zero false alarms” must distinguish a measured
+165   zero from a constructed one. A deterministic or zero-dispersion healthy arm carries no threshold
+166   information, so the audit emits FAIL_DEGENERATE_HEALTHY_ANCHOR. The current runner
+167   earns that verdict from the archived ﬁelds rather than assigning it as the superseded edition did
+168   (Table 12). Its same-path probe is an r42 snapshot, not an invariant ﬂoor. A threshold may be
+169   repaired before freezing; changing it after observation is a gate swap.
+170
+171   2.4   W HERE THE CONSUMPTION VERDICT IS EVALUATED
+172
+      A recurring ambiguity is when to judge that a primitive was consumed. We bind the evaluation to
+173
+      the producer’s own pre-registered binding decision point, then to the later of (the consumer’s ﬁrst
+174   consuming round, the producer’s release round), plus K observer rounds with K = 2 by default.
+175   This single rule excludes the two opposite readings that otherwise coexist: “any action by any seat
+176   counts as consumption” and “only the producing seat’s actions count”.
+177
+178   2.5   A DVISORY STATUS , DISCLOSED IN FULL
+179
+180   The fan-in ledger that records consumption evidence carries the structural property cannot_
+181   FAIL_by_design = true, and we keep that disclosure in the main text rather than in a footnote.
+182   Its meaning is narrow and must not be inﬂated in either direction: the ledger never auto-promotes
+183   itself to a mandatory gate, which is not the same as never emitting FAIL. It does emit FAIL ver-
+184
+      dicts, and the two on record are a constructive self-FAIL on this framework’s own ledger (four of
+      ﬁve recorded consumer paths absent at their recorded locations without ABSENT markers) and a
+185
+      reusable counterfactual template any seat can apply post hoc. A scoreboard is not a gate; we report
+186
+      it as advisory evidence, never as a blocking condition on another seat.
+187
+188
+      2.6   W HAT “ MECHANICALLY OPERABLE ” MEANS
+189
+190   A verdict is mechanically operable when (a) it follows from ﬁlesystem- or string-level facts, (b) a
+191   re-runnable script certiﬁcate recomputes it, and (c) every anchor is pinned to the artifact’s location
+192   at the time of record. Condition (c) is not pedantry: an early version of our own audit resolved an
+193   anchor to where the ﬁle would be looked up later, and a failure to reproduce at that later path is a
+194   stale anchor, not a falsiﬁed original verdict.
+195
+196   Freeze-discipline disclosure. The ﬁrst-run implementation contradicted the registered diversity
+197   predicate and returned FAIL_VACUOUS_STATES; it was corrected only after observing the cell.
+198   Worse, that edition was replaced before it was pinned, so the verdict is recorded but not recom-
+199
+      putable. By our own PRIM3 and certiﬁcate rule this is a self-FAIL of our record-keeping, not a
+      repairable footnote. The verdict-state map, PRIM3 enumeration, and G2 predicate also changed
+200
+      after observation. Table 12 and Appendix C preserve the version-by-version account, including the
+201
+      record-time/write-time distinction.
+202
+203
+      2.7   PRIM5: VERDICT- DOMAIN CLOSURE
+204
+205   Checkers emit reason-bearing machine strings, not states. PRIM5 therefore registers a map from
+206   every emitted string onto exactly one of PASS, FAIL, or POSTPONE and applies it by script. Prove-
+207   nance preﬁxes are stripped; an absent string becomes UNMAPPED and makes the certiﬁcate fail;
+208   unit and group strings occupy separate codomains; and each entry says how it was exercised. The
+209   complete rules and map are in Appendix C; the projection command is in Appendix A.
+210
+211   What a group verdict does and does not assert. The decisive cell’s group verdict is about au-
+212   dit execution, not a conjunction over archive verdicts: it says the audit ran, mapped every string,
+213
+      exercised its controls, and separated at least two projected states. Its canonical machine string is
+      EXECUTION_VALID (renamed from AUDIT_EXECUTION_PASS so the label cannot be misread
+214
+      as archive operability). Panel B of Table 1 separately reports archive operability and includes a
+215
+      FAIL; Appendix C preserves the rule and its bidirectional disagreements.
+
+
+                                                        4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+      3     F IELD AUDIT
+217
+218
+      We report a six-archive ledger audited in place and a decisive cell, frozen before it ran, over seven
+219   external archives owned by other seats. Table 1 carries both. Seat identities are anonymized through-
+220   out: unit keys lead with owner-seat letters A–H, and neighbour assets are cited by role and sha16,
+221   never by per-seat ﬁlesystem paths.
+222
+      At the frozen tier, the live corpus occupies only PASS and FAIL and never POSTPONE. Thus
+223
+      PRIM1’s non-crossing envelope and PRIM4’s unreachable primary leg have empty live cells. We do
+224
+      not call that set non-vacuous; Section 3.3 exercises the missing state on built-for-purpose archives
+225   and preserves the live-corpus POSTPONE count of zero.
+226
+227
+      3.1   L EG 1: SIX - CASE LEDGER
+228
+229   Panel A of Table 1 is the ledger frozen at R27 (analysis/AUDIT_LEDGER_R27.json, sha16
+230   64bf94507159fec4), with the r29 amendment that ﬁnalises case F5 and the R30 amendment
+231   that pins the repair-shape lineage discussed in Section 4. The headline result of this leg is a re-
+232   production property rather than a measurement: all six ledger verdicts, plus the lineage arm, are
+233   reproduced by the frozen checker on the current disk state (analysis/audit_gate.py, sha16
+234   0ed8657a6ab7dbf9, exit code 0; Appendix A gives the exact invocation). The failure modes in
+235
+      the panel are distinct from one another, one per primitive, and the Reason column states each in one
+      line. F4 is the panel’s positive control, an archive that an independent audit had already examined
+236
+      line by line and which our framework does not false-kill (it is judged operable and we do not kill
+237
+      it; Section 5). F6 is the one system-level case: two lifecycle transition branches coexist such that a
+238   single submission can telescope two stage transitions, which is a property of source text rather than
+239   of data.
+240
+241
+      Two provenance notes belong in the main text. The r29 amendment recorded the checker at sha16
+      1e88186f7097646b; the current sha16 differs because the R30 amendment added the read-only
+242
+      lineage arm, and the six case verdicts are unchanged by that arm. And F5’s ﬁnal verdict asserts
+243
+      only that the ﬁre archive landed with an authorisation chain and a resolvable anchor. It does not
+244   re-adjudicate the audited seat’s statistical conclusion, which remains that seat’s own claim.
+245
+246
+      3.2   L EG 2: PRE - REGISTERED DECISIVE CELL
+247
+248   Panel B is the decisive cell D1 (pre-registration experiments/prereg/PREREG_AUDIT_
+249   GATE_D1.md, sha16 7a2d5306b734478f; runner code/run_audit_gate_d1.py, sha16
+250   88922152856c9e98). The cell was registered so that non-recomputable verdicts or a collapsed
+251   verdict set would fail. It returned group verdict PASS in the audit-execution sense of Section 2.7; the
+252   frozen and current judge tiers remain separate below.
+253   The frozen tier is the registered R31 report (sha16 d91f180ea59edc39); its projection re-
+254   generates byte-identically (sha16 aba51fa7f7b3a8b9) and supplies Panel B. Its stronger pre-
+255   registered byte-identity branch is no longer met: current sidecars are deterministic, but differ from
+256   the frozen report because one live audited archive and the judge edition drifted. We therefore record
+257   that branch as ﬁred and retain only the tier-speciﬁc verdict-recomputation claim.
+258   The repaired R42 judge initially agreed with the frozen tier on every unit. A later replay changes the
+259   seat-E unit from PASS to FAIL, and the R52 mechanical extractor makes the previously transcribed
+260   G2 answer for seat C and threshold for seat H unavailable, so they POSTPONE under G1’s rule.
+261   Thus the current tally is 3 PASS, 2 FAIL, 2 POSTPONE while the frozen tally remains 6 PASS, 1
+262   FAIL, 0 POSTPONE. This is archive/provenance drift, not runner nondeterminism (Section 3.4).
+263   The cell contains one true detection and one deliberate non-kill. The detection is the same-path unit,
+264   where G2 ﬁres because the healthy arm’s zero is constructed — in the current tier that verdict is
+265   earned by the predicate reading the audited cell’s own bit_exact=true and max_max=0.0
+266   ﬁelds (code/run_audit_gate_d1.py, audit_p6; in the frozen tier it was, as an external
+267   review made us discover, an unconditional assignment, which is row four of Table 12). The non-
+268   kill is the perturbation-smoke unit, whose owner self-reports a thin margin on easy prompts: a thin
+269   margin is a covariate of that seat’s experiment, not an operability defect, and the audit does not
+      convert it into a FAIL. The framework also self-FAILed once, on its own group gate; because that
+
+
+                                                        5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+271   Table 1: Two-leg ﬁeld audit. Panel A: the six-case ledger plus the A4 amendment, at its frozen-
+272   ledger tier. Panel B: decisive cell D1 over seven external ﬁre archives, printed at the frozen auditor-
+273   transcription tier. Across both panels the 14 exact machine outputs project to 9 PASS, 5 FAIL and
+274   0 POSTPONE. The current mechanical tier is separate: 3 PASS, 2 FAIL and 2 POSTPONE (Ap-
+275
+      pendix H). The starred unit is the positive control; the daggered seat-E unit changes from frozen
+      PASS to current FAIL. The registered map is Appendix C; commands and sha16 anchors are Appen-
+276
+      dices A and B.
+277   Case                           Fire archive         Verdict (machine string)      Reason                                      Replayer
+278
+      Panel A: six-case ledger (R27, amended r29 and R30)
+279   F1                             quant-gate prereg FAIL_MECHANICALLY_               registered reading has no computor in       external, 3 sha16
+280                                  (seat G)          UNREACHABLE                      any of the three consumer scripts
+      F2                             legacy            FAIL_EMPTY_SET_                  empty denominator falls back to a           owner
+281                                  post-create gate  PASSED_GATE                      passing rate                                post-mortem
+282                                  (seat D)
+      F3                             own fan-in ledger FAIL_ABSENT_                     recorded consumer paths absent, no          constructive
+283                                  (self-audit)      UNMARKED_4_OF_5                  ABSENT marker                               self-FAIL
+284   F4                             four-closure      PASS_OPERATIONAL                 all computors present; bound is a           external line
+                                     prereg (seat C)                                    computed number                             audit
+285   F5                             two-cell rerun    __r29_pin__FINAL_                landed with authorisation chain; anchor     amendment
+286                                  archive (seat G)  FIRE_LANDED                      resolves                                    pointer
+      F6                             lifecycle stage   FAIL_TELESCOPE                   two transition branches coexist in one      source signature
+287                                  gate (harness)                                     submission
+288   A4                             readout health    PASS_OPERATIONAL_                positive arm passes while the               four pinned
+                                     gate (seat D,     EXTERNAL_CANDIDATE               dead-parser arm fails                       sha16
+289                                  amendment)
+290
+      Panel B: decisive cell D1 (R31), seven external ﬁre archives; projected-state tally 6 PASS, 1 FAIL, 0 POSTPONE
+291   D_A4_healthgate⋆               readout health       PASS                           positive control: gate passes while its    frozen runner
+292                                  gate                                                fail arm decouples
+      C_exit_package_R42             reﬁne exit           PASS                           every registered issue slot carries a      frozen runner
+293                                  package                                             resolved mark, per a registered slot
+294                                                                                      manifest (audit_p3)
+                           †
+      E_R33_threearm                 three-arm            PASS                           registered bound and an explicit           frozen runner
+295                                  calibration                                         three-arm design present in the archive
+296   F_r42_samepath                 same-path            FAIL_DEGENERATE_               constructed-zero healthy arm (current      frozen runner
+                                     certiﬁcate           HEALTHY_ANCHOR                 tier: predicate over the cell’s own
+297                                                                                      bit_exact = true, max_max = 0);
+298                                                                                      threshold anchored by the
+                                                                                         mismatched-path arm alone
+299   G_fb2_v3_r120                  authorised rerun PASS                               verdict keywords and trial id in the       frozen runner
+300                                  verdict                                             verdict ﬁle, spec name pinned in the job
+                                                                                         ﬁle
+301   H_r7_conject_front             perturbation         PASS                           required arm present at pinned n; thin     frozen runner
+302                                  smoke                                               margin is a covariate
+      A_r7_strict_corpus             strict-corpus gate PASS                             coverage rows measured from the real       frozen runner
+303                                                                                      corpus
+304
+305
+306   correction happened after the observation, we report it as a pre-registration diff rather than as an
+307   anecdote, under the freeze rule (Section 2.6, Table 12). A verdict channel that cannot fail on itself is
+308   exactly the object this framework refuses to accept from others, so the correction is disclosed rather
+309   than smoothed away.
+310
+311   3.3     S YNTHETIC DEFECT- INJECTED FIXTURES FOR THE UNEXERCISED STATE
+312
+313   Because the live corpus never exercised POSTPONE or several primitive branches, we wrote defect-
+314
+      injected ﬁre archives in the style of mutation testing (Jia & Harman, 2011). Each ﬁxture injects one
+      registered defect; the runner recomputes its verdict and reﬁll rather than reading an expected answer,
+315
+      and all rows match without a GPU. Table 11 and Appendix D give the complete per-ﬁxture record
+316
+      and PRIM3 enumeration.
+317
+318
+      Where each check was exercised, and where it was not. Figure 2 derives the live-versus-ﬁxture
+319   ledger from registered artifacts, including its zeros. It shows exactly which checks depend on au-
+320   thored ﬁxtures and which live branches were never evaluated; the PRIM5 unmapped-string zero is
+321   the intended reading, because any ﬁre would break the certiﬁcate.
+322
+      Two limits of this evidence should be read with it. These ﬁxtures demonstrate that the POSTPONE,
+323
+      PRIM4 and anchor-state clauses are mechanically operable — they ﬁre on inputs constructed to
+
+
+                                                                            6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324                                                                      live      live        fixture
+325                                                                   evaluated   fired          fired
+
+326                                      G1 endpoint quintuple           7         0             1
+
+327                               PRIM1 computor reachability            2         1             0
+328                              PRIM1 envelope crossing (CP)            0         0             1
+329                             PRIM2 empty-set / control arm            2         1             0
+330                                   PRIM3 anchor: byte-stable          22        20            1
+331
+                           PRIM3 anchor: drift, cause recorded           22        2             1
+332
+                                  PRIM3 anchor: drift, no cause          22        0             1
+333
+                                PRIM3 anchor: absent, marked             22        0             1
+334
+335                           PRIM3 anchor: absent, unmarked             24        1             1
+
+336                               PRIM4 primary leg reachable            0         0             1
+337                           PRIM5 unmapped string (want 0)             14        0             0
+338                              TELESCOPE (stage transition)            1         1             0
+339
+                                G2 degenerate healthy anchor             7         1             0
+340
+                                      POSTPONE state reached             7         0             3
+341
+       red 0 = no executed instance
+342
+343   Figure 2: Where each check of the framework was exercised, computed from on-disk artifacts by
+344   make_coverage_matrix.py (Appendix A). Live evaluated counts the units or ledger arms on
+345   which the check actually ran; live ﬁred counts those where its detecting branch was taken; ﬁxture
+346   ﬁred counts the synthetic archives of Section 3.3. Zeros are printed in red and in the same weight
+347   as the counts, because they are this note’s own admissions rather than blanks: a red zero in the live
+348   column of the PRIM1 envelope row says the ﬁeld corpus never exercised that clause. The one row
+349   that is zero in both ﬁre columns is PRIM5’s unmapped-string counter, and there zero is the intended
+350   outcome — an unregistered verdict string would break the certiﬁcate by design.
+351
+352
+      trigger them and they return the reﬁll obligation the speciﬁcation promises — and they do not
+353   demonstrate detection performance on natural archives, because we authored both the defect and
+354   the checker. They are positive controls in the sense of PRIM2, not a calibration; the missing calibra-
+355   tion is still missing, and Section 5 says so.
+356
+357   3.4    R EPLAYING THE CERTIFICATES AT WRITING TIME
+358
+359   Both certiﬁcates were replayed while writing. Every ledger arm reproduces; the decisive cell retains
+360   its group PASS, but only six of the seven frozen unit verdicts do. The changed unit audits a live
+361   external manuscript whose current text no longer satisﬁes its registered predicate. Table 4 is the
+362   earlier all-unit-stable snapshot; the current divergence, negative controls, ﬁgure, and commands are
+363
+      in Appendix A.
+364
+365   4     R ELATED WORK
+366
+367   The nearest in-run neighbour, and why it is complementary. The closest artifact is a killed
+368   seat’s readout health gate and its anti-patterns. We reuse rather than rebuild them: that gate tests
+369   empirical readout correctness, whereas ours tests the mechanical operability of a registered decision.
+370   Table 2 gives the main axes; Appendix F gives the rest.
+371
+372   Other in-run primitives. A post-create assertion script gates artifacts immediately, whereas
+373
+      PRIM3 audits later manifests; an in-run reachability checklist belongs to PRIM1’s family and is
+      a merge candidate, not a baseline.
+374
+375
+      External lineage: two classical ancestors. Clopper–Pearson intervals supply PRIM1’s enve-
+376
+      lope (Clopper & Pearson, 1934); statistical process control supplies the principle that a gate’s au-
+377
+      thority comes from calibration, not operator judgement (Shewhart, 1931).
+
+
+                                                                  7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+379   Table 2: Delineation from the nearest in-run neighbour (three of ﬁve axes; the remaining two are in
+380   Appendix F).
+381    Axis                Readout health gate (neighbour)                           AUDIT-GATE (this note)
+382    D1 audited object   empirical correctness of a readout: does the parser or    mechanical operability of a registered decision point:
+                           grader work on real model output?                         does the registered reading have a computor, an
+383                                                                                  envelope, a ﬁreable control?
+384    D2 work phase       before a run: positive, negative and length controls on   before creation (static reachability) and in any later
+385                        the data the run will consume                             round (post-hoc manifest three-arm acceptance)
+       D3 formalisation    thresholded empirical checks with a binary outcome        envelope plus boxed control injection with an explicit
+386                                                                                  three-state outcome; the binary gate is its degenerate
+387                                                                                  case
+388
+389
+390   External positioning: three literatures this is not. Provenance and experiment-lineage systems
+391   record how values and models were produced (Cheney et al., 2009; Vartak et al., 2016; Schelter
+392   et al., 2017; Zaharia et al., 2018), while versioning pins their artifacts (Kuprieiev et al., 2020);
+393
+      AUDIT-GATE instead asks whether a claimed adjudication is recomputable. Reporting standards
+      and preregistration govern author-side disclosure (Pineau et al., 2021; Gebru et al., 2021; Forde &
+394
+      Paganini, 2019), and production assertions inspect data or model behaviour in ﬂight (Polyzotis et al.,
+395
+      2019; Kang et al., 2020); our audit acts later on a released archive. Content-addressed deployment
+396   and reproducible builds establish byte identity (Dolstra et al., 2004; Lamb & Zacchiroli, 2022);
+397   PRIM3 additionally distinguishes explained drift from absence because its target is verdict stability.
+398   If these deltas amount only to MLOps governance common sense, the registered MERGE clause
+399   requires folding the framework into a survey and retiring it.
+400
+401
+      5       FALSIFICATION AND SCOPE
+402
+403
+      The four registered exits remain. PASS is a population-level aspiration: all mechanically unreach-
+404
+      able endpoints are caught (false-open = 0) and no operable archive is killed (false-kill = 0); a ﬁnite
+405   corpus can certify only bounds on those rates. KILL ﬁres if an independently conﬁrmed unreach-
+406   able endpoint is judged PASS or the false-kill rate is evidenced above 5%. MERGE withdraws the
+407   framework into a survey if it merely restates MLOps governance. STOP-PASS additionally requires
+408   one independent external ﬁre claim to adopt the primitives as its pre-creation gate.
+409
+      Two further candidates came from in-run review (Appendix F). Clause (vii) is falsiﬁed by a gate
+410
+      that reaches its registered bound, has no post-hoc discriminating power, and is not rejected by (viii).
+411   Clause (viii) is falsiﬁed by byte-identical load-bearing ﬁelds that do not make a downstream paired
+412   or maximum comparison tautological.
+413
+414
+      Two scope limits follow. A PASS means recomputable, not scientiﬁcally correct. Nor do we cali-
+      brate the audit’s false-alarm rate or power: the ﬁxtures do not close this gap because they share an
+415
+      author with their checkers. Calibration requires a labelled ﬁre-archive population whose operability
+416
+      status is established independently of us, which does not exist inside a live run.
+417
+418   Mitigation (i) is an author-withheld-label blind calibration over 8 frozen ﬁxture labels: a blind
+419   wrapper reproduced a diagonal confusion matrix and reports two-sided Clopper–Pearson bounds
+420
+      (analysis/r83_i22_calib/I22_BLIND_CALIBRATION_R83.json); because the ﬁx-
+      tures and checker share an author, this is a mitigation, not calibration closure, and it is not third-
+421
+      party execution. Mitigation (ii) is a clean-room bundle with single-entry replay.py, a hash-ﬁrst-
+422
+      frozen MANIFEST, and a self-test reporting replay_pass=true (experiments/bundle_
+423   i21_r83.tar.gz); it is a mitigation, not calibration closure, and it is not third-party execution.
+424   Together they make label visibility and replay packaging auditable while leaving the missing inde-
+425   pendent population and third-party run unresolved.
+426
+      What is available is the design that would settle the question, registered before any number ex-
+427
+      ists. The v1 cell is superseded before execution; the v2 cell is blocked, not merely unrun: it needs
+428
+      at least 118 independently labelled defect-free archives, and unblocks only with a labeller outside
+429   the authoring seat, an outcome that remains human_pending. Table 3 records the decisive inequal-
+430   ities; analysis/D2_DECISION_REACHABILITY_R52.json veriﬁes a total, single-valued
+431   outcome map.
+
+
+                                                                         8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+433   Table 3: Registered calibration-cell decision design. The v1 acceptance region cannot decide the
+434   manuscript’s 5% false-kill boundary; the v2 repair is decisive on that boundary. The v2 cell is
+435   blocked, not merely unrun: it requires at least 118 independently labelled defect-free archives and a
+436   labeller outside the authoring seat (human_pending).
+437       Design item         v1 registration                          v2 registered repair
+438       False-kill cell     n = 60; accept at most one ﬁre; 0.10      n = 118; accept at most one ﬁre;
+439                           upper-bound rule                          uniﬁed 0.05 target
+440       Decisive bound      upper(0/60) = 0.0596 > 0.05; even         upper(1/118) = 0.0463 < 0.05;
+                              zero ﬁres misses                          largest accepted count meets target
+441
+          Outcome map         registered acceptance region cannot       all 7140 compositions are total and
+442                           decide the target                         single-valued; no accepted composition
+443                                                                     violates 5%
+444       Detection side      shared registered criterion: 36/36 per family; lower bound 0.9026 > 0.90
+445
+446
+447   6      O PEN ITEMS AND CONCLUSION
+448
+449   The exit ledger remains unresolved: PASS is unmet because the independent-operability denomina-
+450   tor cannot support universal zero-miss/false-kill language; KILL is not triggered, but its false-kill
+451
+      arm is uncomputable; MERGE remains open; and STOP-PASS is unmet because no external ﬁre
+      claim adopted the primitives as its pre-creation gate.
+452
+453   Three disclosures close the note. First, the framework, ledgers, cell, and ﬁxtures are static and
+454   GPU-free; lifetime GPU consumption is zero. Second, the R42 and R52 records establish pro-
+455   cess independence, not party independence: both ran in this workspace, on this ﬁlesystem, under
+456   this seat’s credentials. The R83 clean-room bundle makes the current independent re-run interface
+457
+      portable and self-checking, but no third party has executed it; Appendix A gives the commands and
+      Appendix H the attested pin.
+458
+459   Third, an automated writing engine revised this manuscript and an image generator produced Fig-
+460   ure 1; the ﬁgure is qualitative, and all quantitative content remains artifact-derived. Build, prompt,
+461   semantic-audit, and authorship provenance are retained in the accompanying ledgers.
+462
+463   R EFERENCES
+464
+465   James Cheney, Laura Chiticariu, and Wang-Chiew Tan. Provenance in databases: Why, how, and
+466
+        where. Foundations and Trends in Databases, 1(4):379–474, 2009. doi: 10.1561/1900000006.
+467   C. J. Clopper and E. S. Pearson. The use of conﬁdence or ﬁducial limits illustrated in the case of the
+468     binomial. Biometrika, 26(4):404–413, 1934. doi: 10.1093/biomet/26.4.404.
+469
+470   Eelco Dolstra, Merijn de Jonge, and Eelco Visser. Nix: A safe and policy-free system for software
+471
+        deployment. In Proceedings of the 18th USENIX Conference on System Administration (LISA
+        XVIII), pp. 79–92, 2004.
+472
+473   Jessica Zosa Forde and Michela Paganini. The scientiﬁc method in the science of machine learning,
+474     2019. ICLR 2019 Debugging Machine Learning Models workshop.
+475
+      Timnit Gebru, Jamie Morgenstern, Briana Vecchione, Jennifer Wortman Vaughan, Hanna Wallach,
+476
+        Hal Daumé III, and Kate Crawford. Datasheets for datasets. Communications of the ACM, 64
+477
+        (12):86–92, 2021. doi: 10.1145/3458723.
+478
+479   Yue Jia and Mark Harman. An analysis and survey of the development of mutation testing. IEEE
+480     Transactions on Software Engineering, 37(5):649–678, 2011. doi: 10.1109/TSE.2010.62.
+481
+      Daniel Kang, Deepti Raghavan, Peter Bailis, and Matei Zaharia. Model assertions for monitoring
+482
+        and improving ML models. In Proceedings of Machine Learning and Systems 2 (MLSys 2020),
+483     2020.
+484
+485   Ruslan Kuprieiev, skshetry, Peter Rowlands, Dmitry Petrov, Paweł Redzyński, Casper da Costa-Luis,
+        et al. DVC: Data version control — Git for data & models. Zenodo, 2020. Software archived on
+
+
+                                                         9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+          Zenodo; the DOI is the concept DOI that always resolves to the latest release (ﬁrst archived 2020;
+487       current release 3.67.1 as of 2026-03-31).
+488
+489   Chris Lamb and Stefano Zacchiroli. Reproducible builds: Increasing the integrity of software supply
+490     chains. IEEE Software, 39(2):62–70, 2022. doi: 10.1109/MS.2021.3073045.
+491
+      Joelle Pineau, Philippe Vincent-Lamarre, Koustuv Sinha, Vincent Larivière, Alina Beygelzimer,
+492     Florence d’Alché Buc, Emily Fox, and Hugo Larochelle. Improving reproducibility in machine
+493     learning research (a report from the NeurIPS 2019 reproducibility program). Journal of Machine
+494     Learning Research, 22(164):1–20, 2021.
+495
+496   Neoklis Polyzotis, Martin Zinkevich, Sudip Roy, Eric Breck, and Steven Whang. Data validation
+497
+        for machine learning. In Proceedings of Machine Learning and Systems 1 (MLSys 2019), 2019.
+498   Sebastian Schelter, Joos-Hendrik Böse, Johannes Kirschnick, Thoralf Klein, and Stephan Seufert.
+499     Automatically tracking metadata and provenance of machine learning experiments, 2017. Work-
+500     shop paper presented at the Machine Learning Systems Workshop at the 31st conference on Neu-
+501     ral Information Processing Systems (NIPS 2017); the NeurIPS 2017 conference tag is conﬁrmed
+502     on the Amazon Science publications page. No DOI or publisher page numbers exist; see citation
+503     lock addendum.
+504
+      Walter A. Shewhart. Economic Control of Quality of Manufactured Product. D. Van Nostrand
+505    Company, New York, 1931.
+506
+507   Miles Turpin, Julian Michael, Ethan Perez, and Samuel R. Bowman. Language models don’t always
+508    say what they think: Unfaithful explanations in chain-of-thought prompting. In Advances in
+509    Neural Information Processing Systems 36 (NeurIPS 2023), 2023.
+510   Manasi Vartak, Harihar Subramanyam, Wei-En Lee, Srinidhi Viswanathan, Saadiyah Husnoo,
+511    Samuel Madden, and Matei Zaharia. ModelDB: A system for machine learning model man-
+512    agement. In Proceedings of the Workshop on Human-In-the-Loop Data Analytics (HILDA’16),
+513    2016. doi: 10.1145/2939502.2939516.
+514
+515
+      Matei Zaharia, Andrew Chen, Aaron Davidson, Ali Ghodsi, Sue Ann Hong, Andy Konwinski, Sid-
+       dharth Murching, Tomas Nykodym, Paul Ogilvie, Mani Parkhe, Fen Xie, and Corey Zumar. Ac-
+516
+       celerating the machine learning lifecycle with MLﬂow. IEEE Data Engineering Bulletin, 41(4):
+517
+       39–45, 2018.
+518
+519
+520   A     R EPRODUCTION COMMANDS
+521
+522   All sixteen command lines are read-only with respect to audited archives, require no GPU, and run on
+523   CPU in seconds. Paths are relative to this workspace; neighbour-seat inputs use role labels. Fourteen
+524   lines are certiﬁcates, one composes them, and one re-hashes every sha16 literal and rejects residual
+525   publication placeholders. The ﬁve ﬁeld-audit commands follow; Table 5 lists the remaining R41
+526   certiﬁcates, and the R52 additions appear before the single entry point. Independent-process records
+527   cover the R42 eleven- certiﬁcate edition and the R52 current chain; neither is party-independent.
+528
+529   Six-case ledger certiﬁcate (Panel A).
+530             python3 analysis/audit_gate.py --a4-verify \
+531               --f5-yaml ’OWNER_SEAT_G_WORKSPACE/experiments/’\
+                     ’qgate_tailturnover/qs/p7_qgate_dec_r1_fb2_v2.yaml’ \
+532               --f5-spec-name p7-qgate-dec-r1-fb2-v2-r120-mgr \
+533               --f5-expected __r29_pin__FINAL_FIRE_LANDED
+534
+535   Expected: one [OK] line per ledger case plus one for the lineage arm, and exit code 0. A MISMATCH
+536
+      line means either that the audited archive changed or that the ledger is stale; by PRIM3 the second
+      case is itself a self-FAIL of this ledger.
+537
+538
+539
+
+
+
+                                                        10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+541   Table 4: Certiﬁcate reading against the cell’s 22 record-time pins, preserved as the R41 historical
+542   snapshot: at R41 all 7/7 unit verdicts recomputed unchanged. The current divergence is stated imme-
+543   diately below; code/verify_certificate.py attests only the canonical pin of Appendix H.
+544   Counts: analysis/REPLAY_LOG_R41.json.
+545                                      Reading                        Count
+546                                      Byte-stable                     20
+547                                      Drift with registered cause      2
+548
+549
+550   Decisive cell (Panel B).
+551            ./run_audit_gate_d1.sh
+552
+553   Expected: group_verdict=PASS with the per-unit verdicts of Panel B. The runner only reads
+554   the audited archives and only writes inside its own results directory. One point of this is load-bearing
+555   for Section 2.6 and we state it exactly: a re-run re-pins every audited artifact at its current hash, but it
+556   writes those fresh pins into the sidecar audit_gate_d1_report_current.json and never
+557   into the frozen report, whose bytes the recorded verdicts are anchored to. So the two ﬁles are meant
+558
+      to differ once an audited archive changes, and comparing them is a measurement of the audited
+      archives rather than of the runner (Section 3.4). The frozen report is read-only history; if a re-run
+559
+      ever alters it, that is a defect in the runner, and one such defect occurred and was rolled back in this
+560
+      round (Table 8).
+561
+562
+      Verdict-state projection (Table 1; registered map).
+563
+564            python3 code/project_verdict_states.py
+565
+566
+      Expected: audit_gate_d1_report_projected_r41.json beside the frozen report, ev-
+      ery unit carrying a state_verdict, an empty unmapped list, and exit code 0. The script
+567
+      reads the frozen report and the registered map and writes only the projected sidecar. A non-empty
+568
+      unmapped list, and the resulting non-zero exit, is the PRIM5 enforcement mechanism of Sec-
+569   tion 2.7.
+570
+571   Synthetic ﬁxtures (Table 11).
+572
+573            python3 code/audit_gate_fixtures.py
+
+574
+      Expected: eight [OK] lines, all_match:true in analysis/FIXTURE_RESULTS_R41.
+575
+      json, and exit code 0. The ﬁxtures are the only archives in this note that we authored ourselves;
+576
+      the runner reads no external archive.
+577
+578   Write-time replay matrix (Figure 3).
+579
+580            python3 code/make_replay_matrix.py
+
+581
+      Expected: analysis/REPLAY_MATRIX_R33.json with the per-unit pin classiﬁcation, and
+582
+      the ﬁgure source PDF. This script re-hashes pinned artifacts and re-runs the six-case certiﬁcate; it
+583
+      never writes into an audited archive.
+584
+585
+      Write-time interpretation and record-time veriﬁcation. Byte identity belongs to frozen inputs,
+586   whereas the audited seats continued working. A write-time re-pin therefore locates and hashes
+587   today’s ﬁles without re-adjudicating the recorded verdict. All ledger arms reproduce. At the R41
+588   snapshot, all decisive-cell unit verdicts also reproduced; the latest replay instead changes the external
+589   live-manuscript unit while retaining the group PASS. The certiﬁcate check compares current bytes
+590   against record-time pins without replacing them, using code/verify_certificate.py.
+591
+592   Snapshot caveat. Table 4 is preserved byte-for-byte as the R41 record it reports. The R49 replay
+593   still returns the same anchor tally and both negative controls, but its verdict-level check is no longer
+      all-unit stable: E_R33_threearm changes from frozen PASS to current FAIL after the external
+
+
+                                                          11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+595                             (a) D1 cell: per-unit pin stability,                          (b) ledger arms: 7/7
+596
+                                verdict unchanged                                             reproduced (rc=0)
+597        P6_r42_samepath                                                FAIL (G2) A4 lineage
+          P8_r7_conject_front                                PASS                           F6
+598          P7_fb2_v3_r120                             PASS                                F5
+599        P5_R33_threearm                                   PASS                           F4
+          P4_A4_healthgate*                                               PASS              F3
+600
+        P3_exit_package_R42                                               PASS              F2
+601       P2_r7_strict_corpus                           PASS                                F1
+602
+                                0         1         2          3        4                  MISMATCH     reproduced
+603
+                                    pinned artifacts re-hashed at write time
+604                                   byte-stable         sha-drifted      absent
+605
+606
+607   Figure 3: Write-time replay of both certiﬁcates, computed from on-disk artifacts by the script
+608   make_replay_matrix.py (Appendix A). (a) For each unit of the decisive cell, the artifacts
+609   pinned in the frozen report are re-hashed and classiﬁed as byte-stable, sha-drifted or absent; the
+610   verdict recorded in the frozen report is annotated at the right as a frozen-tier reading (not the current
+611   tier: seat E is currently FAIL), with the one G2 verdict shortened to FAIL (G2) — its exact string is
+612   the Panel B row of Table 1. (b) The six ledger cases plus the lineage arm, as reported by the re-run
+613
+      six-case certiﬁcate (exit code 0). Unit labels are the keys of the frozen report; the starred unit is the
+      cell’s positive control.
+614
+615
+616   seat-E manuscript ceased to contain the registered three-arm predicate. The other frozen unit verdicts
+617   and the group PASS reproduce. The machine record is analysis/CERT_VERIFY_R41.json;
+618   this later divergence supersedes only the caption’s present-tense reading, not its historical snapshot.
+619
+      The drifted manuscript and PDF carry registered causes, so the certiﬁcate reads “anchors drift,
+620
+      explained” rather than byte-veriﬁed. A copied-anchor mutation without a cause emits FAIL_
+621   ANCHOR_DRIFT_UNEXPLAINED; adding a fabricated cause converts it to PASS_ANCHOR_
+622   DRIFT_EXPLAINED. Thus explained drift is only as trustworthy as its cause registry, and a re-
+623   viewer may ignore that registry and read both drifted pins as unexplained FAILs. A second imple-
+624   mentation agrees with the shipped checks, but remains an internal consistency check because one
+625   author wrote both.
+626
+627   The remaining certiﬁcates. Table 5 lists them with the artifact each writes and the property a
+628   reviewer should check in it. Each is one line, each reads only ﬁles inside this workspace, and each
+629   exits non-zero when its own registered expectation fails.
+630
+631   The R52 certiﬁcates.
+632            python3 code/audit_gate_g1_extractor.py \
+633            python3 code/g1_extractor_ablation.py \
+               python3 code/d2_decision_reachability.py
+634
+635   Expected: the extraction record of Table 17, the eleven-case ablation log with pass=true, and all
+636   nine calibration-design proof obligations satisﬁed.
+637
+638   All fourteen certiﬁcates at once.
+639
+               python3 code/replay_all.py
+640
+641
+      Expected: fourteen [ok] lines and all_commands_exit_zero:true in analysis/
+642
+      REPLAY_LOG_R41.json, which also records the sha16 of every artifact the run produced. Two
+643   consecutive runs of this entry point reproduce all thirteen of those hashes, the two ﬁgure PDFs in-
+644   cluded; that is a determinism property of our own certiﬁcates and not of the archives they audit,
+645   whose drift is the subject of Section 3.4.
+646
+647
+
+
+
+                                                                   12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+649   Table 5: The remaining commands, their artifacts, and what to check. The ﬁrst six are certiﬁcates and
+650   are included in the single entry point below; the last is a manuscript-level check and is deliberately
+651   excluded from it, because its input is this .tex ﬁle rather than the audit. The certiﬁcate veriﬁer
+652   attests the canonical pin of Appendix H; it does not certify that current archive verdicts equal the
+653
+      frozen tier.
+      Command (preﬁx python3)            Writes                             What a reviewer checks
+654
+      code/make_prim3_fixtures.py        the ﬁve fixture_prim3_*      one archive per anchor state; regeneration is
+655                                      archives and their payloads  byte-identical
+656   code/verify_certificate.py         analysis/CERT_VERIFY_R41. attests the canonical pin of Appendix H; the 22
+657                                      json                         record-time anchors tally as 20 byte-stable and 2
+                                                                      drift-with-cause, and both controls behave as
+658                                                                   registered
+659   code/gate_amendment_diff.py        analysis/GATE_AMENDMENT_     the two group-rule editions disagree in both
+                                         DIFF_R41.json                directions over the enumerated verdict multisets, so
+660                                                                   neither is a strengthening of the other
+661   code/audit_gate_second_impl.py     analysis/DUAL_IMPL_          ﬁve checks re-implemented from the speciﬁcation
+662                                      CONSISTENCY_R41.json         agree with the shipped ones, including the
+                                                                      closed-form and bisected Clopper–Pearson limits
+663   code/make_coverage_matrix.py       analysis/COVERAGE_           every cell is derived from a cited artifact; the zeros
+664                                      MATRIX_R41.json and Figure 2 are the admissions of Section 3.3
+665   code/cp_design_numbers.py          printed table                the bounds quoted in Sections 2.2 and 5, recomputed
+                                                                      from the exact binomial tails
+666   code/check_paper_numbers.py        analysis/PAPER_NUMBER_       every 16-hex literal in this manuscript is either the
+667                                      SYNC_R41.json                current hash of the ﬁle it names or a declared
+                                                                      record-time pin
+668
+669
+670
+      B    A RTIFACT ANCHORS
+671
+672
+      Tables 6 and 7 list the in-house artifacts that carry the claims of this note. They are run artifacts,
+673
+      not peer-reviewed literature, and are cited by path and sha16 only. Each hash is the leading 16
+674   hexadecimal digits of the ﬁle’s SHA-256, and — per Section 2.6 — each row is either a current
+675   write-time re-pin or is explicitly scoped to the earlier judge edition in its role/block. None silently
+676   substitutes for a record-time pin; the anchors whose two values disagree are listed separately in
+677   Table 8 with the cause of each difference. Every sha16 literal is checked by code/check_paper_
+678   numbers.py, which re-hashes current rows and rejects any other literal unless it is a declared
+679   record-time or edition pin, so a stale anchor in a note about anchors is a mechanical error rather
+680   than a proofreading one. One row is an exception by construction and we name it: the execution
+681   log embeds the decisive cell’s wall clock, so re-running the certiﬁcates advances its hash even when
+682
+      all thirteen artifacts it records are byte-identical. Its pin is the value at the moment this version
+      was compiled, and a mismatch there is the expected behaviour of a log rather than a stale anchor.
+683
+      Paths in every block but the last are relative to the auditing workspace; the last block is a neighbour
+684
+      seat’s tree and carries its own preﬁx, because those ﬁles have never lived in our workspace and a
+685   workspace-relative reading of them would resolve to nothing.
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+
+
+
+                                                           13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+703   Table 6: Write-time re-pinned anchors for the claims of Sections 2 and 3, part one. Record-time dif-
+704   ferences: Table 8. Reading: the role and block identify any edition-scoped pin rather than presenting
+705   it as current.
+      Artifact                                                                Role                                      sha16
+706
+707   analysis/AUDIT_LEDGER_R27.json                                          six-case ledger base                      64bf94507159fec4
+      analysis/AUDIT_LEDGER_R29_AMENDMENT.md                                  F5 ﬁnal-verdict pointer                   9d9ee1916b44ebb1
+708   analysis/audit_gate.py                                                  six-case certiﬁcate, with lineage arm     0ed8657a6ab7dbf9
+709   analysis/ENDPOINT_OPERABILITY_R30.md                                    G1 and G2 clauses as ﬁled                 3ce4124595fd9a27
+      experiment_registry/PROP_A_AUDIT_GATE_METHOD.md                         method v1.1, primitive layer              1f74929c0bc52e60
+710   analysis/METHODS_NOTE_SKELETON_v1.md                                    registered clause text (Section 5)        c199b26332eb744a
+711   experiments/prereg/PREREG_AUDIT_GATE_D1.md                              decisive-cell pre-registration            7a2d5306b734478f
+      code/run_audit_gate_d1.py                                               decisive-cell runner, R41 write-time      27a5bab33dc432e7
+712                                                                           pin
+713   run_audit_gate_d1.sh                                                    recompute entrypoint                      b9125ff1db0e980d
+      healthgate_adoption/CONSUMPTION_CONTRACT.md                             custody contract for the neighbour gate   daf309eab10ff724
+714   Reﬁne-1 additions: PRIM5 projection, the synthetic ﬁxtures, and the round-2 certiﬁcates
+715   analysis/VERDICT_STATE_MAP_R41.json                                     registered verdict-state map              e892db517faebfba
+                                                                              (Appendix C)
+716   code/project_verdict_states.py                                          projection script, PRIM5                  7813d2f45d28d4c2
+717   code/group_state_rule.py                                                group readout, rule editions v2, v2b      1f742054a965ea07
+                                                                              and v3
+718   code/prim3_anchor_states.py                                             PRIM3 ﬁve-state classiﬁer and truth       5f2ed3aadfbf547e
+719                                                                           table
+      code/make_prim3_fixtures.py                                             generator for PTSD-4 to PTSD-8            42b781bb118737c9
+720   code/audit_gate_fixtures.py                                             ﬁxture runner, recomputes each verdict    b0ee24a1aa7f60c7
+721   analysis/FIXTURE_RESULTS_R41.json                                       ﬁxture verdicts, 8/8 match                963a9795cfa42867
+      code/verify_certificate.py                                              certiﬁcate veriﬁcation, two negative      51845d9ee0ba5dba
+722                                                                           controls
+723   analysis/CERT_VERIFY_R41.json                                           R41 anchor-state tally snapshot           a5215080b9d9a2c2
+      analysis/DRIFT_CAUSES_R41.json                                          operator-supplied drift causes, with      f282afd8fbf27d5d
+724                                                                           checks
+725   code/gate_amendment_diff.py                                             enumerates where the two group rules      a13e9f8cbcc998e4
+                                                                              differ
+726   analysis/GATE_AMENDMENT_DIFF_R41.json                                   the multiset enumeration (Table 12)       919fa4d5481567a8
+727   code/audit_gate_second_impl.py                                          second implementation of ﬁve checks       5dab6aab6d91ba56
+      analysis/DUAL_IMPL_CONSISTENCY_R41.json                                 agreement of the two implementations      2cf59c90dda2a2de
+728   code/make_coverage_matrix.py                                            coverage matrix (Figure 2)                5c890b50e03a32df
+729   analysis/COVERAGE_MATRIX_R41.json                                       per-check live and ﬁxture ﬁre counts      5f07c848f36eb68f
+      code/cp_design_numbers.py                                               every Clopper–Pearson bound quoted        0dd7441d0f740d7d
+730                                                                           here
+731   code/replay_all.py                                                      R41 certiﬁcate entrypoint edition         9c82b795711119f8
+      analysis/REPLAY_LOG_R41.json                                            execution log, all commands exit 0;       f0c64feb4340cab6
+732                                                                           advances on every run
+733   analysis/REPLAY_MATRIX_R33.json                                         replay measurement (Figure 3)             c874929fec1f90b1
+      code/check_paper_numbers.py                                             re-hashes every sha16 literal of this     7b7866a9d91960e2
+734                                                                           note
+735   analysis/THIRD_PARTY_REPLAY_R41.json                                    independent-process replay record         8645cb181b5df08a
+                                                                              (Section 6)
+736
+737
+738
+      Where the two pin semantics disagree. Table 8 is the construction-history disclosure that Sec-
+739   tion 2.6 promises. Six lines now carry a write-time hash different from the value recorded when the
+740   verdict was ﬁrst taken; four are the R31–R41 lineage disclosed in earlier versions, and the last two
+741   exist because the R42 judge-edition repair (Table 12, row four) rewrote the sidecar and added its
+742   projection tier. These six rows concern our auditing ﬁles; the separate seat-E archive-verdict drift
+743   and seat-C/seat-H extraction POSTPONEs are recorded in Appendix H. We list the pin changes
+744   rather than silently reprinting today’s numbers, because a hash table that quietly tracks the present
+745   is exactly what PRIM3 rejects.
+746
+747
+                       Table 7: Write-time re-pinned anchors, continued: the external-review re-
+                       pair, registered future cell, ﬁxture inputs, decisive-cell outputs and read-
+748
+                       only neighbour assets. Reading: the blocks separate current repair arti-
+749
+                       facts from frozen or edition-scoped records.
+750
+751
+      Artifact                                                                Role                                      sha16
+752
+753   R42 external-review repair round
+      code/run_audit_gate_d1.py                                               R42 runner edition: G2 as predicate,      9286a81b3f4c9f7a
+754
+                                                                              amended disjunct
+755
+                                                                                                                        Continued on next page
+
+
+
+                                                                        14
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+756   Table 6 (continued)
+757
+      Artifact                                                                 Role                                       sha16
+758
+759   code/group_state_rule.py                                                 R42 edition: v2b rule transcribed, stale   1f742054a965ea07
+                                                                               “strictly stronger” docstring corrected
+760   code/project_verdict_states.py                                           R42 edition: two projection tiers          7813d2f45d28d4c2
+761   code/check_paper_numbers.py                                              R42 edition: R42 pins and counts           7b7866a9d91960e2
+762                                                                            registered
+763   analysis/THIRD_PARTY_REPLAY_R42.json                                     independent-process replay, all eleven     92da51c618da254a
+                                                                               certiﬁcates, current tier (Section 6)
+764
+      code/baseline_naive_audit.py                                             strawman baseline auditor (Section 3)      7529c77ea63be55b
+765   analysis/NAIVE_BASELINE_R42.json                                         the baseline’s ﬂags and passes,            64d39ef57b928a01
+766                                                                            ablation table source
+767   R52 mechanical-extraction tier
+768   code/audit_gate_g1_extractor.py                                          mechanical G1/G2 extractor                 17a2ca85ed545335
+769   code/audit_gate_g1_parsers.py                                            one parser per archive schema              dc7ebfb918acae30
+770   code/g1_extractor_ablation.py                                            eleven delete/mutate and constant-grep     e3cc1a30ed52c26a
+                                                                               checks
+771
+      code/d2_decision_reachability.py                                         calibration decision-reachability proof    cee3b44f4a2e9663
+772   analysis/D2_DECISION_REACHABILITY_R52.json                               all nine proof obligations hold            3cbfe58aba315261
+773   code/replay_all.py                                                       fourteen-certiﬁcate entry point            1fa291b75d9c804f
+774   analysis/THIRD_PARTY_REPLAY_R52.json                                     current-chain independent-process          62265a41e55a7928
+775                                                                            replay
+
+776   Registered future cell under experiments/prereg/
+777   PREREG_AUDIT_GATE_D2_CALIBRATION.md                                      calibration design, registered and not     2c56d7c3c330574b
+                                                                               run (Section 5)
+778
+      Fixture inputs under experiments/fixtures_r41/
+779
+      fixture_g1_missing.json                                                  G1 quintuple incomplete                    a238d88d34dd127e
+780
+      fixture_prim1_noncrossing.json                                           PRIM1 non-crossing envelope                65b52c177e9d5866
+781   fixture_prim4_unreachable.json                                           PRIM4 unreachable primary leg              0832d5d9e5a4d533
+782   primary_leg.csv                                                          the zero-row primary leg itself            9b3b65548e77a25c
+783   fixture_prim3_byte_stable.json                                           PRIM3 anchor state 1 of 5                  b5c1ab090ccfcfe7
+784   fixture_prim3_drift_explained.json                                       PRIM3 anchor state 2 of 5                  26f7480b4b6cc3f4
+785   fixture_prim3_drift_unexplained.json                                     PRIM3 anchor state 3 of 5                  6caa7aff50f9c61f
+786   fixture_prim3_absent_marked.json                                         PRIM3 anchor state 4 of 5                  d247fac203e452da
+787   fixture_prim3_absent_unmarked.json                                       PRIM3 anchor state 5 of 5                  96772e17a43a8021
+
+788   anchor_payload_stable.txt                                                the byte-stable payload itself             808c6aea0068823c
+      anchor_payload_drift_explained.txt                                       payload revised, cause recorded            615ad1d5820fe4ba
+789
+      anchor_payload_drift_unexplained.txt                                     payload revised, no cause                  194160d8d550aed4
+790
+      Decisive-cell outputs under experiments/results/audit_gate_d1/
+791
+      audit_gate_d1_report.json                                                frozen cell report, read-only history      d91f180ea59edc39
+792
+      audit_gate_d1_report_current.json                                        sidecar written by a re-run (R42 tier)     f47224d6a9957472
+793
+      audit_gate_d1_report_projected_r41.json                                  the frozen report with projected states    aba51fa7f7b3a8b9
+794                                                                            and the group readout (R31 tier,
+795                                                                            unchanged)
+      audit_gate_d1_report_projected_r42.json                                  the current sidecar with projected         675deaa246e2b9b6
+796                                                                            states, group readout and the
+797                                                                            judge-version drift disclosure
+798   audit_gate_d1_summary.md                                                 cell summary, with the self-FAIL note      7b551cc6c416b372
+799   Neighbour seat D’s readout-health-gate assets (anonymized, frozen, read-only; internals not restated here)
+800   healthgate.py                                                            gate implementation                        9f4bc2711502f358
+801   PREREG_A4.md                                                             its pre-registration                       d1192e1383f1cf90
+802   healthgate_report.json                                                   positive arm archive                       9bf250c74cbfd2fd
+803   healthgate_failarm.json                                                  dead-parser fail arm                       3d5339db6c4ce984
+804
+805
+806
+807
+808
+809
+
+
+
+                                                                         15
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+810                  Table 8: Record-time pin versus write-time re-pin, a construction ﬁnd-
+811                  ing for the six anchors where they differ. Every other anchor in Ta-
+812                  bles 6 and 7 is byte-stable against its record-time value, including all four
+813                  neighbour-seat assets and the six-case checker. “Verdict affected” asks
+814                  whether the verdict the anchor carries changed, not whether the bytes
+815                  changed.
+816
+817   Anchor            Record-time          Write-time            Recorded cause                    Verdict
+
+818                     pin                  re-pin                                                  affected
+
+819   PREREG_AUDIT_     cd80d58efaee05aa 7a2d5306b734478f the pre-registration’s own text was       no
+820   GATE_D1.md                                          amended after the ﬁrst run to record the
+                                                          self-FAIL and its correction (Table 12).
+821                                                       A third value also circulates and we
+822                                                       name it rather than let a reviewer trip
+                                                          on it: the prereg’s §7 prints an internal
+823                                                       self-pin 3380a46becbd17bd,
+824                                                       recorded at the freeze moment before
+                                                          the summary’s second back-ﬁll of
+825                                                       hashes, whose value the prereg
+826                                                       declares authoritative for itself — so
+                                                          record-time, internal and write-time
+827                                                       are three snapshots of one ﬁle across
+828                                                       its own amendment
+
+829   code/run_      88922152856c9e98 9286a81b3f4c9f7a corrected in reﬁne-1 to write its output      no (R31 verdicts
+      audit_gate_d1.                                   to a sidecar instead of over the frozen       recomputed against the
+830   py                                               report; repaired again in R42 (Table 12,      R31-era sidecar; the
+831                                                    row four): G2 became a predicate and          R42 edition agrees on
+                                                       the group second disjunct was                 every unit)
+832                                                    amended, so this anchor is the one
+833                                                    place where a write-time pin names a
+                                                       different judge edition, not only
+834                                                    different bytes — the frozen report
+835                                                    remains the registered record of the
+                                                       R31 judge
+836
+      run_audit_        6446b522fa19d5c6 b9125ff1db0e980d extended to pin the sidecar and the        no
+837   gate_d1.sh                                          projected report alongside the frozen
+838                                                       one
+839   audit_gate_       4dcfcb41a3984e94 d91f180ea59edc39 audited-archive pins inside the report    no
+      d1_report.                                          advanced between the ﬁrst run and the
+840   json                                                replay-matrix round; separately, a ﬁrst
+841                                                       attempt at the reﬁne-1 projection wrote
+                                                          state ﬁelds into this ﬁle in place, which
+842                                                       was detected and rolled back, and is
+843                                                       why the projection now emits a
+                                                          separate ﬁle
+844
+845   audit_gate_       92536d3a32426685 f47224d6a9957472 the sidecar is a write-time object by   no — the verdict strings
+      d1_report_                                          design, so “record-time” here means     reproduce, the bytes
+846   current.json                                        the R41-era value printed in earlier    legitimately differ
+847                                                       versions: the R42 judge edition rewrote
+                                                          the sidecar (row four of Table 12); the
+848                                                       frozen report above is untouched
+849   audit_gate_    —                       675deaa246e2b9b6 new in R42, so no record-time value    n/a
+850   d1_report_                                              exists to differ from: the R42-tier
+      projected_r42.                                          projection, carrying
+851   json                                                    recompute_diff_zero=false
+852                                                           and judge_version_drift; the
+                                                              R41-tier projection is unchanged at
+853                                                           aba51fa7f7b3a8b9
+854
+855
+856   C    T HE REGISTERED VERDICT- STATE MAP
+857
+858   Record-time anchors and write-time re-pins. Certiﬁcate semantics bind only to the locations
+859   and hashes pinned when a verdict was recorded. The sha16 values in Tables 6–7 are instead write-
+860   time re-pins that help a reader ﬁnd today’s ﬁles; they do not re-adjudicate the record. When the
+861   two differ, the difference describes later ﬁle drift, not an incorrect original verdict. Table 8 records
+862   every such difference and its cause. The runner writes a current sidecar and never mutates the frozen
+863   report.
+
+
+
+                                                             16
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+864                           ﬁre archive A: prereg + con-
+865                             sumer scripts + manifest,
+                              anchors pinned at record time
+866
+867                           G1 endpoint quintuple pinned?                            POSTPONE
+                           (readout, side, n, threshold, path_id)                     + minimal reﬁll
+868
+869                        PRIM1 reachability envelope crosses
+870                               the decision point?
+
+871
+                          PRIM2 boxed positive control can ﬁre?                   FAIL: zero-strength gate
+872
+873                                                                             FAIL: hash drifted, or absent
+                          PRIM3 manifest three-arm acceptance
+874                                                                                    and unmarked
+875                           G2 healthy-arm zero measured,                           FAIL: degenerate
+876                                 not constructed?                                   healthy anchor
+877
+                           PRIM4 primary-leg self-test corpus                     automatic negative-result
+878                                  reachable?                                           archive
+879                                                                      re-runnable certiﬁcate:
+880                                       PASS                               frozen script +
+                                                                          record-time anchors
+881
+882
+      Figure 4: Schematic of the AUDIT-GATE decision path; the ﬁgure carries no quantitative content.
+883
+      Solid arrows are the operability chain, dashed arrows are terminating verdicts. Every terminal ver-
+884   dict, PASS included, is emitted together with a re-runnable certiﬁcate, and POSTPONE carries the
+885   minimal reﬁll that would make the endpoint decidable. Symbols match Section 2; the observer-
+886   round parameter of Section 2.4 (K = 2 by default) applies to consumption verdicts rather than to
+887   the chain drawn here.
+888
+889
+890
+      Full freeze history. The decisive cell’s ﬁrst implementation treated a unit-level FAIL as a col-
+      lapsed group state and emitted FAIL_VACUOUS_STATES, although the registered predicate al-
+891
+      ready accepted that multiset. The repair moved the implementation toward the pre-registration, but
+892
+      happened after observation. Because the ﬁrst edition was overwritten before pinning, its verdict
+893   survives only in the cell summary and cannot be replayed; this is the self-FAIL disclosed in Sec-
+894   tion 2.6. The map was later extended to strings that its ﬁrst edition omitted, PRIM3 was made total
+895   over the anchor facts, and G2 was repaired from an assignment to a predicate. Table 12 gives the
+896   exact editions, locations, and re-executability.
+897
+898   Projection and legacy predicates. PRIM5 strips provenance markers before lookup, fails closed
+899   on an unregistered string, keeps unit and group codomains separate, and records how every string
+900   was exercised. For a lifecycle source p, FAIL_TELESCOPE is emitted when both a review-
+901   only transition branch and an entering-reﬁne branch occur literally in p; the complement is
+902
+      TELESCOPE_CLOSED. The group readout is likewise separate: execution PASS requires mapped
+      unit strings, more than one projected state, behaving controls, and reproducible execution, while the
+903
+      archive-operability tally remains visible beside it. Exhaustive comparison of the shipped and regis-
+904
+      tered group rules ﬁnds disagreement in both directions; the observed corpus changes under neither
+905   (Appendix E).
+906
+907
+908
+909
+910
+911
+912
+913
+914
+915
+916
+917
+
+
+
+                                                                    17
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+918
+919   Table 9: The registered verdict-state map (analysis/VERDICT_STATE_MAP_R41.json,
+920   sha16 e892db517faebfba): all 26 unit strings the checkers can emit, with the state tally 13
+921   FAIL, 9 PASS and 4 POSTPONE. The 3 strings of the second codomain, which are verdicts about
+922   an audit run rather than about an archive, are Table 10. Tags: live = emitted on the audited corpus of
+923
+      Table 1; ﬁxture = exercised only on a synthetic archive; diagnostic = printable but never archived as
+      a case verdict; historical = superseded; edition-gated = emitted by an earlier edition of the runner
+924
+      only. Every POSTPONE row is tagged ﬁxture, diagnostic or historical, which is the coverage gap
+925
+      of Section 3.3 in its most compact form.
+926
+       Machine string                    State   Case          Predicate, and how it is exercised
+927
+       PASS_OPERATIONAL                  PASS    F4            all registered computors present and non-empty (live)
+928    PASS_OPERATIONAL_EXTERNAL_        PASS    A4            four lineage pins match sha16, positive gate passes and is
+929    CANDIDATE                                               usable, fail arm all-FAIL and not usable (live)
+       PASS                              PASS    D1 units      the per-unit acceptance criteria of the D1 runner (live)
+930    FINAL_FIRE_LANDED                 PASS    F5 amend.     amendment spec name pinned in the job ﬁle and verdict ﬁle
+931                                                            present; emitted behind the __r29_pin__ marker (live)
+       REACHABLE                         PASS    F1            at least one computor hit (diagnostic)
+932    PATCHED_OK                        PASS    F2            the empty-set fallback has been patched (diagnostic)
+933    TELESCOPE_CLOSED                  PASS    F6            the telescope predicate is false, i.e. the repair landed (ﬁxture)
+       ANCHOR_BYTE_STABLE                PASS    PTSD-4        PRIM3 anchor state 1 of 5: the recomputed digest equals the
+934                                                            record-time pin (live: 20 of 22 pins of Figure 3; also PTSD-4)
+935    PASS_ANCHOR_DRIFT_EXPLAINED       PASS    PTSD-5        PRIM3 anchor state 2 of 5: digest differs, a cause is registered
+                                                               for that path, and the unit verdict recomputes unchanged (live:
+936                                                            the 2 remaining pins; also PTSD-5)
+937    FAIL_MECHANICALLY_                FAIL    F1            the registered readout has zero computor hits in every
+       UNREACHABLE                                             consumer script (live)
+938    FAIL_EMPTY_SET_PASSED_GATE        FAIL    F2            an empty-denominator fallback (zero total, rate falls back to
+939                                                            1.0) is present and unpatched (live)
+       FAIL_ABSENT_UNMARKED              FAIL    F2, F5        a referenced artifact is absent and carries no ABSENT marker
+940                                                            (live)
+941    FAIL_ABSENT_UNMARKED_4_OF_5       FAIL    F3            at least four of ﬁve recorded consumer paths absent at their
+                                                               recorded locations, with no ABSENT marker at record time
+942                                                            (live)
+943    FAIL_TELESCOPE                    FAIL    F6            T (p) of Section 2.7: both transition branches occur in one
+                                                               tool source (live)
+944    FAIL_DEGENERATE_HEALTHY_          FAIL    seat F        the healthy arm’s zero holds by construction and the
+945    ANCHOR                                                  threshold’s only real anchor is a mismatched-path arm (live)
+       FAIL_SPEC_DRIFT                   FAIL    F5 legacy     the legacy spec name is no longer pinned in the job ﬁle after
+946                                                            an authorised rename (live, informational: the ledger records
+947                                                            this as a pointer to the amendment, not as an audited-archive
+                                                               FAIL, which is why the legacy invocation’s exit code is not
+948                                                            treated as a verdict)
+949    FAIL_MISSING_COMPUTOR             FAIL    F4            any registered computor missing or empty; the mirror of F4’s
+                                                               pass (ﬁxture)
+950    FAIL_LINEAGE_DRIFT                FAIL    A4            a lineage pin’s sha16 drifted, or positive/fail-arm content
+951                                                            drifted (ﬁxture)
+       FAIL_FINAL_UNANCHORED             FAIL    F5 amend.     the amendment spec name is not pinned, or the verdict ﬁle is
+952                                                            absent (ﬁxture)
+953    FAIL_NULL_PRIMARY_LEG             FAIL    PTSD-3        PRIM4: the registered primary self-test leg has zero scorable
+                                                               rows, so the archiving verdict holds and relabelling the leg is
+954                                                            forbidden (ﬁxture; zero live occurrences)
+955    FAIL_ANCHOR_DRIFT_                FAIL    PTSD-6        PRIM3 anchor state 3 of 5: digest differs and no cause is
+       UNEXPLAINED                                             registered for that path (ﬁxture; also the mutation control of
+956                                                            Section 3.4)
+957    FAIL_NO_ROPE_ARM                  FAIL    seat H        the registered rope arm is absent or under-n in the smoke
+                                                               report (edition-gated: emitted by the runner edition of the ﬁrst
+958                                                            run, whose group-level misclassiﬁcation is Table 12; the
+959                                                            current frozen edition’s seat-H unit passes)
+960    POSTPONE                        POSTPONE D1 unit;       a unit-level exception, or registration incompleteness; always
+                                                ﬁxtures        carries the minimal reﬁll (ﬁxture; zero occurrences on the live
+961                                                            corpus)
+962    STALE_NOT_REPRODUCED            POSTPONE F3             fewer than four stale paths absent, so either the archive
+                                                               changed or the ledger is stale — and by PRIM3 the second
+963                                                            reading is a self-FAIL of this ledger (diagnostic)
+964    POSTPONE_ANCHOR_ABSENT_         POSTPONE PTSD-7         PRIM3 anchor state 4 of 5: the pinned path is absent and an
+       MARKED                                                  ABSENT marker was written at record time; the reﬁll is the
+965                                                            whole ﬁle (ﬁxture)
+966    TBD_PROVISIONAL                 POSTPONE F5 ledger      an in-ﬂight ﬁre attempt pending an authorised landing; a
+                                                               ledger state rather than a checker output at this round
+967                                                            (historical, superseded by the r29 amendment)
+968
+969
+970   Table 9 is the whole of the map that PRIM5 (Section 2.7) requires, transcribed from the registered
+971   ﬁle. Reading it is the only way to check Table 1 without running the projection script, and it is also
+      the place where the framework’s own coverage is visible: the right-hand tags say, string by string,
+
+
+                                                          18
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+972
+       whether the live corpus ever emitted it. Four conventions are worth stating. The bare string PASS is
+973    a verdict string as well as a state name, so the identity map on it is registered explicitly rather than
+974    assumed. The __r29_pin__ preﬁx is stripped before lookup, so it needs no entries of its own. A
+975    string tagged diagnostic is one a checker can print but the ledger never archives as a case verdict; it
+976    is registered anyway, because PRIM5 closes the domain over what the checkers can emit, not over
+977    what they happened to emit. And the map has a second codomain, Table 10: those three strings
+978    are verdicts about an audit run, they are produced by a different rule from the unit strings, and the
+979    one time we conﬂated the two levels the result was the false kill of Table 12. Where a row names a
+980    ﬁxture, the identiﬁer is the one the runner emits, since that is the executed artifact.
+981
+982    Table 10: The second codomain of the same registered map: the 3 group strings (2 FAIL, 1 PASS),
+983    which are verdicts about an audit run rather than about an archive and are produced by a different
+984    rule from the unit strings of Table 9. Keeping the two codomains in separate blocks is not cosmetic:
+985    the one time we conﬂated the levels, the result was the false kill of Table 12.
+986         Machine string                      State   Case         Predicate, and how it is exercised
+987         EXECUTION_VALID                     PASS D1 group        no unit string is unmapped and the projected multiset is not
+988                                                                  one repeated state, i.e. the audit ran and discriminated (live;
+                                                                     renamed from the legacy AUDIT_EXECUTION_PASS label
+989                                                                  without changing semantics)
+990         FAIL_VACUOUS_STATES                 FAIL D1 group        the projected unit multiset collapses to a single state, so the
+                                                                     audit did not discriminate on this corpus (synthetic
+991                                                                  all-identical multiset, plus one recorded historical instance:
+992                                                                  the ﬁrst run under the ﬁrst-edition rule, Table 12 — that
+                                                                     instance is recorded, not recomputable, the pre-ﬁx edition
+993                                                                  being absent from disk, Section 2.6)
+994         FAIL_UNMAPPED_VERDICT               FAIL D1 group        some unit string has no entry here and no preﬁx rule applies;
+                                                                     this is the enforcement mechanism of rule (ii) (never ﬁred on
+995                                                                  the frozen report)
+996
+997
+998    D      S YNTHETIC FIXTURES AND THE PRE - REGISTRATION DIFF
+999
+1000   Table 11 is the per-ﬁxture record behind Section 3.3, and Table 12 is the pre-registration diff that
+1001   Section 2.6 commits us to. The two belong together: the ﬁrst shows the framework’s unexercised
+1002   clauses ﬁring on inputs we built, and the second shows the one occasion on which the framework’s
+1003   own gate had to be changed after seeing an observation.
+1004
+       The authored ﬁxtures cover the branches absent from the live corpus. One tests an incomplete
+1005   G1 registration, one searches the non-crossing PRIM1 envelope for its reﬁll, and one exercises
+1006   an unreachable primary leg. The remaining ﬁxtures enumerate PRIM3 as a total function of path
+1007   presence, digest equality, a recorded cause, and an ABSENT marker. Each archive carries one
+1008   injected defect and an expected verdict; the runner derives the observed verdict and exits non-zero on
+1009   disagreement. These are positive controls for mechanical operability, not estimates of performance
+1010   on natural archives.
+1011
+       Table 11: The eight synthetic defect-injected ﬁxtures. Each injects exactly one defect and carries
+1012
+       its expected verdict as a registered ﬁeld, so the runner (code/audit_gate_fixtures.py)
+1013
+       compares rather than asserts; it recomputes each verdict from ﬁrst principles, including searching
+1014   for n⋆ rather than looking it up. PTSD-1 and PTSD-2 POSTPONE under G1’s missing-ﬁeld rule.
+1015   PTSD-4 to PTSD-8 are one archive per row of the ﬁve-state PRIM3 anchor enumeration, and the
+1016   runner also checks that the enumeration is total. Expected and observed verdicts match on all eight
+1017   rows, and the run uses no GPU. Report: analysis/FIXTURE_RESULTS_R41.json, sha16
+1018   963a9795cfa42867.
+1019
+1020   ID       Injected defect                   Verdict (expected = observed)                 Minimal reﬁll
+
+1021   PTSD-1 G1 quintuple registers readout,     POSTPONE                                      the two named missing ﬁelds
+1022          side, n but omits threshold and
+              path_id
+1023
+1024                                                                                                              Continued on next page
+
+1025
+
+
+
+                                                                19
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1026   Table 11 (continued)
+1027
+       ID         Injected defect                              Verdict (expected = observed)                     Minimal reﬁll
+1028
+1029   PTSD-2 PRIM1 envelope does not cross:                   POSTPONE                                          82 observation rows, reaching
+              k = 0, n = 40, LO side, θ = 0.03,                                                                  n⋆ = 122
+1030          so U = 0.0881
+1031   PTSD-3 PRIM4 primary self-test leg has zero             FAIL_NULL_PRIMARY_LEG                             none: the archiving verdict holds
+1032          scorable rows and is relabelled as a                                                               automatically
+              sensitivity analysis
+1033
+1034   PRIM3 record-time anchor enumeration, one ﬁxture per state (present?, digest equal?, cause recorded?, ABSENT marker?):
+
+1035   PTSD-4 state 1 of 5: pinned artifact present,           ANCHOR_BYTE_STABLE                                none
+              digest equals the record-time pin
+1036
+       PTSD-5 state 2 of 5: present, digest differs, a         PASS_ANCHOR_DRIFT_EXPLAINED                       none; the cause entry is the obligation
+1037          cause is recorded for that path
+1038   PTSD-6 state 3 of 5: present, digest differs, no        FAIL_ANCHOR_DRIFT_UNEXPLAINED                     record a checkable cause, or the state
+1039          cause recorded                                                                                     stands
+1040   PTSD-7 state 4 of 5: pinned path absent,                POSTPONE_ANCHOR_ABSENT_MARKED                     re-materialise the ﬁle at its recorded
+1041          ABSENT marker written at record time                                                               path (quantum: whole ﬁle)
+
+1042   PTSD-8 state 5 of 5: pinned path absent, no             FAIL_ABSENT_UNMARKED                              none: the FAIL stands until the ﬁle or
+              marker                                                                                             a record-time marker exists
+1043
+1044
+1045
+1046
+       Table 12: Post-observation amendments to this framework’s own registered objects, disclosed as
+       ﬁndings of the construction, not as defects (Section 2.6). Three are design-level (gate and deﬁnition
+1047
+       editions); the fourth is the external-review repair disclosed in Section 2.3. On the gate row the three
+1048
+       rule editions are separated explicitly, because an earlier version of this note labelled the ﬁrst-run im-
+1049   plementation’s semantics as the registered one — it was not: the registered predicate never counted
+1050   “any FAIL as collapse”, and the amendment moved the shipped rule toward the pre-registration.
+1051   “Re-executable” asks whether the semantics named in that row can still be run from bytes on this
+1052   disk today; one row answers no, and that row is this note’s one recorded, non-recomputable verdict
+1053   (Section 2.6).
+1054
+1055   Object and trigger             Superseded semantics                    Current semantics                        Where ﬁled           Re-exec.
+1056   Group-gate diversity           v1, ﬁrst-run code (not the              v2 (R31): a G2 caveat is a separate      “correction (R31)” v1: no; v2,
+1057   criterion; trigger: the ﬁrst   registered text): any unit FAIL is      bucket counted as a detection; an        of audit_gate_ v2b, v3: yes
+       run’s legitimate               read as a collapsed verdict set,        ordinary FAIL still counts toward        d1_summary.
+1058   FAIL_NO_ROPE_ARM               hence group                             collapse. v2b (R42, current): v2         md; the prereg’s
+1059   on the seat-H unit was         FAIL_VACUOUS_STATES. v3,                plus any FAIL-family string counts       post-run
+       read by the ﬁrst-run code      registered (prereg §3, never            as a distinct observed state in the      amendment note;
+1060   as a group-level collapse      changed): the state set is neither      second disjunct — the reading v3         v2/v2b/v3
+1061                                  all-PASS nor all-FAIL nor               had all along                            executable in
+                                      all-POSTPONE — v3 already                                                        code/group_
+1062                                  accepted the ﬁrst run’s multiset, so                                             state_rule.py
+1063                                  v1 was inconsistent with the prereg
+                                      and the amendments moved toward
+1064                                  it
+1065
+       The registered                 the map registered the strings the      every string any checker of this note the v2_changes          yes
+1066   verdict-state map, v1 to       two panels had emitted; the PRIM4       can emit is registered, each tagged   block inside the
+1067   v2                             and anchor-state strings had no         with how it was exercised (live,      map ﬁle itself
+                                      entry, so the projection script would   ﬁxture, diagnostic, historical,
+1068                                  have exited non-zero on them            edition-gated)
+1069   PRIM3, from three arms         “exactly one of three arms applies”:    the same decision as a total function    code/prim3_          yes
+1070   to a ﬁve-state                 present with matching hash (PASS),      of four record-time facts, with ﬁve      anchor_
+       enumeration                    present with drifted hash and no        reachable states; the two added are      states.py and
+1071                                  recorded cause (FAIL), absent           drift-with-a-recorded-cause (PASS)       the state-map ﬁle
+1072                                  without a marker (FAIL)                 and absent-with-a-marker
+                                                                              (POSTPONE). Two anchors of our
+1073                                                                          own certiﬁcate fall in the gap; the
+1074                                                                          certiﬁcate check prints the tally with
+                                                                              and without the cause registry, and
+1075                                                                          no unit verdict differs under that
+1076                                                                          anchor-state toggle (Section 3.4)
+1077                                                                                                                                Continued on next page
+1078
+1079
+
+
+
+                                                                                20
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1080   Table 12 (continued)
+1081
+       Object and trigger        Superseded semantics                   Current semantics                        Where ﬁled          Re-exec.
+1082
+1083   G2 and three Panel-B      the seat-F verdict was an              G2 is a predicate over the audited       code/run_            yes
+       predicates, from          unconditional assignment while its     cell’s own ﬁelds (bit_exact true         audit_gate_
+1084   constants to predicates   inputs were read from keys absent      or max_max = 0 on the healthy            d1.py R42
+1085   (external review, R42)    from the cell ﬁle (every read None,    arm); seat C veriﬁes a registered        edition and the
+                                 none entering a condition); the        per-slot manifest; seat E requires the   judge_
+1086                             seat-C/seat-E/seat-G acceptance        bound string plus an explicit            version_drift
+1087                             conjunctions were near-tautological    three-arm mention; seat G requires       ﬁeld of the R42
+                                 (one RESOLVED token; a substring       the trial id and the pinned spec         projection; the R31
+1088                             matching “harm”; two-word              name in the job ﬁle. At the R42          frozen certiﬁcate is
+1089                             presence)                              repair point, unit verdicts were         untouched
+                                                                        unchanged on all seven units
+1090
+1091
+1092
+1093   E      I NTERNAL CHECKS ON OUR OWN CHECKERS
+1094
+1095   Three measurements in this appendix are checks of the auditing code rather than of any audited
+1096   archive. They are grouped here because they share one limitation: we wrote both sides.
+1097
+1098   The two group-rule editions are incomparable. Section 2.7 states the group readout as a regis-
+1099
+       tered predicate, and the decisive cell shipped a different rule. Their complete disagreement counts
+       and smallest witnesses are in Table 13; neither rule reﬁnes the other.
+1100
+1101
+1102   Table 13: Bidirectional group-rule disagreement over the registered verdict-multiset domain. Read-
+1103   ing: neither edition contains the other.
+1104     Accepted by              Rejected by               Count Smallest witness
+1105     Registered predicate     Shipped rule                75       six PASS units plus one FAIL_NO_ROPE_ARM
+1106     Shipped rule             Registered predicate        21       six FAIL units plus one FAIL_DEGENERATE_HEALTHY_ANCHOR
+
+1107
+1108
+1109
+       The ﬁrst witness is the R31 misﬁre pattern minus its G2 caveat, showing that the correction of
+       Section 2.6 rescued only multisets containing a G2 verdict and left the shipped rule inconsistent with
+1110
+       the registered text elsewhere. The second is an all-FAIL multiset that the pre-registration excludes
+1111
+       as a vacuum and the shipped rule passes. The multiset our corpus actually produced lies outside
+1112   both disagreement sets, so no verdict reported in this note changes under either rule — which is a
+1113   fact about our corpus and not a defence of the rule.
+1114
+1115   A second implementation of ﬁve checks. code/audit_gate_second_impl.py re-
+1116   implements ﬁve checks from their written speciﬁcations by deliberately different means: the string
+1117   projection by longest-literal matching over the map ﬁle rather than by dictionary lookup; the PRIM3
+1118   anchor states by an explicit 16-row lookup table rather than by nested conditions; the Clopper–
+1119   Pearson zero-column limit by bisecting the exact binomial tail rather than by the closed form of
+1120   Section 2.2; the ﬁxture verdicts by one purpose-written reader per ﬁxture; and the group predicate
+1121   by a pairwise diversity test rather than by the shipped rule. The two implementations agree on ev-
+1122
+       ery unit, every truth-table row, every ﬁxture and the group readout. The only numerical difference is
+       |Uclosed (40)−Ubisect (40)| = 4.4×10−16 , with both routes returning n⋆ = 122 and a reﬁll of 82 rows.
+1123
+       This catches only errors that survive one implementation and not the other; it is not independence.
+1124
+1125
+       Design numbers of the registered calibration cell. The bounds that ﬁx the design of Section 5’s
+1126
+       calibration cell are computed by code/cp_design_numbers.py rather than asserted; the
+1127   aligned detection and false-alarm designs are Tables 14 and 15. The ﬁrst pass is a pilot that reports
+1128   intervals only, while the conﬁrmatory pass requires 36 archives per family. The pre-registration
+1129   freezes the defect-free stratum at 60 with a one-ﬁre allowance and forbids growing it after ﬁres are
+1130   seen.
+1131
+1132
+1133
+
+
+
+                                                                          21
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1134
+1135           Table 14: Per-family detection design under two-sided 95% Clopper–Pearson intervals.
+1136       Quantity                                                                Registered value
+1137
+           Lower bound at 10/10                                                    0.6915
+1138       Detection criterion                                                     0.90
+1139       Bound at n = 35 (last value below the criterion)                        0.89997
+1140       First n at which the bound crosses the criterion                        36
+1141
+1142
+1143
+1144   Table 15: Pooled defect-free false-alarm design at n = 60. Reading: the registered upper bound
+1145   0.10 tolerates exactly one ﬁre; tolerating two requires n = 70, and tolerating three requires n = 85.
+1146       Fires                                                                   Clopper–Pearson upper
+1147                                                                               bound
+1148       0                                                                       0.0596
+1149       1                                                                       0.0894
+1150       2                                                                       0.1153
+1151
+1152
+1153   F       R EMAINING DELINEATION AXES AND INHERITED ANTI - PATTERNS
+1154
+1155   Axes D4 and D5. D4, output type: the neighbour ships a gate script plus a written list of anti-
+1156   patterns, that is, governance experience; this note ships a primitive layer, a variable-rate fan-in ledger
+1157
+       whose FAIL channel is demonstrated, and the methods note itself. D5, relation to the model: the
+       neighbour serves the readout layer of one inference stack and has no ﬁne-tuning or checkpoint-phase
+1158
+       concept, whereas AUDIT-GATE is object-agnostic, and the archives it audits in Table 1 include
+1159
+       ﬁne-tuning differentials, checkpoint-margin calibration, evaluation-distortion probes and pure CPU
+1160   pipelines. Overlap self-assessment, stated plainly: zero at the claim layer, roughly a quarter at the
+1161   level of method vocabulary, since “gate”, “control” and “envelope” are statistical common property.
+1162
+1163   The six inherited anti-patterns. Reused, not reproved: (i) an empty set must fail a gate rather
+1164   than pass it; (ii) a rate-only test is blind to direction; (iii) a run identiﬁer must be a ﬁeld, not a
+1165   directory name; (iv) a truncated output is not a wrong answer; (v) short-sample behaviour does not
+1166   certify long-generation behaviour; (vi) static inspection cannot see a runtime crash. PRIM2 and
+1167   PRIM3 are the mechanical forms of (i) and (iii); (iv) and (v) survive as reasons why a readout-layer
+1168   gate remains necessary alongside this one.
+1169
+1170   Two clauses added from the in-run review pipeline. The list continues with two clauses that
+1171
+       reached us as review output on other seats’ gates rather than as our own ﬁndings; they are stated
+       here as normative clauses of the audit, and their falsiﬁcation conditions are in Section 5.
+1172
+1173   (vii) A structural reachability precheck is a sufﬁcient-rejection, necessary-but-not-sufﬁcient-
+1174   admission gate: a pre-registered upper bound computed before ordering — for instance max(b + c)
+1175   for a McNemar-framed test, or a permutation design’s pﬂoor together with a tolerance table — proves
+1176   only that the test is not mechanically unanswerable. It does not prove that admission was correct. A
+1177
+       positive control that purports to demonstrate no false kill must itself survive clause (viii); otherwise
+       its pass records a false admission.
+1178
+1179   (viii) Any reference arm or control ﬁxture whose load-bearing numeric ﬁelds are byte-identical to
+1180   another arm’s, beyond the metadata divergence one would expect, FAILs the audit. The converse
+1181   trap is the reason the clause is written on ﬁelds rather than on ﬁles: two arms with distinct bytes and
+1182   distinct inodes can still carry the same measurement — in the case that prompted this clause, a run’s
+1183
+       always and never reference pair agreed byte-for-byte in 20 of 22 top-level ﬁelds — so the audit
+       must compare numeric payloads ﬁeld by ﬁeld, and its object must extend past the outputs directory
+1184
+       to every artifact consumed downstream, including probe and perturbation copies, pre-gate analyser
+1185
+       outputs, and any record that references those cells. Byte-level and inode-level checks are blind to
+1186   exactly this failure.
+1187
+
+
+
+                                                              22
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1188
+       Provenance of clauses (vii) and (viii). Neither clause is ours, and both were revised at least once
+1189   before being admitted here, so we record the chain rather than the conclusion alone. Clause (vii)
+1190   descends from a reachability precheck note whose ﬁrst version over-claimed the mechanism and
+1191   was corrected by a teacher review; clause (viii) descends from a fault-reconciliation record on an-
+1192   other seat, which established that the defect’s real channel was a wiring equivalence between two
+1193   reference arms rather than a directory copy, and that hash- and inode-level auditing is blind to it. A
+1194   separate seat’s own v2 correction retired a quantitative prior we had earlier attached to clause (vii)
+1195   — an “about a quarter of cells are unreachable” ﬁgure that its authors withdrew — and we removed
+1196   the number rather than restating it. The provenance records that carry this chain are organised in
+1197
+       Table 16; the baseline and its addendum are two editions of the local clause record.
+1198
+1199   Table 16: Read-only provenance chain for clauses (vii) and (viii). The two sha16 values pin the local
+1200   draft editions; the neighbour records are cited at their run-tree locations.
+1201    Record                                                                                       Role
+1202    Fault-reconciliation memo of neighbour seat E (anonymized; retained in the run tree)         fault reconciliation behind clause (viii)
+1203    Corrected reachability analysis of neighbour seat C (anonymized; retained in the run tree)   corrected reachability analysis
+        Registered source design of neighbour seat C (anonymized; retained in the run tree)          registered source design
+1204    Local baseline clause draft (sha16 2ed57f6b51b6ce2c)                                         baseline clause draft
+1205    Local superseding addendum (sha16 5ca2e2d3ade43a7d)                                          superseding addendum
+1206
+1207
+1208   We hold none of the ﬁrst three; they are cited as located, read-only neighbour records, and the
+1209   numbers we dropped on their authority are dropped rather than re-derived.
+1210
+1211   G     P ER - UNIT ENDPOINT REGISTRATION IN THE DECISIVE CELL
+1212
+1213   The complete G1 rule is e = (readout, side, n, threshold, path_id). A missing ﬁeld makes the
+1214   endpoint unregistered and returns POSTPONE with the smallest missing-ﬁeld or observation-
+1215   row reﬁll that restores decidability. The path identity ﬁngerprints the decoding or serving route,
+1216   weight/conﬁguration state, and readout parser or grader; a threshold is valid only within that identity.
+1217   These last two ﬁelds were added after adjudication showed that sample count and threshold alone
+1218
+       underdetermine the observation path.
+1219   Two tiers must be distinguished. In the frozen R31–R42 tier, the G1 quintuples and G2 answers
+1220   are auditor transcriptions, not mechanical extractions: per-unit constants written after reading each
+1221   archive. The frozen “5/5” therefore counts transcribed ﬁelds, not ﬁelds proved present. The current
+1222   tier instead uses one parser per archive schema (code/audit_gate_g1_extractor.py and
+1223   code/audit_gate_g1_parsers.py); unparseable or contradicted ﬁelds degrade to POST-
+1224
+       PONE under G1’s missing-ﬁeld rule. Five units extract fully; seat C POSTPONEs because G2 is not
+       mechanically parseable, and seat H POSTPONEs because its threshold is not. Eleven delete/mutate
+1225
+       ablations plus constant-grep and identity controls pass in experiments/results/audit_
+1226
+       gate_d1/g1_extractor_ablation_log.json. The runner consumes these evidence
+1227   records directly, making the current sidecar the mechanical-extraction tier while the frozen report
+1228   remains the transcription tier.
+1229
+1230
+1231
+       H     C ANONICAL PIN
+1232
+1233
+       This appendix is the single canonical statement of the audit claim and supersedes every historical
+       tier for current-verdict reporting. The certiﬁcate veriﬁer attests this pin: the canonical checker, its
+1234
+       recorded input pins, the current mechanical-extraction verdict, the frozen verdict retained as history,
+1235
+       and the replay interface. The decisive-cell current tally is 3 PASS, 2 FAIL, 2 POSTPONE; the frozen
+1236   tally is 6 PASS, 1 FAIL, 0 POSTPONE. Table 18 is therefore single-valued with Table 17 and the
+1237   tier caveats in Table 1.
+1238
+1239
+1240
+1241
+
+
+
+                                                                           23
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1242
+1243   Table 17: Two provenance tiers of the decisive cell. Panel A is the current mechanical- extraction tier,
+1244   with current-verdict tally 3 PASS, 2 FAIL, 2 POSTPONE; Panel B is the frozen auditor-transcription
+1245   record, tally 6 PASS, 1 FAIL, 0 POSTPONE. Frozen G1/G2 ﬁelds are auditor transcriptions, not
+1246   mechanical extractions.
+                  Panel A: current mechanical-extraction tier
+1247              Unit                            Current verdict                          G1 mech.          G2 mech.        Pins
+1248              D_A4_healthgate⋆                PASS                                          5/5              yes          4
+1249              C_exit_package_R42              POSTPONE (G2)                                 5/5         not parseable     4
+                  E_R33_threearm                  FAIL                                          5/5              yes          3
+1250              F_r42_samepath                  FAIL_DEGENERATE_HEALTHY_ANCHOR                5/5              yes          4
+1251              G_fb2_v3_r120                   PASS                                          5/5              yes          2
+                  H_r7_conject_front              POSTPONE (threshold)                          4/5              yes          3
+1252              A_r7_strict_corpus              PASS                                          5/5              yes          2
+1253
+                  Panel B: frozen R31–R42 auditor-transcription record
+1254              Unit                           Frozen verdict                          G1 transcribed     G2 answered      Pins
+1255              D_A4_healthgate       ⋆
+                                                  PASS                                          5/5             yes           4
+1256              C_exit_package_R42              PASS                                          5/5             yes           4
+                  E_R33_threearm                  PASS                                          5/5             yes           3
+1257              F_r42_samepath                  FAIL_DEGENERATE_HEALTHY_ANCHOR                5/5        mech. (current)    4
+1258              G_fb2_v3_r120                   PASS                                          5/5             yes           2
+                  H_r7_conject_front              PASS                                          5/5             yes           3
+1259              A_r7_strict_corpus              PASS                                          5/5             yes           2
+1260
+1261
+1262                      Table 18: Canonical pin: one row per decisive-cell unit and one block
+1263                      for the six-case ledger. The checker and input descriptions identify
+1264                      the recorded evidence; current and frozen verdicts are kept in separate
+1265
+                          columns.
+1266
+           Unit                             Checker sha16           Input pins           Current verdict              Frozen verdict
+1267
+1268       Decisive cell; replay: run_audit_gate_d1.sh
+1269       D_A4_healthgate⋆                 9286a81b3f4c9f7a owner-gate lineage          PASS                         PASS
+           C_exit_package_R42               9286a81b3f4c9f7a per-slot manifest           POSTPONE (G2)                PASS
+1270
+           E_R33_threearm                   9286a81b3f4c9f7a live-archive cell records   FAIL                         PASS
+1271
+           F_r42_samepath                   9286a81b3f4c9f7a same-run cell records       FAIL (G2)                    FAIL (G2)
+1272
+           G_fb2_v3_r120                    9286a81b3f4c9f7a owner-seat job pins         PASS                         PASS
+1273       H_r7_conject_front               9286a81b3f4c9f7a smoke-report records        POSTPONE (threshold)         PASS
+1274       A_r7_strict_corpus               9286a81b3f4c9f7a corpus summaries            PASS                         PASS
+1275
+           Six-case ledger; replay: python3analysis/audit_gate.py
+1276
+           F1–F6 and A4                     0ed8657a6ab7dbf9 Table 6 pins                matches frozen ledger        matches frozen
+1277                                                                                                                  ledger
+1278
+1279
+1280   Three scope clauses bind the pin. PASS certiﬁes mechanical operability, not scientiﬁc correctness.
+1281   POSTPONE follows only from the audit’s missing-ﬁeld rule: seat C lacks a mechanically estab-
+1282   lished G2 answer and seat H lacks a certiﬁed threshold. Historical transcriptions and replay snap-
+1283   shots remain in the ledger as the archaeological record, not as competing current verdicts.
+1284
+1285   I      F IGURE PROVENANCE
+1286
+1287   The four ﬁgures have three different provenances and we separate them, because a reader is entitled
+1288   to know which pixels came from data and which from a generator.
+1289
+       Figure 4 is a programmatic schematic drawn from the section it illustrates and contains no quan-
+1290
+       titative content. Figures 3 and 2 are generated from on-disk artifacts by code/make_replay_
+1291
+       matrix.py and code/make_coverage_matrix.py; no value in either is entered by hand,
+1292   and re-running the scripts reproduces both, byte for byte — each script suppresses the embedded
+1293   creation timestamp so that the ﬁgure PDFs are as reproducible as the JSON artifacts they are drawn
+1294   from.
+1295
+
+
+
+                                                                           24
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1296
+       Figure 1 is a raster illustration produced with an image generator, and it is the only generated asset
+1297   in the manuscript. Its status is qualitative: it carries no quantitative value, no measurement and
+1298   no experimental outcome, and nothing in the paper’s argument rests on it. Three candidates were
+1299   generated. The ﬁrst was rejected on scientiﬁc-semantic grounds — it omitted the G2 check from the
+1300   audit chain, which matters because G2 is the check that ﬁres on the one detection in Panel B, and
+1301   it showed the input archive with three components instead of four. The second passed the element
+1302   audit and was the prior adopted version. The third, adopted here, preserves that version’s semantics
+1303   while making the PRIM5 projection an explicit box between the raw machine string and the three
+1304   mutually exclusive states. Audited element by element against Section 2, it shows the four archive
+1305
+       objects, the six checks in the order of Figure 4, PRIM5 outside and after that stack, the three state
+       badges as its only outcomes, and a separate certiﬁcate path to a reviewer; no GPU appears, and
+1306
+       the illustration carries no measurement or experimental outcome. The prompts, tool, candidates,
+1307
+       semantic audits and adoption decisions are recorded in build/image_generation_record.
+1308   json. Two further facts belong there rather than in a caption. An earlier round’s attempt at this
+1309   ﬁgure failed with a hard generator quota error, which is logged in the same ﬁle; the quota had been
+1310   restored by the time this version was drafted. And the prompt asked for a speciﬁc image backend,
+1311   but the tool exposed no backend selector, so we record what was requested and do not claim to know
+1312   which model rendered the adopted asset.
+1313
+1314
+1315
+1316
+1317
+1318
+1319
+1320
+1321
+1322
+1323
+1324
+1325
+1326
+1327
+1328
+1329
+1330
+1331
+1332
+1333
+1334
+1335
+1336
+1337
+1338
+1339
+1340
+1341
+1342
+1343
+1344
+1345
+1346
+1347
+1348
+1349
+
+
+
+                                                        25
+

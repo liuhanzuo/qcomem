@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "3ec51ae6ffcf87653a3cf81af085bb834be3c6c87b953736487d0e0c9fe089b1",
+  "role": "experimental_rigor",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "在“固定随机权重抽样、相同训练预算”的狭窄问题上，四个数据顺序重复和三个额外初始化均给出一致的 loss-gap 方向，且作者较诚实地区分训练损失、PPL、MAUVE 与文本质量。但 n=4 的配对区间不覆盖权重抽样，n=3 的多初始化控制共用 seed-42 数据顺序；生成端只有一个 prompt、一个 checkpoint pair，两个 arm 均明显退化且无独立质量标签。漂移重算门还以 12.6%--18.1%（局部最高 56.8%）差异失败，故多数信号诊断不能支撑稳定机制结论。",
+    "presentation": "论文的负结果边界、配置表、逐项证据图和失败门披露清晰，10 页逐页视觉检查无排版缺陷。不过主线被 PPL、argmax concentration、entropy、drift、MAUVE 缺失和多种校准诊断分散，读者容易高估这些描述量之间的因果联系。",
+    "contribution": "把负对照作为报告单元测试，并完整展示一个 135M dLLM 的退化输出，是有用的工程记录；但它不是新方法或新指标，核心生成证据只有一个提示且没有质量锚，作者也明确不作能力/质量推断。以 ICLR 标准看，当前增量与普适性明显不足。"
+  },
+  "paper_summary": "本文将 SmolLM2-135M 转换为 masked denoiser，对比保留 AR 预训练权重与固定随机初始化，在每臂 30M token/458 步的匹配预算下训练。四个配对数据顺序/训练随机种子上，随机初始化末次记录 loss 比 AR-init 平均高 2.262 nats（配对 t 区间 [2.220, 2.305]）；三个额外随机权重抽样也保持正 gap。生成侧只在“To be or not to be”单一提示和 seed-42 checkpoint pair 上每格采样 32 次，两个 arm 都退化，MAUVE 未记录，PPL 排序与 loss 排序相反。论文将这些结果定位为负对照报告试点，而非质量或机制结论。",
+  "strongest_verified_contribution": "第 4--5 页表 3--4 的匹配预算训练结果验证了一个非常局部但清楚的事实：在固定训练配方下，AR 初始化相对随机初始化的末次记录 denoising loss 优势在四个数据顺序重复中方向一致，并在三个额外随机权重抽样中保持正方向。",
+  "strengths": [
+    "两主臂训练 token 数、步数与大部分配置匹配，并逐个报告四个 paired endpoint，而非只给均值。",
+    "第 3--4、9 页明确说明四个 paired seeds 不改变随机权重抽样，避免将其区间误报为初始化总体推断。",
+    "主动报告两个 arm 均为退化文本、PPL 排序反转、MAUVE 未记录，并拒绝据此给出质量排名。",
+    "第 7--8 页保留失败的 drift recomputation gate，而没有把失败字段继续包装成漂移效应。",
+    "提供 checkpoint/脚本/结果哈希与 claim-to-artifact map；逐页视觉核查显示全部 10 页完整可读。"
+  ],
+  "questions": [
+    "为什么多初始化控制的 seeds 11/22/33 均使用同一个 seed-42 数据顺序，并与同一 AR-init 参照比较？若同时独立抽样数据顺序、训练随机性和 AR 参照，gap 的方差是多少？",
+    "在两个 arm 都明显退化的情况下，单提示 PPL、argmax concentration 和 masked entropy 的科学目标是什么；它们能预测哪一个由人类或任务定义的外部结果？",
+    "表 10 的 AUROC 使用 260,064 个 masked 行但只有 32 条 trajectory。不同 position/step 的强依赖是否会使 trajectory bootstrap 在单提示下仍低估 prompt-level 不确定性？",
+    "能否提供随机初始化 checkpoint 的可访问资产或确定性 weight seed，使主实验不必依赖当前匿名工件中一个不可重建的 ambient-RNG draw？",
+    "漂移字段的标量/top-k 重算为何会出现最高 56.8% 的偏差，是否存在 dtype、mask indexing 或 aggregation 定义不一致？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A10-I1",
+      "severity": "critical",
+      "dimensions": ["experimental_rigor", "significance", "technical_soundness"],
+      "location": "第 1--2 页摘要/引言与图 1；第 3--4 页表 2；第 6 页表 5--6；第 9 页表 11",
+      "claim_ids": ["Emission-side companion record", "Negative-control reporting unit"],
+      "evidence_ids": ["Figure 1", "Table 2", "Table 5", "Table 6", "Table 11"],
+      "observed_evidence": "生成评估仅使用一个提示、一个 seed-42 checkpoint pair、每 arm/temperature 32 个 continuation。AR-init 主要产生标点/换行残片，random-init 主要产生单词循环；两者都退化。没有人评、任务正确率或其他独立质量锚，MAUVE 也未成功记录。",
+      "why_it_matters": "当所有比较对象均失败且没有外部目标时，PPL、长度、argmax concentration 或 entropy 的差异无法解释为更好的生成、可用诊断或普适负对照属性。单提示还完全无法估计 prompt population 变异。",
+      "required_fix": "在预先定义的多提示集合、至少两个任务/模型规模和多个 checkpoint/生成种子上评估；加入与研究问题匹配的独立质量锚（盲人评或任务标签），并预先说明每个内部信号预测的外部结果。",
+      "verification_test": "对提示与生成种子分层重采样，报告每个信号对独立质量标签的校准/区分性能及跨床异质性；不能只在退化样本中以 arm identity 作为替代标签。",
+      "evidence_needed": "完整提示清单、逐样本输出、盲标协议或任务标签、独立种子和分层统计结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness"],
+      "location": "第 1 页结果预览；第 3--5 页表 3--4；第 9 页表 11",
+      "claim_ids": ["Matched-budget loss advantage", "Multi-init negative control"],
+      "evidence_ids": ["Table 3", "Table 4"],
+      "observed_evidence": "四个 paired seeds 只改变数据顺序和训练随机性，随机权重 draw 固定；配对 t 区间基于 n=4，方向 sign test 的最小双侧 p 为 0.0625。额外三个随机初始化虽方向一致，但都用同一 seed-42 数据顺序，并未形成权重×数据顺序的独立重复设计。",
+      "why_it_matters": "窄区间 [2.220, 2.305] 只反映固定权重 draw 下的数据顺序变异，容易被误读为初始化总体的精度。n=3 方向检查不足以估计初始化方差或交互。",
+      "required_fix": "采用预先功效分析的交叉/嵌套重复：多个独立随机权重 draw、多个数据顺序与训练种子，并为 AR-init 提供相同层级的重复；用分层模型或按独立 draw 聚类的区间报告方差分量。",
+      "verification_test": "主要 loss gap 的区间应在权重 draw 和数据顺序两个层级都重采样后仍远离零，并报告 draw×order 交互及异常 draw。",
+      "evidence_needed": "每个 weight seed × data-order seed 的 endpoint、预定样本量与分层分析代码。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I3",
+      "severity": "major",
+      "dimensions": ["reproducibility", "experimental_rigor"],
+      "location": "第 4 页表 2；第 9 页 Reproducibility and release",
+      "claim_ids": ["Fixed audited random initialization", "Exact reproduction"],
+      "evidence_ids": ["Table 2", "checkpoint SHA256 entries"],
+      "observed_evidence": "主 random-init 权重由 host ambient RNG 产生且未记录 seed；step 0 也未记录。论文给出 checkpoint 哈希，但冻结时没有已验证的外部匿名 URL。",
+      "why_it_matters": "该权重 draw 是主要处理变量。若 checkpoint 不可获得，其他研究者无法构造同一处理；即使可获得，也不能验证从初始化代码到权重的确定性生成链。",
+      "required_fix": "发布主 checkpoint，并记录生成权重的 RNG 算法、所有库版本、seed、初始化例程与初始化后哈希；补充从空环境重建的端到端清单。",
+      "verification_test": "第三方按所给 seed/环境生成的 step-0 state dict 应与发布哈希逐字节一致，并能复现至少一个训练 endpoint。",
+      "evidence_needed": "可下载 checkpoint、weight seed、初始化代码、环境锁文件和逐阶段哈希。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I4",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "第 7--8 页第 4.3 节与表 9",
+      "claim_ids": ["Drift localization diagnostic"],
+      "evidence_ids": ["Table 9", "Figure 3"],
+      "observed_evidence": "drift 的 scalar/top-k 重算门要求 1% 容差，但实际总量相差 12.6%--18.1%，random-init 个别单元达到 56.8%。作者因此不报告漂移效应，只保留两个序列化一致性检查。",
+      "why_it_matters": "失败幅度显示 drift 字段定义、索引或聚合链可能有系统性错误；任何把 entropy/argmax 轨迹解释成低置信层导致漂移的叙述均没有可审计数值基础。",
+      "required_fix": "定位差异来源，以逐 token/step 的手工小例验证定义，修复后从原始 logits/ids 重新计算并在独立实现间达到预定容差；在此之前删除所有机制暗示。",
+      "verification_test": "预注册的随机样本与边界案例上，两个独立实现的 drift count/率均在 1% 以内且逐事件差异可解释。",
+      "evidence_needed": "原始事件字段、重算代码、最小 worked example、逐事件 diff 和修复后 gate 报告。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A10-I5",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "clarity"],
+      "location": "第 5、7--8 页第 3.3/4.4 节、表 10",
+      "claim_ids": ["Masked-entropy orientation"],
+      "evidence_ids": ["Table 10", "cross-paradigm masked rows"],
+      "observed_evidence": "AUROC 以当前 argmax 是否不同于最终 token 为标签，32 条 trajectory 产生 260,064 个高度相关的 masked 行；区间按 trajectory bootstrap。所谓 calibration multiple 是 real/null95 的置换比值，不是 AUROC 或标准显著性量，random-init 原始 AUROC 约 0.458。",
+      "why_it_matters": "单 prompt、32 trajectory 无法支持 prompt-level 外推，且逐行大样本会给出看似很窄的区间。低于 0.5 的 orientation 也没有由独立任务效用验证，非标准比值很难解释。",
+      "required_fix": "把 trajectory/prompt 设为明确抽样单位，在多提示多种子上重复；预先定义方向与假设检验，报告标准置换 p 值/效应，并用 held-out 外部结果验证 entropy 的用途。",
+      "verification_test": "按 prompt 与 trajectory 两层 bootstrap 后效应方向稳定，且 held-out 质量/错误标签上的预测性能超过预定基线；置换程序的 I 类错误用模拟校准。",
+      "evidence_needed": "多提示逐 trajectory 数据、预注册统计量、置换零分布和 held-out 验证结果。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未涉及人类受试者或私人数据。潜在责任风险在于读者可能把内部置信信号、PPL 或单提示退化差异误作生成质量指标；论文已明确警告不应作该推断。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "多随机权重 draw × 多数据顺序的分层重复仍给出稳定 loss gap，并正确反映初始化总体不确定性。",
+    "在预先定义的多提示、多任务或多模型床上，内部信号对独立质量/任务标签有可复现的预测价值。",
+    "确定性重建主随机初始化 checkpoint，并发布可复算的完整训练与生成资产。",
+    "修复 drift gate 后，两个独立实现逐事件一致且新的机制性分析通过预定验证。"
+  ],
+  "evidence_that_would_lower_score": [
+    "增加随机权重 draw 后 loss gap 高度异质、出现频繁反向或分层区间跨零。",
+    "在多提示上 PPL、entropy 或 argmax concentration 与独立质量标签无关或方向不稳定。",
+    "主 checkpoint/训练 endpoint 不能由记录配置复现。",
+    "漂移重算差异源于更广泛的事件流索引或序列化错误，并影响其他表格。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的冻结 PDF；未访问代码、匿名工件、checkpoint、训练日志或原始生成，无法复算数值或验证哈希资产。",
+    "按隔离要求未联网，未核验外部引文、模型/数据许可证以及论文声称的资产是否实际可访问。",
+    "已全文阅读并逐页视觉核查全部 10 页；页面完整可读，未见裁切、乱码或图表渲染异常。"
+  ]
+}

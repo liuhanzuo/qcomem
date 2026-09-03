@@ -1,0 +1,60 @@
+{
+  "schema_version": "qcomem-related-palu-transfer-prereg-v1",
+  "status": "frozen_before_new_gpu_model_outputs",
+  "method": {
+    "name": "Palu head-wise low-rank K/V projection",
+    "official_repository": "https://github.com/shadowpa0327/Palu",
+    "official_commit": "bb22666e2ef96707e8dd21d93fc00146c2e0d615",
+    "official_svd_module_sha256": "be0b986b727094e82d1c74694eedb656b755ed73b876bdea54af8f8d41fbd7d4",
+    "official_qwen2_wrapper_sha256": "128160fdb468c5f5f5cc58937a4f209726bf345f5eca81756c85e09e0ac38cf7",
+    "port_boundary": "The released wrapper subclasses Qwen2 rather than Qwen3.5. This bounded port applies Palu's per-head SVD axis and square-root singular-value factorization to Qwen3.5 layer-3 K/V projection weights. The upstream helper's unconditional exact-reconstruction assertion is invalid for truncated ranks, so the hash-bound port retains the formula but removes only that assertion. It does not port Palu's attention kernel or rank-search training pipeline."
+  },
+  "model": {
+    "id": "Qwen/Qwen3.5-35B-A3B",
+    "revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "model_weight_ledger_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+    "model_artifact_ledger_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+    "weight_index_sha256": "d8d0b7ca4e61ae107e3e87a3ff21136b3ac7c789e64bb24267227ca804e04205",
+    "config_sha256": "5e4d7f74fec2f360eb9cfbfcd6ec0c4c76e684d3a11caaed259d9fd9bfbc7944",
+    "layer_index": 3,
+    "hidden_size": 2048,
+    "key_value_heads": 2,
+    "head_dim": 256,
+    "projection_output_size": 512
+  },
+  "input": {
+    "dataset": "PG19 registered training smoke64",
+    "dataset_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "jsonl_row_zero_based": 0,
+    "selection": "first 256 tokenizer tokens without special tokens",
+    "token_ids_dtype": "torch.int64",
+    "token_ids_shape": [1, 256],
+    "token_ids_sha256": "6fec26cdbe75e4502741f075fca870be56f726035a5c258a1a55d1b8d6389983"
+  },
+  "ranks_per_kv_head": [64, 128, 192],
+  "comparisons": [
+    "original Qwen3.5 K projection versus reconstructed Palu projection",
+    "original Qwen3.5 V projection versus reconstructed Palu projection"
+  ],
+  "gates": {
+    "all_outputs_finite": true,
+    "projection_error_must_decrease_strictly_with_rank": true,
+    "official_source_hashes_match": true,
+    "model_and_input_receipts_match": true,
+    "gpu_name": "NVIDIA H20-3e",
+    "compute_capability": "9.0"
+  },
+  "authorized_claims": [
+    "selected-layer Qwen3.5 K/V projection sensitivity to Palu-style head-wise ranks",
+    "logical per-token K/V latent byte ratios at the selected ranks",
+    "architectural combination hypothesis: Palu-style latent full-attention KV and CoMem-managed recurrent/document state address different stored components"
+  ],
+  "not_authorized": [
+    "end-to-end LongBench quality or language-model logits",
+    "tokens per second, TTFT, or attention-kernel latency",
+    "all-layer rank selection",
+    "an implemented Palu attention kernel for Qwen3.5",
+    "production serving compatibility",
+    "a completed end-to-end Palu plus CoMem system"
+  ]
+}

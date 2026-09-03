@@ -1,0 +1,867 @@
+% =====================================================================
+% Master manuscript: finite-sample safe adaptive early stopping for
+% correlated majority-vote rollouts. Every number traces to an on-disk
+% artifact; see REPRO_README.md. Status: v2 (r470), appendices complete.
+% =====================================================================
+\documentclass{article}
+\pdfinfoomitdate=1
+\pdftrailerid{}
+\usepackage{iclr2027_conference,times}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\pdfinfo{/Producer( ) /Creator( )}
+\hypersetup{pdfcreator={ },pdfproducer={ }}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\flip}{\mathrm{flip}}
+\newcommand{\calD}{\mathrm{CAL}}
+\newcommand{\trueH}{H_\star}
+\newcommand{\oraclecert}{c_{\trueH}}
+\newcommand{\fitscore}{s_{\widehat H_{\mathrm{FIT}}}}
+\newcommand{\HG}{\mathrm{HG}}
+\newcommand{\MV}{\mathrm{MV}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\P}{\mathbb{P}}
+
+\title{Finite-Sample Certificates for\\
+Adaptive Stopping in Count-Exchangeable\\
+Binary Pass-Count Replay}
+\author{Anonymous}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study a count-exchangeable binary pass-count replay model for repeated model
+rollouts, where a task's $N$ binary outcomes are summarized by its pass count.
+For the \emph{true} count law $\trueH$, an oracle posterior score
+$\oraclecert(x,k)$ is the exact conditional replay-flip probability; the
+corresponding oracle stopping theorem follows by the tower property without a
+union bound over stopping times. The implemented BAYES-H rule instead freezes
+$\widehat H_{\mathrm{FIT}}$ and thresholds the fitted stopping score
+$\fitscore(x,k)$. We do \emph{not} identify that plug-in score with the oracle
+conditional probability. Its operative high-probability statement is
+Theorem~\ref{thm:pop}: under independent i.i.d. FIT/CAL task sampling, a finite
+FIT-frozen family is CAL-screened using empirical-Bernstein UCBs with a
+Bonferroni allocation, yielding a marginal replay guarantee for a selected
+frozen rule; TEST is descriptive.
+
+On the supplied OpenMathReasoning count-replay artifact (11{,}607 problems,
+$N=32$; FIT/CAL/TEST $4000/4000/3607$), the CAL-selected fitted-score rule has
+a descriptive TEST replay rollout-count reduction of $80.9\%$ at realized
+replay flip $0.0249$ for $\alpha=0.05$ and $73.5\%$ at $\alpha=0.02$; the
+corresponding FIXED-HOEF/FIXED-EB rows are reported alongside it. An ESC-style
+window heuristic has a $0.0577$ replay flip in this TEST readout. The supplied
+synthetic drift and all margin-exploration results are explicitly synthetic,
+exploratory, and nonconfirmatory: at E3, $\alpha=0.05$, and $\delta=0.15$,
+BAYES-H is invalid ($5.2\%$ flip) while FIXED-EB remains valid ($4.7\%$).
+The OpenR1 carrier is accounted for as 9{,}374 raw unique problems, of which
+8{,}853 have exactly two deduplicated rollouts and are split
+$3000/3000/2853$ (FIT/CAL/TEST). Every reported flip is disagreement between
+binary pass-count replay decisions, and every saving is $1-\bar k/N$; the
+artifacts do not measure a delivered-answer majority, gold correctness,
+generated tokens, latency, cancellation, or ordered online deployment.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig1_round4.pdf}
+\caption{\textbf{Code-native overview; frozen-JSON labels.} (a) A random
+replay prefix is \emph{not} chronology. (b, top) only the true count law
+$\trueH$ gives the exact conditional identity for $\oraclecert$ and the
+oracle tower theorem. (b, middle) BAYES-H uses the distinct fitted score
+$\fitscore$; its operational claim is the FIT-frozen, Bonferroni CAL-EB UCB
+screen of Theorem~\ref{thm:pop}, not an exact per-problem conditional
+certificate. (c) The shown replay quantities are parsed from hash-pinned
+frozen JSON; the drift/margin note is synthetic, exploratory, and
+nonconfirmatory. The figure supplies no ordered-online, correctness, or
+operational-cost measurement.}
+\label{fig:overview}
+\end{figure}
+
+Self-consistency~\citep{wang2023selfconsistency} replaces one sampled answer
+by a majority vote over $N$ samples. Adaptive variants reduce or reallocate
+sampling: ASC~\citep{aggarwal2023asc} adapts a per-problem count with a
+lightweight stopping criterion, ESC~\citep{li2024esc} proposes early stopping
+for self-consistency, and MARS~\citep{chen2026mars} stops parallel traces using
+a conservative bound on future vote movement. For a count-only replay analysis,
+two deployment factors remain outside its evidence: (i) within-task rollouts
+may be correlated; and (ii) chronological generation order may drift, breaking
+an exchangeability-based certificate.
+
+We make two model-scoped observations. First, in a count-only carrier the
+observable and modeled task-level variation is \emph{across-task}
+heterogeneity: per-task pass rates are strongly bimodal
+(Section~\ref{sec:model}), and the replay flip probability is a functional of
+the mixture of per-task counts. Because the artifact retains counts rather
+than ordered outcomes, it cannot identify whether within-task correlation is
+the dominant deviation from i.i.d., nor establish a pooled-correlation
+diagnostic. Second, once the target is the mixture, the
+correct \emph{oracle} object is a per-prefix conditional probability under the
+true law $\trueH$: the posterior probability, given the observed prefix, that
+the full-$N$ majority disagrees. This object is exactly computable
+(hypergeometric posterior), its
+fixed-budget expectation $\E_H[f_K(k)]$ is monotone in the prefix
+length (Lemma~\ref{lem:exact}), and --- because the tower property
+collapses the stopping-time
+dependence --- it certifies \emph{any} adaptive rule at level $\alpha$ with no
+union bound (Theorem~\ref{thm:tower}). The implemented plug-in score formed
+with $\widehat H_{\mathrm{FIT}}$ is distinct; its usable guarantee is the
+FIT-frozen CAL-screened marginal result of Theorem~\ref{thm:pop}.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=1.6em,itemsep=1pt]
+\item \textbf{Framework.} A \emph{binary pass-count replay} model, not an
+ordered online or answer-aggregation model, in which both within-task
+correlation and across-task heterogeneity are folded into the true mixture
+$\trueH$ over per-task pass counts; the target is replay flip probability
+(Section~\ref{sec:model}).
+\item \textbf{Oracle theorem and fitted implementation.} For true $\trueH$,
+$\oraclecert(x,k)$ is an exact conditional replay-flip probability and
+Theorem~\ref{thm:tower} is an oracle result. BAYES-H instead thresholds
+$\fitscore(x,k)$ after fitting $\widehat H_{\mathrm{FIT}}$; its operative
+guarantee is Theorem~\ref{thm:pop}'s CAL-screened marginal replay bound, not
+the oracle conditional identity (Section~\ref{sec:method}).
+\item \textbf{Legitimate selection.} Under the stated i.i.d.-task and
+FIT/CAL-independence assumptions, a FIT-frozen, pre-declared rule family
+(budget $\times$ level for fixed-$k$; level for BAYES-H) is selected on CAL
+with simultaneous empirical-Bernstein bounds~\citep{maurer2009eb} plus
+Bonferroni.  The fixed benchmark TEST split is read once and reported only
+descriptively (Section~\ref{sec:protocol}).
+\item \textbf{Empirical replay readouts.} On 11{,}607 OpenMathReasoning
+problems, the one descriptive TEST readout reports $80.9\%$ replay
+rollout-count reduction at replay flip $0.0249$ ($\alpha=0.05$), versus
+$15.6\%$ for FIXED-HOEF; ESC-style window stopping has $0.0577$ replay flip.
+Two additional supplied count-replay carriers (DeepSeek-R1 at $M=2$ and
+Qwen3-4B at $N=8$) are setting-specific descriptive comparisons, not a
+policy-class comparison or a general allocation law (Section~\ref{sec:experiments}).
+\item \textbf{Honest boundaries.} The public carrier gives per-task pass
+\emph{counts}, not ordered rollouts; it supports a random-prefix
+(count-exchangeable) analysis only as a model assumption and cannot validate
+ordered online deployment. We therefore bound the failure domain under three
+pre-fixed synthetic ordered-drift mechanisms; every displayed margin result is
+synthetic, exploratory, and nonconfirmatory (Section~\ref{sec:drift}).
+\end{enumerate}
+
+\section{Related work}
+\label{sec:related}
+
+\textbf{Adaptive sampling for voting.} ASC~\citep{aggarwal2023asc} adapts a
+per-problem sample count using a lightweight stopping criterion, and
+ESC~\citep{li2024esc} proposes early stopping for self-consistency. We do not
+establish a finite-sample disagreement-with-full-vote guarantee for either;
+on our supplied heterogeneous replay carrier, the instantiated ESC-style rule
+exceeds $0.05$ (Table~\ref{tab:main}). MARS~\citep{chen2026mars} is a
+parallel trace-stopping method that bounds future vote movement; our work is
+instead a sequential count-exchangeable replay certificate. Best-of-$n$ and budget-forcing
+methods~\citep{snell2024scaling} tune compute without stopping certificates.
+
+\textbf{Conformal and anytime inference.} Conformal
+prediction~\citep{vovk2005algorithmic} gives marginal coverage under
+exchangeability; confidence sequences~\citep{howard2021cs} give anytime-valid
+bounds for i.i.d.\ means. Our oracle object is neither: under the true
+$\trueH$, $\oraclecert$ is an \emph{exact posterior flip probability}, valid
+conditionally per prefix. The implemented fitted score is instead screened
+through the finite FIT-frozen CAL empirical-Bernstein/Bonferroni construction
+of Theorem~\ref{thm:pop}; it is not claimed conditionally exact per prefix.
+
+\textbf{Bayesian stopping and finite-population inference.} Rossell and
+M\"uller~\citep{RossellMuller2013SequentialStopping} and
+Novikov~\citep{Novikov2010OptimalSequential} are Bayesian
+decision-theoretic sequential-stopping antecedents; neither is a held-out
+task-level calibration result for a fitted score under this replay endpoint.
+For the sampling model, Waudby-Smith and
+Ramdas~\citep{WaudbySmithRamdas2020Confidence} are the closest
+finite-population without-replacement precedent: their binary prefix counts
+are hypergeometric and their confidence sequences remain frequentist under a
+working prior. Our supported novelty is narrower: independent FIT and CAL
+tasks freeze and screen a finite family of plug-in fitted scores by exact
+task-level replay loss. We do not claim a new general confidence sequence,
+Bayesian stopping principle, or optimal stopping result.
+
+\textbf{Dependent sampling.} Design-effect corrections~\citep{kish1965deff}
+shrink effective sample size by an intraclass correlation; we show pooled
+correlation is the wrong functional here (Section~\ref{sec:model}).
+Beta-binomial and correlated-Bernoulli
+models~\citep{skellam1948betabinomial} capture overdispersion but target
+estimation, not stopping certificates for the flip event.
+
+\paragraph{Feature boundary.} Table~\ref{tab:feature-compare} makes the
+source-verified distinction compact: the proposed object is a specified
+count-exchangeable full-vote \emph{replay} endpoint with an oracle conditional
+object and a distinct fitted-score CAL guarantee. It is not a general
+ordered-online early-stopping, conformal, or anytime-inference guarantee.
+
+\section{Model: count-exchangeable replay}
+\label{sec:model}
+
+A task's $N$ rollout outcomes are summarized by the pass count
+$K\in\{0,\dots,N\}$. Across tasks, $K\sim\trueH$, the \emph{true} mixture
+capturing both
+task heterogeneity and any within-task correlation: the probability a fresh
+rollout passes, marginally, is $\E_{\trueH}[K]/N$, and the joint law of the $N$
+outcomes is exchangeable \emph{within} a task given its realized count.
+Analysis model (\emph{replay}): the stopper observes a uniform random
+prefix drawn without replacement from the task's $N$ outcomes --- i.e., the
+first $k$ draws are exchangeable with the remaining $N-k$.
+Section~\ref{sec:drift} stress-tests departures from this model (ordered
+drift); our validity claims are stated relative to it, and the carrier
+limitation (counts only, no order) is made explicit in
+Section~\ref{sec:limits}.
+
+Let $\MV(k)=\mathbf{1}\{x_k>k/2\}$ with ties assigned to the negative side,
+and let $\MV(N)=\mathbf{1}\{K>N/2\}$ be the full-$N$ \emph{binary
+pass-count replay decision}.  It is not an aggregation of delivered textual
+answers or an actual delivered answer-majority: the replay model contains only
+binary pass/fail outcomes. The \emph{flip event} of a stopping rule $\tau$ is
+$\{\MV(\tau)\neq\MV(N)\}$.
+
+\begin{remark}[Why the mixture, not the correlation]
+\label{rem:pooled}
+On $\tau^2$-bench carriers (6 public task suites, 4 rollouts/task) we measured
+pooled within-task reward correlation $\hat\rho=0.47$--$0.59$, but a
+task-demeaned (fixed-effect) estimate gives $\hat\rho_{\mathrm{FE}}\approx-1/3
+\approx-1/(N-1)$, the demeaning artifact floor: essentially \emph{all}
+observed correlation is across-task heterogeneity, not latent within-task
+dependence. On OpenMathReasoning the per-task pass-rate variance exceeds the
+binomial baseline by $34\times$. The flip probability is driven by the mass of
+tasks with $K\approx N/2$ --- a mixture functional --- so pooled
+second-moment discounts are the wrong certificate statistic.
+\end{remark}
+
+\section{Method: the mixture-posterior stopper}
+\label{sec:method}
+
+\paragraph{Exact per-task flip probability.}
+Given count $K$, the prefix count $x_k$ is hypergeometric
+$\HG(N,K,k)$, hence
+\begin{equation}
+f_K(k) \;:=\; \P\big(\MV(k)\neq\MV(N)\,\big|\,K\big)
+= \sum_{x}\HG(N,K,k,x)\,\big|\mathrm{side}(x,k)-\mathrm{side}(K,N)\big|.
+\label{eq:exact}
+\end{equation}
+
+\begin{lemma}[Exactness and monotonicity]
+\label{lem:exact}
+\eqref{eq:exact} is an identity (no approximation). For every fixed $K$,
+$f_K(k)$ is nonincreasing in odd $k$; hence for any mixture $H$,
+$\E_H[f_K(k)]$ is nonincreasing and
+$k^*(\alpha)=\min\{k:\E_H[f_K(k)]\le\alpha\}$ is well defined and
+binary-searchable.
+\end{lemma}
+\begin{proof}
+The identity is a definition expansion. Monotonicity follows from a
+coupling of the prefixes at $k$ and $k{+}2$ on a common ordered draw.  The
+proof first handles the support-boundary case where the downward boundary atom
+has probability zero directly; only otherwise does it divide to obtain the
+ratio $(K-t)/(N-K-t)\ge0$ for $K>N/2$. The complementary case follows by
+pass/fail reflection (Appendix~\ref{app:proofs}). An exact-rational CPU audit
+checks every admissible $(N,K,k)$ for $2\le N\le64$, including
+$(32,17,29)$.
+\end{proof}
+
+\paragraph{Oracle conditional certificate (true $\trueH$ only).}
+Given the true count law $\trueH$ and an observed prefix $(x,k)$, define the
+oracle posterior flip probability
+\begin{equation}
+\oraclecert(x,k) \;:=\; \P_{\trueH}\big(\mathrm{side}(K,N)\neq\mathrm{side}(x,k)\,\big|\,x,k\big),
+\qquad \text{posterior} \propto \trueH[K]\cdot\HG(N,K,k,x).
+\label{eq:cond}
+\end{equation}
+We define the terminal oracle certificate by $\oraclecert(x,N):=0$. At a
+posterior-supported terminal state, the hypergeometric likelihood has support
+only on $K=x_N$, so this convention equals the conditional flip probability:
+$\oraclecert(x_N,N)=0$. It also gives the correct endpoint value for a
+zero-prior-mass row of a frozen fitted-score table, because the observed total
+count already fixes the binary full-$N$ replay decision.
+
+\begin{theorem}[Oracle conditional identity and adaptive bound]
+\label{thm:tower}
+Let $\tau$ be any stopping time measurable w.r.t.\ the prefix filtration that
+stops only at states with $\oraclecert(x_\tau,\tau)\le\alpha$. The terminal
+state $k=N$ satisfies this same rule because $\oraclecert(x_N,N)=0$. Under
+the true law $\trueH$,
+$\P_{\trueH}(\MV(\tau)\neq\MV(N)) = \E_{\trueH}[\oraclecert(x_\tau,\tau)]\le\alpha$,
+with equality in the identity and no union bound over stopping times.
+\end{theorem}
+\begin{proof}
+$\P_{\trueH}(\flip)=\E_{\trueH}[\P_{\trueH}(\flip\mid\text{prefix path})]$.
+For any path stopped at $(x,k)$,
+$\P_{\trueH}(\MV(N)\neq\mathrm{side}(x,k)\mid\text{path})=\oraclecert(x,k)$
+since the posterior is exactly the conditional law of $K$ under $\trueH$ and $\MV(N)$ is a
+function of $K$. At $\tau=N$, $x_N=K$ and hence this conditional probability
+is $\oraclecert(x_N,N)=0$; at every earlier stopped state it is at most $\alpha$ by
+the rule. Thus the integrand is bounded pointwise by $\alpha$, and taking
+expectations gives the claim.
+\end{proof}
+
+\paragraph{Fitted implementation (BAYES-H).}
+The implementation freezes $\widehat H_{\mathrm{FIT}}$ before CAL and thresholds
+the \emph{fitted stopping score}
+\[
+\fitscore(x,k):=\P_{\widehat H_{\mathrm{FIT}}}
+\big(\mathrm{side}(K,N)\neq\mathrm{side}(x,k)\mid x,k\big).
+\]
+It stops at $\widehat\tau=\min\{k\ge3:\fitscore(x_k,k)\le\alpha\}$.
+This score is a plug-in posterior calculation, not a claim that
+$\fitscore(x,k)=\P_{\trueH}(\flip\mid x,k)$ unless
+$\widehat H_{\mathrm{FIT}}=\trueH$. Its terminal value is set to zero because
+$x_N=K$, but that endpoint fact does not repair the non-oracle conditional
+identity at earlier prefixes. Once the fitted rule is frozen, its exact
+per-task replay-flip probability and expected stopping time under any true
+count $K$ are computable by DP over prefix states $(k,x)$
+(Appendix~\ref{app:dp}). The operational guarantee for this fitted rule is
+Theorem~\ref{thm:pop}, not Theorem~\ref{thm:tower}.
+
+\begin{theorem}[CAL-screened marginal replay guarantee for a FIT-frozen rule family]
+\label{thm:pop}
+Let FIT and CAL be independent i.i.d. task samples from a common
+count-exchangeable replay population with true count law $\trueH$. Conditional
+on FIT, freeze $\widehat H_{\mathrm{FIT}}$, a finite pre-declared family
+$\mathcal R_{\mathrm{FIT}}$ (including all fitted-score tables), and fix
+$r\in\mathcal R_{\mathrm{FIT}}$. Let $g_r(K)$ be the exact per-task replay
+flip probability of this \emph{fixed fitted rule}, and let
+$\bar g_{\calD,r}$, $s^2_{\calD,r}$ be the mean and variance of $g_r(K)$ over
+the $m$ CAL tasks.
+For a per-rule failure allocation $\delta_r$, with probability
+$1-\delta_r$ over CAL conditional on FIT,
+\[
+\P_{\text{replay},\trueH}(\flip) \;\le\; \bar g_{\calD,r}
++ \sqrt{\tfrac{2 s^2_{\calD,r}\log(4/\delta_r)}{m}}
++ \tfrac{7\log(4/\delta_r)}{3(m-1)},
+\]
+where the first term is $\bar g_{\calD,r}$.  This is the
+empirical-Bernstein inequality~\citep{maurer2009eb} for bounded i.i.d.
+per-task flips $g_r\in[0,1]$. Setting $\delta_r=\delta/J$ and applying
+Bonferroni gives a simultaneous CAL selection guarantee over $J$ frozen
+candidates (Section~\ref{sec:protocol}). This is a marginal replay statement
+for the CAL-screened FIT-frozen rule; it does not assert a per-problem oracle
+conditional identity for $\fitscore$.
+\end{theorem}
+\begin{remark}[No Jensen gap]
+For a fixed fitted rule, the population replay flip rate is a \emph{linear}
+functional of $\trueH$: $\P_{\trueH}(\flip)=\sum_K \trueH[K]\,g(K)$. Hence the
+CAL bound applies to a bounded per-task quantity; it does not make the fitted
+score an oracle conditional certificate.
+\end{remark}
+\begin{proposition}[Exact deterministic TV sensitivity of a frozen rule]
+\label{prop:tv}
+Fix the rule (fitted-score tables frozen from $\widehat H$) and let $g(K)$ be
+its exact per-task flip probability. Over the total-variation ball
+$B_R=\{q:q\ge0,\sum_K q_K=1,\|q-\widehat H\|_1\le 2R\}$,
+\[
+V(R)\;:=\;\max_{q\in B_R}\;\textstyle\sum_K q_K\,g(K)
+\]
+is a capacity-constrained linear program whose optimum is a two-sided greedy:
+add mass to atoms in descending $g$ (capped by $q_K\le1$) and drain mass from
+atoms in ascending $g$ (capped by $\widehat H_K$). It is computable in
+$O(N\log N)$ and is nondecreasing, piecewise linear in $R$; it is not
+generally globally affine because donor and recipient capacities create
+breakpoints. Any two simplex points have $\ell_1$ distance at most $2$, so
+$B_1$ is the full simplex; the linear objective is maximized at a vertex and
+therefore $V(1)=\max_K g(K)$. For the positive radii and realized capacities checked in the
+supplied LP grids, it is strictly below the $1$-Lipschitz envelope
+$\flip(\widehat H)+R$; no universal strict-refinement claim is made. The
+\emph{critical radius} $\tau^*(\alpha)=\max\{R:V(R)\le\alpha\}$ is a
+deterministic property of the frozen rule and fitted reference mixture. It
+becomes a population certificate only after separately proving that an unknown
+target mixture lies in $B_R$, which current artifacts do not do.
+\end{proposition}
+The stored OMR, RLVE, and OpenR1 curves in Appendix~\ref{app:tau} are
+deterministic visualizations of this assumed-ball calculation for their
+respective fitted rules. They are retained only as sensitivity diagnostics:
+they neither establish target-population containment nor justify a
+cross-carrier mechanism, a shift-robustness ranking, or a prescription for
+choosing $\alpha$.
+
+\begin{remark}[Reported fitted-score family for CAL screening]
+\label{rem:nested}
+The reported protocol uses only the finite, pre-declared $J=64$ family in
+Section~\ref{sec:protocol}: 60 fixed-$k$ candidates and four BAYES-H levels.
+Theorem~\ref{thm:pop}'s Bonferroni statement is only for that FIT-frozen
+family. A stored breakpoint enumeration over other $\alpha$ values is not a
+selection family for the reported table and supplies no additional operational
+guarantee.
+\end{remark}
+
+\section{Protocol: FIT/CAL/TEST with a legitimate selection family}
+\label{sec:protocol}
+
+\textbf{Split and status.} 11{,}607 problems are partitioned once (seeded)
+into FIT (4000), CAL (4000), TEST (3607). The population statement in
+Theorem~\ref{thm:pop} assumes tasks are i.i.d. draws from one replay
+population and that FIT and CAL are independent. FIT estimates
+$\widehat H_{\mathrm{FIT}}$ and freezes the BAYES-H fitted-score tables and
+the pre-declared family before CAL is inspected. CAL selects rules from that
+frozen family:
+fixed-$k$ candidates $k\in\{3,5,\dots,31\}\times\alpha\in\{0.10,0.05,0.02,
+0.01\}$ (60 candidates) and BAYES-H at the same 4 levels, with simultaneous
+empirical-Bernstein UCBs at per-rule $\delta_r=0.05/64$ and Bonferroni over
+$J=64$ FIT-frozen candidates. $k^*(\alpha)$ is the smallest budget whose CAL
+EB UCB is $\le\alpha$; BAYES-H is accepted at level $\alpha$ iff its CAL EB
+UCB is $\le\alpha$. These are marginal replay UCBs for fitted frozen rules,
+not per-problem oracle conditional certificates. TEST is read exactly once, is not
+used for selection, and is a fixed-benchmark descriptive readout rather than
+a second population guarantee. All evaluation uses the exact per-task flip
+functions (\eqref{eq:exact} for
+fixed-$k$; the DP of Appendix~\ref{app:dp} for BAYES-H), so TEST numbers are
+exact replay quantities, not MC estimates; the DP itself is cross-checked
+against replay MC (max deviation $0.043$ within $3\sigma_{\rm MC}=0.075$).
+
+\textbf{Baselines.} FULL-$N$; FIXED-HOEF (fixed budget selected with
+distribution-free Hoeffding UCBs, a named model-free comparator);
+FIXED-EB (fixed budget with the same mixture-aware empirical-Bernstein
+machinery as BAYES-H --- isolates the value of adaptivity);
+BAYES-UNIF (uniform prior; no fitted-score CAL guarantee when the prior is wrong);
+WINDOW3 (ESC-style: stop when 3 consecutive samples agree with the current
+majority --- no CAL-screened tuning rule).
+
+\section{Experiments}
+\label{sec:experiments}
+
+\paragraph{Carrier.} OpenMathReasoning CoT shard 0~\citep{moshkov2025openmathreasoning} (CC-BY-4.0): the
+reviewer-safe derived manifest records 22{,}230 source rows, 12{,}423 valid
+count rows, and 11{,}607 first-occurrence deduplicated problems. For each
+retained problem, the frozen derivation maps \texttt{pass\_rate\_72b\_tir} to
+$K=\texttt{int(round(float(pass\_rate\_72b\_tir) * 32))}$. The manifest
+supports byte-exact replay of the main JSON conditional on that derived data;
+it does not expose the raw parquet, raw evaluator, or answer-extraction path,
+and is not a clean-room reconstruction. Pass rates are strongly bimodal: $45\%$ of problems
+have $p\le0.1$ or $p\ge0.9$; $11.6\%$ sit in $[0.4,0.6]$. This carrier is a
+count-only carrier used for the \emph{count-exchangeable replay} analysis:
+it supplies per-task counts but no rollout order, so the random-prefix
+assumption is a modeling condition rather than an observed chronology
+(Section~\ref{sec:drift}).
+
+\paragraph{Main table.} Table~\ref{tab:main} reports the single TEST readout
+(Bonferroni CI radius $0.0286$ across the 9 reported rules). In this section,
+``valid'' means replay full-vote flip $\le\alpha$; TEST is descriptive
+(selection was certified on CAL). Neither flip nor count reduction is gold
+correctness or an operational token, latency, or cancellation measurement.
+
+\begin{table}[t]
+\centering\small
+\caption{Fixed-benchmark descriptive TEST readout ($n=3607$ problems,
+$N=32$). ``CAL-selected'' means that the FIT-frozen candidate passed its
+Bonferroni CAL empirical-Bernstein UCB criterion; it is not a TEST guarantee
+or oracle conditional certificate. ``No CAL screen'' marks a reference
+or heuristic. Replay count reduction $=1-\bar k/32$. At $\alpha=0.05$ and
+$0.02$, this TEST table reports larger replay count reduction for BAYES-H than
+the named fixed rows; at $\alpha=0.10$, FIXED-EB reports $84.4\%$ versus
+BAYES-H $84.0\%$. WINDOW3 has the largest reported reduction but exceeds the
+replay-flip target at $\alpha\le0.05$.}
+\label{tab:main}
+\begin{tabular}{llccc}
+\toprule
+Rule & $\alpha$ & replay full-vote flip & mean $k$ & count reduction \\
+\midrule
+\multicolumn{5}{p{0.92\linewidth}}{\textit{Status. CAL-selected rows passed a FIT-frozen Bonferroni CAL EB UCB; TEST values are descriptive. FULL is a reference; WINDOW3 has no CAL screen.}} \\
+FULL-32 & --- & 0 & 32.0 & 0 \\
+WINDOW3 (ESC-style) & --- & \textbf{0.0577} & 4.4 & 86.2\% \\
+\midrule
+FIXED-HOEF $k^*{=}7$  & 0.10 & 0.0645 & 7.0 & 78.1\% \\
+FIXED-EB   $k^*{=}5$  & 0.10 & 0.0794 & 5.0 & 84.4\% \\
+BAYES-H               & 0.10 & \textbf{0.0370} & 5.1 & 84.0\% \\
+\midrule
+FIXED-HOEF $k^*{=}27$ & 0.05 & 0.0156 & 27.0 & 15.6\% \\
+FIXED-EB   $k^*{=}17$ & 0.05 & 0.0324 & 17.0 & 46.9\% \\
+BAYES-H               & 0.05 & \textbf{0.0249} & 6.1 & \textbf{80.9\%} \\
+\midrule
+FIXED-HOEF & 0.02 & \multicolumn{3}{c}{\emph{no CAL-screened budget}} \\
+FIXED-EB   $k^*{=}31$ & 0.02 & 0.0083 & 31.0 & 3.1\% \\
+BAYES-H               & 0.02 & \textbf{0.0091} & 8.5 & \textbf{73.5\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Fair comparison.} Against the named distribution-free baseline
+(FIXED-HOEF) at the same $\alpha$, BAYES-H's paired per-problem replay-count-reduction gap is
+$+0.058$ (CI radius $0.029$) at $\alpha=0.10$ and $+0.652\pm0.029$ at
+$\alpha=0.05$ --- a $5.2\times$ improvement over the baseline's $15.6\%$
+count reduction; at $\alpha=0.02$ the baseline has \emph{no} CAL-screened budget while
+BAYES-H still has a $73.5\%$ reduction. Against the named mixture-aware fixed budget
+(FIXED-EB), this fitted-score rule reports $+34$ points of replay count reduction at $\alpha=0.05$
+($80.9\%$ vs $46.9\%$) and $+70$ points at $\alpha=0.02$ --- the adaptive
+gap in this TEST readout grows as $\alpha$ tightens. This descriptive pattern
+is consistent with the fitted score stopping earlier on extreme-$K$ problems
+than on the $11.6\%$ mid-difficulty mass; it is not an oracle conditional
+claim for $\widehat H_{\mathrm{FIT}}$.
+
+\paragraph{Cross-source transfer.} Splitting CAL/TEST across the four AoPS
+problem sources (train on three, test on the fourth), the supplied BAYES-H
+readouts have replay flip $0.021$--$0.033<\alpha=0.05$ and count reduction
+$79$--$83\%$. These are descriptive source-split replay readouts, not a
+population-transfer, oracle-conditional, or ordered-online transfer guarantee.
+
+\paragraph{Second-shard replication and prior-mismatch transfer.}
+We replicate the entire chain on a disjoint carrier, OpenMathReasoning CoT
+shard~1 (11{,}454 problems, same $N{=}32$ pass counts; SHA-256 pinned), whose
+mixture structure is near-identical (heterogeneity excess $0.125$ vs $0.129$;
+$44.4\%$ extreme-$p$ mass). Two runs share the CAL/TEST problems of shard~1 and
+differ only in the prior's provenance. \emph{(i) Within-shard}: the prior is
+fit on shard~1's own FIT split; every qualitative replay conclusion reproduces ---
+BAYES-H has $80.6\%$ replay count reduction at realized flip $0.025$ ($\alpha=0.05$) and $73.1\%$ at
+$0.009$ ($\alpha=0.02$), vs $15.6\%$ and \emph{no CAL-screened budget} for
+FIXED-HOEF. \emph{(ii) Cross-shard prior transfer}: the prior is fit on
+shard~0 FIT (fitted-mixture TV distance to the shard~1 fit $=0.042$) and the
+fitted-score candidate is CAL-screened and read on shard~1. All numbers move by $\le0.4$
+points (count reduction $80.6\%$/$73.2\%$; flips $0.025$/$0.009$). This is a
+small movement in one supplied count-replay transfer and a deterministic
+fitted-mixture sensitivity diagnostic, not a statistical population-transfer
+certificate or a demonstration of robustness to naturally ordered online
+rollouts (Section~\ref{sec:model}).
+
+\paragraph{Second model--carrier pair: OpenR1-Math-220k (DeepSeek-R1, $M=2$).}
+The supplied raw table contains 9{,}374 unique problems (HF snapshot
+\texttt{e4e141ec}). The frozen inclusion predicate hashes each generated
+string within a problem, removes duplicate rollouts, and retains a problem
+\emph{only if exactly two deduplicated rollouts remain}; 8{,}853 problems meet
+that predicate. A seeded shuffle then makes the analysis split FIT/CAL/TEST
+$3000/3000/2853$. Thus 9{,}374 is the raw-unique count and 8{,}853 is the
+analyzed count; they are not interchangeable. Under the replay model, the
+full vote is the 2-vote majority (ties use a pre-drawn fair coin), the only
+stoppable prefix is $k=1$, and the fitted mixture has the three identifiable
+atoms $p\in\{0,\tfrac12,1\}$.
+
+For the named fitted-score candidates, the descriptive TEST readout is $50\%$
+replay count reduction and flip $0.0592$ at $\alpha=0.10$, $32.1\%$ and
+$0.0294$ at $\alpha=0.05$, and a never-stop row at $\alpha=0.02$. The CAL EB
+UCBs are $0.0707$, $0.0383$, and $0.0047$, respectively, under the frozen
+five-rule Bonferroni family. These values describe the evaluated candidates;
+they do not establish a policy-class comparison or a general allocation law.
+They also do not test chronological online
+deployment, gold correctness, or operational cost.
+
+\paragraph{Third model--carrier pair: RLVE (Qwen3-4B, $N=8$).} The two
+carriers above close the extremes ($N{=}32$ rich-prefix vs $M{=}2$
+near-prefix-free). To probe the intermediate regime under a third model
+family and a different task family, we run the identical chain on RLVE
+teacher rollouts (Qwen3-4B-Thinking-2507, pass@8 on 9{,}000 verifiable
+counting/combinatorics environments; Apache-2.0; HF snapshot
+\texttt{eaeec946}). Success is the offline Gym-verifier reward being positive
+(a small mass of fractional partial credit is counted as failure). The
+mixture is again strongly U-shaped ($42\%$ extreme problems, heterogeneity
+excess $0.100$ over the binomial baseline). Results (FIT/CAL/TEST
+3000/3000/3000): \emph{(i)} BAYES-H has replay count reduction $57.6\%$/$50.9\%$/$48.2\%$/$45.4\%$
+at $\alpha=0.10/0.05/0.02/0.01$ with realized flips
+$0.031$/$0.010$/$0.005$/$0.002$ --- conservative at every level;
+\emph{(ii)} the fitted-score candidate's CAL EB UCB is at most $\alpha$ at
+every reported level down to $\alpha=0.01$, while \emph{no} distribution-free
+budget is CAL-screened below
+$\alpha=0.10$ (FIXED-EB and FIXED-Hoeffding both null at
+$\alpha\le0.05$) --- at $\alpha=0.10$ the paired replay-count-reduction gap over
+FIXED-Hoeffding is $+0.20$ (CI radius $0.03$, significant); \emph{(iii)} the
+exact DP prediction matches a 3{,}000-draw replay Monte-Carlo on held-out
+problems (flip within $0.004$, mean $k$ within $0.04$). Two descriptive
+diagnostics: the recorded sample-id success slope is flat
+(pooled slope $-7.8\times10^{-5}$/trial; per-position rates $0.316$--$0.326$),
+consistent with near-exchangeable sampling in this carrier; and the reported
+replay-count ranges differ across the three supplied carrier settings
+($81\%$ at $N{=}32$ with 15 candidate budgets, $45$--$58\%$ at $N{=}8$ with
+3, $32$--$50\%$ at $M{=}2$ with 1; all readouts are collected in
+Appendix~\ref{app:matrix}). This comparison is descriptive only: it neither
+establishes a rule beyond its reported settings nor audits an online policy or
+makes the count-replay guarantee valid for deployment order.
+
+\paragraph{Why the window heuristic fails.} On mid-difficulty problems
+($K\approx16$), three consecutive agreements with the current majority is a
+\emph{common} event under near-coin-flip draws, not evidence the vote has
+settled: WINDOW3 realizes flip $0.058$ at mean $k=4.4$. Its flip rate is
+nearly flat in $\alpha$ (it has no CAL-screened tuning rule): it can only be tuned by
+window length, and its certified population UCB is $0.061$
+(\texttt{adaptive\_sweep\_r468\_result.json}), so it barely misses even the
+loosest tested level $\alpha=0.10$ on the full OMR test pool.
+
+\section{Synthetic ordered drift: exploratory stress diagnostic}
+\label{sec:drift}
+
+The replay model assumes prefixes are exchangeable with the held remainder.
+Because the carrier contains no observed chronology, we apply three
+\emph{pre-fixed synthetic} drift mechanisms to its true counts
+($\delta\in\{0,0.05,0.10,0.15,0.20\}$, 2000 TEST problems, 500 orders each):
+\textbf{E1} (front-load: the first $k$ draws are enriched/depleted in passes
+by count $D=\lceil 2\delta\min(K,N{-}K)\rceil$), \textbf{E2} (linear per-draw
+pass-rate trend $p_j=K/N+\delta(2j/(N{-}1){-}1)$), \textbf{E3} (adversarial
+block: the last $\lceil\delta N\rceil$ draws drift toward the minority side).
+
+Findings (full tables in Appendix~\ref{app:drift}) are a specified synthetic
+stress diagnostic, not evidence about natural order. All methods exceed the
+target under E1 by $\delta=0.10$--$0.15$ in this harness. The grid also has
+non-uniform outcomes: under E2 at $\alpha=0.10$, BAYES-H's replay flip is
+$0.083$ at $\delta=0.20$, whereas under E3 at $\alpha=0.05$ and
+$\delta=0.15$, BAYES-H is invalid ($0.052$) while FIXED-EB remains valid
+($0.047$). Thus the grid supplies no global robustness ranking.
+
+Every margin-exploration result is \emph{synthetic, exploratory, and
+nonconfirmatory}. No frozen margin-selection record is bundled. For example,
+in the E3 $\alpha=0.05$ stress harness, the explored $\gamma=0.025$ row has
+flip $0.0495$ and replay count reduction $77.2\%$ at $\delta=0.15$, versus
+$81.0\%$ for the unmargined row; at $\delta=0.20$, even $\gamma=0.03$ is
+invalid. Under E2, $\gamma=0.03$ has flip $0.0491$ and count reduction
+$71.8\%$ at $\delta=0.20$. These values are neither CAL-selected nor
+confirmatory and do not certify an online policy. The drift budget $\delta$
+could be estimated only if ordered rollouts were retained; on this count-only
+carrier it is assumed.
+
+\section{Limitations}
+\label{sec:limits}
+(i) The public carrier provides pass \emph{counts}, not ordered rollouts.
+The oracle identity in Theorem~\ref{thm:tower} is exact only under the true
+count-exchangeable law $\trueH$. The implemented $\fitscore$ is a fitted
+stopping score, not that conditional identity; its operational statement is
+only Theorem~\ref{thm:pop}'s FIT-frozen CAL-screened marginal replay guarantee.
+The synthetic stress mechanisms of Section~\ref{sec:drift} are specified
+departures from the replay model, not natural-order evidence. No supplied run
+compares the stopped answer with gold correctness or records generated tokens,
+latency, cancellation acknowledgement, or post-cancellation work; full-vote
+agreement and $1-\bar k/N$ cannot substitute for those endpoints.
+
+(ii) The mixture prior is estimated from the 4000 FIT problems; Theorem~\ref{thm:pop}
+assumes CAL is an independent sample from the same replay population. The exact
+critical radii of Proposition~\ref{prop:tv} are
+deterministic fitted-rule sensitivities over an assumed fitted-mixture TV ball
+($\tau^*=0.024$--$0.157$ across the named levels and shards); they do not
+establish target-population containment, natural-shift robustness, or a
+policy-selection prescription. Appendix~\ref{app:tau}(g) records only an
+oracle K-wise profile-capping sensitivity: its subset is selected separately
+after conditioning on final count $K$, which is unavailable at a prefix. It
+is neither a common prefix-state rule nor an instance of
+Theorem~\ref{thm:tower}, and supports no stopping-policy, cost, or repair
+claim.
+
+(iii) Lemma~\ref{lem:exact}'s monotonicity is proved in closed form
+(Appendix~\ref{app:proofs}) and independently checked exhaustively at
+$N=32$. (iv) The additional OMR shard, OpenR1, and RLVE results are supplied
+setting-specific replay readouts; they do not establish generality or an
+allocation law. OpenR1 in particular distinguishes 9{,}374 raw unique
+problems from the 8{,}853 exactly-two-deduplicated-rollout analysis population
+and its $3000/3000/2853$ split. (v) At $k=N$, the observed pass count equals
+$K$, so the binary pass-count replay decision agrees with itself and both the
+oracle score and fitted terminal score are zero. Terminal stops add zero replay
+flip for every true count; that endpoint fact does not identify fitted earlier
+prefix scores with oracle conditional probabilities.
+
+\section{Conclusion}
+Under the count-exchangeable replay model, the true law $\trueH$ yields an
+exact oracle conditional identity and tower-property theorem. BAYES-H uses a
+different fitted score, whose operational claim is only the FIT-frozen,
+Bonferroni CAL-screened marginal replay guarantee of
+Theorem~\ref{thm:pop}. The supplied OMR descriptive TEST readout reports
+$80.9\%$ replay rollout-count reduction at replay flip $0.0249$ for
+$\alpha=0.05$, alongside FIXED-HOEF $15.6\%$ and FIXED-EB $46.9\%$ rows.
+The drift and margin results remain synthetic, exploratory, and
+nonconfirmatory. Natural online order, gold correctness, and actual
+token/latency/cancellation costs remain open.
+
+\section*{Reproducibility statement}
+The count-replay analyses, assumptions, split protocol, and complete proofs
+are specified in Sections~\ref{sec:model}--\ref{sec:protocol} and the
+appendix. The anonymous reviewer-safe bundle includes a derived count-level
+manifest and a standard-library verifier that reproduces the main result JSON
+byte-for-byte (SHA-256 \texttt{b114c72d\ldots c8a5f7}) conditional on that
+manifest. It does not reconstruct the manifest from the omitted raw parquet,
+and the recovered secondary runners are preserved for provenance rather than
+locally rerun. The absence of ordered online telemetry and other claim
+boundaries are stated in Section~\ref{sec:limits}.
+
+\section*{AI-use statement}
+Generative AI tools were used to assist manuscript-language revision, evidence
+and citation auditing, build checks, and internal pre-submission review,
+including the Codex multi-agent revision and audit documented for this version.
+Figure~\ref{fig:overview} is a code-native Matplotlib rendering from
+hash-pinned frozen JSON inputs, rather than a generative image. These tools did
+not generate, execute, or replace the reported scientific experiments, their
+quantitative result artifacts or values, or the final technical judgments; the
+authors reviewed the changes and remain responsible for the paper.
+
+\bibliography{references}
+\bibliographystyle{iclr2027_conference}
+
+\appendix
+\input{appendix_proofs}
+
+\input{appendix_dp}
+
+\section{Feature comparison and appendix roadmap}
+\label{app:positioning}
+This appendix separates proof (Appendix~A), exact DP bookkeeping (Appendix~B),
+synthetic diagnostics, and fixed-rule sensitivity. None expands the main
+count-exchangeable replay claim to online correctness or operational cost.
+\begin{table}[h]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{0.17\linewidth}p{0.23\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+\toprule
+Work & Endpoint & Order/model & Guarantee / selection \\
+\midrule
+ASC \citep{aggarwal2023asc}; ESC \citep{li2024esc} & adaptive self-consistency & implementation-specific sequential sampling & no claim here about their universal full-vote certificate \\
+MARS \citep{chen2026mars} & parallel trace vote movement & parallel traces/checkpoints & conservative future-movement bound; distinct from this replay posterior \\
+Conformal \citep{vovk2005algorithmic}; CS \citep{howard2021cs} & coverage / time-uniform mean bounds & exchangeable / i.i.d.-sequential & established marginal or anytime tools, not this conditional flip object \\
+This work & full-$N$ binary pass-count replay disagreement & count-exchangeable random prefix & oracle conditional score under $\trueH$; fitted-score FIT/CAL screening; descriptive TEST replay readout \\
+\bottomrule
+\end{tabular}
+\caption{Source-verified feature comparison. Relationships are deliberately
+endpoint- and model-specific; this table makes no priority or ordered-online claim.}
+\label{tab:feature-compare}
+\end{table}
+
+\section{Full drift tables}
+\label{app:drift}
+Tables~\ref{tab:drift_a005} and~\ref{tab:drift_a01} report the complete
+drift stress grid behind Section~\ref{sec:drift}
+(\texttt{drift\_stress\_r469\_result.json}; 2000 TEST problems, 500
+orders per cell). These are synthetic exploratory diagnostics, not
+confirmatory or natural-order results. In particular, at E3,
+$\alpha=0.05$, $\delta=0.15$, BAYES-H is invalid (5.2\%) while FIXED-EB is
+valid (4.7\%); the tables support no global robustness ranking.
+\input{drift_tables}
+
+\section{The critical-radius conservation curve}
+\label{app:tau}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_tau_conservation.png}
+\caption{Deterministic fixed-rule sensitivity radius $\tau^*(\alpha)$ over
+an assumed fitted-mixture TV ball; this is not a confidence set for, or a
+containment claim about, an unknown target population.  Proposition~\ref{prop:tv}
+is evaluated on the continuum $\alpha\in[10^{-3},0.2]$
+(step $5\!\times\!10^{-4}$), computed exactly per level from the frozen
+$g$-profiles of the three carriers (OMR both FIT shards; OpenR1 exact in
+closed form). Grey tick marks: the four reference levels; red dotted
+lines: the OpenR1 fitted-score thresholds $0.0785/0.0460$ where the frozen
+rule changes. Artifact:
+\texttt{tv\_conservation\_r484\_result.json}.}
+\label{fig:tau}
+\end{figure}
+Figure~\ref{fig:tau} is a deterministic visualization of the stored
+fitted-rule sensitivity curves. Within a constant fitted-rule interval,
+$g$ and hence $V(R)$ are fixed; rule changes create the displayed jumps.
+The listed OpenR1 thresholds are algebraic properties of its frozen,
+three-atom fitted rule. The plotted carrier comparisons and alignment
+statistics are descriptive diagnostics of these stored curves, not a
+general cross-carrier relationship, a target-population statement, or a prescription for
+choosing $\alpha$.
+The nested-FIT-size and rule/prior-channel calculations supplied with the
+snapshot are retained only as fitted-rule sensitivity diagnostics. They do
+not estimate a population shift, establish a FIT-size requirement, validate a
+margin repair, or yield a policy-selection recommendation. Their numerical
+details therefore do not enter the paper's current evidence claims.
+\emph{(g) Oracle K-wise profile-capping sensitivity (withdrawn as a policy
+claim).} The stored fitted-score-ordered subset calculation selects a separate
+set $S_K(c)$ after conditioning on each final count $K$ and then evaluates the
+coordinate $g_{S_K}(K)$. It is therefore an \emph{oracle K-wise
+profile-capping sensitivity calculation}, not the flip profile of one rule.
+The final count $K$ is unobserved at every nonterminal prefix, and the
+artifacts provide neither a common state table $S(x,k)$ nor a proof that their
+K-indexed memberships agree on shared reachable prefix states. Consequently,
+this calculation is not a stopping policy, not prefix-observable, and not an
+instance of Theorem~\ref{thm:tower}. It cannot support executable or
+deployable repair, policy-level count/cost claims, or claims about extra votes,
+universal budgets, 70-of-72 cells, domination, edge laws, crossing sets, or
+full-simplex robustness. Those prior numerical interpretations are withdrawn;
+no new calculation is reported here. Establishing any policy-level repair
+would require one K-independent table $S(x,k)$ built only from observable
+prefix information, a prefix-measurability check, and recomputation of every
+profile and capacity-aware TV LP from that same table.
+
+\section{Cross-carrier replay evidence matrix}
+\label{app:matrix}
+Table~\ref{tab:matrix} collects the supplied in-distribution replay readouts:
+the four named model--carrier settings, named rules, and one descriptive
+$\alpha{=}0.01$ CAL-side row for OMR (where the reported TEST family ends at
+$\alpha{=}0.02$). Every flip is replay agreement with a corresponding full
+vote and every saving is replay count reduction; it is not gold correctness or
+operational cost. ``CAL EB UCB'' means a FIT-frozen empirical-Bernstein UCB
+with the stated Bonferroni allocation, not an oracle conditional certificate;
+TEST is a single descriptive readout.
+Artifacts: \texttt{fit\_cal\_test\_r469}, \texttt{shard1\_robust\_r471}
+(R1/R2), \texttt{openr1\_m2\_pilot\_r473}, \texttt{rlve\_n8\_r474}.
+
+\begin{table}[h]
+\centering\small\setlength{\tabcolsep}{3pt}
+\caption{Replay evidence matrix. ``CAL EB UCB'' is FIT-frozen and
+Bonferroni-adjusted over the pre-declared family; it is not a TEST guarantee or
+an oracle conditional certificate. ``null'' = no CAL-screened replay budget at
+that level; ``---'' = not applicable / not reported. FULL rows are the
+zero-count-reduction reference. Seeds $20260815$ throughout.}
+\label{tab:matrix}
+\begin{tabular}{lllcccc}
+\toprule
+Carrier & rule & $\alpha$ & CAL EB UCB & replay flip & mean $k$ & count reduction \\
+\midrule
+OMR s0 ($N{=}32$)   & FIXED-HOEF & .10 & 0.0970 & 0.0645 & 7.0 & 78.1\% \\
+                    & FIXED-EB   & .10 & 0.0958 & 0.0794 & 5.0 & 84.4\% \\
+                    & BAYES-H    & .10 & 0.0495 & 0.0370 & 5.1 & 84.0\% \\
+                    & FIXED-HOEF & .05 & 0.0471 & 0.0156 & 27.0 & 15.6\% \\
+                    & FIXED-EB   & .05 & 0.0461 & 0.0324 & 17.0 & 46.9\% \\
+                    & BAYES-H    & .05 & 0.0350 & 0.0249 & 6.1 & 80.9\% \\
+                    & FIXED-HOEF & .02 & null & --- & --- & --- \\
+                    & FIXED-EB   & .02 & 0.0171 & 0.0083 & 31.0 & 3.1\% \\
+                    & BAYES-H    & .02 & 0.0163 & 0.0091 & 8.5 & 73.5\% \\
+                    & BAYES-H    & .01 & 0.0119 & --- & --- & --- \\
+                    & FULL-32    & --- & --- & 0 & 32.0 & 0 \\
+\midrule
+OMR s1 ($N{=}32$)   & FIXED-HOEF & .05 & 0.0488 & 0.0171 & 25.0 & 21.9\% \\
+                    & FIXED-EB   & .05 & 0.0486 & 0.0357 & 15.0 & 53.1\% \\
+                    & BAYES-H    & .05 & 0.0340 & 0.0246 & 6.2 & 80.6\% \\
+                    & BAYES-H$^\dagger$ & .05 & 0.0341 & 0.0247 & 6.2 & 80.6\% \\
+                    & BAYES-H    & .02 & 0.0158 & 0.0088 & 8.6 & 73.1\% \\
+                    & BAYES-H$^\dagger$ & .02 & 0.0159 & 0.0089 & 8.6 & 73.2\% \\
+\midrule
+OpenR1 ($M{=}2$)    & FIXED-1    & --- & 0.0707 & 0.0592 & 1.0 & 50.0\% \\
+                    & BAYES-H    & .10 & 0.0707 & 0.0592 & 1.0 & 50.0\% \\
+                    & BAYES-H    & .05 & 0.0383 & 0.0294 & 1.4 & 32.1\% \\
+                    & BAYES-H    & .02 & 0.0047 & 0 & 2.0 & 0 \\
+\midrule
+RLVE ($N{=}8$)      & FIXED-HOEF & .10 & 0.0942 & 0.0613 & 5.0 & 37.5\% \\
+                    & FIXED-EB   & .10 & 0.0783 & 0.0613 & 5.0 & 37.5\% \\
+                    & BAYES-H    & .10 & 0.0469 & 0.0314 & 3.4 & 57.6\% \\
+                    & FIXED-EB/HOEF & .05--.01 & null & --- & --- & --- \\
+                    & BAYES-H    & .05 & 0.0184 & 0.0103 & 3.9 & 50.9\% \\
+                    & BAYES-H    & .02 & 0.0121 & 0.0046 & 4.1 & 48.2\% \\
+                    & BAYES-H    & .01 & 0.0081 & 0.0019 & 4.4 & 45.4\% \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\begin{minipage}{\linewidth}\footnotesize
+$^\dagger$Cross-shard prior transfer (prior fit on shard~0 FIT,
+$\mathrm{TV}{=}0.042$ to the shard~1 prior); all numbers move ${\le}0.4$
+points against within-shard. All CAL EB UCB cells use a FIT-frozen rule and
+the applicable pre-declared Bonferroni family. WINDOW3 has no CAL UCB and is
+omitted from the matrix (its reported replay flip is $0.0577$;
+Table~\ref{tab:main}).
+\end{minipage}
+\end{table}
+
+\emph{Scope of the matrix.} The rows are a descriptive collation of supplied
+count-replay artifacts. They do not define or exhaust a feasible policy class,
+so they do not establish a broader ordering or a general relationship among
+carrier structure, fitted scores, and replay count reduction. The
+synthetic drift/margin rows elsewhere in the paper remain synthetic,
+exploratory, and nonconfirmatory; the E3 $\alpha=0.05$, $\delta=0.15$ cell
+where FIXED-EB is valid and BAYES-H is invalid is retained as a counterexample
+to a global ranking. Fitted-mixture TV quantities remain assumed-ball
+sensitivity diagnostics, not transfer guarantees.
+
+\section{Reproducibility}
+\label{app:repro}
+All numbers trace to JSON artifacts listed in REPRO\_README.md; carrier
+SHA-256 pinned; deterministic seeds; CPU-only; total compute under 25 minutes.
+The Round-4 reviewer-safe derived-data bundle records its own input/output
+hashes and the conditional byte-exact main-JSON replay boundary.
+
+\end{document}

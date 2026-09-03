@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reviewer-driven experiment response plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_round", "status", "items"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "source_round": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["planned", "in_progress", "completed", "blocked"]},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "experiment_id", "issue_ids", "claim_ids", "disposition",
+          "hypothesis", "refutation_condition", "primary_endpoint",
+          "oracle", "baselines", "controls", "execution", "gates",
+          "outcome_policy", "status", "attempts", "verification_status"
+        ],
+        "properties": {
+          "experiment_id": {"type": "string", "minLength": 1},
+          "issue_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+          "claim_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "disposition": {"enum": ["experiment_required", "analysis_required", "claim_narrowing_required", "not_actionable"]},
+          "hypothesis": {"type": "string", "minLength": 1},
+          "refutation_condition": {"type": "string", "minLength": 1},
+          "primary_endpoint": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "definition", "aggregation"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "definition": {"type": "string", "minLength": 1},
+              "aggregation": {"type": "string", "minLength": 1}
+            }
+          },
+          "oracle": {"type": "string", "minLength": 1},
+          "baselines": {"type": "array", "items": {"type": "string"}},
+          "controls": {"type": "array", "items": {"type": "string"}},
+          "execution": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["dataset_split", "configuration", "repeats_or_seeds", "hardware", "software", "resource_estimate", "stopping_rule"],
+            "properties": {
+              "dataset_split": {"type": "string"},
+              "configuration": {"type": "object"},
+              "repeats_or_seeds": {"type": "string"},
+              "hardware": {"type": "string"},
+              "software": {"type": "string"},
+              "resource_estimate": {"type": "string"},
+              "stopping_rule": {"type": "string", "minLength": 1}
+            }
+          },
+          "gates": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["preflight", "smoke", "formal", "fail_closed"],
+            "properties": {
+              "preflight": {"type": "array", "items": {"type": "string"}},
+              "smoke": {"type": "array", "items": {"type": "string"}},
+              "formal": {"type": "array", "items": {"type": "string"}},
+              "fail_closed": {"type": "array", "items": {"type": "string"}}
+            }
+          },
+          "outcome_policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["positive", "null", "negative"],
+            "properties": {
+              "positive": {"type": "string", "minLength": 1},
+              "null": {"type": "string", "minLength": 1},
+              "negative": {"type": "string", "minLength": 1}
+            }
+          },
+          "status": {"enum": ["planned", "in_progress", "completed", "blocked", "cancelled_with_reason"]},
+          "attempts": {"type": "array", "items": {"type": "object"}},
+          "verification_status": {"enum": ["not_started", "resolved", "partially_resolved", "not_resolved", "regression_introduced", "cannot_verify"]}
+        }
+      }
+    }
+  }
+}

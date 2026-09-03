@@ -1,0 +1,189 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "d97f36aebfe3377236c0acc84ee88257d4b704e0d298ad74e88ccb435793821f",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "预注册的 n=400 matched-L 主比较使用逐题配对统计，效应量、discordant counts、置信区间与 Holm 校正均报告充分；在 nmc=128 的高预算点方向也一致。主要不足是把 forward-call 数直接等同于计算成本、在同一数据上突出事后选定的 2L 比较，以及每个随机解码协议仅观察一个随机实现，因此尚不能识别随机协议的期望性能或成本—准确率曲线。",
+    "presentation": "正文清楚区分 matched-L、total-NFE-fair、固定顺序和随机顺序，并对预注册、补充与事后分析多有标注；19 页 PDF 无缺页且图表可读。但结果族、校正族和决策阈值过多，摘要中的‘更少计算’比实际测量的 forward-call proxy 更强，fresh-pool 分层反转也应更靠前解释。",
+    "contribution": "最可信的新证据是同一模型与构造任务上，confidence-guided scoring 相对 draw-count-matched uniform Monte Carlo 的配对优势，以及一个固定顺序在新池上反而优于 confidence schedule。它是有用的窄测量研究，但没有分离反馈、顺序和估计器三项因素，也未跨模型、任务构造或随机种子验证，因而目前不足以形成一般解码原则。"
+  },
+  "paper_summary": "论文在 LLaDA-8B 与四选一 GSM8K-MC 上比较五种 scoring/selection protocol。预注册的 n=400 matched-L 比较中，s_conf 为 171/400，mc_uniform 为 119/400，逐题差值为 +13.0 pp（95% CI [7.0, 19.0]，McNemar b/c=106/54，Holm 校正 p=4.8e-5）。作者又报告 forward-call 数匹配的 2L 对比、高预算 Monte Carlo、不同答案顺序，以及 fresh n=819 池：其中冻结固定顺序比 s_conf 高 5.62 pp，但效果随正确答案位置明显异质。论文据此主张这些协议不可互换、confidence 并非必要，并将 matched-L 结果视为主要测量发现。",
+  "strongest_verified_contribution": "第 4–7 页的预注册 n=400 matched-L 配对结果最为可靠：在相同题目上，s_conf 相对 mc_uniform 提高 13.0 pp，106 个仅 s_conf 正确对 54 个仅 mc_uniform 正确，区间与校正检验均支持非零差异；第 7–10 页的高预算点与 fresh fixed-order 结果进一步证明协议选择确实会改变测得准确率，而不能将这些 scoring readout 当作可互换实现。",
+  "strengths": [
+    "主比较保留了逐题配对结构，完整给出分子分母、discordant counts、绝对百分点差、置信区间和多重校正结果。",
+    "对 matched draws 与 matched forward calls 给出两个不同资源视角，没有把所有比较混成单一准确率排名。",
+    "fresh n=819 题池用于检验固定顺序，且作者披露按正确答案位置分层时方向反转，避免隐藏重要异质性。",
+    "多数事后分析、随机顺序实现和五选一 probe 均明确标注其探索性或未决定状态，结论总体较克制。"
+  ],
+  "questions": [
+    "能否提供每种协议实测的 FLOPs、wall-clock、峰值显存与批处理吞吐，而不是只以 forward-call 数宣称计算更少？",
+    "2L total-NFE-fair 点是在查看 n=400 结果后为何被称为‘decisive’；其预算与检验族是否在观察结果之前冻结？",
+    "mc_uniform 与随机顺序各只有一次随机实现时，观察到的协议差异中有多少来自算法随机性？能否对同一题运行多个独立 schedule/draw seeds？",
+    "fresh pool 中答案位置 0 与位置 1–3 的效应方向为何相反；这是否由 distractor 构造、选项长度或位置先验驱动？",
+    "如果把反馈、访问顺序与 likelihood estimator 做完整 factorial intervention，哪一项是 matched-L +13 pp 的真正来源？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A14-R2-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 1 页摘要；第 3–5 页 §2–3；第 11–12 页关于 NFE matching 的讨论",
+      "claim_ids": [
+        "less-compute comparison",
+        "total-NFE fairness",
+        "compute-normalized accuracy"
+      ],
+      "evidence_ids": [
+        "matched-L n=400",
+        "2L/2L total-NFE comparison",
+        "forward-call accounting"
+      ],
+      "observed_evidence": "资源公平性仅按 forward-call 数计数：s_conf 的 L 次打分加 L 次自适应选择被记为 2L，mc_uniform 的 nmc=2L 被记为相同 NFE。稿件没有测量不同调用的 token/canvas 形状、批处理、FLOPs、wall time、显存或硬件利用率，却在摘要中使用‘less compute’读法。",
+      "why_it_matters": "相同调用次数并不保证相同实际成本，尤其当打分、采样和自适应状态更新具有不同张量形状与并行效率时。准确率优势可以成立，但计算效率这一核心解释尚未被观测量支持。",
+      "required_fix": "将现有结论明确限定为 draw-count/forward-call proxy，或在冻结实现和硬件上测量每题 FLOPs、延迟、吞吐、峰值显存与能耗，并给出预算—准确率曲线。",
+      "verification_test": "在相同硬件、batch size、精度和缓存设置下交错运行各协议，重复多个随机次序；比较实测成本相同时的配对准确率，并报告置信区间。",
+      "evidence_needed": "端到端成本计量、运行配置与成本匹配后的准确率结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "第 5–7 页 §3.2–3.4；第 13–16 页补充检验与 multiplicity 说明",
+      "claim_ids": [
+        "decisive 2L comparison",
+        "budget robustness",
+        "family-wise confirmation"
+      ],
+      "evidence_ids": [
+        "n=400 2L contrast",
+        "Holm-10 family",
+        "high-budget nmc=128 contrast"
+      ],
+      "observed_evidence": "matched-L 是明确的预注册主比较；2L/2L 对比及其‘decisive’地位在观察同一 n=400 数据后被提升。稿件给出多个预算点、顺序对比、fresh-pool 分析和不同 correction families，但没有证明 2L endpoint、所有报告族及其决策角色在数据揭示前共同冻结。",
+      "why_it_matters": "在同一题集上选择最有说服力的预算与校正族会使名义 p 值过于乐观。它不会抹掉 +13 pp 的预注册主结果，却削弱‘成本匹配后也已确认’这一更强主张。",
+      "required_fix": "把 matched-L 保持为唯一确认性结果，将 2L 与其余预算列为探索性；在独立题池预先冻结预算网格、主 endpoint、方向、检验族和 stopping rule 后复制。",
+      "verification_test": "公开时间戳 preregistration，并在完全未使用的新题池上一次性执行；校正需覆盖所有会影响主结论的预算与 protocol contrasts。",
+      "evidence_needed": "独立的预注册 total-cost 复制及完整 multiplicity 账本。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第 3–4 页协议定义；第 6–9 页 Monte Carlo 与 random-order 结果；第 17–18 页随机性说明",
+      "claim_ids": [
+        "protocol ranking",
+        "mc_uniform performance",
+        "random-order schedule effect"
+      ],
+      "evidence_ids": [
+        "single mc draw stream",
+        "single persisted random schedule",
+        "recorded option orders"
+      ],
+      "observed_evidence": "mc_uniform 及随机顺序协议在每题/条件下仅有一个随机 realization，未对算法随机性重复 seeds。随机 schedule 的原始 seed 又依赖未固定的 Python string hash，当前只能靠已记录的顺序重建；fresh random-order 分析还在看到 pool heterogeneity 后被提升。",
+      "why_it_matters": "一次 realization 估计的是某个随机轨迹，不是随机协议的期望性能；protocol 间的百分点差可能混入 draw/schedule variance。记录顺序保证当前输出可重算，但不能给出换 seed 后的稳定性。",
+      "required_fix": "对相同题目运行多个独立、显式整数种子，分别估计题目随机性与算法随机性；报告 protocol 平均效应、seed 方差及最坏/最好 seed 敏感性。",
+      "verification_test": "以题目和 seed 为交叉层级做配对/层级 bootstrap；主要方向应在预定比例的 seeds 中保持，且区间排除实质性零效应。",
+      "evidence_needed": "多 seed 原始轨迹、确定性 seed 生成规则和层级不确定性分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 7–10 页 §4 fresh n=819；第 10–12 页讨论与五选一 probe；第 18–19 页限制",
+      "claim_ids": [
+        "confidence is not necessary",
+        "fixed-order superiority",
+        "general protocol non-interchangeability"
+      ],
+      "evidence_ids": [
+        "fresh n=819 fixed-order contrast",
+        "answer-position strata",
+        "five-option probe"
+      ],
+      "observed_evidence": "fresh n=819 上 fixed order 总体比 s_conf 高 5.62 pp，但按正确答案位置分层时位置 0 上 s_conf 反而高 12.56 pp，位置 1–3 则 fixed 更高。研究只用一个模型、一个构造的 GSM8K-MC recipe，且没有以多组 distractor、选项置换或模型复制；五选一 probe 也被登记为 UNDETERMINED。",
+      "why_it_matters": "总体效果可能主要由选项构造与位置先验加权得到，而不是 confidence schedule 的一般缺陷。‘confidence 非必要’在该构造上成立的描述性证据，不能直接外推到其他选择题格式或 masked-diffusion 模型。",
+      "required_fix": "对每题生成多组平衡置换和独立 distractor sets，跨至少另一模型/数据集复制；预先把位置与构造交互设为主分析。",
+      "verification_test": "在题目内平衡所有正确答案位置后，估计 schedule 主效应与 position×schedule 交互；主结论应跨构造 seed、任务和模型保持。",
+      "evidence_needed": "平衡置换、多构造 seed 与跨模型/任务复制。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R2-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "significance"
+      ],
+      "location": "全文，尤其第 5–12 页结果与第 13–19 页附录",
+      "claim_ids": [
+        "main takeaway",
+        "preregistered versus exploratory evidence hierarchy"
+      ],
+      "evidence_ids": [
+        "multiple decision families",
+        "matched-L and NFE tables",
+        "fresh-pool follow-ups"
+      ],
+      "observed_evidence": "稿件在 19 页中并列大量预算、顺序、校正族、fresh-pool、五选一及事后敏感性结果；虽然多数有标签，但主证据层级仍需读者跨多节重建。协议同时改变反馈、顺序和 estimator，正文没有一个最小 factorial 图明确哪些因果因素被识别。",
+      "why_it_matters": "证据层级过密会让一个可靠但窄的 paired finding 被更弱的探索性结论稀释，也容易把‘协议不同’误读为已经解释了差异来源。",
+      "required_fix": "正文压缩为预注册主结果、一个预先定义的资源敏感性和一个独立复制；其余移入附录，并用一张 intervention table 标出每个 arm 同时变化的因素与可识别 estimand。",
+      "verification_test": "不依赖附录即可从主文唯一识别 primary endpoint、confirmatory family、探索性结果及每项结论的适用范围。",
+      "evidence_needed": "重构后的结果层级与 intervention-factor 表。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现涉及人类受试者、敏感数据、隐私、安全或其他需要伦理升级的问题。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审目录、作者计划、编辑上下文、旧稿或历史评分。",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "在独立题池预注册并复制 total-cost-matched 主比较，同时提供实测 FLOPs、延迟、显存和吞吐。",
+    "对随机 protocol 运行多个显式 seeds，以层级分析证明优势不是单一 draw/schedule realization。",
+    "用平衡选项置换、多个 distractor constructions 及至少另一模型/任务验证 fixed/confidence 结论。"
+  ],
+  "evidence_that_would_lower_score": [
+    "实测计算成本匹配后，s_conf 相对 Monte Carlo 的优势消失或反转。",
+    "多 seed 结果显示协议排序高度不稳定，当前效应由单一随机轨迹驱动。",
+    "平衡正确答案位置后 fresh fixed-order 总体优势消失，证明结论主要来自选项构造偏差。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、模型说明或相关工作定位。",
+    "仅审阅冻结 PDF，未读取或执行代码、preregistration、逐题输出或匿名 artifact，因此文中的复现与 hash 声明仅按稿件内容评价。",
+    "PDF 共 19 页，已全文阅读并逐页视觉核查；未发现缺页或不可辨认页面。"
+  ]
+}

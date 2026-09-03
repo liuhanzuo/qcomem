@@ -1,0 +1,119 @@
+{
+  "schema_version": "forkaudit-r39-dual-producer-preregistration-v1",
+  "status": "frozen_before_dual_producer_execution_and_before_dual_candidate_outputs",
+  "created_at_utc": "2026-08-26T15:03:10Z",
+  "experiment_id": "R39-DUAL-PRODUCER-REPEAT-20260826A",
+  "objective": "Reduce the risk of accidental producer-side enumeration, semantic binding, or capture error by requiring two fresh top-level producer processes and four fresh receiver sessions to independently reproduce the same frozen six-capture result.",
+  "upstream_bindings": {
+    "r39_slot_protocol_raw_sha256": "6d062e9a40e9ac51384031b2e01b0d549680f3549dc8be07e6f27edc4733e37b",
+    "r39_census_auditor_sha256": "cc305e6636b2e4e3c8a05d404a1afa8caa5010daf15e5b60d0ef5a7a19ecfba6",
+    "r39_census_generator_sha256": "415bbc86b8b9bc823b4d98ac721073a669b5dc453507d025662604bb197d9b2e",
+    "dual_repeat_verifier_sha256": "f33ee9839ea0be560ea7846c5566de77be0528703e87ccd40efa4497a8712a2c",
+    "r33_preregistration_raw_sha256": "67c001a04e61006967befe1ff1e26018b58bc02630b8e48dd40f16067a44ea65",
+    "r33_source_ledger_raw_sha256": "08dee9b0e7f92edd65472618ebc3e9c2a38108296930255ffb62248bbe853319",
+    "candidate_runtime_code_ledger_raw_sha256": "837f7a488d75cbedbc01e35a236a97f00b85259746e6a368b7aeec873045e94a",
+    "r33_source_sha256": {
+      "coordinator_sha256": "d3b8ca26a6bfed374ab0078de7161003860d13d94f567f81c463c3bafc93cd02",
+      "protocol_sha256": "e651fa7500358ba8c3165fcf1ed018df995f8b8d613d046fe5e08859efe3ffde",
+      "r29_runtime_adapter_sha256": "9d079a1192dc92a5a5bb22ac7ca91694a7f06cd1799f0d3d01c96ac42aa3975e",
+      "replay_sha256": "20a90bcc13d4604e2ce59590926548e8906f219a2537087e61265fc1eaf63e09",
+      "runner_sha256": "076757e691aecabbae5c0c5226d481a0c3993006e9f1b27f767ec4667e171640",
+      "worker_sha256": "f9418d1eb72bedde95cfa9f1e1b3b2823263f885fcdc86950c0d480ee9db0ff8"
+    },
+    "input_receipt": {
+      "artifact_ledger_raw_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+      "candidate_code_ledger_raw_sha256": "837f7a488d75cbedbc01e35a236a97f00b85259746e6a368b7aeec873045e94a",
+      "document_token_ids_sha256": "c4f1d251aaa7b734373daeb415b5c120716d0ea44861c006f7b73d42b8eb159c",
+      "frozen_query_banks_sha256": "400921d147bc840e9802950dc542b002080f3f274661efbd5b4354ec364da7db",
+      "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+      "original_rr2_run_id": "372384bd37cf7640ca210537a4360e1a",
+      "pg19_manifest_sha256": "5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c",
+      "pg19_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+      "query_token_ids_sha256": [
+        "4cda81e5d9754acf0ed942dc7aea5ed0a2a95e3699d51eed6ae19f8a064fe19b",
+        "22403f058d513776591852a5f895b0e8922bf7a7604783ccd07a0813f3c12d6b"
+      ],
+      "rank": 0,
+      "weight_ledger_raw_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+      "windows_sha256": "39bc36bb2eb04d51122e66caaebfa72367c02b43b073f072a2da240ed068c166"
+    }
+  },
+  "frozen_design": {
+    "producer_processes": 2,
+    "execution_order": "serial-on-one-selected-gpu",
+    "freshness_gate": {
+      "top_level_producer_pids_distinct": true,
+      "observer_pid_sets_disjoint": true,
+      "observer_session_commitment_sets_disjoint": true,
+      "raw_result_file_hashes_distinct": true
+    },
+    "preexecution_expectation": "One independent 180-slot census is generated and hashed before either producer starts; neither producer manifest nor any producer row is available to that derivation.",
+    "receiver_contract": "Each R33 spawn-created receiver receives only an opaque capture id and opaque slot-id/tensor IPC pairs. It independently derives descriptors, bytewise content SHA-256 digests, receiver-local storage/view identities, and all unordered relation labels.",
+    "cross_producer_equality": {
+      "semantic_coordinates": "exact slot-id and five-field semantic-coordinate equality against the preexecution census and between producers",
+      "stable_descriptors": "exact equality excluding receiver-local storage_token and view_token",
+      "content_digest": "sha256-byte-exact",
+      "relations": "exact equality of independently reconstructed disjoint/exact_alias/partial_overlap labels for every semantic-coordinate pair",
+      "tolerance": 0,
+      "fallback": "none",
+      "post_hoc_threshold_changes_allowed": false
+    },
+    "expected_counts": {
+      "policy_cells_per_producer": 2,
+      "captures_per_policy_cell": 3,
+      "captures_per_producer": 6,
+      "slots_per_capture": 180,
+      "semantic_coordinates_per_producer": 1080,
+      "content_digests_per_producer": 1080,
+      "descriptor_rows_per_producer": 1080,
+      "relations_per_capture": 16110,
+      "relations_per_producer": 96660,
+      "producer_processes": 2,
+      "receiver_processes": 4
+    }
+  },
+  "content_determinism_design_decision": {
+    "decision": "Require full byte-exact SHA-256 equality; do not use a canonical-semantic fallback.",
+    "made_before_new_dual_producer_outputs": true,
+    "reason": "Two already-completed independent formal executions of the same frozen stack agree exactly on all 1,080 content digests, all 1,080 stable descriptor rows, and all 96,660 relation labels. Therefore nondeterminism is not an evidenced reason to weaken the prospective equality gate.",
+    "retrospective_inputs": [
+      {
+        "path_from_paper_root": "evidence/r33_independent_capture/formal_h20/result/raw/out-of-process-gdn-capture.json",
+        "raw_sha256": "50d39cfcea072fb770da539d90abeddcd8a40802b88f4f95315001333c09e974"
+      },
+      {
+        "path_from_paper_root": "evidence/r39_independent_slot_census/r39-independent-slot-census-trial1907355-20260826a/r33-live/raw/out-of-process-gdn-capture.json",
+        "raw_sha256": "40ad93bfc340efe71d614240529267f0855d97fb1ebfe8657e23007af2b6c51a"
+      }
+    ],
+    "observed_prior_closure": {
+      "captures": 6,
+      "semantic_coordinates_exact": 1080,
+      "content_digests_exact": 1080,
+      "stable_descriptors_exact": 1080,
+      "relation_vectors_exact": 6,
+      "relation_labels_exact": 96660
+    }
+  },
+  "failure_policy": {
+    "any_individual_census_or_lifecycle_replay_failure": "fail",
+    "any_process_or_session_freshness_failure": "fail",
+    "any_semantic_descriptor_content_or_relation_mismatch": "fail",
+    "operational_failure": "operational-invalid, not scientific evidence",
+    "partial_completion_reportable_as_positive": false,
+    "failed_result_may_not_trigger_threshold_or_fallback_revision": true
+  },
+  "claim_boundary": {
+    "supported_if_passed": "Under one frozen Qwen3.5/H20/PyTorch stack and one frozen input/protocol, two fresh serial producer executions with fresh out-of-process receivers exactly reproduced all 1,080 semantic slot observations, bytewise content digests, stable descriptors, and 96,660 independently reconstructed relation labels per execution.",
+    "interpretation": "This independent-repeat closure lowers the risk of an accidental one-off producer enumeration, semantic-binding, or capture error.",
+    "not_supported": [
+      "malicious-producer resistance or trusted-producer elimination",
+      "OS, driver, allocator, or runtime attestation",
+      "proof that a correct opaque slot id names the intended live tensor against adversarial substitution",
+      "independent model re-execution by the receiver",
+      "cross-model, cross-runtime, cross-hardware, or statistical generality",
+      "continuous-batching serving behavior",
+      "absence of transient writes between paused captures"
+    ]
+  }
+}

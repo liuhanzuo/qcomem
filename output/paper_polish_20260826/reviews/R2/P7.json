@@ -1,0 +1,186 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "9a9cd2f2f253ea8e671235b98dec83387d7c07db00fb6491580825254b7602a2",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "逐层 turnover 与单块量化损伤的点估计是可定义的，论文也坦率承认只运行两个单元、层不是独立样本、深度近共线且 gate 未通过。但 Fisher 区间、层 bootstrap、置换和 P(ρ>0) 仍把经过偏置抽样的 11-12 个依赖层当作可交换单位，不能提供所暗示的统计稳健性；此外主 masked 结果与附录历史口径存在具体数值冲突。",
+    "presentation": "测量图和散点图较清楚，限制列表覆盖面很广；然而正文、表2和附录表3在 masked/unmasked、Δz 与区间口径上混杂，限制部分过长且多处用工件代号代替自包含解释，使中心证据难以审计。",
+    "contribution": "用无需运行量化模型的激活漂移信号去预测逐块 PTQ 损伤，并把简单深度基线作为必要对照，是有意义的探索问题。但只有同一家族两个检查点、一个量化器/位宽、一个低多样性模板域对，4B 信号又无法与深度分离，当前结果更像试点边界记录而不是可泛化知识或可部署触发器。"
+  },
+  "paper_summary": "论文在 Qwen3-4B 和 Qwen3-1.7B 上计算每个被探测块的激活尾部 turnover，即全精度模型在两类模板提示间的 max-to-mean 激活比标准化变化，并把它与只量化该块为 HQQ 4-bit 后的部署代理困惑度退化做 Spearman 相关。校正 pad mask 后，4B 的点相关为 0.559，1.7B 为 0.118。4B turnover 与层深度相关 0.909，偏相关区间跨零；只执行了预注册八个单元中的两个，AUROC gate 未通过且标签对单次翻转敏感。三台主机的结果位级相同仅表明确定性。论文将工作定位为探索性边界研究。",
+  "strongest_verified_contribution": "在明确列出的 12 个 4B 层与 11 个 1.7B 层上，论文给出了 turnover 和单块 HQQ4 损伤的逐层散点及可复算的秩相关，并实质性展示：4B 上观察到的正关系与深度强烈纠缠，而 1.7B 上最大损伤块并非 turnover 最大块。因此，任何候选层级运行时信号都必须先与简单结构基线比较。",
+  "strengths": [
+    "把 predictor 限定为全精度模型上可计算、outcome 限定为单块量化的真实困惑度变化，避免机械地从量化输出构造预测器。",
+    "主动报告 pad-mask 修正、历史未遮罩值、leave-one-block-out、深度基线、部分相关和未通过的预注册 gate，而没有把 4B 点值包装成部署证书。",
+    "正确区分三台主机位级复放的确定性与独立复现，并明确有效跨运行样本为1。",
+    "图2直接呈现单个主导层和大量近零层，使结果脆弱性可见。"
+  ],
+  "questions": [
+    "既然作者明确承认层既不独立也不可交换，Fisher、层 bootstrap、层置换及 P(ρ>0) 应被赋予什么频率学含义？为什么这些量还能支持“robust to noise/prompt bootstrap”的表述？",
+    "表2的 masked Δz=0.513 与第7页正文/附录表3的 Δz约0.79 分别来自哪一标签口径？附录表3的区间/edge 行应如何解析，为什么正文称其下界“grazes zero”？",
+    "C12 的 outcome-noise envelope 来自哪些五个 arm、每层有多少独立重复、噪声分布如何拟合？这与三主机精确复放 max|Δ|=0 的确定性结果是什么关系？",
+    "深度重加权 ρ=0.401 使用哪一种加权 Spearman 定义和权重？在只有偏置选出的层上重加权为何能代表未观测的均匀深度总体？",
+    "为何不在至少一个模型上量化全部层，或预先选取真正深度均衡的层，以直接检验 turnover 是否超越 block index？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P7-R2-001",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第3页§2.4、第5页§4限制C4-C5、第7页表2、第8页限制C10-C12",
+      "claim_ids": [
+        "4B-positive-robust-direction",
+        "layer-level-uncertainty"
+      ],
+      "evidence_ids": [
+        "表2 Panel A",
+        "限制C4",
+        "限制C5",
+        "限制C12"
+      ],
+      "observed_evidence": "主要推断只有一个检查点中按固定规则选出的 12 层，作者明确写明这些层既不独立也不可交换，却仍报告 Fisher-z CI、重采样层的 percentile CI、层置换 p 和 P(ρ>0)约0.998，并以此称 4B 方向对噪声和 prompt bootstrap 稳健。",
+      "why_it_matters": "这些推断程序的抽样单位假设与实际单位冲突。它们最多描述对特定有限层集合进行人为重加权/扰动后的数值稳定性，不能量化模型总体、层总体或检查点总体的不确定性，也不能把一个探索性点相关升级为统计支持。",
+      "required_fix": "把所有层重采样结果明确降格为有限集合敏感性分析，不赋予覆盖率或概率含义；要作统计推断，需要跨独立检查点/训练种子/域采样，或给出尊重层相关结构的层级模型与足够独立单元。",
+      "verification_test": "用预先规定的多个独立模型或检查点作为最高层抽样单位，模型内保留完整层向量，进行 cluster/model-level 推断；检查 4B 方向能否跨独立单元重现。",
+      "evidence_needed": "独立检查点/种子/域的完整逐层测量，或有可辩护相关结构的层级推断。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R2-002",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "第3页§2.3、第4页表1与§3.2、第5-6页图2-3、第8页限制E",
+      "claim_ids": [
+        "turnover-predicts-4B-damage",
+        "depth-independent-value-unresolved"
+      ],
+      "evidence_ids": [
+        "表1",
+        "图2",
+        "图3",
+        "限制E"
+      ],
+      "observed_evidence": "固定 probe 规则在最深十等分中放入4/12个层；4B turnover 与深度 ρ=0.909，turnover 与损伤的 raw ρ=0.559，而偏相关区间宽且跨零。将所测层重加权后相关降至0.401，未测层没有 outcome。",
+      "why_it_matters": "当前样本设计主动制造了深层过采样，并且 turnover 与深度近共线；因此无法判断候选信号是否提供超越层索引的独立信息，也无法外推到未探测层。这个不确定性直接限制论文的预测器贡献。",
+      "required_fix": "至少在一个模型上执行全层单块量化，或在测量前冻结深度均衡的探测设计；比较 turnover、depth、权重/曲率敏感性等基线的交叉验证排序性能。",
+      "verification_test": "在未参与拟合的层/检查点上比较 turnover 与 depth 的 rank loss、AUROC或 top-k damage recall，并用模型级重复检验增量性能；预先规定标签和噪声容忍区。",
+      "evidence_needed": "全层或深度均衡 outcome、独立检查点以及预注册基线比较。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R2-003",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "第4页§3.1、第7页表2 Panel B及其后正文、第11页附录表3与方法敏感性注释",
+      "claim_ids": [
+        "cross-carrier-difference",
+        "canonical-masked-analysis"
+      ],
+      "evidence_ids": [
+        "表2 Panel B",
+        "表3"
+      ],
+      "observed_evidence": "主 masked 表2给 Δz=+0.513、八个 seed-envelope 下界范围[-0.88,-0.78]、上界范围[+2.06,+2.17]且0/8排除零；紧随其后的正文却写 Δz约+0.79、下界“grazes zero”。附录表3又给0.794，并把若干 Fisher/Bootstrap/LOO 数值列为未明确标识的旧口径，与主 masked 梯子不一致。",
+      "why_it_matters": "读者无法确定哪一组是当前主分析、何谓一个置信区间的“lower-edge range”，也无法把估计值与区间对应。该混杂影响跨载体异质性、稳健性和附录重建。",
+      "required_fix": "建立唯一的 canonical masked 结果表，逐行给 estimator、标签版本、随机种子、点估计和单一可解释区间；把所有历史未遮罩值移入明确标记的审计表，并删除正文旧数字。",
+      "verification_test": "自动从 canonical JSON 生成正文、表2和附录，执行一致性断言：同一标签口径的点估计/CI/LOO在全稿完全相同，估计值和区间含义可解析。",
+      "evidence_needed": "单一冻结 masked 结果工件及自动化数值一致性报告。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R2-004",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第7页表2 Panel A/B重建说明、第8页限制C12、第5页§3.3",
+      "claim_ids": [
+        "noise-envelope-robustness",
+        "prompt-bootstrap-robustness"
+      ],
+      "evidence_ids": [
+        "R39_NOISE_RANK_SYNTHESIS",
+        "R42_NOISE_ENVELOPE",
+        "R44_TURNOVER_PROMPT_BOOTSTRAP",
+        "表2"
+      ],
+      "observed_evidence": "三次决定性运行在全部字段上位级相同，但 C12 又从“五臂重测”的近零层 spread 构造 outcome-noise envelope；论文未在自包含方法中说明五臂是什么、每层独立重复数、噪声是否同分布/相关，或为何可将该 spread 独立施加到每个 δ。超过一半4B层的|δ|不超过一个该噪声宽度。",
+      "why_it_matters": "P(ρ>0)约0.998 是支持4B“稳健方向”的主要依据，但其概率完全依赖所选人为噪声模型。若层间噪声相关、异方差或近零偏差来自系统误差，该模拟会严重高估稳定性。",
+      "required_fix": "完整定义噪声来源和生成模型，报告逐层独立重复；优先用真实重复测量而非合成包络，并保留层间协方差。prompt bootstrap 也应解释64个单模板句子的抽样总体。",
+      "verification_test": "在新的独立 prompt 集和独立量化前向上重复每层 outcome，多层联合重算 ρ；将真实重复分布与当前包络的分位数和符号稳定性比较。",
+      "evidence_needed": "逐层重复 outcome、prompt 级 predictor 值、协方差估计和噪声模型代码。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "P7-R2-005",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "第2页图1图注与第1、3、8-9页正文",
+      "claim_ids": [
+        "1.7B-null-reading"
+      ],
+      "evidence_ids": [
+        "图1",
+        "表1"
+      ],
+      "observed_evidence": "图1图注把 Qwen3-1.7B 称为“a null relation”，而摘要、表1和限制C12更准确地称其为弱且区间无信息、P(ρ>0)约0.59。",
+      "why_it_matters": "未能拒绝或区间宽并不等于确认零关系；图示的简化措辞与论文其他部分的负责任表述不一致。",
+      "required_fix": "统一改为“weak and unresolved/uninformative”，避免使用 null 作为已建立结果。",
+      "verification_test": "全文搜索 null/kill/absent，确保都与预注册 band 或统计证据的实际含义一致。",
+      "evidence_needed": "修订后的统一术语。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究使用公开模型与程序化模板提示，未报告人体研究或个人信息；当前主要风险是部署触发器证据不足，论文已明确不作安全证书声明。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；子代理只接收冻结 PDF、指定的 ICLR 2026 量表与输出 schema，未与任何其他评审通信，也未查看作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "至少一个模型的全层或预先冻结的深度均衡测量，显示 turnover 在独立层/检查点上稳定超越 block index。",
+    "以独立检查点或模型为最高抽样单位的重复实验，而不是对单模型依赖层重采样。",
+    "真实重复 outcome 与新 prompt 集上的联合稳定性分析，替代未充分定义的噪声包络。",
+    "完成更多预注册量化器/域单元，并用唯一 canonical masked ledger 消除所有数值冲突。"
+  ],
+  "evidence_that_would_lower_score": [
+    "全层或深度均衡采样后4B相关消失，或 turnover 不优于深度/离线敏感性基线。",
+    "独立 prompt 或量化重复显示当前 P(ρ>0)主要由噪声模型假设产生。",
+    "canonical 重算不能复现 masked ρ=0.559，或发现表2/表3混用了不可比较标签。",
+    "额外预注册单元普遍落入 KILL，且没有可解释异质性。"
+  ],
+  "review_limitations": [
+    "仅审阅指定冻结 PDF；未访问公开代码、JSON、模型或 GPU 运行，因此无法重算逐层量化、核对工件哈希或判断脚本与正文的一致性。",
+    "按任务要求未联网，未核验 2025-2026 引用、Qwen3/HQQ 版本细节或相关 PTQ 触发器文献的完整性。"
+  ]
+}

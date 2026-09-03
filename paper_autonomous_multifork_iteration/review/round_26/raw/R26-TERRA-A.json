@@ -1,0 +1,150 @@
+{
+  "reviewer_id": "R26-TERRA-A",
+  "round": 26,
+  "snapshot_sha256": "a415f6d15f7965ba279f7ba866e52b06bcc8b2ea1620cb9620236ae73d63e43e",
+  "role": "adjudicator",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The contract, storage-interval rules, and stated experimental predicates are unusually explicit, and the paper appropriately distinguishes relational equality, selected numerical checks, and positive controls. However, its central evidence is producer-captured receipts and hashes, most dynamics are not independently recaptured, and compiled dispatch remains unbound; thus the main result is a bounded consistency witness rather than a strong independent audit of execution isolation.",
+    "presentation": "The paper is polished, carefully caveated, and visually legible (Figures 1--3 and Tables 3--5 are particularly helpful). It is nevertheless very dense and repetitive: core contract, evidence tier, cohort, and limitation qualifications are spread across the main text and 15 appendix tables, making it difficult to determine the minimal operational novelty and what a third party must implement.",
+    "contribution": "Receipt-bound ownership auditing for hybrid KV and recurrent state is a useful systems-testing framing, with a coherent 2x2 ownership factorial and explicit memory denominators. The paper itself documents that its components draw on existing paging, hybrid-cache, metamorphic-testing, differential-checking, and accounting ideas (Table 9); the current one-stack, producer-trusted validation does not yet establish that the integration provides broad or practically decisive new capability."
+  },
+  "paper_summary": "ForkAudit proposes a receipt-bound audit contract for branching a common prefix in a hybrid Qwen3.5 stack with read-only attention KV and mutable GDN state. It records identity, lifecycle, storage, call, semantic, and fault receipts; evaluates full-copy versus shared-document KV and materialized versus borrowed GDN bases at N=1,8,32; reports cross-cell digest equality, selected FP32 attention and NumPy GDN checks, targeted fault-gate reachability, and phase-bounded allocator differences.",
+  "strongest_verified_contribution": "Within the paper's explicitly trusted-capture boundary, the strongest supported result is the clearly specified lifecycle/storage witness: all 96 cells report the intended setup/first-transition/final disjointness predicates, with equal registered observables across ownership arms and 288 adjacent-fan-out comparisons (Sections 3, 5.3, and Table 5).",
+  "strengths": [
+    "The paper makes its trust boundary and nonclaims unusually explicit, including no independent producer recapture, no compiled-dispatch binding, and no concurrency/capacity claim (Sections 3, 6, and Appendix I).",
+    "The ownership model distinguishes immutable document KV, private append pages, persistent GDN bases, and post-transition request-local GDN state with a concrete interval-overlap definition (Section 3 and Appendix D).",
+    "The factorial design, pre-specified attention rows, selected GDN recurrence oracle, and named mutation gates give more diagnostic structure than output-only comparisons (Sections 4--5 and Tables 7, 19, and 20).",
+    "Memory reporting separates logical pools, allocator peaks, and unmeasured process/service capacity, avoiding an overstated capacity conclusion (Section 4.4, Table 6, and Table 16).",
+    "The PDF has no obvious citation-format or attribution defect: related-work positioning is specific and consistently cited, while Table 9 candidly bounds novelty."
+  ],
+  "questions": [
+    "Can the authors demonstrate that an independently implemented collector, rather than the candidate producer's receipt emitter, observes the same storage and lifecycle facts for the primary factorial?",
+    "What realistic, previously unknown implementation defect has ForkAudit found, or what held-out fault distribution shows that its gates add detection value beyond faults designed directly from those gates?",
+    "Which portions of the contract are essential for a new hybrid runtime, and can the method be demonstrated across a second architecture/runtime under actual concurrent or continuous-batching execution?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R26-A-1",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 3, especially the decision rule on PDF pp. 3--4; Sections 4.1--4.3 on pp. 5--6; Table 5 on PDF p. 14; Appendix I on PDF p. 22.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The paper defines receipt completeness as conditional on honest producer capture and external byte bindings, says replay cannot independently recapture the producer or unarchived device tensors, and labels dispatch provenance partial because no per-call compiled-binary or autotuning binding exists.",
+      "why_it_matters": "A candidate runtime that misreports roles, views, or lifecycle events can produce a self-consistent ledger whose replay passes. This limits the central ownership conclusion to agreement with a producer-generated trace and makes the term audit potentially stronger than the independent assurance actually delivered.",
+      "required_fix": "Add an independent trace-collection or interception path for the primary execution, bind the selected compiled dispatch and relevant tuning decision per call, and compare independently captured predicates against the producer ledger.",
+      "verification_test": "Run the full four-cell factorial using a separately implemented observer on a clean environment; require agreement on raw storage/lifecycle facts and fail the audit on a per-call binary or dispatch mismatch.",
+      "evidence_needed": "Public independent-capture traces for the 96-cell factorial, a clear observer trust model, and per-call executable/tuning provenance bound into the replayable records.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R26-A-2",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Sections 4.1--4.3 on PDF pp. 5--6; Section 6 on PDF p. 9; Appendix I on PDF p. 22.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The primary audit covers one Qwen3.5 configuration, one H20 family, BF16 KV, N<=32, one partial-tail geometry, and sequential round-major execution on one CUDA stream. The paper explicitly excludes concurrent kernels, continuous/ragged batching, eviction, multi-document service, capacity, and broad downstream evaluation.",
+      "why_it_matters": "The motivating problem is forked serving, where races and ownership errors are most consequential under concurrent scheduling, cancellation, eviction, and heterogeneous workloads. The narrow execution regime is insufficient to establish that the proposed audit transfers to the practical settings that motivate its significance.",
+      "required_fix": "Evaluate the same contract on at least one additional hybrid model/runtime and under concurrent or continuous-batching scheduling, including multiple prefix lengths, tail geometries, cancellation/eviction, and fan-outs beyond the single fixed setting.",
+      "verification_test": "For each added runtime and scheduling regime, reproduce all required lifecycle predicates, run an independently selected fault suite, and report whether any invariant or receipt schema must change.",
+      "evidence_needed": "Cross-runtime and concurrent-scheduler audit traces with explicit failures or passes, plus a coverage matrix connecting the contract's predicates to the added lifecycle conditions.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R26-A-3",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "novelty",
+        "significance"
+      ],
+      "location": "Section 4.5 on PDF p. 6; Figure 3 and Section 5.5 on PDF p. 8; Tables 7--8 on PDF p. 16; Appendix I on PDF p. 22.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "All nine mutants are targeted to predeclared intended gates and are reported as gate reachability, not detection completeness or a rate. M8 reaches an injected sentinel rather than an existing runtime assertion, and M8/M9 abort before semantic consequences can be observed.",
+      "why_it_matters": "This supports basic wiring of known checks but not the paper's practical diagnostic value against realistic or previously unseen faults. Because the faults are aligned with the claimed gates, the experiment cannot establish comparative fault-detection effectiveness or substantiate the integration's broader usefulness.",
+      "required_fix": "Use a blinded, held-out fault corpus containing realistic implementation errors not generated from the final gate map, and compare ForkAudit with well-designed output/differential/lifecycle baselines.",
+      "verification_test": "Pre-register the held-out fault set and scoring rule, have injections performed independently of the gate implementation, and report detection, localization, false-positive, and escape outcomes for every baseline.",
+      "evidence_needed": "A public fault taxonomy and blind evaluation logs showing incremental detection/localization value beyond directly targeted gate tests.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R26-A-4",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Section 7 on PDF p. 9; Table 19 on PDF p. 21; Table 21 on PDF p. 23.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The PDF states that replays and manifests exist at relative package paths and that most tensors are hashes rather than archived values. It does not itself supply the executable package, raw records, independently checkable sidecars for the full factorial, or sufficient implementation detail to reproduce the claimed aggregate results from the PDF alone.",
+      "why_it_matters": "The paper's principal contribution is a replayable audit contract, so auditable access to its records and a minimally reproducible reference implementation are central rather than ancillary. With only the visible submission, the numerous pass claims cannot be independently verified.",
+      "required_fix": "Provide an anonymous, version-pinned artifact with a one-command replay, complete manifests and raw or commitment-verifiable records, documented hardware/software requirements, and a small CPU-only synthetic reproduction of every contract predicate.",
+      "verification_test": "A clean third-party environment should reproduce the primary aggregate, intentionally fail each supplied mutant, and verify package integrity without relying on undocumented local paths.",
+      "evidence_needed": "Accessible immutable artifact identifiers, complete replay instructions, expected checksums/results, and an independent reproduction report.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R26-A-5",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "novelty",
+        "significance"
+      ],
+      "location": "Sections 1--3 on PDF pp. 1--4; Sections 5--6 on PDF pp. 6--9; Appendix G on PDF pp. 17--18.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The paper repeatedly qualifies numerous cohorts and evidence levels, while the core new contract is distributed across prose, figures, a dependency matrix, and appendices. Table 9 acknowledges that the component mechanisms and checks are established ideas, but the exact indispensable integration and user-facing workflow remain diffuse.",
+      "why_it_matters": "Readers may struggle to distinguish the proposed method from a thorough test plan for one implementation, and to see what must be adopted by another runtime or why the integration is materially novel.",
+      "required_fix": "Condense the primary method into a short normative algorithm/checklist, identify the minimal required record schema and predicates, and explicitly separate essential innovation from optional case-study controls.",
+      "verification_test": "Ask an independent systems practitioner to implement the contract from the shortened specification and assess whether they can enumerate the mandatory records, trust assumptions, and decision rule without consulting case-study prose.",
+      "evidence_needed": "A concise normative workflow, implementation pseudocode, and an ablation or adoption case showing which integrated elements change detection or assurance.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "The paper appropriately states that it uses no human-subject collection and notes that efficiency can increase model deployment scale. No additional ethics concern is evident from the PDF-only submission.",
+  "llm_usage_disclosure": "I am an LLM reviewer. This review was conducted using PDF-only access to the specified frozen submission; I did not inspect artifacts, source code, prior reviews, or external sources.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "An independently collected and publicly replayable primary trace, including per-call dispatch provenance, that confirms the producer ledger.",
+    "Blinded held-out fault results showing materially better detection or localization than output-only and conventional differential/lifecycle baselines.",
+    "Successful contract transfer to another hybrid runtime and to concurrent or continuous-batching serving with varied lifecycle conditions.",
+    "An accessible, independently reproduced artifact that makes the receipt-replay contribution directly auditable."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of an independent collector or clean rerun to match a primary ownership, lifecycle, or semantic predicate.",
+    "A held-out realistic-fault study showing that the contract provides no incremental detection or localization value over simpler baselines.",
+    "Evidence that the reported full-copy/shared-document or borrowed/materialized arms differ in unreported execution paths, dispatches, or numerical outcomes.",
+    "Unavailable, incomplete, or non-reproducible artifacts contradicting the paper's replayability claims."
+  ],
+  "review_limitations": [
+    "This assessment is limited to the supplied PDF. I could evaluate visible methods, claims, figures, tables, and references, but could not execute the claimed replays or validate cited external work."
+  ]
+}

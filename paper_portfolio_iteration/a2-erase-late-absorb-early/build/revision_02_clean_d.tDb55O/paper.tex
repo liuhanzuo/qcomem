@@ -1,0 +1,314 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\input{math_commands.tex}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{amsmath,amssymb,amsthm}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newcommand{\Expo}{E}
+\newcommand{\Budget}{B}
+
+\title{Three Scoped Product and Contraction Results\\
+Fixed Quadratic, Smooth Convex, and Affine Scalar Regimes}
+\author{Anonymous}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This theory-only note records three separate, scoped identities. A fixed
+quadratic has an exact matrix-product solution whose first-order log
+contraction depends on cumulative learning-rate exposure, with a finite-step
+squared-step remainder. Under explicit pointwise ambient Hessian bounds on
+every minimizer-to-iterate segment, gradient descent on a twice continuously
+differentiable objective contracts full parameter error; a faster directional
+rate also requires an invariant-subspace condition. An affine scalar
+conditional-mean recursion has an exact product law and an exponential upper
+bound. The statements do not compare two paths and are not laws for logistic
+regression, shuffled SGD, CNNs, nonconvex optimization, or real label noise.
+The package makes no empirical, deployment, or novelty claim.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+This paper is a scoped formal exposition of three product/contraction
+calculations. It does not define an alternative trajectory, a reference
+trajectory, or a quantity measuring their difference. Accordingly, it does
+not establish a comparator-path result, data attribution, or a clean-path
+return identity. Those topics motivate possible future research but are not
+conclusions of the results below.
+
+The three results have deliberately separate domains. T1 is a fixed-quadratic
+product identity. T2 is a smooth-convex full-norm contraction theorem under
+pointwise ambient Hessian bounds. T3 is an affine scalar conditional-mean
+identity. They share a product form but no theorem connects their state spaces
+or consequences. Neither T1 nor T3 establishes a law for nonlinear SGD, and
+T2 does not transfer automatically to arbitrary neural networks.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.12\linewidth}|p{0.23\linewidth}|p{0.29\linewidth}|p{0.25\linewidth}}
+\textbf{Result} & \textbf{State and assumptions} & \textbf{Conclusion} & \textbf{Not supplied} \\
+\hline
+T1 & Fixed SPD quadratic; $0\leq\eta_tL<1$ & Exact terminal matrix product and a log-product remainder & A changed objective, a comparator path, or nonlinear transfer \\
+T2 & Gradient descent; pointwise $\mu I\preceq\nabla^2L_A\preceq LI$ on each minimizer--iterate segment & Full-norm contraction to $w_A^\star$; directional rate only with invariance & A comparison to another trajectory \\
+T3 & Affine scalar recursion with conditional-zero-mean innovation & Exact mean product and exponential upper bound & A convex-optimization or general-SGD statement
+\end{tabular}
+\end{center}
+
+\paragraph{Scope.}
+The frozen public baseline contained historical numerical material without
+co-located public code, output, configuration, seed, and preregistration
+artifacts. That material is not part of this submission source. A separate,
+uncompiled archive points to the immutable checkpoint containing it. No
+unexecuted empirical policy is part of the active paper.
+
+\section{Notation}
+\label{sec:setup}
+
+Write $\eta_t\geq0$ for a deterministic step size and
+$E_{s:T}=\sum_{t=s}^{T-1}\eta_t$ for tail exposure. The symbol $A$ in T2
+only labels the displayed objective $L_A$; it does not encode a data block or
+a reference path. ``Contraction'' below always means the
+particular norm or expectation displayed in its own theorem, not accuracy, a
+representation, or a deployment outcome.
+
+\section{Three bounded results}
+\label{sec:theory}
+
+\subsection{T1: fixed-quadratic exposure product}
+\label{sec:t1}
+
+\begin{lemma}[T1]
+\label{thm:t1}
+Let
+\[
+ Q(w)=\tfrac12(w-w^\star)^\top H(w-w^\star),\qquad
+ 0\prec\mu I\preceq H\preceq LI,
+\]
+and run $w_{t+1}=w_t-\eta_t\nabla Q(w_t)$ with
+$0\leq\eta_tL<1$. Then
+\begin{equation}
+ w_T-w^\star=\prod_{t=0}^{T-1}(I-\eta_tH)(w_0-w^\star).
+\label{eq:t1product}
+\end{equation}
+For an eigenvalue $\lambda_j$ of $H$, set
+$P_j=\prod_t(1-\eta_t\lambda_j)$,
+$E=\sum_t\eta_t$, and $q_j=\max_t\eta_t\lambda_j<1$. Then
+\begin{equation}
+ 0\leq-\log P_j-\lambda_jE
+ \leq\frac{\lambda_j^2\sum_t\eta_t^2}{2(1-q_j)}.
+\label{eq:t1log}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Since $\nabla Q(w)=H(w-w^\star)$, one step gives
+$w_{t+1}-w^\star=(I-\eta_tH)(w_t-w^\star)$, and iteration proves
+\eqref{eq:t1product}. Diagonalize the symmetric positive-definite $H$.
+On an eigenvector with eigenvalue $\lambda_j$, the multiplier is $P_j$.
+For $x\in[0,q_j]$,
+\[
+ 0\leq-\log(1-x)-x
+   =\sum_{k\geq2}\frac{x^k}{k}
+ \leq\frac{x^2}{2(1-q_j)}.
+\]
+Apply this inequality to $x=\eta_t\lambda_j$ and sum over $t$.
+This proves \eqref{eq:t1log}.
+\end{proof}
+
+T1 says that equal exposure yields the same first-order log contraction in
+this fixed quadratic. It does not say that arbitrary finite schedules with
+equal exposure have identical terminal iterates: the squared-step term
+quantifies the permitted discrepancy. Replacing a step $\eta$ by $K$ steps of
+size $\eta/K$ preserves exposure, whereas repeating $K$ original steps changes
+exposure and is not a finite-budget invariance.
+
+\subsection{T2: ambient-Hessian gradient-descent contraction}
+\label{sec:t2}
+
+\begin{theorem}[T2]
+\label{thm:t2}
+Let $L_A$ be twice continuously differentiable with unique minimizer
+$w_A^\star$ and $\nabla L_A(w_A^\star)=0$. Suppose that for every
+$t=s,\ldots,T-1$ and every $r\in[0,1]$,
+\begin{equation}
+ \mu I\preceq \nabla^2L_A\!\left(w_A^\star+r(w_t-w_A^\star)\right)
+ \preceq LI,
+ \qquad 0<\mu\leq L.
+\label{eq:t2ambient}
+\end{equation}
+If gradient descent on $L_A$ is run from the arbitrary starting iterate $w_s$
+with $0\leq\eta_t\leq1/L$, then
+\begin{equation}
+ \lVert w_T-w_A^\star\rVert_2
+ \leq\prod_{t=s}^{T-1}(1-\eta_t\mu)
+      \lVert w_s-w_A^\star\rVert_2
+ \leq e^{-\mu E_{s:T}}\lVert w_s-w_A^\star\rVert_2.
+\label{eq:t2full}
+\end{equation}
+If, in addition, $e\ne0$, $\lambda_e>0$, and $\operatorname{span}(e)$ is invariant for every segment
+average Hessian in the proof and its eigenvalue on $e$ is at least
+$\lambda_e$, then
+\begin{equation}
+ |e^\top(w_T-w_A^\star)|
+ \leq e^{-\lambda_eE_{s:T}}|e^\top(w_s-w_A^\star)|.
+\label{eq:t2direction}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+For each $t\geq s$, the fundamental theorem of calculus gives
+\[
+ \nabla L_A(w_t)-\nabla L_A(w_A^\star)
+ =\bar H_t(w_t-w_A^\star),\qquad
+ \bar H_t=\int_0^1\nabla^2L_A(w_A^\star+
+        r(w_t-w_A^\star))\,dr .
+\]
+Integrating the pointwise ambient bounds in \eqref{eq:t2ambient} implies
+$\mu I\preceq\bar H_t\preceq LI$. Therefore
+\[
+ w_{t+1}-w_A^\star=(I-\eta_t\bar H_t)(w_t-w_A^\star).
+\]
+All eigenvalues of $I-\eta_t\bar H_t$ lie in
+$[0,1-\eta_t\mu]$ because $\eta_t\leq1/L$. Hence its spectral norm is at most
+$1-\eta_t\mu$. Multiply these bounds from $s$ through $T-1$, then use
+$1-x\leq e^{-x}$ to obtain \eqref{eq:t2full}.
+
+For the directional statement, the added invariance premise makes $e$ an
+eigenvector of every $\bar H_t$. Its scalar multiplier is at most
+$1-\eta_t\lambda_e$; the same multiplication and exponential bound prove
+\eqref{eq:t2direction}. A Rayleigh-quotient lower bound alone does not imply
+this shared invariant-subspace premise.
+\end{proof}
+
+Thus T2 is a full-parameter contraction result under the explicit pointwise
+ambient Hessian condition \eqref{eq:t2ambient}. It does not compare $w_t$ to a
+second trajectory or identify why $w_s$ has its value. Its directional
+refinement is conditional and must not be inferred from observations in another
+model class.
+
+\subsection{T3: affine scalar conditional-mean product}
+\label{sec:t3}
+
+\begin{theorem}[T3]
+\label{thm:t3}
+Let $(u_t)$ be an integrable scalar process adapted to
+$(\mathcal F_t)$. Fix $\lambda>0$ and deterministic step sizes satisfying
+$0<\eta_t\lambda<1$. Suppose
+\begin{equation}
+ u_{t+1}=(1-\eta_t\lambda)u_t+\eta_t\xi_t,\qquad
+ \mathbb E[\xi_t\mid\mathcal F_t]=0.
+\label{eq:t3affine}
+\end{equation}
+Then for any $s<T$,
+\begin{equation}
+ \mathbb E[u_T]=\mathbb E[u_s]\prod_{t=s}^{T-1}
+ (1-\eta_t\lambda),\qquad
+ |\mathbb E[u_T]|
+ \leq|\mathbb E[u_s]|e^{-\lambda E_{s:T}}.
+\label{eq:t3product}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Taking conditional expectations in \eqref{eq:t3affine} and then total
+expectations yields
+\[
+ \mathbb E[u_{t+1}]=(1-\eta_t\lambda)\mathbb E[u_t].
+\]
+Repeated substitution gives the product identity in \eqref{eq:t3product}.
+Every factor is positive and $1-x\leq e^{-x}$ for $x\geq0$, so multiplying
+the inequalities gives the exponential upper bound.
+\end{proof}
+
+T3 is exact for the displayed scalar recursion. It does not assert that
+logistic-SGD, random reshuffling, or a nonlinear accuracy functional obeys
+\eqref{eq:t3affine}.
+
+\section{Future work}
+\label{sec:empirical-status}
+
+No empirical policy or experiment is defined or evaluated in this paper.
+Possible future work could formulate an explicit comparator-path theorem or
+preregister and execute a separately defined empirical study. Such work would
+require its own inputs, comparator, and evidence chain; it would test practical
+relevance, not serve as evidence for T1--T3.
+
+\section{Related work}
+\label{sec:related}
+
+The locked sources on training-data/model relationships---influence functions
+\citep{koh2017understanding}, datamodels \citep{ilyas2022datamodels}, TRAK
+\citep{park2023trak}, and SISA \citep{bourtoule2021sisa}---are contextual
+rather than antecedents for the three results. Work on SGD noise and implicit
+regularization \citep{mandt2017sgd,smith2017bayesian,smith2021origin}
+supports stating T3's affine conditional-mean premise instead of treating it
+as a general SGD identity. The currently locked sources do not provide a
+verified theorem-level antecedent comparison for all of T1--T3. We therefore
+make no claim that the individual identities are novel, nor that their
+juxtaposition is a nontrivial unifying result. The closest-work matrix records
+this boundary and the remaining positioning gap.
+
+\section{Limitations}
+\label{sec:limitations}
+
+The scope is mathematical rather than empirical. T1 is fixed quadratic. T2
+requires the pointwise ambient spectral Hessian bounds
+\eqref{eq:t2ambient} on every relevant minimizer--iterate segment, a stable
+step-size bound, and a separate invariant-subspace condition for its directional
+refinement. T3 requires the affine scalar recursion and conditional-zero-mean
+innovation. None of these assumptions automatically holds for logistic
+training, shuffled SGD, neural networks, noisy labels, or data-selection
+systems. The public package also lacks a same-version experiment evidence
+chain; remote candidate results are not attributed to this manuscript.
+
+The contribution ceiling is also substantive: without a theorem that connects
+the three regimes, a verified theorem-level distinction from direct antecedents,
+or new empirical evidence, this package remains a scoped exposition rather
+than an established research advance.
+
+\section{Conclusion}
+
+T1--T3 establish exact or bounded product relations only within their separate
+stated regimes. They do not establish a comparator-path identity, a
+training-path effect, or a deployment recommendation. A future paper may add a
+common formal model or empirical evidence; this one does not.
+
+\section*{Reproducibility Statement}
+
+This self-contained source package includes its consumed TeX dependencies and
+bibliography. The controlled build record pins the compiler and BibTeX
+versions, hashes every consumed source input (including this statement), and
+binds a clean rebuild to the archived PDF. Formal assumptions, statements, and
+proofs are active in this source. No unexecuted protocol or remote-only result
+is reported as an observation.
+
+\section*{Ethics Statement}
+
+This revision reports no newly run human-subject or dataset study. Any future
+execution must verify dataset licenses, versions, and use conditions, and the
+policy must not access clean, protected, test, or oracle labels at decision
+time.
+
+\input{ai_use_statement}
+
+\bibliographystyle{iclr2027_conference}
+\bibliography{references}
+
+\appendix
+\section{Proof-scope checklist}
+
+T1 uses a fixed symmetric positive-definite Hessian and its eigendecomposition.
+T2 uses the pointwise ambient bounds \eqref{eq:t2ambient}, whose integration
+bounds every segment-average Hessian between $\mu I$ and $LI$; its directional
+line is conditional on simultaneous invariance. T3 takes conditional
+expectations of the stated scalar recursion. These are the only proof
+dependencies used by the active manuscript. Historical figures, tables,
+scripts, and numerical claims are not imported, hidden, or compiled here.
+
+\end{document}

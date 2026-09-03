@@ -1,0 +1,155 @@
+{
+  "schema": "r30-fresh-fault-plan-v1",
+  "plan_id": "r30-fresh-faults-author-freeze-20260825a",
+  "authored_at_utc": "2026-08-25T08:04:13Z",
+  "status": "frozen_before_executor_inspection",
+  "knowledge_boundary": "The author used only the public paper PDF and mandatory skill instructions. No repository implementation, validator, previous fault suite, or prior evidence was inspected.",
+  "scientific_question": "For each independently authored ownership/lifecycle transformation below, what outcome does the existing all-gates-on fixed-stack validator produce: an existing validator rejection, an ordinary runtime assertion/exception, or an escape to the full semantic horizon?",
+  "expectation_policy": "No expected detector gate, rejection label, or outcome is assigned before execution.",
+  "stack_scope_from_public_paper": {
+    "model": "Qwen3.5-35B-A3B",
+    "hardware_family": "H20",
+    "state_types": [
+      "paged full-attention KV",
+      "persistent and request-local recurrent GDN state"
+    ],
+    "required_policy_cell": "shared-document KV plus borrowed GDN",
+    "minimum_resident_requests": 1
+  },
+  "global_execution_contract": {
+    "clean_first": true,
+    "clean_acceptance": "The fresh matched clean control must reach the full frozen horizon with all existing gates enabled, no ordinary assertion/exception, and detached replay acceptance. Otherwise stop before all fault executions.",
+    "fault_order": [
+      "R30F1_BORROWED_GDN_DETACH_EQUAL",
+      "R30F2_IMMUTABLE_KV_TRANSIENT_FLIP_RESTORE",
+      "R30F3_RELEASE_BEFORE_FINAL_OBSERVATION"
+    ],
+    "all_gates_enabled": true,
+    "target_gate_suppression": false,
+    "fault_semantics_may_not_be_changed_after_freeze": true,
+    "horizon": "Use exactly the clean control's input, request order, registered transition, generation schedule, and terminal observation horizon. A fault continues to that full horizon unless an already-existing validator gate or an ordinary runtime assertion/exception stops it.",
+    "output_retention": "Preserve every raw stdout/stderr log, process exit status, injector witness, candidate result, replay result, and artifact hash, including escapes and operationally invalid cases.",
+    "semantic_comparisons": {
+      "tokens": "exact ordered integer equality against the matched clean control",
+      "full_logits": "for every available matched observation, canonical contiguous CPU float32 shape-and-dtype-bound bytes; report exact-byte equality and SHA-256, and if unequal report maximum absolute error and relative L2 with zero-denominator handled explicitly",
+      "logical_kv": "report exact registered digest/byte equality when available",
+      "gdn_state": "report exact registered digest/byte equality when available"
+    },
+    "replay": "Run candidate-import-free detached replay over copied/frozen artifacts and bind its source hash and result hash.",
+    "classification_precedence": [
+      "operationally_invalid_precondition",
+      "existing_validator_rejection",
+      "ordinary_assertion_or_exception",
+      "escape_full_horizon"
+    ],
+    "reporting_boundary": "Report clean false positives and per-fault outcomes only. Do not compute or imply a population detection rate, coverage rate, sensitivity estimate, or superiority claim."
+  },
+  "faults": [
+    {
+      "fault_id": "R30F1_BORROWED_GDN_DETACH_EQUAL",
+      "nonce": "r30f1-borrowed-detach-9f7c2a48b16e03d5",
+      "seed_hex": "0x9f7c2a48b16e03d5",
+      "seed_u64": 11492132699240473557,
+      "mechanism_class": "setup ownership relation",
+      "state_target": "one borrowed request GDN base tensor slot",
+      "selector": {
+        "request": "lowest canonical request ordinal",
+        "slot_order": "ascending numeric GDN layer index, then lexicographic registered slot/component name, then ascending component index",
+        "slot": "first nonempty tensor slot in slot_order"
+      },
+      "exact_transformation": "Construct the clean borrowed-GDN request first. Before the setup-phase audit/capture and before any continuation model call, replace exactly the selected request's reference to the registered persistent GDN base tensor with a value-identical detached clone having the same logical shape, dtype, device, and strides. The clone must occupy a storage byte range disjoint from the registered persistent base. Leave the declared borrowed policy, request identity, document identity, all other GDN slots, all KV state, and every tensor value unchanged.",
+      "injection_horizon": {
+        "inject_after": "clean borrowed references have been constructed but no setup-phase audit/capture has run",
+        "inject_before": "the setup-phase audit/capture and every continuation model call",
+        "continue_until": "the clean control's full terminal horizon unless an existing gate or ordinary assertion/exception stops execution"
+      },
+      "validity_conditions": [
+        "the selected policy is borrowed GDN",
+        "the selected request initially aliases the registered persistent base for the selected slot",
+        "the selected slot is a nonempty tensor",
+        "the detached clone is exact in logical shape, dtype, strides, device, and canonical bytes",
+        "the clone's normalized storage byte range is disjoint from the persistent base",
+        "exactly one request reference changes and no policy or identity label changes"
+      ],
+      "injector_witness": [
+        "selected request/layer/slot",
+        "pre- and post-injection canonical byte SHA-256",
+        "pre- and post-injection normalized storage range",
+        "pre-alias and post-disjoint relation",
+        "count of changed object references"
+      ],
+      "semantic_intent": "Value preserving; token and full-logit equality are possible even though the declared borrowed ownership relation is false."
+    },
+    {
+      "fault_id": "R30F2_IMMUTABLE_KV_TRANSIENT_FLIP_RESTORE",
+      "nonce": "r30f2-kv-transient-5b81d43e7a20c6f9",
+      "seed_hex": "0x5b81d43e7a20c6f9",
+      "seed_u64": 6593789783049197305,
+      "mechanism_class": "temporal immutable-state violation between registered observations",
+      "state_target": "one byte of persistent document K storage",
+      "selector": {
+        "layer": "smallest registered full-attention layer index",
+        "component": "K, not V",
+        "page": "last document page",
+        "logical_token": "last valid document token on that page",
+        "scalar": "first scalar in the registered logical element order",
+        "byte_within_scalar": "least-addressed byte"
+      },
+      "exact_transformation": "After the setup-phase capture has completed and before the registered transition begins, synchronize the device, save the selected byte, XOR that byte with 0x01 in the live persistent document K storage, synchronize, record an injector-only mutated digest, restore the exact saved byte, synchronize again, and prove restoration by digest. No model call, candidate audit snapshot, registered receipt capture, or other tensor write may occur between mutation and restoration. Do not alter tensor metadata, logical lengths, ownership labels, V storage, private KV, or GDN state.",
+      "injection_horizon": {
+        "inject_after": "completed setup-phase candidate capture",
+        "inject_before": "the registered transition and every subsequent candidate capture/model call",
+        "continue_until": "the clean control's full terminal horizon unless an existing gate or ordinary assertion/exception stops execution"
+      },
+      "validity_conditions": [
+        "a nonempty persistent document K tensor and at least one valid document token exist",
+        "the selected live storage is writable by the injector",
+        "the mutated digest differs from the pre-mutation digest",
+        "the restored digest equals the pre-mutation digest exactly",
+        "device synchronization brackets mutation and restoration",
+        "the injector log is out-of-band and does not modify or omit candidate receipts"
+      ],
+      "injector_witness": [
+        "selected layer/page/token/scalar/byte coordinates",
+        "saved and XOR-mutated byte values",
+        "pre-mutation, mutated, and restored SHA-256 digests",
+        "synchronization timestamps",
+        "proof that zero candidate captures and zero model calls occurred inside the mutation interval"
+      ],
+      "semantic_intent": "Transient ownership violation with exact restoration before use; outputs and registered boundary snapshots should be eligible to remain byte-exact without implying that any validator will or will not reject it."
+    },
+    {
+      "fault_id": "R30F3_RELEASE_BEFORE_FINAL_OBSERVATION",
+      "nonce": "r30f3-early-release-c24ea1976d308b5f",
+      "seed_hex": "0xc24ea1976d308b5f",
+      "seed_u64": 14001303070331226975,
+      "mechanism_class": "request lifecycle ordering",
+      "state_target": "the lowest-ordinal request's private KV and request-local GDN state",
+      "selector": {
+        "request": "lowest canonical request ordinal"
+      },
+      "exact_transformation": "Execute all scheduled model calls normally. After the final model call has synchronized and its token/full-logit output has been retained, but before the mandatory final logical-KV, GDN-state, storage-ownership, or lifecycle observation of the selected request, move that request's authoritative clean release transition from its normal post-observation location to this point. Do not scrub, reclaim, reallocate, zero, mutate, or drop the underlying tensors. Perform the unmodified mandatory final observations through the now-released request handle. Omit the original later release so the run contains exactly one release transition rather than a duplicate.",
+      "injection_horizon": {
+        "inject_after": "the selected request's last scheduled model call and output retention",
+        "inject_before": "every mandatory final state/ownership/lifecycle observation for that request",
+        "continue_until": "the clean control's full terminal observation and detached-replay horizon unless an existing gate or ordinary assertion/exception stops execution"
+      },
+      "validity_conditions": [
+        "the clean path has one authoritative request release transition strictly after mandatory final observations",
+        "the selected request is active immediately before injection",
+        "the same clean release operation and receipt path is moved, not reimplemented or forged",
+        "storage is not scrubbed, reclaimed, reallocated, mutated, or deallocated before the attempted final observations",
+        "exactly one release transition exists in the fault execution"
+      ],
+      "injector_witness": [
+        "selected request",
+        "clean and fault lifecycle event sequence numbers",
+        "release timestamp",
+        "first attempted final-observation timestamp",
+        "storage-range and byte-digest equality immediately before release and immediately before observation when observation is reached",
+        "proof of one and only one release transition"
+      ],
+      "semantic_intent": "The already-retained final token/logit values are unchanged by construction; later registered state observations may remain equal if the runtime permits read-after-release."
+    }
+  ]
+}

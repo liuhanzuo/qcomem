@@ -1,0 +1,62 @@
+{
+  "schema": "hypic-rwd5-frozen-launch-plan-v1",
+  "status": "stopped_pending_independent_audit",
+  "gpu_submitted": false,
+  "official_repository": "https://github.com/redai-infra/HYPIC",
+  "official_commit": "98147c01909004e66d98bcb18b886927d41b0ee5",
+  "sglang_version": "0.5.14",
+  "model": "Qwen3.5-35B-A3B",
+  "tensor_parallel_size": 1,
+  "hardware": "8 distinct NVIDIA H20-3e GPUs; one frozen workload per GPU",
+  "frozen_data_sha256": "1553739496b3c209988de56a4ccf574d407379b6b7937ddfafacbe66925069fe",
+  "modes": [
+    "prefix_cache",
+    "transition_rope_recompute"
+  ],
+  "mode_order": [
+    "prefix_cache",
+    "transition_rope_recompute"
+  ],
+  "rank_count_per_mode": 8,
+  "total_gpu_cells": 16,
+  "explicitly_forbidden_gpu_arms": [
+    "full_recompute",
+    "CoMem",
+    "RR2",
+    "GDN",
+    "vLLM",
+    "SGLang cache-on/off controls",
+    "Marconi",
+    "Palu",
+    "Hydragen"
+  ],
+  "remote_paths": {
+    "python": "/tmp/round25-hypic-env/venv/bin/python",
+    "official_repo": "/tmp/HYPIC-98147c0",
+    "instrumented_repo_must_be_absent": "/tmp/HYPIC-98147c0-rwd5-store",
+    "code_dir": "/tmp/rwd5-hypic-store-code",
+    "model": "/tmp/Qwen3.5-35B-A3B-hypic-model-view",
+    "run_dir_must_be_absent": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/hypic-retained-state-rwd5-20260821a"
+  },
+  "launch_command_after_audit": "CODE_DIR=/tmp/rwd5-hypic-store-code bash /tmp/rwd5-hypic-store-code/launch_hypic_retained_state_bytes_8gpu.sh",
+  "prelaunch_requirements": [
+    "copy this bundle's code directory byte-for-byte to remote code_dir",
+    "verify SHA256SUMS before execution",
+    "official repo HEAD equals frozen commit and status is empty",
+    "instrumented repo and run dir do not exist",
+    "exactly eight distinct idle H20-3e GPUs are visible",
+    "data/model ledgers match the frozen hashes",
+    "focused CPU/static tests pass"
+  ],
+  "acceptance": [
+    "16/16 raw cells complete",
+    "each receipt is captured after prime and immutable before measured query",
+    "each measured cache hit is covered by the exact owned-entry inventory",
+    "all byte ranges lie within the reported backing tensor storage",
+    "blind overlap-aware byte replay equals the producer sum",
+    "metadata is separate and excluded from Store MiB",
+    "terminal flush removes target ownership and returns exact old slots",
+    "terminal source/model/environment and all-artifact closure pass"
+  ],
+  "failure_policy": "fail closed; retain n/r and make no storage-ordering claim"
+}

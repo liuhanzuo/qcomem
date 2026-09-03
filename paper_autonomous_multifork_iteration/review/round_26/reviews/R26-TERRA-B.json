@@ -1,0 +1,149 @@
+{
+  "reviewer_id": "R26-TERRA-B",
+  "round": 26,
+  "snapshot_sha256": "a415f6d15f7965ba279f7ba866e52b06bcc8b2ea1620cb9620236ae73d63e43e",
+  "role": "adjudicator",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The receipt predicates, normalized interval schema (Appendix D, pp. 14-15), factorial design, and carefully stated oracle boundaries are technically coherent. However, the central evidence is necessarily conditional on trusted producer capture, selected operator inputs, and an unbound per-call compiled dispatch; it therefore provides bounded consistency evidence rather than robust validation of executed end-to-end behavior.",
+    "presentation": "The paper is unusually explicit about evidence levels, denominators, cohort non-pooling, and limitations. Still, its dense terminology, 21 tables, and many auxiliary cohorts make the central method and the distinction between demonstrated versus asserted replay evidence difficult to absorb quickly.",
+    "contribution": "The integration of lifecycle receipts, heterogeneous KV/GDN ownership checks, and explicit accounting is useful engineering methodology. Yet the paper itself identifies the components as established ideas (Tables 9-10, pp. 17-18), and validation is limited to one sequential implementation, so the broader novelty and significance remain modest."
+  },
+  "paper_summary": "ForkAudit is a receipt-bound audit contract for forked hybrid LLM inference. It distinguishes immutable token-indexed KV state from mutable GDN recurrent state, specifies seven lifecycle/storage/dispatch/equivalence targets, and evaluates a 2x2 KV-by-GDN ownership factorial on Qwen3.5-35B-A3B. The main PDF reports exact registered-observable agreement across 96 configurations and 288 cross-fan-out comparisons (Section 5.3, p. 8), eight selected dense-FP32 attention checks, four selected NumPy GDN recurrence checks, nine designed gate-reaching mutations, and an N=32 allocated-memory contrast. The submission repeatedly bounds these results to trusted capture, selected captured inputs, one sequential CUDA-stream schedule, and no claim of independent recapture, end-to-end verification, capacity, or production serving.",
+  "strongest_verified_contribution": "The strongest PDF-supported contribution is the precise, auditable decomposition of hybrid fork ownership into immutable document KV, private append state, persistent GDN bases, and post-transition private GDN state, together with a clear receipt schema and a four-cell evaluation showing registered equality and stated range-disjointness predicates for the fixed configuration (Sections 3-5; Tables 3-5, pp. 12-14).",
+  "strengths": [
+    "The claim boundary is commendably disciplined: the abstract, Figure 1 caption, Sections 5.2 and 6, and Appendix I consistently separate receipt completeness, selected numerical corroboration, and positive-control reachability.",
+    "The storage witness is concrete rather than purely conceptual: Appendix D specifies required tensor-view fields, interval equations, alias criteria, and phase-specific ownership obligations (pp. 14-15).",
+    "The paper avoids conflating logical state, allocator counters, NVML memory, and service capacity (Section 4.4, p. 6; Appendix E, p. 15).",
+    "Selected independent checks are materially better than output-only equality: the attention oracle and candidate-import-free GDN recurrence have explicit captured boundaries and thresholds (Tables 19-20, p. 21).",
+    "Related work is carefully positioned and cited, with Tables 9-11 explicitly avoiding claims that prior mechanisms are absent or directly comparable."
+  ],
+  "questions": [
+    "Can the authors demonstrate the contract on an independently implemented hybrid runtime or model, including an execution regime with concurrent kernels or ragged batching, rather than only the fixed sequential Qwen stack?",
+    "What evidence can bind the actual compiled attention binary and autotuning decision to each audited call, beyond the Python callable and four runtime-cache artifact hashes?",
+    "Can the fault study include withheld or naturally occurring regressions and report coverage/detection outcomes, rather than only targeted mutations designed to reach named gates?",
+    "Will a complete anonymized replay package, raw numerical sidecars, and environment instructions be made available for reviewers to independently validate the claimed replay results?"
+  ],
+  "issues": [
+    {
+      "issue_id": "I1",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Sections 4.1-5.6 (pp. 5-8); Tables 3-5 (pp. 12-14); Appendix I (p. 22)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The primary evidence uses one Qwen3.5-35B-A3B configuration, one H20 family, BF16/Q16 KV, N in {1,8,32}, one partial-tail geometry, eight argmax steps, and resident requests advanced sequentially on one CUDA stream. The attention oracle covers eight preselected rows and the GDN oracle covers four transitions after native q/k normalization.",
+      "why_it_matters": "The contribution is framed as an audit contract for sequential hybrid LLM stacks, but the evaluation cannot show that the contract remains effective across independent hybrid implementations, realistic batching/scheduling, other cache precisions, or broader failure modes. This constrains both generality and practical significance.",
+      "required_fix": "Add a preregistered evaluation on at least one independent hybrid model/runtime and a scheduler-relevant execution mode, or further narrow the headline framing to a case-study audit of this one stack.",
+      "verification_test": "Run the full ownership factorial, independent operator checks, and fault protocol on the second stack with concurrent or ragged request execution and report all deviations, not only successful cells.",
+      "evidence_needed": "Machine-readable receipts and replay outputs from the independent stack, including both clean and failing cases and a comparison of which contract targets transfer unchanged.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I2",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 3, target 5 and decision rule (pp. 4-5); Table 5 (p. 14); Sections 7-8 (p. 8); Appendix I (p. 22)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The paper explicitly labels dispatch provenance partial because it records the Python callable but not a per-call compiled binary or autotuning choice. It also states that replay is conditional on honest producer capture and cannot independently recapture the producer or reconstruct unarchived device tensors.",
+      "why_it_matters": "A fixed Python callable does not establish the identity or semantics of the compiled path actually dispatched. Thus the receipt-complete lifecycle/storage result cannot rule out faults in a changing compiled kernel or a common producer-side capture defect, which is especially consequential for an audit paper.",
+      "required_fix": "Bind each audited call to verifiable compiled-binary and tuning provenance, or make the title, abstract, and target terminology consistently describe only a Python-level, trusted-producer receipt contract.",
+      "verification_test": "Repeat the factorial after deliberately changing a compiled binary or autotuning choice while retaining the Python callable, and show that the provenance binding detects it before a semantic comparison.",
+      "evidence_needed": "Per-call binary hashes, compilation/tuning records, and replay logic that verifies their association with the ordered call receipts.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I3",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "Section 7 (p. 8); Table 21 (p. 23); Appendix I (p. 22)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The PDF asserts one-command replays and names relative artifact paths, but the visible submission provides no executable archive, manifest contents, raw receipt ledger, or raw trials. It also states that most tensors are represented only by hashes and that full tensors require a pinned model/data environment.",
+      "why_it_matters": "The central empirical assertion is that an independent aggregate can replay the captured predicates. Under the PDF-only submission, that assertion cannot itself be assessed, so reproducibility is described but not demonstrated to the reviewer.",
+      "required_fix": "Provide an anonymized, self-contained artifact with the manifest, replay entry points, complete receipt ledger, numerical sidecars, and environment specification sufficient to reproduce the reported aggregates.",
+      "verification_test": "An independent reviewer should be able to execute the documented replay from a clean environment and reproduce Tables 5, 7, 16, 19, and 20 byte-for-byte or obtain clearly specified expected deviations.",
+      "evidence_needed": "Accessible artifact contents and an independent replay log, including failures on intentionally modified records.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I4",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "Section 4.5 (p. 6); Figure 3 and Section 5.5 (p. 8); Tables 7-8 (p. 16); M8/M9 discussion (p. 21)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "All nine mutations are targeted to predeclared gates and all reach the intended gate. The paper correctly says this is not a detection rate; additionally, M8 reaches an injected sentinel rather than an existing runtime assertion, and M8/M9 abort before semantic consequences are observed.",
+      "why_it_matters": "These results establish gate reachability but give limited evidence that the audit detects realistic, unexpected, or mislocalized faults. The distinction is well disclosed, but it lowers the empirical force of the fault-validation component.",
+      "required_fix": "Add held-out, realistic regressions and wrong-gate/escaped-fault cases, with a predefined denominator and error analysis.",
+      "verification_test": "Evaluate the detector map on a blinded set of mutations or historical bugs not used to design the gates, reporting detection, localization, false-positive, and escaped-fault counts.",
+      "evidence_needed": "A preregistered held-out fault suite and complete outcome matrix.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I5",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "citation_integrity"
+      ],
+      "location": "Sections 2 and 5.2 (pp. 3 and 7); Tables 9-13 (pp. 17-19)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The submission responsibly labels published-system and same-checkpoint comparisons as unpooled, but numerous related-work metrics and several author-run context cohorts are interleaved with the main audit narrative across many tables.",
+      "why_it_matters": "The citations appear attributable in the PDF, yet the large amount of non-comparable context makes it harder to identify the primary evidence and to audit which numbers are reproduced, adapted, or merely reported from cited work.",
+      "required_fix": "Move most context tables to a clearly separated supplement and add a compact main-paper table that labels each numerical row as primary, reproduced, adapted, or cited-only.",
+      "verification_test": "A reader should be able to determine the evidentiary status and source of every comparative number from one table without following cross-references.",
+      "evidence_needed": "A revised evidence-status table with per-row source and authorization labels.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "",
+  "llm_usage_disclosure": "I am an LLM reviewer. This review used PDF-only access to the specified frozen submission and did not inspect external artifacts, the repository, prior reviews, or web sources.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "An independently reproducible artifact and clean-environment replay that verifies the central receipt predicates and reported aggregate results.",
+    "A second independently implemented hybrid stack plus a scheduler-relevant concurrent or ragged-batching evaluation showing the contract transfers.",
+    "Per-call compiled-binary/autotuning provenance, with negative controls demonstrating that changed dispatch is detected.",
+    "A blinded or held-out realistic-fault study with measured detection and localization outcomes."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of the advertised replay to reproduce lifecycle, equality, oracle, or allocator results.",
+    "Evidence that a compiled dispatch change can evade the existing receipt contract while changing behavior.",
+    "Any mismatch between cited context numbers and their stated sources or any discovery that primary and unpooled cohorts were combined in reported conclusions.",
+    "A realistic untested fault that aliases mutable state or corrupts semantics without triggering the claimed applicable gate."
+  ],
+  "review_limitations": [
+    "This assessment treats the PDF as the complete submission. Reproducibility and citation integrity were evaluated only from visible descriptions, attribution, and claim boundaries; external artifact execution and source verification were intentionally not performed."
+  ]
+}

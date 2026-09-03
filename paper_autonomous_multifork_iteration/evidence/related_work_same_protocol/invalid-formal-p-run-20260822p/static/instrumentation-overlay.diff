@@ -1,0 +1,48 @@
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+index 8cdb3eb66ca663204283b6fa8b1a4aa79bd74099..234d3bba5226c9c574c6283443503d5fa4d1b462 100644
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -470,6 +470,13 @@ class Scheduler(
+         self.disable_radix_cache = result.disable_radix_cache
+         self.tree_cache = result.tree_cache
+ 
++        # ForkAudit RW-D5: bind the scheduler child, not only launch_server.
++        from sglang.srt.retained_state_receipt import (
++            emit_scheduler_worker_identity,
++        )
++
++        emit_scheduler_worker_identity(self)
++
+         if (c := self.tp_worker.model_runner.canary_manager) is not None:
+             c.attach_radix_cache(self.tree_cache)
+ 
+@@ -3819,6 +3826,13 @@ class Scheduler(
+ 
+             if empty_cache:
+                 current_platform.empty_cache()
++
++            # ForkAudit RW-D5: check target ownership only after all pools clear.
++            from sglang.srt.retained_state_receipt import (
++                maybe_emit_terminal_ownership_snapshot,
++            )
++
++            maybe_emit_terminal_ownership_snapshot(self)
+             # Per-DP-group leader logs once: ranks within a DP group are
+             # state-synchronous, but DP groups may diverge.
+             if self.metrics_reporter.is_stats_logging_rank:
+diff --git a/python/sglang/srt/mem_cache/common.py b/python/sglang/srt/mem_cache/common.py
+index dd6b4d497ca315dcea644175458ef71c9a90cb70..41483d3c5da4a2565af35077a2875e5aa30e5391 100644
+--- a/python/sglang/srt/mem_cache/common.py
++++ b/python/sglang/srt/mem_cache/common.py
+@@ -693,6 +693,11 @@ def release_kv_cache(req: Req, tree_cache: BasePrefixCache, is_insert: bool = Tr
+     # c4/c128 state pages; other ReqToTokenPool subclasses are a no-op here.
+     tree_cache.req_to_token_pool.free(req)
+ 
++    # ForkAudit RW-D5: inert unless both receipt environment paths are set.
++    from sglang.srt.retained_state_receipt import maybe_emit_owned_state_snapshot
++
++    maybe_emit_owned_state_snapshot(tree_cache)
++
+ 
+ def available_and_evictable_str(tree_cache: BasePrefixCache) -> str:
+     return tree_cache.available_and_evictable_str()

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The immutable R39 proxy calls this source-ledger-bound shim for both shard
+# and transparent commands.  A leading -B remains effective even when the
+# upstream command subsequently supplies -I, which ignores PYTHON* variables.
+ACTUAL_PYTHON=${R40_ACTUAL_REAL_PYTHON:?set R40_ACTUAL_REAL_PYTHON}
+[[ "$ACTUAL_PYTHON" == /* && -x "$ACTUAL_PYTHON" ]] || {
+  echo "actual real Python must be an executable absolute path" >&2
+  exit 2
+}
+exec "$ACTUAL_PYTHON" -B "$@"

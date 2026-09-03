@@ -1,0 +1,192 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "074b0ec75463f223d717e02f07b0e792e9d8865bc2a08328ea8163f2ef081a88",
+  "role": "technical_soundness",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "Clopper–Pearson 设计数、三态投影和若干 branch fixture 的内部计算看起来一致，且作者诚实披露 post-observation amendments。不过核心 PRIM3 只检查是否存在 operator-supplied cause；论文亲自证明伪造 cause 即可把 FAIL 变 PASS。最终 verdict map、PRIM3、G2 与 tier reading 又在观察后改变且首版被覆盖，因而不能把当前整体框架视为预注册、独立验证的审计。",
+    "presentation": "框架对象、五元组、PASS/FAIL/POSTPONE 与 frozen/current tier 均有定义，限制也披露充分。但 25 页充满轮次、seat、内部 sha16、历史 machine strings 与多套版本；核心当前结论需要在主文和附录 H/Table 17–18 之间来回核对，图表字号与信息密度偏高。",
+    "contribution": "当前证据证明的是作者编写的静态规则能在同一运行档案和作者制作的 fixtures 上触发预定分支。没有独立标注的自然 archive population、第三方执行、校准后的 detection/false-alarm 性能或实际采用；这更接近一个透明的内部 QA 工具与设计提案，而非已验证的通用研究方法。"
+  },
+  "paper_summary": "论文提出 AUDIT-GATE，对多代理研究运行的 fire archive 做零 GPU 静态审计，并输出 PASS、FAIL 或 POSTPONE。检查涵盖 endpoint 五元组注册、所谓 computor reachability、boxed controls、manifest/anchor 状态、unreachable primary leg 与 machine-string 映射，且为 verdict 提供冻结输入、checker 和复跑命令。实证包括同一 live run 的六案例 ledger、来自其他 seats 的七 archive decisive cell，以及八个作者构造的 defect fixtures；frozen tier 为 9 PASS/5 FAIL/0 POSTPONE（两组共 14 单元），decisive cell 当前机械 tier 为 3 PASS/2 FAIL/2 POSTPONE。独立自然语料校准和第三方执行均未完成。",
+  "strongest_verified_contribution": "第 2–6 页 §2–3 和第 18–19 页表 11 最可靠地表明：作者实现了一套可重放的三态静态规则与证书接口，并用明确的缺陷注入覆盖 live corpus 未触发的 POSTPONE、CP non-crossing、PRIM4 和五种 anchor 状态。第 8–9 页表 3 的设计数也内部一致，例如 U(0/40)=0.0881 导出 n*=122、补 82 行，36/36 的下界为 0.9026，1/118 的上界为 0.0463。它验证的是规则分支与设计计算，不是自然 archive 上的分类效度。",
+  "strengths": [
+    "对第一版 checker 与预注册 diversity predicate 冲突、版本被覆盖且不可复算，明确按自身规则记为 self-FAIL。",
+    "严格区分 frozen auditor-transcription tier 与 current mechanical-extraction tier，没有把 6/1/0 与 3/2/2 混成一个结果。",
+    "fixture branch coverage 与 detection/false-alarm performance 被明确区分；作者没有把自制缺陷的对角混淆矩阵称作独立校准。",
+    "把未满足的 PASS/KILL/MERGE/STOP-PASS 条件、第三方未执行和 calibration gap 放在主文结论中，而非只藏在附录。"
+  ],
+  "questions": [
+    "为何 PRIM3 将‘存在一条 cause 字符串’直接映射为 PASS，而不要求 cause 在 drift 前时间锁定、由独立方签名或由内容证据验证？",
+    "既然标题称 Pre-Registered，能否清楚列出哪些最终规则在任何 field outcome 之前冻结，哪些只是观察后的框架开发，并把标题限于真正预注册的 decisive cell？",
+    "七个 other-seat archives 是否由本研究作者挑选、转录或参与构建？在没有独立 operability truth label 的情况下，‘one true detection’的 true 由谁 adjudicate？",
+    "PRIM1 的 computor-present 字符串/文件检查如何排除 dead branch、错误 import、版本不兼容或运行时崩溃？若不能，为什么称 endpoint mechanically reachable 而非 statically referenced？",
+    "v2 calibration cell 所需的至少 118 个 defect-free archives 和外部 labeller 是否有可执行采集协议、去重单位与 adjudication plan？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P1-R2-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 1–3 页标题、§1、§2.6；第 5–6 页 §3.2；第 19–20 页表 12",
+      "claim_ids": [
+        "Pre-Registered AUDIT-GATE",
+        "pre-registered decisive cell",
+        "freeze discipline"
+      ],
+      "evidence_ids": [
+        "Table 1 Panel B",
+        "Table 12",
+        "R31/R42/R52 tier records"
+      ],
+      "observed_evidence": "论文说明 verdict-state map、PRIM3 enumeration、G2 predicate 与 tier reading 均在观察后改变；第一版实现还与注册 diversity predicate 冲突，并在固定前被替换，无法重放。只有特定 decisive cell/部分规则在运行前冻结，而不是当前整套框架。",
+      "why_it_matters": "当前规则是在看到失败模式后扩充和修正的，branch coverage 与 field tally 因而同时承担开发和评价角色。透明披露值得肯定，但不能消除自适应设计造成的乐观偏差；标题会把局部预注册误读为完整方法的确认性验证。",
+      "required_fix": "把标题与摘要改为‘retrospectively developed, transparently versioned’并逐条标明冻结时点；或在全新 archive corpus 上先冻结当前完整规则、state map、tier 与分析，再做一次真正确认性评价。",
+      "verification_test": "公开不可变的 current-rule digest 与时间戳，在未被规则作者看过的新 corpus 上一次性运行；任何规则变化都进入下一版本而不改本次主结果。",
+      "evidence_needed": "规则冻结记录、独立确认 corpus 和原样运行 transcript。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 3 页 §2.3 PRIM3；第 11–12 页 §A.3 与证书讨论；第 18–19 页表 11",
+      "claim_ids": [
+        "PRIM3 manifest acceptance",
+        "PASS_ANCHOR_DRIFT_EXPLAINED",
+        "verdict stability"
+      ],
+      "evidence_ids": [
+        "PTSD-5/PTSD-6",
+        "DRIFT_CAUSES_R41",
+        "certificate verification"
+      ],
+      "observed_evidence": "PRIM3 把‘文件 hash 漂移但有 recorded cause’判 PASS、无 cause 判 FAIL。第 12 页明确写出：给 copied-anchor mutation 添加 fabricated cause 会从 FAIL_ANCHOR_DRIFT_UNEXPLAINED 变成 PASS_ANCHOR_DRIFT_EXPLAINED，故 explained drift 仅与 cause registry 一样可信。",
+      "why_it_matters": "最需要 provenance 审计的操作者同时能供应让自己过关的 cause，且规则不验证 cause 的时间、签名、内容或与 drift 的因果对应。这样 PASS 可被事后文字白洗，破坏 manifest gate 的安全意义；允许 reviewer 自行忽略 registry 也不恢复单值 verdict。",
+      "required_fix": "将未经验证的 explained drift 至少判 POSTPONE，而非 PASS；要求 cause 在变更时由不可改日志/外部签名绑定到旧新 digest，并由非作者 verifier 检查具体 diff 与所述原因一致。",
+      "verification_test": "用无关、事后、伪造和正确 cause 的盲测 mutation；只有时间锁定且证据匹配的 cause 才可通过，并报告 verifier 间一致性。",
+      "evidence_needed": "防篡改 cause provenance、独立验证协议和对抗测试结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 1 页摘要；第 5–6 页 §3；第 8–9 页 §5–6与表 3",
+      "claim_ids": [
+        "field audit",
+        "true detection",
+        "audit validity"
+      ],
+      "evidence_ids": [
+        "six-case ledger",
+        "D1 seven-archive decisive cell",
+        "eight synthetic fixtures",
+        "v2 calibration design"
+      ],
+      "observed_evidence": "14 个 frozen field units 全来自同一 live run，只覆盖 PASS/FAIL；八个 POSTPONE/branch cases 是作者构造。七个 other-seat archive 没有独立 operability labels，R42/R52 仍使用相同 workspace、filesystem 与 seat credentials。作者明确说明无自然语料 detection/false-alarm rate、无第三方执行，v2 至少 118 个独立 defect-free archives 仍 human_pending。",
+      "why_it_matters": "当前数据只能证明代码能在选择过的内部案例上运行，不能估计对自然档案的漏报、误报、跨项目泛化或实际 reviewer utility。‘true detection’也缺少独立 adjudication，因此方法有效性尚未建立。",
+      "required_fix": "在作者未参与生成或选择的多项目 archive 样本上，由独立标注者建立 operability truth；冻结规则后报告每类性能、置信区间、项目级划分和第三方从 bundle 复跑成功率。",
+      "verification_test": "执行预先写明的 v2 校准：至少满足设计样本量，按 project/seat 去重与切分，报告 false-open、false-kill、POSTPONE、标注一致性及失败原因。",
+      "evidence_needed": "独立自然 archive population、标签、第三方运行与完整混淆矩阵。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "significance",
+        "clarity"
+      ],
+      "location": "第 1–3 页 §1、§2.1、§2.6；第 22 页 Appendix F",
+      "claim_ids": [
+        "mechanically operable",
+        "endpoint reachability",
+        "computor present"
+      ],
+      "evidence_ids": [
+        "PRIM1",
+        "replay certificate",
+        "six inherited anti-patterns"
+      ],
+      "observed_evidence": "PRIM1 的 endpoint reachability 基于 filesystem/string-level facts，即在 consumer script 中找到计算符号；证书复算的是 audit verdict，而非执行被审计的科学 endpoint。Appendix F 又明确承认 static inspection 看不到 runtime crash。",
+      "why_it_matters": "存在文件或代码字符串并不保证 import 成功、分支可达、依赖可用或 endpoint 真能对注册输入运行。普通读者会把 mechanically operable/replayable 理解为可执行，而当前 PASS 只证明静态引用与审计自身可复算，构念明显更窄。",
+      "required_fix": "将术语改为 statically registered/referenced；若保留 operable，则加入最小沙箱执行：加载依赖、解析真实注册输入、到达 endpoint 并产生类型/shape 合法的输出，同时记录环境锁定。",
+      "verification_test": "构造包含 dead branch、broken import、版本不兼容、运行时异常但字符串存在的 archives；静态 PASS 不得成为最终 PASS，应由动态层 FAIL/POSTPONE。",
+      "evidence_needed": "动态 reachability 层、环境 manifest 和自然故障测试。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R2-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "第 5–6 页表 1；第 10–20 页 Appendix A–E；第 24–25 页 Appendix H–I",
+      "claim_ids": [
+        "canonical current verdict",
+        "replayable certificate"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Table 12",
+        "Table 17",
+        "Table 18"
+      ],
+      "observed_evidence": "同一 decisive cell 同时出现 frozen auditor-transcription、R42 repaired judge、R52 mechanical extractor 和 current canonical pin；关键 unit 的 PASS/FAIL/POSTPONE 随 tier 改变。尽管作者最终在 Appendix H 单值化，主表仍以前一 tier 为主体且需跨多个密集附录追溯。",
+      "why_it_matters": "论文研究的正是可复算与单值 verdict；高密度版本考古增加读者误引 frozen 9/5/0 或 decisive 6/1/0 为当前结果的概率，也不利于独立核验。",
+      "required_fix": "主文只保留当前机械 verdict 作为主表，把 frozen tier 明确放历史列/附录；提供一张从 archive→checker hash→current verdict→historical divergence 的规范化索引。",
+      "verification_test": "让未参与作者仅凭主文回答每个 unit 当前 verdict 与可复跑命令；若出现 tier 分歧即修订。",
+      "evidence_needed": "简化的 canonical table 与读者核验记录。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文不涉及人类受试者或敏感数据；主要治理风险是审计 PASS 被误读为科学正确或被操作者通过自报 cause 规避，属于方法可信度而非需升级的研究伦理事件。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审结果、作者计划、编辑上下文或历史评分。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "冻结完整当前规则后，在独立标注的自然 archives 上完成预先设计的校准并报告 false-open/false-kill。",
+    "把 PRIM3 的 operator-supplied cause 改为可时间验证、独立核验的 provenance 证据。",
+    "由真正第三方在隔离环境执行 bundle，并加入能发现 dead branch/runtime failure 的动态 reachability 层。"
+  ],
+  "evidence_that_would_lower_score": [
+    "独立自然语料显示规则高漏报、高误杀或多数案例只能 POSTPONE。",
+    "对抗测试表明 fabricated cause 或同义代码结构可系统性绕过核心 gate。",
+    "第三方无法从冻结证书重放当前 canonical verdict，或重放结果依赖未声明环境状态。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、相邻审计系统或论文所述软件生态。",
+    "仅审阅冻结 PDF；未读取或运行 checker、bundle、manifest、fixtures、sha16 对象或 calibration files，因此所有 artifact hash、命令输出和跨 tier 对齐仅按文稿判断。",
+    "没有其他评审、作者计划、旧稿、修订日志或目标评分上下文；评分是对该快照的独立绝对判断。",
+    "PDF 共 25 页，已全文阅读并逐页视觉核查；未见解析缺页，但多张附录表字号小、信息密集，视觉阅读负担较高。"
+  ]
+}

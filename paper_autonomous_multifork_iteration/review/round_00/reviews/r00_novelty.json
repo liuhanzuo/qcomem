@@ -1,0 +1,133 @@
+{
+  "reviewer_id": "r00-novelty",
+  "round": 0,
+  "snapshot_sha256": "691d902c895efbc2a85bc13d08b072d02cf33b81aa967c3c6fd5e9fa0f7cec58",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within its deliberately narrow scope, the ownership invariants, controls, accounting equations, and claim boundaries are careful and internally consistent. Confidence is reduced because the audit's adequacy is not tested against realistic runtime faults, while central equality evidence ultimately comes from digests and booleans emitted by the same instrumented harness.",
+    "presentation": "The paper is concise, well structured, visually legible, and unusually explicit about what it does not establish. However, the closest-work discussion remains too qualitative to make the novelty boundary easy to verify.",
+    "contribution": "The artifact combines useful engineering practices into a disciplined hybrid-state audit, but it introduces no new kernel, scheduler, caching policy, or theoretical result. The individual ingredients are largely established ideas, and the current single positive case plus serialized-artifact mutation tests do not yet demonstrate sufficiently distinct methodological or empirical knowledge for ICLR."
+  },
+  "paper_summary": "ForkAudit proposes a seven-invariant ownership and measurement contract for shared-prefix inference in hybrid attention-recurrent language models. Its Qwen3.5-35B-A3B case study compares materialized and shared ownership using the same fused attention kernel, checks cross-arm and cross-fan-out equality of outputs and internal state, and separates page-pool accounting from PyTorch allocator peaks. The paper explicitly disclaims production scheduler, speedup, concurrency, and generalization claims.",
+  "strongest_verified_contribution": "The strongest contribution is the internally auditable Qwen3.5 case study combining same-kernel materialization controls, cross-fan-out metamorphic isolation checks, recurrent-state ownership checks, and explicit memory denominators; the frozen evidence records exact agreement over 504 paired request instances while carefully bounding the interpretation.",
+  "strengths": [
+    "The paper states a precise, falsifiable ownership contract covering immutable KV, partial-tail copy-on-write, request-local recurrent state, dispatch provenance, and two complementary equality oracles.",
+    "It correctly treats PagedAttention-style prefix sharing as prior art and explicitly avoids claiming a new kernel, scheduler, caching policy, or latency improvement.",
+    "The experimental reporting distinguishes 504 paired instances from 256 unique queries and separates deterministic page accounting from stochastic statistical evidence.",
+    "The source-retaining control, serial execution, torch GDN fallback, absent NVML measurements, and non-production scope are disclosed prominently rather than hidden.",
+    "The same-kernel design and negative cross-backend gate show good awareness that numerical backend differences can confound ownership comparisons."
+  ],
+  "questions": [
+    "For each of the seven invariants, which exact capability is absent from Marconi, PagedAttention, and other cited prefix-sharing systems, and which parts are established engineering practice assembled into one contract?",
+    "Has ForkAudit detected any real or injected runtime ownership fault, rather than only serialized-artifact tampering, that ordinary output-token or cross-arm checks failed to detect?",
+    "Can the authors isolate the hybrid-specific contribution through a KV-sharing by GDN-sharing factorial study or seeded recurrent-state aliasing and mutation faults?",
+    "Is the intended contribution a generally reusable audit methodology, a Qwen3.5 reference artifact, or an empirical case study? What evidence supports the broader interpretation?",
+    "How would the invariants change under continuous batching, cancellation, eviction, reclamation, or concurrent streams, and should the title or main claims be narrowed if those lifecycle events remain outside scope?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R00-NOV-001",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "citation_integrity"
+      ],
+      "location": "Introduction contribution list; Section 2, especially 'Hybrid state and cache management' and 'Evaluation and metamorphic testing'; literature/closest_work_matrix.tsv, particularly the Marconi row",
+      "claim_ids": [
+        "C-OWN-01"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "The manuscript distinguishes ForkAudit from Marconi by saying that Marconi addresses admission and eviction whereas ForkAudit audits the ownership boundary. The closest-work matrix repeats this one-sentence distinction, but neither location compares the actual ownership semantics, invariants, correctness checks, or artifacts of the closest systems. The cited set also contains only a generic metamorphic-testing survey for the testing side of the contribution. Consequently, the paper does not establish whether immutable-prefix checks, copy-on-write, disjoint reservations, same-kernel differential execution, fan-out metamorphism, or denominator separation are individually new, previously implicit, or merely newly packaged.",
+      "why_it_matters": "Because the paper explicitly contributes neither a new cache mechanism nor a serving system, its acceptance case depends on the audit methodology being meaningfully distinct from prior hybrid caching and systems-validation practice. A framing-level distinction is insufficient to assess that boundary.",
+      "required_fix": "Add a source-grounded invariant-by-invariant closest-work comparison covering Marconi and the most relevant cache-sharing and serving-correctness work. Label each component as prior, adapted, or new, cite the exact prior-work mechanism or evaluation, and narrow the novelty claim to the defensible combination if no individual invariant is new.",
+      "verification_test": "A reviewer should be able to map every claimed contribution to a table row, inspect a primary-source citation for each closest predecessor, and identify a concrete technical or evidentiary difference rather than only a difference in stated goal.",
+      "evidence_needed": "A systematic primary-source audit of the closest hybrid prefix-caching systems and relevant LLM-serving correctness, differential-testing, ownership, and concurrency-verification work.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R00-NOV-002",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "Section 4.4; Section 5.1; Section 6, especially 'Evidence limitations'; Appendix B; evidence/local_governance_tests.log",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "The sole positive GPU case uses a reference implementation constructed around the proposed ownership contract and reports zero violations. The 28 mutation cases alter serialized artifacts and validator inputs; the manuscript explicitly states that they do not inject faults into a production scheduler. There is no comparison against output-only testing or prior validation practice, no realistic runtime mutation study, and no independent implementation. Both control arms also use the same functional GDN strategy, so the hybrid-specific diagnostic value is not isolated.",
+      "why_it_matters": "A testing or audit methodology contributes new knowledge only if it demonstrably reveals consequential failures, excludes false conclusions, or transfers beyond the implementation that generated its checks. Current evidence shows that one careful implementation passes its own contract, but not that ForkAudit catches realistic faults that simpler checks miss.",
+      "required_fix": "Seed representative runtime faults in KV and recurrent-state ownership, including shared-tail writes, overlapping reservations, aliased GDN state, incorrect rebinding, wrong mask or position contracts, and schedule-dependent interference. Compare detection by ForkAudit against token-only and ordinary cross-arm checks, report any false positives, and preferably evaluate an independently developed runtime or a second hybrid model. If this evidence is infeasible, narrow the paper to a Qwen3.5 reference-audit artifact rather than a general methodology.",
+      "verification_test": "For every targeted invariant, at least one execution-level pass case and one realistic fail case should be reported. The study should show which oracle detects each fault, whether a simpler baseline misses it, and whether unmodified executions remain accepted.",
+      "evidence_needed": "New runtime mutation experiments and, for the broader methodology claim, an independent implementation, scheduler, or second hybrid architecture.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R00-NOV-003",
+      "severity": "minor",
+      "dimensions": [
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract; Sections 5.2-5.3; Conclusion; claim-evidence entries C-POOL-01, C-MEM-01, and C-DENOM-01",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The headline 12.33x versus 3.83% comparison follows from a source-retaining controlled page pool and one model's absolute PyTorch allocated peak. The manuscript commendably states that the page equation is deterministic, the materialized arm is not an optimized production baseline, and the allocator counter is neither NVML usage nor service capacity.",
+      "why_it_matters": "The result is a useful illustration of denominator choice but provides limited new empirical knowledge and can be overread when emphasized in the abstract and conclusion as a measurement trap.",
+      "required_fix": "Describe the ratio explicitly as a case-specific accounting illustration rather than an independent scientific discovery. Retaining a broader practical interpretation would require a realistic full-copy baseline and process-level or admitted-capacity measurements.",
+      "verification_test": "All headline statements should make the source-retaining baseline and PyTorch-only denominator explicit, and the contribution list should not imply that the numerical ratio generalizes beyond this configuration.",
+      "evidence_needed": "No new evidence is necessary if the claim is narrowed; realistic baseline, NVML/process, or service-capacity measurements are needed for a broader practical claim.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent for this systems audit. The paper uses an established PG-19 split, reports no human-subject study, does not redistribute model weights or corpus data, and appropriately avoids downstream safety or quality claims.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A primary-source, invariant-level comparison demonstrating a precise novelty boundary against Marconi and adjacent serving-verification work.",
+    "Execution-level fault injection showing that ForkAudit detects realistic hybrid-state isolation defects missed by token-only or conventional cross-arm validation, with false-positive analysis.",
+    "A second independently developed hybrid runtime or model, or a production scheduler lifecycle study, demonstrating that the contract transfers beyond the reference harness.",
+    "A factorial KV-sharing and recurrent-state-sharing evaluation that establishes why the hybrid-specific parts of the contract are necessary."
+  ],
+  "evidence_that_would_lower_score": [
+    "Primary sources showing that a prior hybrid caching system already implements substantially the same ownership contract and validation oracles.",
+    "A realistic recurrent-state aliasing, partial-tail, or scheduling fault that passes all ForkAudit invariants while altering a request's behavior.",
+    "Independent reruns that fail to reproduce the reported exactness or reveal inconsistencies between recorded digests, booleans, and underlying tensors.",
+    "Evidence that the serial single-stream result does not survive ordinary scheduler interleavings within the claimed scope."
+  ],
+  "review_limitations": [
+    "Novelty assessment was restricted to the frozen snapshot and its supplied citation set; no external literature search was conducted.",
+    "The 8-H20 experiment was not rerun, and the unarchived logits and state tensors could not be independently regenerated from the snapshot.",
+    "The review emphasized novelty and positioning while still assessing the full manuscript."
+  ]
+}

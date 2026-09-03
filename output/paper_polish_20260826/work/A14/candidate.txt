@@ -1,0 +1,1626 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      N ON -I NTERCHANGEABLE S CORING P ROTOCOLS AND
+002   A D RAW-C OUNT-M ATCHED R EFERENCE :
+003
+004   A NARROW M EASUREMENT S TUDY ON LL A DA-8B
+005
+006
+      AND GSM8K-MC
+007
+008    Anonymous authors
+009    Paper under double-blind review
+010
+011
+012
+                                                  A BSTRACT
+013
+014
+               Multiple-choice accuracy for a diffusion language model is not determined by the
+015
+               model alone: the scorer chooses which option tokens are visible, when they are
+016            revealed, and whether revealed ground-truth tokens are fed back into later steps.
+017            We audit that measurement construction on one bounded bed: LLaDA-8B-Instruct
+018            with balanced four-choice GSM8K-MC.
+019            On a conﬁrmatory n=400 pool s_conf exceeds the non-injected mc_uniform
+020            reference by +13.0 pp at the per-candidate nmc,i = 2Li total-NFE-fair equaliza-
+021            tion point (b/c = 109/57, exact p = 6.6×10−5 ; four tested budgets, conservative
+022            read +9.0 pp). This refutes the narrow account that the advantage is an artifact
+023            of the reference receiving less compute, but establishes no budget-independent
+024            law. On a disjoint fresh pool a ﬁxed left-to-right order whose schedule selection
+025            reads no model output still beats s_conf; conﬁdence ordering is therefore nei-
+026
+               ther necessary nor uniquely optimal on this answer format. Rank-agreement and
+               distractor-perturbation diagnostics support only a bed-local, sign-consistent non-
+027
+               interchangeability reading; we do not claim dose-response, cross-bed transfer, or
+028
+               isolated causal attribution to feedback.
+029
+030
+031   1    I NTRODUCTION
+032
+033   Masked diffusion language models assign a multiple-choice answer only after a scoring protocol
+034   turns option-level denoising losses into a ranking. That protocol is part of the measurement instru-
+035   ment. In particular, a scorer may reveal candidate tokens sequentially and feed the known candidate
+036   token back into the context, or it may score a randomly masked subset without such feedback. Even
+037   two feedback-based scorers can use different reveal schedules. Treating their accuracies as if they
+038   were readings from the same ruler hides a change in what was measured.
+039   We report a deliberately narrow audit of that construction. The evidence is one LLaDA-8B-Instruct
+040   × GSM8K-MC four-option construction evaluated on two historical balanced pilot pools, a conﬁr-
+041   matory 400-question pool for the reference-arm contrast, and a disjoint fresh 819-question pool for
+042   reveal order. The study makes three claims, each tied to its pool and boundary (Table 3, Table 6).
+043   First, on the tested n=400 reference-budget curve, s_conf’s advantage over the non-injected ref-
+044   erence is positive and signiﬁcant at every tested budget and narrows as the reference is given more
+045
+      compute (Table 3, Figure 2). The registered matched-L point remains the primary endpoint and is
+      measured on that bed; the per-candidate total-NFE-fair equalization at 2L (the decisive read, both
+046
+      arms 2Li forwards) is measured on the same bed and, within this n=400 endpoint change, reports
+047
+      the same headline +13.0 pp gap (exact p = 4.8×10−5 and 6.6×10−5 ); under the paper’s refusals
+048   this does not license an estimand-external claim that endpoint choice is irrelevant in general, only
+049   that on this tested bed the swap leaves the headline unchanged. The highest-budget read remains the
+050   conservative one. This refutes a less-reference-compute-only account, not a budget-independent one,
+051   and it is a complete protocol swap, not causal isolation. Second, reveal order on injected prompts,
+052   measured against the tested persisted schedule, has a surviving effect on the disjoint fresh pool under
+053   its k=1 multiplicity family; but a trivial ﬁxed order whose schedule selection reads no model output
+      still beats s_conf on that pool on average (Table 6) — a margin that strengthens in the answer-pool
+
+
+                                                        1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+      Figure 1: Conceptual scoring-protocol fork, and the measurement-level view of this study. The same
+073
+      item and model feed all ﬁve arms of Table 1: conﬁdence, anti-conﬁdence, ﬁxed, seeded-random, and
+074   random-mask paths. Feedback arrows stay inside the four injected paths; the random-mask path has
+075   none. Each path ends in the same generic score-vector object, so no winner or item-level ranking is
+076   drawn, and the two rulers distinguish nominal draw count from total NFE. This generated artwork
+077   contains no experimental values; all quantitative results are data-derived.
+078
+079   construction stratum and reverses at answer position 0 (Table 7). Conﬁdence ordering is therefore
+080   not necessary, not uniquely optimal, and not exclusively causal; a non-random structure—including
+081   answer format—can sufﬁce. Third, protocols are not interchangeable: changing the scorer changes
+082   per-question option rankings and choice-set sensitivity on this bed. The pairwise cross-protocol
+083
+      Kendall τ sits only just above the random arm’s own self-τ ﬂoor, so it bounds protocol-speciﬁc
+      disagreement rather than proving distinctness; the deterministic s_conf–fixed_inject rank
+084
+      agreement is separately consistent with genuinely distinct protocols (Table 18).
+085
+086   The contribution is a protocol audit rather than a new scoring algorithm: a paired, decision-record-
+087   level decomposition of comparisons that would otherwise collapse model and scorer into one accu-
+088   racy number, with the negative boundary stated up front—neither the design nor its measurements
+089
+      support a dose-response curve, a concavity claim, or transfer to another model, dataset, or judge.
+090
+091
+092
+      2   R ELATED W ORK AND L OCAL E VIDENCE C ONTEXT
+093
+094   LLaDA introduced the 8B masked-diffusion model used here (Nie et al., 2025); iLLaDA later in-
+095   troduced conﬁdence-based multiple-choice scoring (Nie et al., 2026). That scorer reveals the most
+096   conﬁdent candidate token and feeds the known token into later steps, so a comparison with a Monte
+097   Carlo-style scorer replaces protocol components as well as the accounting rule. We audit that re-
+098
+      placement, not the published benchmark values. GSM8K (Cobbe et al., 2021) supplies only the
+      controlled four-choice bed; our claims do not transfer beyond it.
+099
+100   Scorer dependence is established more broadly: benchmarks vary with task and prompt format
+101   (Brown et al., 2020; Hendrycks et al., 2021; Lin et al., 2022; Chen et al., 2021); frameworks distin-
+102   guish raw from length-normalized scoring and expose prompt sensitivity (Liang et al., 2023; Bider-
+103   man et al., 2024; Zhu et al., 2024); and audits cover judge design, contamination, and aggregation
+104
+      (Perez et al., 2022; Jain et al., 2024; Wang et al., 2023). Our contribution is the measured masked-
+      diffusion protocol swing on a stated budget curve.
+105
+106   The closest mechanism literatures are mask-out objectives (Nie et al., 2025; 2026; Sahoo et al.,
+107   2024), multiple-choice normalization and position sensitivity (Holtzman et al., 2021; Zheng et al.,
+      2024), and conﬁdence-guided diffusion decoding (Nie et al., 2025). Our controls extend these con-
+
+
+                                                       2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      Table 1: The ﬁve scoring arms. Li is candidate length. The scoring-forward count excludes the ad-
+109
+      ditional Li adaptive schedule-selection forwards for conﬁdence and anti-conﬁdence order; nominal
+110   draw matching is therefore not total-NFE matching.
+111
+                     Arm                 Reveal schedule GT feedback Scoring forwards
+112
+113                   s_conf         min-CE ﬁrst                   yes         Li (+Li select)
+114                   rand_inject  seeded random                   yes              Li
+115                   anti_inject   max-CE ﬁrst                    yes         Li (+Li select)
+116
+                      fixed_inject   ﬁxed order                    yes              Li
+                      mc_uniform    random mask                    no           1 (nmc =1)
+117
+118   cerns to token injection: a ﬁxed left-to-right schedule can beat conﬁdence ordering on this answer
+119   format, but no cited work or result here establishes a transferable injected-feedback effect.
+120
+121
+122
+      3    S ETUP
+123
+124
+      Bed and pairing. Each item pairs one GSM8K question with four candidate answers scored by
+      LLaDA-8B-Instruct (Nie et al., 2025) with frozen weights. Choice sets were frozen but differ by
+125
+      pool, and the fresh pool is internally heterogeneous by construction: the historical, n = 400, and
+126
+      ﬁrst 336 fresh items use deterministic near-miss distractors; the remaining 483 fresh items use three
+127   distinct values drawn from a frozen GSM8K answer pool. Every arm reuses the recorded choice set.
+128   Historical and n = 400 pools are exactly answer-position balanced; the fresh pool is approximate.
+129   Fresh-pool contrasts therefore mix protocol effects with construction stratum, and post-hoc position
+130   standardization leaves the fresh–pilot difference, so we report them as strata-confounded. Inference
+131   uses BF16, no temperature, and no generation. Conﬁdence and ﬁxed schedules are deterministic; the
+132   seeded-random result is one persisted schedule. Because its runner used an unpinned Python string
+133   hash, replay is anchored to stored per-candidate orders, not the nominal seed alone. Appendix H
+134   lists identiﬁers, prompts, orders, and seeds. Historical pools use 12 or 16 items per answer position
+135
+      (n = 48/64); the n = 400 and fresh n = 819 pools are non-overlapping. Within each pool,
+      arms score the same items, so contrasts are paired by question. Top-1 exact correctness is the sole
+136
+      endpoint; no partial credit is assigned.
+137
+138
+      Five arms. For candidate tokens y1:Li , an injected arm chooses a permutation of positions, reads
+139
+      cross-entropy before each reveal, inserts the known candidate token at that position, and repeats until
+140
+      the candidate is visible. It sums the per-step cross-entropies and selects the option with minimum
+141   score. s_conf chooses the next minimum-cross-entropy position; rand_inject uses a deter-
+142   ministically seeded random order; anti_inject chooses the maximum-cross-entropy position;
+143   and fixed_inject uses ﬁxed left-to-right order. The ﬁfth arm, mc_uniform, draws a masked
+144   subset of size k ∼ U{1, . . . , L} at each of nmc draws (LLaDA upper-bound estimator), reads the
+145   partial-mask cross-entropy at the masked positions, and rescales per option by the standard factor
+146   Li /k, so each draw is an unbiased length-corrected estimate of the full mask-out score and the arm
+147   returns their mean; ties break by ﬁrst index. The nmc =1 single draw is this paper’s minimum-budget
+148   arm; it differs operationally from the LLaDA/iLLaDA default conﬁdence scorer, whose reveal tar-
+149
+      gets the model’s own argmax token rather than the injected ground-truth candidate. Thus “protocol
+      family” denotes the full tuple of feedback rule, reveal schedule, and scoring dose—not the model
+150
+      name alone.1 Table 1 summarizes these protocol components.
+151
+152
+      Statistics and derived diagnostics. For paired binary correctness indicators, b and c count dis-
+153
+      cordant directions, m = b + c, and b
+                                         ∆ = (b − c)/n. We report the exact two-sided McNemar test
+154
+      (McNemar, 1947) and the locked 95% interval. Paired intervals default to the registered standard
+155
+            c = √m/n; each question-bootstrap or paired-bootstrap interval is named as such in its
+      error SE
+156
+      own caption. An alternative mean-corrected form moves the reported registered-SE bounds negli-
+157
+      gibly on the n = 400 pool and is convention-sensitive only on the small pilot pools, changing no
+158   verdict anywhere—Appendix Table 10 prints both conventions side by side. The pre-registered in-
+159   terpretation gate requires m ≥ 25 before a paired contrast is promoted. For protocol agreement,
+160
+         1
+161        The anonymous artifact describes the exact sampler, prompt, mask construction, random-seed policy, and
+      ﬁrst-index tie rule.
+
+
+                                                          3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      Kendall τ (Kendall, 1938) is recomputed within each item from the two four-option score vectors af-
+163   ter dropping tied pairs, then averaged across items. Choice-set sensitivity is an ofﬂine deterministic
+164   overlay: each of the three distractors is shrunk by 25%, and a ﬂip is counted if the selected option
+165   changes (with perturbation counts stated per pool in the appendix). These are descriptive protocol
+166   diagnostics, not hypothesis tests.
+167
+168   Load-bearing estimand. The primary announcement is the paired mean accuracy gap ∆ =
+169   Ei [⊮(A(qi )=yi )−⊮(B(qi )=yi )] = Pr(A(q)=y)− Pr(B(q)=y) under nominal draw-count match-
+170   ing: qi is a ﬁxed item tuple (question, designated answer, deterministic four-option pool from the
+171   same scorer), the expectation is over the n items of a named pool, and the budget unit is the nominal
+172   per-candidate scoring draw (each arm spends Li forwards per candidate; nominal, not total NFE,
+173
+                                             b = (b − c)/n with the exact two-sided McNemar test; ∆ is a
+      per Table 1). Estimation is the paired ∆
+174   protocol gap, not a mechanism attribution. Registration kept the nominal matched-L point (nmc =L,
+175
+      draw-count only) primary; that primary point and the per-candidate total-NFE-fair equalization at
+      2L are both measured on the n=400 bed, and the reported curve still treats the +9.0 pp high-budget
+176
+      endpoint as its conservative read (Table 3).
+177
+178
+      Multiplicity. The conﬁrmatory ﬁve-arm analysis uses all ten pairwise tests as one Holm
+179
+      family (Holm, 1979) at α = 0.05; the smallest-step threshold is 0.005. The fresh ﬁxed-
+180
+      order adjudication has one preregistered load-bearing pair (s_conf–fixed_inject, k =
+181   1). As a conservative sensitivity, we also name a ﬁve-test reporting family: s_conf versus
+182   rand_inject, anti_inject, fixed_inject, single-draw mc_uniform, and draw-count-
+183   matched mc_uniform. Under Holm at α = 0.05, the ﬁxed-order result remains signiﬁcant even
+184   under the worst-case factor-ﬁve adjustment (p = 0.0194). This named ﬁve-test set is a robustness
+185   disclosure, not a retroactive change to the registered k = 1 endpoint.
+186
+187   Registration and principal-contrast selection. The initial registration ﬁxes the bed, ﬁve arms,
+188   m≥25 promotion gate, and exact paired testing. Draw-count matching was selected only after the
+189   small-pool scan, so every small-sample row is historical/exploratory. A separate conﬁrmatory reg-
+190   istration ﬁxed the n = 400 draw-count-matched contrast, the ten-test Holm family, and the power
+191
+      stop before data. Its planning MDE and its magnitude gate are distinct, unchanged quantities: the
+      planning MDE sized the n = 400 pool, while the same 4 pp promotion bar — a point-estimate gate,
+192
+      not an inferential lower-bound gate, so the high-budget read’s lower bound of 3.46 pp neither clears
+193
+      4 pp nor needs to — applies to the matched-L, total-NFE-fair 2L, and high-budget reads on that bed,
+194   all three of which clear it (Table 3). A separately pre-registered exploratory 25 pp tier applies only
+195   to the historical small rows, not as a stricter second bar for any n = 400 read; this uniﬁed rule refutes
+196   the earlier asymmetric thresholding. The corrected high-budget n = 400 run and the anonymous
+197   decision chronology are in Appendix Tables 16 and 15.
+198
+199
+200
+      4    T HE R EFERENCE R EMAINS L OWER ACROSS THE T ESTED B UDGET C URVE
+201        ON T HIS B ED
+202
+203   The answer-level budget curve joins independently registered n = 400 runs, with nmc =128 as the
+204
+      conservative high-budget main read. Its decisive row is the total-NFE-fair 2L point, where both arms
+      spend 2Li forwards per candidate (Table 3). The pre-registered nominal matched-L endpoint instead
+205
+      set nmc,i = Li , matching only the injected arm’s Li scoring steps and not its schedule-selection
+206
+      passes, token-forwards, or total NFE; that draw-count-matched point is separately measured on this
+207   bed (paired b/c = 106/54), and the 2L/2L row returns the same +13.0 pp gap from a numerically
+208   distinct paired record (b/c = 109/57), so the two endpoints differ in discordance pattern but not
+209   in headline effect. The candidate-length distribution is in Appendix Table 19. At the headline
+210   operating point the paired result survives the ten-test Holm family; Table 3 and Figure 2 report the
+211   arm accuracies, discordances, estimate, interval, and exact test.
+212
+213   Same-bed likelihood readout. For each deterministic injected policy, summed candidate cross-
+214   entropy is the exact negative log-likelihood under that sequential unmasking policy. Since selection
+215   is its arg min, score and likelihood rankings coincide by construction; this identity is not an addi-
+      tional comparison. Table 2 shows both ground-truth signal and a policy shift on the same questions:
+
+
+                                                         4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216                                       question bootstrap CI          registered SE CI (√ m /n)
+217                   Single draw                                                                    b/c = 113/57
+218                        nmc = 1                                                                   p = 2.1×10−5
+
+219                Draw-matched                                                                      b/c = 106/54
+220                     nmc, i = Li                                                                  p = 4.8×10−5
+
+221      Total-NFE-fair (decisive)                                                                   b/c = 109/57
+222                    nmc, i = 2Li                                                                  p = 6.6×10−5
+
+223                  High budget                                                                     b/c = 82/46
+224                    nmc = 128                                                                     p = 0.0019
+                                                     4 pp promotion bar
+225
+                                      0            4         8        12          16        20
+                                                  Paired accuracy gap Δ ̂ = s_conf − reference (pp), n = 400
+226
+227
+228
+229   Figure 2: Data-derived paired forest of the tested n=400 reference-budget curve: the same four
+230   contrasts, frozen records, and intervals as Table 3, with no new decoding. Square area scales with
+231   the discordant count m; ﬁlled squares mark question-bootstrap intervals and open squares registered
+232
+      paired-SE intervals. The matched-L primary endpoint and the decisive total-NFE-fair 2L equal-
+      ization coincide at +13.0 pp, while the reference improves with budget, contracting the gap to the
+233
+      conservative +9.0 pp read. All four intervals exclude zero. The dotted 4 pp line is the registered
+234
+      point-estimate promotion bar, not a lower-bound requirement, so the high-budget interval reach-
+235   ing 3.46 pp is expected (§3). Regenerated by paper/src/figures/decisive_paired_
+236   forest_refine10.py.
+237
+238   Table 2: Same-bed per-token negative log-likelihood (nats; lower is better; n=400). ρ relates true-
+239   option nats to correctness. For fixed_inject/s_conf, paired true-option directions are 349/40
+240   with 11 ties (nselected =389, exact two-sided p = 1.1×10−62 ). mc_uniform is the separate mask-
+241
+      out family.
+242        Arm                                    chosen nats/tok true-opt nats/tok ρ (true-opt, correct) acc.%
+243        s_conf                                                 1.75                 1.88             −0.12       42.75
+244        fixed_inject                                           1.02                 1.21             −0.28       45.50
+245        anti_inject                                            1.20                 1.43             −0.35       40.75
+           rand_inject                                            1.18                 1.62             −0.41       39.00
+246
+           mc_uniform (ELBO family)                               0.19                 0.77             −0.43       28.75
+247
+248
+      true-answer readout falls from 1.88 to 1.21 nats/token under s_conf versus ﬁxed order. Thus
+249
+      the gap is localized to a protocol-dependent likelihood readout, without a cross-bed claim. These
+250   are teacher-forced option likelihoods, not generation; mc_uniform remains a separate mask-out
+251   family whose ELBO-style estimand is not point-comparable to sequential reveal.
+252
+253
+      These are operating points of one replacement, not independent triangulation. The monotone ref-
+      erence rise contracts but does not erase the gap, refuting a pure low-compute artifact on the tested
+254
+      curve, exact 2L included; any budget-independent law off the measured points remains untested,
+255
+      and the paired result isolates neither feedback, schedule, nor budget.
+256
+257   Table 4 shows every tested reference above its pool’s chance level at the nominal one-sided level
+258   and farther above it with budget; under Bonferroni–5 the two lowest-budget n=400 reads become
+259
+      undetermined against chance rather than at chance, which does not touch the paired contrasts in
+      Table 3 and Appendix Table 16. The n = 400 high-budget read is signiﬁcant and clears the same
+260
+      4 pp bar as the primary, whereas the n = 64 pilot remains underpowered under its exploratory tier
+261
+      and is superseded, at the identical nmc =128 operating point, by that measured n=400 row. Thus
+262   chance calibration and compute both refute a pure budget artifact; budget independence as a law off
+263   the tested curve stays honestly unresolved. The rest of the nested n = 64 scan is retained only as
+264
+265      3
+           The n=400 single-draw row uses results/c1_n400_20260819-104302/perq_r0.jsonl; the
+266
+      matched-L row uses results/nmc_sweep_grid128_20260823-023717/perq_r0.jsonl;
+267   the 2L/2L (total-NFE-fair) and high-budget rows use results/nmc_sweep_grid128_
+268   20260824-192820/perq_r0.jsonl (nselected =400 in each). “Same bed” is a checked property
+269   of the two records, not an assumption: s_conf is per-item identical across them (171/400) and so is
+      nmc =128 (135/400); only the two reference samplers differ.
+
+
+                                                                     5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      Table 3: Tested reference-budget curve in ascending reference budget (reference/s_conf total NFE
+271
+      in parentheses; row labels are the per-candidate budget labels of Appendix Table 20). The deci-
+272   sive row is total-NFE-fair equalization at 2L, where the reference uses nmc,i = 2Li forwards and
+273   s_conf Li scoring plus Li schedule-selection forwards. The pre-registered nominal matched-L
+274   point (reference nmc,i = Li , nominal draw-count match only, primary endpoint per registration)
+275   is measured on the same n=400 items as that decisive row, with the same s_conf trajectories
+276   (171/400) and the same +13.0 pp headline, so the two endpoints are numerically distinct paired
+277   records with interchangeable headline readings.3 The two nmc,i rows
+                                                                        √ quote question-bootstrap in-
+278   tervals (20k, seed 20260824) and the rest the registered paired SE m/n; tests are exact two-sided
+279   McNemar; Figure 2 plots the four n=400 rows. The n=64 scan is exploratory and superseded.
+280   Reference point      n Acc. pair (s_conf/ref)    b/c          b
+                                                                    ∆       95% CI Exact p      Role
+281   (ref/s_conf
+282   NFE)
+283   Single draw         400         42.75/28.75% 113/57 +14.0 pp [7.61, 20.39] 2.1×10−5 corroboration
+284   (1/2L)
+285   nmc,i = Li          400         42.75/29.75% 106/54 +13.0 pp [7.00, 19.00] 4.8×10−5 pre-registered
+      (L/2L)                                                                              primary
+286
+      nmc,i = 2Li         400         42.75/29.75% 109/57 +13.0 pp [6.75, 19.25] 6.6×10−5 NFE-fair
+287   (2L/2L)                                                                             equalization
+288                                                                                       (decisive)
+289   nmc = 128           400         42.75/33.75% 82/46 +9.0 pp [3.46, 14.54] 0.0019     conservative
+290   (128/2L)                                                                            read
+      nmc,i = Li          64          53.12/28.12% 24/8 +25.0 pp [7.68, 42.32] 0.007      exploratory
+291
+      (L/2L)                                                                              (superseded)
+292
+293
+      Table 4: Reference-arm calibration against the chance level of each declared four-choice pool (exact
+294   one-sided binomial tests on the arm’s own correct count). Rows 2–4 are the same n = 400 pool at
+295   three scoring budgets; the last row is a historical pilot on a different pool, not a large-pool substitute.
+296   These ﬁve tests are the paper’s one uncorrected family, so the last column scores each against the
+297   Bonferroni–5 bar α = 0.05/5 = 0.01: three rows clear it and the two lowest-budget n=400 reads
+298   do not. The per-candidate draw-matched row sets nmc,i =Li per candidate. Those two remain
+299   corroborative chance checks either way; no headline claim rests on this family, because the headline
+300   claims are the paired McNemar contrasts of Table 3, which are unchanged by any correction applied
+301   here.
+302
+          Reference arm                                n Correct Accuracy Chance Exact p               Bonf.–5
+                                                                                                −48
+303       Seeded-random reveal, fresh            819          398    48.60%      25% 6.56×10           clears
+304       mc_uniform, single draw                400          115    28.75%      25% 0.0486              no
+305
+          mc_uniform, per-candidate draw-matched 400          119    29.75%      25% 0.0176              no
+          mc_uniform, nmc = 128                  400          135    33.75%      25% 5.6×10−5          clears
+306
+          mc_uniform, nmc = 128 pilot             64           27    42.19%      25% 0.0019            clears
+307
+308   exploratory evidence (Appendix Table 16, Figure 6), and the identiﬁcation projection in §7 is not
+309   answer accuracy.
+310
+311
+      Analysis map. Table 5 consolidates every headline estimand: pool, registration status, direction,
+312
+      multiplicity family, primary interval convention, and ﬁnal verdict. It is the single index into the
+313
+      Tables 3, 4, 6, 7 and 18 evidence trail; per-estimand alternative conventions remain in Appendix
+314   Tables 16, 10.
+315
+316
+317   5    S CORING P ROTOCOLS A RE N OT I NTERCHANGEABLE ON T HIS B ED
+318
+319   The score vectors produced by s_conf and fixed_inject—two deterministic protocols, so
+320   no schedule-seed noise enters—disagree clearly in rank (τ ≈0.48; Table 18), consistent with gen-
+321   uinely distinct protocols. Between s_conf and the seeded-random rand_inject, the item-level
+322   τ means sit only 0.01–0.10 above the random arm’s own self-τ ﬂoor (Figure 7); because that ﬂoor’s
+323   dispersion exceeds the gap, we read that value as an upper bound on protocol-speciﬁc rank dis-
+      agreement rather than as evidence of distinctness, and the deterministic pair carries the load-bearing
+
+
+                                                          6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      Table 5: Analysis map: headline estimands of this paper. Pool = question bed; Prereg. status =
+325
+      whether the endpoint was ﬁxed before observing data; Direction = pre-registered read direction
+326   (+ = ﬁrst-listed arm better, − = second-listed arm better, 0 = symmetric/diagnostic); Family =
+327   multiplicity correction under which the displayed p is read; Primary interval = the registered or
+328   displayed uncertainty convention; Verdict = the registered or post-hoc reading (Holm survive / Bonf.
+329   clear / CI or LB excludes 0 or fails to). Discounted secondary diagnostics (chance calibration, strata)
+330   follow the same per-row convention.
+331                 Estimand                              Pool      Status            Dir Family                     Verdict                        Table
+332
+                    s_conf                       vs     n=400       pre-reg.      pri- + Holm–10Holm           survives                                 3
+333                 mc_uniform                                      mary                        (+13.0 pp,
+334                 matched-L                                                                   [7.00, 19.00])
+335                 s_conf                       vs     n=400       post-sel. sec. + Holm–10    Holm           survives                                 3
+336                 mc_uniform                                      (decisive)                  (+13.0 pp,
+                    2L/2L                                                                       [6.75, 19.25])
+337
+                    s_conf                       vs     n=400       pre-registered + Holm–10    Holm                sur-                                3
+338                 mc_uniform                                                                  vives         (+9.0 pp,
+339                 128/2L                                                                      [3.46, 14.54])
+340                 s_conf                       vs     n=819       post-sel. sec. + k=1    (1s LB >0 (+12.58 pp)                                       6
+341                 rand_inject                                                      LB)
+                    fresh
+342
+                    s_conf                       vs     n=819       pre-reg. single − k=1 (5-test A:     ﬁxed                                wins       6
+343                 fixed_inject                                    pair              Holm)       (−5.62 pp)
+344                 fresh
+345                 s_conf                       vs     n=400       pre-reg.   con- − reg. MDE80 NOT DETECTED                                           6
+346                 fixed_inject                                    trol
+                    pilot
+347
+                    ﬁve-option probe                     n=64       pre-reg. Tier- +     discordance UNDETERMINED         16‡
+348                                                                 25                   gate
+349                 s_conf                       vs   fresh pos 0   post-hoc       +     Bonferroni– Bonf.       survives 7
+350                 rand_inject                                     (Bonf. 4)            4           (+12.56 pp)
+351                 pos 0
+352
+                    s_conf                       vs n=400 draws post-hoc fam- + Bonferroni– 3/5 clear (α=0.01)                                          4
+                    mc_uniform                                  5               5
+353                 chance
+354                 protocol τ                           n=64       descriptive       0 –                            distinct by ﬂoor (0.48)            18
+355                                                                                                                                                 √
+      Primary interval conventions by row (all Table 3 and remaining paired rows): registered paired SE m/n for
+356
+         matched-L and 128/2L; question bootstrap (B=20k) for 2L/2L; paired bootstrap for fresh; registered
+357                            b exact McNemar p for strata; exact binomial for chance. ‡ Five-option probe full
+        one-sided LB for fresh ∆;
+358                                           counts in Appendix Table 16.
+359
+360                        Option-ranking agreement (n=48)                                                        Option-ranking agreement (n=64)
+361                    1                                                                                      1
+                                             deterministic = 1                                                                      deterministic = 1
+362
+                     0.5                                                                                    0.5
+363                         self-floor = 0.236                                                                     self-floor = 0.236
+
+
+      Kendall tau                                                                            Kendall tau
+364                    0                                                                                      0
+365
+366                 -0.5                                                                                   -0.5
+367
+                      -1                                                                                     -1
+368                                      mean = 0.251                                                                           mean = 0.332
+369
+370
+      Figure 3: Data-derived per-question Kendall τ distributions for s_conf versus rand_inject.
+371   Points are deterministic question-level values; boxes show quartiles and the center line shows the
+372   median. The mean printed below each box is the locked overlay value rounded to three decimals
+373   (Table 18 gives four). The comparison ﬂoor is the random arm’s own self-τ (mean 0.2361, Table 18);
+374   the cross-protocol means sit only 0.01–0.10 above it, i.e. within the ﬂoor’s dispersion, so this panel
+375   is descriptive, not inferential.
+376
+377   reading. Replacing the scoring protocol is accordingly not a harmless implementation detail, even
+      among protocols that use ground-truth feedback.
+
+
+                                                                                  7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Table 6: Reveal-order evidence and attribution control. Fresh is secondary, pilot undetermined, and
+379
+      pooled a heterogeneous-pool disclosure; their magnitudes differ (z=2.41, p=0.016; robust z=2.32).
+380   The ﬁxed control bounds s_conf’s advantage at +2.32 pp (95% CI upper), and only 2.1% of order
+381   traces match. Cells mark one-sided (1s, constant 2.4865) or two-sided (2s, 2.8016) intervals/MDE80 ,
+382   each as registered per endpoint (the fresh endpoint’s registered rule is one-sided); Figure 5 uses
+383   the paired-bootstrap two-sided CI for the fresh row as a display convention. Raw exact two-sided
+384   McNemar p per row: fresh 204/101, p=3.7 × 10−9 ; fresh-ﬁxed 99/145, p=0.0039;
+                                                                                  √           ﬁxed control
+385   p=0.334 (pilot/pooled as per their registered rules). All use paired SE m/n. The fresh row
+386   collapses the two construction strata that Table 7 reports separately.
+387   Reading (contrast)       n             b
+                                             ∆      m     Interval / LB         MDE80                    Role
+388
+                                                          1s LB                 5.30 pp                  post-selection
+389   Freshd                 819    +12.58 pp      305    +9.07 pp              (1s)                     secondary
+390                                                       2s CI                 8.32 pp
+391   Pilotd                 400     +3.75 pp      141    [−2.07, +9.57] pp     (2s)                     undetermined
+392                                                       1s LB                 4.31 pp                  secondary
+393
+      Pooledd              1219      +9.68 pp      446    +6.83 pp              (1s)                     disclosurea
+                                                          2s CI
+394   Fresh ﬁxedb,e          819     −5.62 pp      244    [−9.36, −1.88] pp     5.34 pp (2s)             A: ﬁxed wins
+395                                                       2s CI                 7.24 pp (2s)             not detected
+396   Fixed controle         400     −2.75 pp      107    [−7.82, +2.32] pp     CI upper +2.32 ppc       (p=0.334)
+397      a
+           A sample-size-weighted average of the two heterogeneous pools, not a cross-bed mechanism constant;
+398
+      retained for completeness after the registered heterogeneity check (z=2.41, p=0.016) triggered the disclosed
+399                                       post-data elevation of the fresh endpoint.
+400    b
+         Fresh s_conf versus fixed_inject is the single pre-speciﬁed pair (k=1) and survives the worst-case
+401       ﬁve-test Holm family (p=0.0194). Tagged MDE80 cells use the caption’s tail convention and claim no
+402              equivalence; Appendix Table 10 shows the alternative SE convention changes no verdict.
+       c
+403      That row’s role is an exclusion rather than a detection, so it intentionally carries both its MDE80 and its CI
+                                                        upper bound.
+404   d
+        Contrast: s_conf versus rand_inject (seeded-random). e Contrast: s_conf versus fixed_inject
+405
+                                                        (ﬁxed order).
+406
+407   Choice-set perturbation provides a second, operational reading. Figure ?? plots the exact-count
+408   rates for both protocols at n = 64; the historical n = 48 panel is sign-consistent and omitted for
+409
+      space. The between-protocol gap persists in sign across the two samples, although it narrows in
+      the larger sample. The 25% overlay is a design-chosen proportional shrink of each protocol’s own
+410
+      distractor scores, not a scale-invariant or scale-fair one, so we compare only persistence and sign,
+411
+      never cross-scorer magnitudes, and no signiﬁcance or power claim attaches to these deterministic
+412   perturbations. Together with rank disagreement, they support only a sign-consistent, bed-local non-
+413   interchangeability reading.
+414
+415
+416
+      6    S TRUCTURED R EVEAL B EATS THE T ESTED S EEDED -R ANDOM P OLICY,
+417        BUT C ONFIDENCE I S N OT U NIQUE
+418
+419   Sections 4–5 establish the reference gap and bed-local non-interchangeability, not reveal order. After
+420   the registered n=400 contrast was undetermined (Appendix A), a fresh, disjoint n=819 pool used
+421
+      the same pairing; its endpoint is one recorded seeded-random policy, not a schedule-seed average.
+422
+423
+      Persisted-schedule sensitivity. The single pinned seeded-random schedule calls for a compara-
+      bility audit against other schedule realizations. Two independent events observed on the same
+424
+      n=819 pool sharpen the reading without further decoding. First, the registered between-pool hetero-
+425
+      geneity check (pilot n=400 vs. fresh n=819, same s_conf vs. rand_inject contrast) returns
+426   δdiﬀ = 8.83 pp with z = 2.41, two-sided p = 0.016; magnitude shifts of at least ∼ 8 pp therefore
+427   arise on this bed from pool composition alone, with the schedule pinned. The post-data choice to
+428   break the tie by elevation of the fresh endpoint is disclosed in Table 14, and the fresh row carries the
+429   “post-selection secondary” role in Table 6. Second, the order-trace match share between the persisted
+430   schedule and the ﬁxed left-to-right order is 2.1% (17/819; Table 6 caption): the persisted schedule
+431   is a single, non-representative schedule realization, not an average over the seeded-random family.
+      Under the registered heterogeneity observation, cross-realization magnitude shifts of magnitude at
+
+
+                                                             8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      Table 7: Fresh-pool strata split on the enlarged n=819 bed; b/c and p are paired discordants and
+433
+      exact two-sided McNemar. The three positive estimates reported for this contrast are distinct es-
+434
+      timands, not replications of one number: fresh s_conf-vs-rand_inject +12.58 pp (n=819),
+435   the paired-bed s_conf-vs-mc_uniform +13.0 pp (n=400 on both the L/2L and the 2L/2L
+436   endpoint), and the heterogeneous pooled s_conf-vs-rand_inject +9.68 pp (n=1219).5 The
+437   position audit is post-hoc; see the text for its Bonferroni–4 control.
+                                                                                                    b/c; b
+438
+      Split                vs                      n   Acc. pair (s_conf/other)                          ∆     exact p
+439
+440   Constr.: near-miss   rand_inject          336               47.02/33.33%         90/44; +13.69 pp      8.7×10−5
+      (336)
+441
+      Constr.:             rand_inject          483               71.01/59.21% 114/57; +11.80 pp             1.6×10−5
+442   answer-pool (483)
+443   Constr.: near-miss   fixed_inject 336                       47.02/50.00%          51/61; −2.98 pp         0.395
+444   (336)
+445   Constr.:             fixed_inject 483                       71.01/78.47%          48/84; −7.45 pp        0.0022
+      answer-pool (483)
+446
+447   Answer pos. 0        fixed_inject         199               65.83/53.27%         46/21; +12.56 pp        0.0031
+448   Answer pos. 1        fixed_inject         207               61.84/72.46%         15/37; −10.63 pp        0.0032
+      Answer pos. 2        fixed_inject         226               62.83/74.34%         18/44; −11.50 pp        0.0013
+449
+      Answer pos. 3        fixed_inject         187               53.48/65.78%         20/43; −12.30 pp        0.0052
+450
+451
+452
+               Reveal-order effect by pool (Delta = s_conf - rand_inject)
+453
+454
+455               Fresh (n=819)                                                                     +12.58
+                             m=305                                                                  [+8.55,+16.61]
+456
+457
+                  Pilot (n=400)                                             +3.75
+458
+                             m=141                                          [-2.07,+9.57]
+459
+460
+               Pooled (n=1219)                                                         +9.68
+461                          m=446                                                     LB +6.83
+462
+463                                 -4         0           4         8            12           16
+464
+                                                   accuracy difference (pp)
+465
+466
+467
+      Figure 4: Three pool contrasts from Table 6. Fresh uses a paired-bootstrap 95% CI, pilot the
+      registered-SE two-sided CI, and pooled a one-sided lower bound (open upper cap is display-only).
+468
+      Square area scales with m; signiﬁcant heterogeneity makes pooled secondary.
+469
+470   least 8 pp are already plausible on this bed; the “post-selection” label and the bed-local non-claim
+471   that follow are calibrated to that scale. Multi-seed replays with pinned, replayable schedule seeds
+472   are the follow-up correction (§7). We do not re-run any scoring pass here; both events are recorded
+473   properties of the existing n=819 archive.
+474
+475
+      Fresh-pool strata audit. Table 7 re-tabulates frozen per-item contrasts by construction and an-
+476
+      swer position. The s_conf-over-random margin survives both constructions; the ﬁxed-order ad-
+477   vantage retains its sign but is signiﬁcant only in the answer-pool stratum, and reverses at posi-
+478   tion 0 (+12.56 pp, p=0.0031). The position audit is post-hoc (not pre-registered), but positions
+479   0/1 (p=0.0031/0.0032) survive Bonferroni–4 (α/4=0.0125), making the reversal multiplicity-
+480   controlled rather than selected. These are paired-record re-tabulations, not new decoding.
+481
+482       5
+            Non-overlapping beds: the fresh estimate draws on c1_decisive_20260819-212944 + c1_
+483   fixed_inject_fresh_20260821-062533 (n=819), the paired-bed estimate on Trial 1895183
+484   (n=400), and the pooled estimate is their sample-size-weighted average (n=1219). The three numbers come
+485   from non-overlapping beds, different comparators, and different estimands, so we state them separately and do
+      not attribute their difference to any single mechanism.
+
+
+                                                            9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Table 8: Pooled-to-fresh endpoint decision tree. The ﬁnal elevation is post-data and is disclosed as
+487
+      such; it is not presented as the original primary endpoint.
+488
+      Step Status          Rule or observation                                         Consequence
+489
+490    1   Pre-data        Pooled n = 1219 primary; fresh n = 819 sensitivity.         No favorable sign
+491
+                           Direction ﬁxed as s_conf>rand_inject; one-sided 95%         selection
+                           lower bound must exceed zero. Opposite pooled/fresh signs
+492                        force UNDETERMINED.
+493    2   Registered data Between-pool magnitude heterogeneity: δdiﬀ = 8.8263 pp,     Reject a
+494        check           z = 2.4148, two-sided p = 0.0157; robust z = 2.3229.        common-effect
+495                                                                                    estimate
+496
+       3   Pre-data        Both pool effects are positive (fresh +12.58 pp, pilot      Sign-consistency
+           branch          +3.75 pp).                                                  branch passes
+497    4   Post-data       Elevate the disjoint, no-reuse fresh pool; retain pooled    Fresh becomes the
+498                        +9.68 pp only as a weighted disclosure.                     secondary
+499                                                                                    answer-level result
+500
+501   Endpoint decision tree. Table 14 separates the pre-data rules from the post-data endpoint ele-
+502   vation. Preregistration did not assign fresh-only priority: step 4 is an explicitly post-data choice,
+503
+      motivated by the failure of a common-effect interpretation.
+504
+505   Pool heterogeneity is disclosed, not merged. Figure 5 and Table 6 retain every pool. The fresh
+506   comparison is signiﬁcant under the registered one-sided α = .05 rule, but because it was elevated
+507
+      only after pool heterogeneity was observed it is post-selection secondary evidence, pool-dependent
+      and secondary to the n = 400 headline; pooled remains only a weighted disclosure. Both signs are
+508
+      positive, and charging two-pool selection still gives a fresh one-sided lower bound of +8.40 pp at
+509
+      α = 0.025, while pilot remains undetermined. The pre-speciﬁed fresh s_conf–fixed_inject
+510   adjudication survives both multiplicity accounts (Table 6, note b). This supports a structured-order
+511   boundary, not equivalence or a uniquely conﬁdence-driven mechanism.
+512
+513   Boundary: what “reveal order” attributes here, and what it does not. The s_conf–
+514   rand_inject ablation covers one persisted random schedule. A ﬁxed order that selects its sched-
+515   ule without model output beats s_conf on the fresh pool on average; within that pool the margin
+516   is construction-dependent in strength and reverses at answer position 0 (Table 7). The pooled-fresh
+517   sign repeats at n=400 but reverses on historical n=64 (Figure 6). Because no ﬁxed-order cross-pool
+518   test supports merging and Table 14’s heterogeneity concerns rand_inject, the former cross-pool
+519   mechanism reading is refuted. Conﬁdence is neither necessary, uniquely optimal, nor exclusively
+520   causal; all six n=400 order contrasts remain Holm-nonsigniﬁcant (Appendix Table 10). The clean-
+521
+      est same-bed zero-effect row is s_conf versus anti_inject (+2.00 pp, exact p=0.573; Ap-
+      pendix Table 10): reveal direction alone carries neither the reference gap nor the schedule result.
+522
+523
+524   Boundary effect and winner-curse description. Appendix A gives the pilot/extension winner-
+525
+      curse analysis, the n=400 undetermined reading, both registered MDE forms, and power rules.
+526
+527   7    L IMITATIONS
+528
+529
+      Single bed and non-factorial mechanism. One checkpoint and one four-choice GSM8K bed sup-
+530   port no cross-model, task, or judge prediction. The s_conf–mc_uniform replacement changes
+531   feedback, path, and passes jointly, so refuting the narrow compute-artifact account does not factorize
+532   it: the reference spends less at one draw but far more at the high-budget read, and the gap survives
+533   both there and at measured exact 2L (Table 3).
+534
+535   Headline robustness gates, reliability, and seed variation. The frozen rerun, hostile re-
+536   adjudication boundary, three-bucket rule, and leave-one-out inﬂuence are consolidated in Appendix
+537   Table 22: the rerun stays inside its abort tolerance, leave-one-out is a nondegenerate PASS, and the
+538   adverse-change counts delimit where signiﬁcance and direction would fail. None of these supplies
+539   the missing multi-seed evidence, and the non-scale-invariant shrink supports only sign and persis-
+      tence: multi-seed accuracy and τ require new decoding, and the 48-item self-τ is only a noise ﬂoor.
+
+
+                                                          10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      Excluded claims and external validity. The rank-half design supports neither dose response
+541   nor concavity, and no cross-bed prediction band is used. Under its pre-registered joint zero-and-
+542   relevance gate, the ﬁve-choice probe remains UNDETERMINED: neither supporting evidence nor
+543   evidence of absence, and its signiﬁcant point estimate is not upgraded to external-validity evidence
+544   anywhere in this paper (Appendix Table 12). Length-normalized likelihood scorers (acc_norm/NLL)
+545   were also not measured; this is a scope limit, not an equivalence or gap. Table 2 localizes only the
+546   injected-policy readout.
+547
+548   Efﬁciency and matched-L boundaries. The scan and forward ledger (Appendix Table 20) cover
+549   answer scoring, not generation. The tested curve, including exact 2L, refutes the narrow artifact but
+550   leaves off-curve budget independence open (Table 3). Appendix Table 11 is instead a non-accuracy
+551
+      length identity and no substitute for an accuracy measurement: its nominal all-candidate substitution
+      is a lower audit counterfactual, not input. The three promoted n=400 reads all clear the shared 4 pp
+552
+      bar, but the historical high-budget n = 64 row remains underpowered (Appendix Table 21).
+553
+554
+555   8   C ONCLUSION
+556
+557   On this bed, conﬁdence injection beats the tested non-injected reference, while ﬁxed order wins on
+558   average but reverses at position 0 (Table 7). Exact 2L refutes only a less-reference-compute account;
+559   off-curve, multi-seed, and generalization claims remain unresolved (Appendix H).
+560
+561   R EFERENCES
+562
+563   Stella Biderman, Hailey Schoelkopf, Lintang Sutawika, Leo Gao, Jonathan Tow, Baber Abbasi,
+564
+        Alham Fikri Aji, Farrukh Akhtar, Tauﬁq Alam, Alon Albalak, Wissam Ammar, et al. Lessons
+        from the trenches on reproducible evaluation of language models, 2024. Venue: arXiv preprint;
+565
+        volume and pages not applicable.
+566
+567   Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhari-
+568     wal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal,
+569     Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M.
+570     Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin,
+571     Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford,
+572
+        Ilya Sutskever, and Dario Amodei. Language models are few-shot learners, 2020. Venue: NeurIPS
+        2020.
+573
+574   Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared
+575    Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, Alex Ray, Raul Puri,
+576    Gretchen Krueger, Michael Petrov, Heidy Khlaaf, Girish Sastry, Pamela Mishkin, Brooke Chan,
+577    Scott Gray, Nick Ryder, Mikhail Pavlov, Alethea Power, Lukasz Kaiser, Mohammad Bavarian,
+578    Clemens Winter, Philippe Tillet, Felipe Petroski Such, Dave Cummings, Matthias Plappert, Fo-
+579    tios Chantzis, Elizabeth Barnes, Ariel Herbert-Voss, William Hebgen Guss, Alex Nichol, Alex
+580    Paino, Nikolas Tezak, Jie Tang, Igor Babuschkin, Suchir Balaji, Shantanu Jain, William Saunders,
+581
+       Christopher Hesse, Andrew N. Carr, Jan Leike, Josh Achiam, Vedant Misra, Evan Morikawa,
+       Alec Radford, Matthew Knight, Miles Brundage, Mira Murati, Katie Mayer, Peter Welinder, Bob
+582
+       McGrew, Dario Amodei, Sam McCandlish, Ilya Sutskever, and Wojciech Zaremba. Evaluating
+583
+       large language models trained on code, 2021. Venue: arXiv preprint; volume and pages not
+584    applicable.
+585
+586   Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+587     Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John
+588     Schulman. Training veriﬁers to solve math word problems, 2021. Venue: arXiv preprint; volume
+589
+        and pages not applicable.
+590   Bradley Efron and Robert J. Tibshirani. An Introduction to the Bootstrap. Chapman & Hall/CRC,
+591     1994.
+592
+593   Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob
+        Steinhardt. Measuring massive multitask language understanding, 2021. Venue: ICLR 2021.
+
+
+                                                       11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      Sture Holm. A simple sequentially rejective multiple test procedure. Scandinavian Journal of
+595     Statistics, 6(2):65–70, 1979.
+596
+597   Ari Holtzman, Peter West, Vered Shwartz, Yejin Choi, and Luke Zettlemoyer. Surface form compe-
+598     tition: Why the highest probability answer isn’t always right. In Proceedings of EMNLP, 2021.
+599
+      Naman Jain, King Han, Alex Gu, Wen-Ding Li, Fanjia Yan, Tianjun Zhang, Sida Wang, Armando
+600     Solar-Lezama, Koushik Sen, and Ion Stoica. Livecodebench: Holistic and contamination free
+601     evaluation of large language models for code, 2024. Venue: ICLR 2025.
+602
+603   Maurice G. Kendall. A new measure of rank correlation. Biometrika, 30(1/2):81–93, 1938. doi:
+604
+       10.2307/2332226.
+605   Percy Liang, Rishi Bommasani, Tony Lee, Dimitris Tsipras, Dilara Soylu, Michihiro Yasunaga,
+606     Yian Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Kumar, Benjamin Newman, Binhang Yuan,
+607     Bobby Yan, Ce Zhang, Christian Cosgrove, Christopher D. Manning, Christopher Ré, Diana
+608     Acosta-Navas, Drew A. Hudson, Eric Zelikman, Esin Durmus, Faisal Ladhak, Frieda Rong,
+609     Hongyu Ren, Huaxiu Yao, Jue Wang, Keshav Santhanam, Laurel Orr, Lucia Zheng, Mert Yuk-
+610     sekgonul, Mirac Suzgun, Nathan Kim, Neel Guha, Niladri Chatterjee, Omar Khattab, Peter Hen-
+611     derson, Qian Huang, Ryan Chi, Sang Michael Xie, Shibani Santurkar, Surya Ganguli, Tatsunori
+612
+        Hashimoto, Thomas Icard, Tianyi Zhang, Vishrav Chaudhary, William Wang, Xuechen Li, Yifan
+        Mai, Yuhui Zhang, and Yuta Koreeda. Holistic evaluation of language models, 2023. Venue:
+613
+        Transactions on Machine Learning Research (TMLR), 2023; volume and pages not applicable.
+614
+615   Stephanie Lin, Jacob Hilton, and Owain Evans. Truthfulqa: Measuring how models mimic human
+616     falsehoods, 2022. Venue: ACL 2022.
+617
+      Quinn McNemar. Note on the sampling error of the difference between correlated proportions or
+618
+        percentages. Psychometrika, 12(2):153–157, 1947. doi: 10.1007/BF02295996.
+619
+620   Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai Lin,
+621     Ji-Rong Wen, and Chongxuan Li. Large language diffusion models, 2025. Venue: ICML 2025.
+622
+      Shen Nie, Qiyang Min, Shaoxuan Xu, Zihao Huang, Yuxuan Song, Yong Shan, Yankai Lin,
+623
+        Wayne Xin Zhao, Chongxuan Li, and Ji-Rong Wen. Improved large language diffusion models,
+624     2026. Venue: arXiv preprint; volume and pages not applicable.
+625
+626   Ethan Perez, Sam Ringer, Kamilė Lukošiūtė, Karina Nguyen, Edwin Chen, Scott Heiner, Craig
+627     Pettit, Catherine Olsson, Sandipan Kundu, Saurav Kadavath, Andy Jones, Anna Chen, Benjamin
+628
+        Mann, Brian Israel, Bryan Seethor, Christopher McKinnon, Christopher Olah, Da Yan, Daniela
+        Amodei, Dario Amodei, Dawn Drain, Dustin Li, Eli Tran-Johnson, Guro Khundadze, Jackson
+629
+        Kernion, James Landis, Jamie Kerr, Jared Mueller, et al. Discovering language model behaviors
+630
+        with model-written evaluations, 2022. Venue: ACL 2022.
+631
+632   Subham Sekhar Sahoo, Marianna Arriola, Yair Schiff, Aaron Gokaslan, Edgar Marroquin, Justin
+633     Chiu, Alexander Rush, and Volodymyr Kuleshov. Simple and effective masked diffusion language
+634     models. In Proceedings of NeurIPS, 2024.
+635
+      Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdh-
+636     ery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models,
+637     2023. Venue: ICLR 2023.
+638
+639   Edwin B. Wilson. Probable inference, the law of succession, and statistical inference. Journal
+640     of the American Statistical Association, 22(158):209–212, 1927. doi: 10.1080/01621459.1927.
+641
+        10502953.
+642   Chujie Zheng, Hao Zhou, Fandong Meng, Jie Zhou, and Minlie Huang. Large language models are
+643     not robust multiple choice selectors. In Proceedings of ICLR, 2024.
+644
+645
+      Kaijie Zhu, Jindong Wang, Jiaheng Zhou, Zichen Wang, Hao Chen, Yichong Xiong, Ziqian Ma,
+        Wei Liu, Lingjuan Sun, Xinyu Li, Neil Zhenqiang Gong, and Xing Xie. Promptrobust: Towards
+646
+        evaluating the robustness of large language models on adversarial prompts, 2024. Venue: arXiv
+647
+        technical report, v5 July 2024; volume and pages not applicable.
+
+
+                                                    12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+      A    B OUNDARY A NALYSIS AND R EGISTERED V ERDICTS
+649
+650
+      Fresh-pool recipe. The n = 819 study uses four-option GSM8K multiple-choice items drawn
+651   without question overlap with the n = 400 pool; unlike the exactly balanced n = 400 pool, its
+652   answer positions are only approximately balanced. All arms share the same model checkpoint,
+653   prompts, item order, answer extractor, and recorded choice sets. The seeded-random arm is bound
+654   to its persisted per-candidate orders because the original runner’s nominal seed derivation included
+655   an unpinned Python string hash. The paired record contains one row per question and arm with the
+656   prediction, reference answer, correctness, candidate-score vector, and order trace. The anonymous
+657   artifact bundle additionally contains the preregistration, execution environment, verdict, and the
+658   heterogeneity recomputation recorded in Table 14.
+659   Table 9: Boundary ledger for s_conf versus rand_inject, except the directional defence. The
+660   original n = 400 reveal-order endpoint remains UNDETERMINED; no post-data power calculation
+661   changes that label.
+662
+          Reading               n                b
+                                                 ∆   m Exact p                      95% CI Registered reading
+663
+          First bed            48 +16.67 pp 22                   – [−2.49, +35.82] Below discordance gate
+664
+          Extension            64 +7.81 pp 23                    – [−6.87, +22.50] Below discordance gate
+665       Pilot               400 +3.75 pp 141               0.238 [−2.07, +9.57] UNDETERMINED
+666       Directional defence 400 +1.75 pp 159               0.634 [−4.43, +7.93] Wrong sign
+667
+668   As Table 9 shows, the small-bed rows do not distinguish regression to the mean from sampling
+669   variation. We use boundary effect only as an analysis-risk description, not as an effect-halving claim.
+670   For the n = 400 pilot, the interval includes zero and relevant positive effects; the pre-registered
+671   terminal reading is thus UNDETERMINED, not equivalence or no effect.
+672
+                         Reveal-order effect by pool (Delta = s_conf - rand_inject)
+673
+674
+675                        Fresh (n=819)                                                           +12.58
+                                    m=305                                                          [+8.55,+16.61]
+676
+677                        Pilot (n=400)                                     +3.75
+                                    m=141                                    [-2.07,+9.57]
+678
+679                       Pooled (n=1219)                                             +9.68
+                                    m=446                                             LB +6.83
+680
+681                                         -4       0        4         8       12            16
+682                                                      accuracy difference (pp)
+683
+684   Figure 5: Three pool contrasts from Table 6. Fresh uses a paired-bootstrap 95% CI, pilot the
+685   registered-SE two-sided CI, and pooled a one-sided lower bound (open upper cap is display-only).
+686   Square area scales with m; signiﬁcant heterogeneity makes pooled secondary.
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+
+
+
+                                                              13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+      Table 10: All six injected-order contrasts on the n = 400 pool. Exact tests are two-sided and
+703
+      Holm-adjusted within this registered family of six (the six pairwise order contrasts are the de-
+704   clared secondary family; the conﬁrmatory n=400 budget-curve family of §4 is the separate ten-test
+705
+      Holm family). Each interval is b ∆ ± h. The last two √ columns give the two paired-SE conven-
+706   tions: thepmanuscript quotes the registered h = 1.96 m/n throughout, and the mean-corrected
+707
+      h = 1.96 m − (b − c)2 /n/n differs from it by at most 0.04 pp here (and by at most 1.2 pp on
+708   the small n = 48/64 pools, where no verdict changes either). Holm adjustment is step-down with
+709   monotonicity enforced, so adjusted p is non-decreasing in raw p; in particular the largest raw p in
+710   the family inherits Holm p = 1.000.
+711
+          Pair                                  m          b
+                                                           ∆ Exact p Holm p Mean-corr. h Registered h
+712
+713       s_conf–rand_inject                   141   +3.75 pp      0.238     0.953       5.807 pp         5.818 pp
+          s_conf–anti_inject                   154   +2.00 pp      0.573     1.000       6.078 pp         6.081 pp
+714
+          s_conf–fixed_inject                  107   −2.75 pp      0.334     1.000       5.061 pp         5.069 pp
+715       rand_inject–anti_inject              159   −1.75 pp      0.634     1.000       6.176 pp         6.179 pp
+716       rand_inject–fixed_inject             138   −6.50 pp      0.033     0.198       5.721 pp         5.756 pp
+717       anti_inject–fixed_inject             153   −4.75 pp      0.145     0.727       6.043 pp         6.061 pp
+718
+719
+720   B     L ENGTH -I DENTITY C HECK (N O ACCURACY C LAIM )
+721
+722   This arithmetic projection consumes only the designated-candidate length row of Table 19; it con-
+723
+      tains no accuracy outcome and does not replace the measured n=400 total-NFE-fair result.
+724   Table 11: Length-identity sensitivity (arithmetic projection, no accuracy content). The observed
+725   contrast is zero because the probe ﬂag is arm-independent; nonzero cells are closed-form functions
+726   of the disclosed designated-candidate lengths. This does not substitute for the measured total-NFE-
+727   fair 2L/2L row of Table 3. Intervals resample lengths, not accuracy effects. The last row is a lower
+728   audit counterfactual based on the nominal all-candidate distribution, not the estimator input.
+729               Restart fraction                               0.4             0.6                0.8
+730               Observed-window gap (pp)                     0.00              0.00             0.00
+731               Projected gap (pp)                       +3.161            +0.692           +0.061
+732               95% CI (pp)                        [3.063, 3.252]    [0.657, 0.726]   [0.056, 0.066]
+733               All-candidate substitution (pp)               2.61            0.51             0.04
+734
+735
+      For restart fraction m, designated-candidate indicator ιi , and nc (q) candidates in question q, the
+736   closed form is
+737
+738              NFEi (m) = min(6/Li , 2) (1 − m∗L )−2 m,                    m∗L = (1 − 2−1/Li )−1 ,
+                                      X
+739                b q (m) = nc (q)−1
+                   ∆                    ιi (1 − m)Li .
+740                                      i∈q
+741
+742   The reported mean spans Q=819 questions and its interval uses R=2000 question bootstraps (seed
+743
+      20260821) (Efron & Tibshirani, 1994); the zero row is an arm-independent identity, and the nonzero
+      rows are length-model projections rather than evidence about an accuracy effect.
+744
+745
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+
+
+
+                                                          14
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+756
+      C      F IVE -O PTION E XTERNAL -VALIDITY P ROBE
+757
+758   Table 12: Five-option probe. The terminal label follows the pre-registered rule and is not reinter-
+759   preted after observing power. The signiﬁcant point estimate below therefore carries no evidence-
+760   of-absence interpretation and no external-validity claim; it is not cited as a measured conclusion
+761   anywhere outside this table and the matching limitation in §7.
+762                             Metric                                       Value
+763
+                                Items decoded                            400/400
+764                             s_conf accuracy                           62.25%
+765                             rand_inject accuracy                      53.75%
+766                             ∆                                        +8.5 pp
+767                             Discordant b/c                            84 / 50
+                                One-sided exact p                         0.0021
+768
+                                One-sided 95% lower bound               +3.74 pp
+769                             Planning point                     7.59 pp at m = 149
+770                             Realized discordance                    m = 134
+771                             Registered verdict                  UNDETERMINED
+772
+773   The realized power calculation is descriptive. It neither replaces the registered discordance gate nor
+774   upgrades this result to supporting evidence.
+775
+      The Tier-25 gate (m ≥ 25 ∧ |∆|  b ≥ 25 pp) is a historical-pool promotion threshold, frozen at commit
+776
+      911d60d3 on 2026-08-20, that predates this ﬁve-option probe. Its 25-pp magnitude was ﬁxed from
+777
+      earlier historical-pool uplift records and was not tuned post hoc against the probe’s outcomes. The
+778
+      gate applies only to promotion; it does not referee any §1 headline.
+779
+780
+781   D      R EGISTRATION AND A NALYSIS C HRONOLOGY
+782
+783   Table 13: Complete interval and decision conventions behind Table 5. The question bootstrap is the
+784
+      printed primary interval for matched-L and 2L; the registered paired-SE convention is the printed
+      primary interval for single draw and nmc =128. Thus the two conventions are explicit rather than
+785
+      silently mixed.
+786
+      Rows                Primary uncertainty                Test / family               Verdict rule
+787
+788   Single draw;        Registered                         Two-sided exact             Adjusted p < .05 and
+                          b        √                                                      b ≥ 4 pp
+789   nmc =128            ∆±1.96     m/n×100 pp              McNemar; ten-test Holm      |∆|
+                                                             family
+790
+      Matched-L;          Question bootstrap (intervals      Same ten-test Holm          Same adjusted-p and 4 pp
+791   total-NFE 2L        in Table 3); registered-SE         family                      promotion rule
+792                       values are printed alongside in
+793                       the main analysis map
+      Fresh s_conf–       Registered one-sided               Single registered           Positive lower bound;
+                           b − 1.645√m/n×100 pp;
+794
+      rand_inject         ∆                                  directional contrast        pooled/fresh sign conﬂict
+795
+                          paired-bootstrap two-sided CI                                  forces UNDETERMINED
+796
+                          only in Figure 5
+797   Fresh / pilot       Paired-bootstrap two-sided CI      Single fresh pair; ﬁxed     Negative CI for fresh;
+798   s_conf–             (fresh); registered-SE             ﬁve-test sensitivity uses   pilot retains its registered
+799   fixed_inject        two-sided CI (pilot)               α = .01                     no-detection reading
+800   Five-option probe   Registered one-sided lower         Exact directional           m ≥ 25, positive lower
+                          bound                              McNemar, separate           bound, and |∆|b ≥ 25 pp
+801
+                                                             Tier-25 gate                jointly; otherwise
+802
+                                                                                         UNDETERMINED
+803   Reference chance    Exact two-sided binomial           Four rows on the n = 400 Only p < .01 clears; no
+804   calibration         interval/test versus p0 = .25      bed; locked per-row      row is relabelled from its
+805                                                          α = .01                  paired McNemar verdict
+806
+807
+808
+809
+
+
+
+                                                            15
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+810
+      Table 14: Pooled-to-fresh endpoint decision tree. The ﬁnal elevation is post-data and is disclosed as
+811
+      such; it is not presented as the original primary endpoint.
+812
+      Step Status                  Rule or observation                                              Consequence
+813
+814    1       Pre-data            Pooled n = 1219 primary; fresh n = 819 sensitivity.              No favorable sign
+815
+                                   Direction ﬁxed as s_conf>rand_inject; one-sided                  selection
+                                   95% lower bound must exceed zero. Opposite pooled/fresh
+816                                signs force UNDETERMINED.
+817    2       Registered data     Between-pool magnitude heterogeneity: δdiﬀ = 8.8263 pp,          Reject a
+818            check               z = 2.4148, two-sided p = 0.0157; robust z = 2.3229.             common-effect
+819                                                                                                 estimate
+820
+       3       Pre-data branch     Both pool effects are positive (fresh +12.58 pp, pilot           Sign-consistency
+                                   +3.75 pp).                                                       branch passes
+821    4       Post-data           Elevate the disjoint, no-reuse fresh pool; retain pooled         Fresh becomes the
+822                                +9.68 pp only as a weighted disclosure.                          secondary
+823                                                                                                 answer-level result
+824
+825   Table 15: Anonymous chronology of the load-bearing decisions. Pre-data and post-data steps are
+826   kept distinct.
+827   Status                     Decision                                      Consequence
+828
+      Pre-data             Pooled n = 1219 primary; fresh n = 819              Prevents choosing a favorable sign.
+829                        sensitivity; opposite signs force
+830                        UNDETERMINED .
+831   Pre-data             One-sided direction and heterogeneity               Separates direction from pool
+832                        check ﬁxed before the fresh outcome.                compatibility.
+      Registered data      Fresh and reused-pilot magnitudes differ            Common-effect pooling is rejected.
+833
+      check                (z = 2.4148, p = 0.0157).
+834   Post-data, disclosed Fresh disjoint pool elevated; pooled                The fresh priority is not presented as
+835                        estimate retained as secondary disclosure.          original.
+836   Pre-data extension Fixed identity order compared with                    Tests whether conﬁdence ordering is
+837                        s_conf on the fresh pool as a single                necessary or uniquely optimal.
+                           load-bearing pair.
+838
+      Post-data reading    Fixed order beats s_conf.                          Supports only a structured order boundary,
+839                                                                           with format/structure caveats.
+840
+841
+842   E    H ISTORICAL D IAGNOSTICS AND B UDGET L EDGER
+843
+844
+      Table 16: Historical n = 64 estimator-budget scan (upper rows, exploratory) and the corrected
+      n = 400 conﬁrmatory scan (lower block, ascending budget). The historical nmc = 128 row remains
+845
+      underpowered under the separate 25 pp exploratory tier. On the n = 400 bed, the pre-registered
+846
+      draw-matched nmc,i = Li , total-NFE-fair nmc,i = 2Li , and high-budget nmc = 128 contrasts share
+847   the same 4 pp promotion bar and all three pass; the last is the conservative main read. Intervals
+848   follow Table 3: question bootstrap for the two nmc,i rows, registered paired SE elsewhere.
+849
+                Reference                                             ∆      m        Exact p              95% CI
+850
+851             Single draw (n=64)                          +25.00 pp       30         0.0052       [8.23, 41.77]
+                nmc = 128 (n=64)                            +10.94 pp       29         0.2649    [−5.56, +27.43]
+852
+                Per-candidate draw-matched (n=64)           +25.00 pp       32         0.0070       [7.68, 42.32]
+853
+                Corrected n = 400 conﬁrmatory run
+854
+                Single draw (n=400)                         +14.00 pp      170    2.1×10−5           [7.61, 20.39]
+855
+                Draw-matched nmc,i = Li (n=400)             +13.00 pp      160    4.8×10−5           [7.00, 19.00]
+856             Total-NFE-fair nmc,i = 2Li (n=400)          +13.00 pp      166    6.6×10−5           [6.75, 19.25]
+857             nmc = 128 (n=400)                            +9.00 pp      128       0.0019          [3.46, 14.54]
+858
+859
+860
+861
+862
+863
+
+
+
+                                                                 16
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+864
+865                                                                Five-arm accuracy (n=400)
+866
+867                                                60
+                                                                                                                     (182/400)
+868                                                        (171/400)
+                                                                                         (163/400)                     45.5
+869                                                          42.8           (156/400)
+                                                                              39.0           40.8
+870                                                45
+871                                                                                                                                 (115/400)
+
+
+
+
+                                    Accuracy (%)
+872                                                                                                                                     28.8
+873
+                                                   30
+874
+875
+876
+877
+                                                   15
+878
+879
+880                                                0
+881                                                         s_conf            rand           anti                      fixed             MC
+882
+883
+884
+885   Figure 6: Five-arm top-1 accuracy on the n = 400 pool, regenerated from frozen item-level records;
+886
+      exact counts are printed above each bar. Whiskers are descriptive Wilson 95% intervals (Wilson,
+      1927) on each arm’s marginal accuracy. Registered comparisons are paired and are reported in
+887
+      Table 16, not read off these unpaired intervals.
+888
+889   Table 17: Descriptive exact-count ﬂip rates under the frozen 25% distractor-score shrink. The shrink
+890   rescales each protocol’s own score scale; no cross-scorer magnitude or inferential claim is attached.
+891                                                         Pool                     s_conf                   rand_inject
+892
+                                                            n = 48      63/144 (43.75%)                     87/144 (60.42%)
+893
+                                                            n = 64      90/192 (46.88%)                    105/192 (54.69%)
+894
+895
+896                        Option-ranking agreement (n=48)                                                        Option-ranking agreement (n=64)
+897                    1                                                                                      1
+                                                        deterministic = 1                                                           deterministic = 1
+898
+899                  0.5                                                                                    0.5
+                            self-floor = 0.236                                                                     self-floor = 0.236
+
+
+      Kendall tau                                                                            Kendall tau
+900
+901                    0                                                                                      0
+902
+903                 -0.5                                                                                   -0.5
+904
+905                   -1                                                                                     -1
+                                                   mean = 0.251                                                                  mean = 0.332
+906
+907
+      Figure 7: Tie-dropping Kendall τ distributions on the historical n = 48 and n = 64 pools. Each
+908
+      panel explicitly overlays the random-order self-τ ﬂoor (0.2361 ± 0.451) and the deterministic self-
+909
+      agreement anchor (1.000); both are descriptive calibration aids, not inferential intervals.
+910
+911
+912
+913
+914
+915
+916
+917
+
+
+
+                                                                                        17
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+918
+      Table 18: Rank-agreement diagnostics. Deterministic rows are reproducibility anchors; random-
+919
+      order self-agreement is the stochastic comparator ﬂoor.
+920
+        Diagnostic                             Scope                  Value              Interpretation
+921
+922     s_conf–rand_inject tie-drop            n = 48                 0.2514             Full grid 0.2500; 8 tied items
+923
+        s_conf–rand_inject tie-drop            n = 64                 0.3323             Full grid 0.3255; 9 tied items
+        Random-order self-τ                    Shared 48              0.2361 ± 0.451     Stochastic ﬂoor
+924     Deterministic self-τ                   Shared 48              1.000              Reproducibility anchor
+925     s_conf–fixed_inject                    n = 400/fresh 819      0.48 / 0.47        Cross-protocol anchor
+926
+927   Table 19: Candidate-length distributions used by draw matching and strict NFE sensitivity. The ﬁrst
+928   three rows count all four nominal candidates per question. The ﬁnal row counts only the unique
+929   designated candidate in each of the 819 fresh questions; this is the distribution used by the closed
+930   form in Table 11.
+931              Pool                Items L = 3 L = 4 L = 5 L = 6 L = 7 L = 8 L = 9 Mean L
+932              Historical            64    39      120         72     17       8         0       0      4.355
+933              Primary              400   262      751        424    118      30        15       0      4.343
+934              Fresh sensitivity    819   364     1237       1010    390     167       101       7      4.722
+935              Fresh designated     819   163      400        173     48      20        13       2      4.278
+936
+937   Table 20: Per-candidate budget ledger, in ascending reference budget. Scoring draws and total for-
+938   ward calls are deliberately separated; schedule selection adds another L forwards to the conﬁdence
+939   and anti-conﬁdence arms. The reference-arm rows carry the same budget labels as Table 3, so every
+940
+      row of that budget curve closes back to a ledger line: single draw, nmc,i = Li (nominal draw match
+      only), nmc,i = 2Li (total-NFE match), and nmc = 128.
+941
+942   Protocol                 Scoring draws     Selection forwards     Total forwards     Reading
+943   s_conf /                        L                    L                  2L           Model-derived ordering
+944   anti_inject                                                                          plus injection
+945   rand_inject /                   L                    0                  L            Seeded-random or ﬁxed
+      fixed_inject                                                                         ordering plus injection
+946
+      mc_uniform                      1                    0                   1           One masked-subset
+947   single                                                                               estimator draw
+948   mc_uniform                      L                    0                  L            Matches nominal injection
+949   draw-matched                                                                         scoring draws only
+950   nmc,i = Li
+      mc_uniform                      2L                   0                  2L           Matched to s_conf’s total
+951
+      total-NFE-fair                                                                       NFE (scoring plus
+952   nmc,i = 2Li                                                                          selection); the decisive row
+953                                                                                        of Table 3
+954   mc_uniform high                128                   0                  128          High-budget point on the
+955   budget                                                                               historical pilot and on the
+                                                                                           corrected n=400 run
+956
+957
+958
+959
+960
+961
+962
+963
+964
+965
+966
+967
+968
+969
+970
+971
+
+
+
+                                                               18
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+972
+       F    C ONTRIBUTION AND P OWER D ETAILS
+973
+974
+       Table 21: Answer-accuracy contribution ledger. The n = 400 total-NFE-fair 2L/2L row is the deci-
+975    sive equalization and the draw-matched nmc,i = Li row is the pre-registered primary endpoint; the
+976    four n = 400 rows form the reported budget curve and the high-budget endpoint is the conservative
+977    main read. “Per-candidate draw-matched” sets the reference estimator budget at nmc,i = Li per
+978    candidate. The n = 64 row alone retains the separate historical 25 pp exploratory tier.
+979     Reference point                n          b
+                                                  ∆    m        Exact p        95% CI     Role
+980                                                                 −5
+981
+        Single draw                  400   +14.0 pp   170   2.1 × 10      [7.61, 20.39]   Curve point
+        Draw-matched nmc,i = Li      400   +13.0 pp   160   4.8 × 10−5    [7.00, 19.00]   Pre-registered
+982
+                                                                                          primary
+983     Total-NFE-fair nmc,i = 2Li   400   +13.0 pp   166   6.6 × 10−5    [6.75, 19.25]   NFE-fair
+984                                                                                       decisive
+985     nmc = 128                    400    +9.0 pp   128        0.0019   [3.46, 14.54]   Conservative
+986                                                                                       main read
+        Per-candidate draw-matched    64   +25.0 pp    32         0.007   [7.68, 42.32]   Exploratory
+987
+                                                                                          (25pp tier)
+988
+989
+990    G    P OWER AND S AMPLE -S IZE L EDGER
+991
+992    The decisive total-NFE-fair 2L/2L contrast clears the registered Holm threshold and shared pro-
+993    motion bar; the historical small-pool draw-matched result is detected with only a slim margin over
+994    its detectable magnitude, while the historical small-pool high-budget arm is underpowered and re-
+995
+       mains UNDETERMINED (not zero) under its exploratory tier. The corrected n = 400 high-budget
+       read is determined and clears the same promotion bar as the decisive 2L/2L row (Table 21). Rank
+996
+       agreement and ﬁxed perturbation overlays are descriptive diagnostics rather than hypothesis tests.
+997
+998    Table 22: Headline robustness-gate ledger. The frozen rerun is within its abort tolerance, and the
+999    leave-one-out check is a nondegenerate PASS; the hostile re-adjudication counts state the boundary
+1000   at which signiﬁcance or direction would fail.
+1001   Diagnostic             Recorded quantity                                     Reading
+1002   Frozen rerun           n=400; s_conf accuracy 42.75%; deviation 0.0 pp;      Within abort tolerance
+1003                          abort tolerance 1 pp
+1004   Hostile b → c          166 discordants; one change moves the discordant      Change-count boundary
+1005   re-adjudication        proportion by 0.60 pp and b
+                                                        ∆ by 2/n=0.50 pp; 12
+1006                          changes lose signiﬁcance and 26 reverse the sign
+       Three-bucket rule      0<inﬂ≤margin: PASS; inﬂ>2/n: FAIL; zero inﬂuence:     Prespeciﬁed
+1007
+                              degenerate                                            categorization
+1008   Leave-one-out          Inﬂuence 0.283 pp on the 400-item bed; 1/n=0.25 pp;   Nondegenerate PASS
+1009                          margin/inﬂuence ≈ 21
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+1017
+1018
+1019
+1020
+1021
+1022
+1023
+1024
+1025
+
+
+
+                                                      19
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1026
+       H     A NONYMOUS R EPRODUCTION C HECKLIST
+1027
+1028   Table 23: Stable evidence-ID manifest for the quantitative statements exposed in the manuscript.
+1029   Each ID names an immutable object in the anonymous artifact bundle without exposing a local
+1030   machine path, execution identiﬁer, or revision token.
+1031   ID    Bundle object               Scope                                   Independent check
+1032
+       E10 Reference-bed single-draw     n = 400; sconf 171, mc_uniform          Recompute accuracy, discordants,
+1033
+           paired record                 115                                     exact McNemar, and registered SE
+1034   E11 Reference-bed matched-L       n = 400; sconf 171, mc_uniform          Recompute question bootstrap and
+1035       paired record                 119; b/c = 106/54                       Holm entry
+1036   E12 Reference-bed 2L and          n = 400; reference 119/135;             Recompute both intervals, exact
+1037       128-draw paired records       b/c = 109/57 and 82/46                  tests, and total-forward labels
+       E13 Fresh                         n = 819 persisted schedule              Replay schedules and recompute
+1038
+           conﬁdence/seeded-random                                               fresh, pilot, and pooled disclosures
+1039       paired record
+1040   E14 Fresh ﬁxed-order paired       n = 819 plus construction and           Recompute the primary pair and all
+1041       record                        position strata                         disclosed strata
+1042   E15 Reference                     Four n = 400 reference rows; exact      Recompute counts, exact p values,
+           chance-calibration ledger     two-sided test versus .25               and locked α = .01 verdicts
+1043
+1044
+1045
+       Table 24: Components included in the anonymous reproduction bundle. Each row has an immutable
+       manifest entry and a one-command validation check.
+1046
+1047   Component             Contents                                      Independent check
+1048   Sampling frames       Question identiﬁers, split membership,        Verify sample sizes, disjointness, and four-
+1049                         option count, and reference-option index      versus ﬁve-option chance levels
+1050
+                             for every pool
+       Distractor            Deterministic rules for generating,           Rebuild each choice set and compare all
+1051   construction          deduplicating, and shufﬂing numerical         candidate strings
+1052                         distractors
+1053   Prompt template       Exact instruction, question, choices,         Byte-compare rendered prompts before
+1054                         answer sufﬁx, and mask placement              decoding
+1055
+       Protocol              Conﬁdence, anti-conﬁdence,                    Run sampler self-checks, replay recorded
+       implementation        seeded-random, ﬁxed, and random-mask          schedules, and detect the documented
+1056                         schedules; tie policy; seed policy and        cross-process seed limitation
+1057                         persisted order traces
+1058   Judge and             Top-1 argmin rule, tie handling, answer       Recompute predictions and paired
+1059   extraction            parser, and invalid-output policy; no         correctness from score vectors
+1060
+                             partial credit
+       Statistics            Exact McNemar, paired intervals, Holm         Recompute every table cell from the
+1061                         families, binomial chance tests,              item-level records
+1062                         heterogeneity check, and SESOI formula
+1063   Figures               Deterministic regeneration scripts plus the   Regenerate quantitative PDFs and
+1064                         plotted data payloads they emit               byte-compare their numerical payloads
+1065
+       Manifest              Content hashes, environment speciﬁcation,     Validate dependencies before building the
+                             and command sequence                          canonical manuscript
+1066
+1067
+1068   Table 24 is the public traceability surface. Internal workﬂow labels, machine paths, task identi-
+1069
+       ﬁers, and revision tokens are intentionally absent from the double-blind manuscript while remaining
+       available to the artifact auditor.
+1070
+1071
+1072
+1073
+1074
+1075
+1076
+1077
+1078
+1079
+
+
+
+                                                            20
+

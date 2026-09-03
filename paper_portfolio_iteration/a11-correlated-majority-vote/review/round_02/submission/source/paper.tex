@@ -1,0 +1,1253 @@
+% =====================================================================
+% Master manuscript: finite-sample safe adaptive early stopping for
+% correlated majority-vote rollouts. Every number traces to an on-disk
+% artifact; see REPRO_README.md. Status: v2 (r470), appendices complete.
+% =====================================================================
+\documentclass{article}
+\pdfinfoomitdate=1
+\pdftrailerid{}
+\usepackage{iclr2027_conference,times}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\pdfinfo{/Producer( ) /Creator( )}
+\hypersetup{pdfcreator={ },pdfproducer={ }}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\flip}{\mathrm{flip}}
+\newcommand{\calD}{\mathrm{CAL}}
+\newcommand{\cert}{c_H}
+\newcommand{\HG}{\mathrm{HG}}
+\newcommand{\MV}{\mathrm{MV}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\P}{\mathbb{P}}
+
+\title{Finite-Sample Safe Adaptive Early Stopping for\\
+Correlated Majority-Vote Rollouts}
+\author{Anonymous}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Repeatedly sampling a model and taking a majority vote (self-consistency) is a
+standard way to spend inference compute, but the vote rarely needs all $N$
+samples. We give a
+\emph{mixture-posterior stopper} (BAYES-H) whose per-problem conditional flip
+certificate is exact: given a calibration prior $H$ over per-task pass counts,
+stop as soon as the posterior probability that the full-$N$ majority will
+disagree with the current prefix majority drops below $\alpha$. By the tower
+property the population flip rate of any such rule is bounded by $\alpha$
+\emph{without} a union bound over stopping times (adaptive is free), and the
+unknown-mixture layer adds only an empirical-Bernstein calibration step over
+problems, with Bonferroni control of the whole searched rule family.
+On 11{,}607 math problems with $N=32$ rollouts each (OpenMathReasoning),
+selected and evaluated under a strict FIT/CAL/TEST problem split with a single
+held-out readout, BAYES-H has an $81\%$ replay rollout-count reduction at realized flip rate
+$0.025\le\alpha=0.05$ and $73\%$ at $\alpha=0.02$, dominating the strongest
+distribution-free baseline (Hoeffding-fixed-$k$: $16\%$ at $\alpha=0.05$) with
+a statistically significant paired gap, and the strongest mixture-aware fixed
+budget (empirical-Bernstein fixed-$k$: $47\%$). An ESC-style window heuristic
+with an $86\%$ replay count reduction exceeds $0.05$ ($0.058>0.05$). Under
+pre-fixed synthetic ordered-drift mechanisms (front-loading, linear trend,
+adversarial block swap), BAYES-H is the most robust stopper in the reported
+harness. The displayed certificate-margin thresholds are exploratory
+descriptive sensitivity results, not frozen-selection or confirmatory claims.
+The supplied replay readout replicates on a disjoint second shard; transferring
+one fitted calibration mixture across shards (TV $0.042$) moves its reported
+quantities by $\le0.4$ points. This is deterministic fitted-mixture sensitivity,
+not a population-transfer certificate. Two further model--carrier pairs bracket the mechanism:
+on OpenR1-Math-220k (DeepSeek-R1, $M=2$ per problem) the certificate attains
+the replay risk--count frontier exactly when the mixture structure allows, and
+never stops under the stated replay certificate when it cannot; on RLVE
+(Qwen3-4B, $N=8$ per problem, verifiable environments) it
+lands at the intermediate point the mechanism predicts --- $51$--$58\%$
+replay count reduction at $\alpha\in\{0.10,0.05\}$, $45$--$48\%$ at
+$\alpha\in\{0.02,0.01\}$, certified at \emph{every} level down to
+$\alpha=0.01$ where \emph{no} distribution-free replay budget is certifiable.
+Every reported flip is disagreement between corresponding binary pass-count
+replay decisions, and every saving is $1-\bar k/N$; these artifacts do not
+measure a delivered-answer majority, gold correctness, generated tokens,
+latency, cancellation, or ordered online deployment.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig1_earlystop.png}
+\caption{\textbf{Conceptual overview with artifact-checked quantitative labels.} (a) Treat across-task heterogeneity as the
+certificate object: per-task pass rates are strongly bimodal, so the flip
+probability is a functional of the difficulty mixture $H$, not of a pooled
+correlation. (b) BAYES-H stops when the exact posterior flip probability
+$c_H(x,k)$ drops to $\alpha$; by the tower property adaptivity is free (no
+union bound), and calibration is one empirical-Bernstein step over tasks.
+(c) At $\alpha=0.05$ BAYES-H has an $80.9\%$ replay rollout-count reduction (realized flip
+$0.025$), dominating the strongest distribution-free baseline (FIXED-HOEF,
+$15.6\%$) and the strongest mixture-aware fixed budget (FIXED-EB, $46.9\%$);
+a certificate margin controls flip only in stated synthetic drift mechanisms,
+and all results replicate on a disjoint second shard. Panel (c)'s displayed
+numbers are rounded reproductions of the named replay artifacts, not
+measurements generated by the figure. The flip and count quantities are replay
+artifacts, not online correctness or operational-cost measurements
+(REPRO\_README.md).}
+\label{fig:overview}
+\end{figure}
+
+Self-consistency~\citep{wang2023selfconsistency} replaces one sampled answer
+by a majority vote over $N$ samples. Adaptive variants reduce or reallocate
+sampling: ASC~\citep{aggarwal2023asc} adapts a per-problem count with a
+lightweight stopping criterion, ESC~\citep{li2024esc} proposes early stopping
+for self-consistency, and MARS~\citep{chen2026mars} stops parallel traces using
+a conservative bound on future vote movement. For a count-only replay analysis,
+two deployment factors remain outside its evidence: (i) within-task rollouts
+may be correlated; and (ii) chronological generation order may drift, breaking
+an exchangeability-based certificate.
+
+We make two structural observations that reframe the problem. First, on real
+carriers the dominant deviation from i.i.d.\ is not latent within-task
+correlation but \emph{across-task heterogeneity}: per-task pass rates are
+strongly bimodal (Section~\ref{sec:model}), and the flip probability a
+stopper must control is a functional of the \emph{mixture} of per-task
+difficulty, not of a pooled correlation coefficient. Pooled second-moment
+summaries can be simultaneously over-conservative and uncalibrated
+(Section~\ref{sec:model}). Second, once the target is the mixture, the
+correct object is a \emph{per-prefix conditional certificate}: the posterior
+probability, given the observed prefix, that the full-$N$ majority disagrees.
+This object is exactly computable (hypergeometric posterior), its
+fixed-budget expectation $\E_H[f_K(k)]$ is monotone in the prefix
+length (Lemma~\ref{lem:exact}), and --- because the tower property
+collapses the stopping-time
+dependence --- it certifies \emph{any} adaptive rule at level $\alpha$ with no
+union bound (Theorem~\ref{thm:tower}).
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=1.6em,itemsep=1pt]
+\item \textbf{Framework.} A count-exchangeable replay model in which both
+within-task correlation and across-task heterogeneity are folded into a
+mixture $H$ over per-task pass counts; the certificate target is the flip
+probability under $H$, unifying the two effects (Section~\ref{sec:model}).
+\item \textbf{Method.} BAYES-H: stop when the posterior conditional flip
+probability $c_H(x,k)\le\alpha$. Exact certificates (Lemma~\ref{lem:exact}, Theorem~\ref{thm:tower}); adaptivity is free --- no union
+bound, no e-process tuning (Section~\ref{sec:method}).
+\item \textbf{Legitimate selection.} A FIT/CAL/TEST problem-level protocol in
+which the rule family (budget $\times$ level for fixed-$k$; level for BAYES-H)
+is selected on CAL with simultaneous empirical-Bernstein
+bounds~\citep{maurer2009eb} plus Bonferroni, and TEST is read once
+(Section~\ref{sec:protocol}).
+\item \textbf{Empirical replay result.} On 11{,}607 OpenMathReasoning problems,
+$80.9\%$ replay rollout-count reduction at realized flip $0.025$ ($\alpha=0.05$), vs $15.6\%$
+for the strongest distribution-free baseline at the same level; ESC-style
+window stopping is invalid ($0.058>0.05$). Gains are paired-CI significant
+(Section~\ref{sec:experiments}). Two further carriers with different models
+(DeepSeek-R1 at $M=2$; Qwen3-4B at $N=8$ on verifiable environments) show the
+certificate attains the replay risk--count frontier (stop when the replay
+certificate permits, otherwise not)
+and interpolates with the resolvable mixture structure, i.e.\ the method is
+carrier-aware rather than a generic stop-early trick
+(Section~\ref{sec:experiments}).
+\item \textbf{Honest boundaries.} The public carrier gives per-task pass
+\emph{counts}, not ordered rollouts; it supports a random-prefix
+(count-exchangeable) analysis only as a model assumption and cannot validate
+ordered online deployment. We therefore bound the failure domain under three
+pre-fixed synthetic ordered-drift mechanisms; displayed margin thresholds are
+exploratory/descriptive (Section~\ref{sec:drift}).
+\end{enumerate}
+
+\section{Related work}
+\label{sec:related}
+
+\textbf{Adaptive sampling for voting.} ASC~\citep{aggarwal2023asc} adapts a
+per-problem sample count using a lightweight stopping criterion, and
+ESC~\citep{li2024esc} proposes early stopping for self-consistency. We do not
+establish a finite-sample disagreement-with-full-vote guarantee for either;
+on our supplied heterogeneous replay carrier, the instantiated ESC-style rule
+exceeds $0.05$ (Table~\ref{tab:main}). MARS~\citep{chen2026mars} is a
+parallel trace-stopping method that bounds future vote movement; our work is
+instead a sequential count-exchangeable replay certificate. Best-of-$n$ and budget-forcing
+methods~\citep{snell2024scaling} tune compute without stopping certificates.
+
+\textbf{Conformal and anytime inference.} Conformal
+prediction~\citep{vovk2005algorithmic} gives marginal coverage under
+exchangeability; confidence sequences~\citep{howard2021cs} give anytime-valid
+bounds for i.i.d.\ means. Our certificate is neither: it is an \emph{exact
+posterior flip probability} under a calibrated discrete prior, valid
+conditionally per prefix (hence adaptivity is free), with the mixture
+estimated from calibration problems under an empirical-Bernstein
+bound~\citep{maurer2009eb}. The Bonferroni control of a small pre-declared
+rule family is deliberately conservative and transparent.
+
+\textbf{Dependent sampling.} Design-effect corrections~\citep{kish1965deff}
+shrink effective sample size by an intraclass correlation; we show pooled
+correlation is the wrong functional here (Section~\ref{sec:model}).
+Beta-binomial and correlated-Bernoulli
+models~\citep{skellam1948betabinomial} capture overdispersion but target
+estimation, not stopping certificates for the flip event.
+
+\paragraph{Feature boundary.} Table~\ref{tab:feature-compare} makes the
+source-verified distinction compact: the proposed object is a specified
+count-exchangeable full-vote \emph{replay} endpoint with a calibrated-mixture
+posterior flip certificate. It is not a general ordered-online early-stopping,
+conformal, or anytime-inference guarantee.
+
+\section{Model: count-exchangeable replay}
+\label{sec:model}
+
+A task's $N$ rollout outcomes are summarized by the pass count
+$K\in\{0,\dots,N\}$. Across tasks, $K\sim H$, a mixture capturing both
+task heterogeneity and any within-task correlation: the probability a fresh
+rollout passes, marginally, is $\E_H[K]/N$, and the joint law of the $N$
+outcomes is exchangeable \emph{within} a task given its realized count.
+Analysis model (\emph{replay}): the stopper observes a uniform random
+prefix drawn without replacement from the task's $N$ outcomes --- i.e., the
+first $k$ draws are exchangeable with the remaining $N-k$.
+Section~\ref{sec:drift} stress-tests departures from this model (ordered
+drift); our validity claims are stated relative to it, and the carrier
+limitation (counts only, no order) is made explicit in
+Section~\ref{sec:limits}.
+
+Let $\MV(k)=\mathbf{1}\{x_k>k/2\}$ with ties assigned to the negative side,
+and let $\MV(N)=\mathbf{1}\{K>N/2\}$ be the full-$N$ \emph{binary
+pass-count replay decision}.  It is not an aggregation of delivered textual
+answers or an actual delivered answer-majority: the replay model contains only
+binary pass/fail outcomes. The \emph{flip event} of a stopping rule $\tau$ is
+$\{\MV(\tau)\neq\MV(N)\}$.
+
+\begin{remark}[Why the mixture, not the correlation]
+\label{rem:pooled}
+On $\tau^2$-bench carriers (6 public task suites, 4 rollouts/task) we measured
+pooled within-task reward correlation $\hat\rho=0.47$--$0.59$, but a
+task-demeaned (fixed-effect) estimate gives $\hat\rho_{\mathrm{FE}}\approx-1/3
+\approx-1/(N-1)$, the demeaning artifact floor: essentially \emph{all}
+observed correlation is across-task heterogeneity, not latent within-task
+dependence. On OpenMathReasoning the per-task pass-rate variance exceeds the
+binomial baseline by $34\times$. The flip probability is driven by the mass of
+tasks with $K\approx N/2$ --- a mixture functional --- so pooled
+second-moment discounts are the wrong certificate statistic.
+\end{remark}
+
+\section{Method: the mixture-posterior stopper}
+\label{sec:method}
+
+\paragraph{Exact per-task flip probability.}
+Given count $K$, the prefix count $x_k$ is hypergeometric
+$\HG(N,K,k)$, hence
+\begin{equation}
+f_K(k) \;:=\; \P\big(\MV(k)\neq\MV(N)\,\big|\,K\big)
+= \sum_{x}\HG(N,K,k,x)\,\big|\mathrm{side}(x,k)-\mathrm{side}(K,N)\big|.
+\label{eq:exact}
+\end{equation}
+
+\begin{lemma}[Exactness and monotonicity]
+\label{lem:exact}
+\eqref{eq:exact} is an identity (no approximation). For every fixed $K$,
+$f_K(k)$ is nonincreasing in odd $k$; hence for any mixture $H$,
+$\E_H[f_K(k)]$ is nonincreasing and
+$k^*(\alpha)=\min\{k:\E_H[f_K(k)]\le\alpha\}$ is well defined and
+binary-searchable.
+\end{lemma}
+\begin{proof}
+The identity is a definition expansion. Monotonicity follows from a
+coupling of the prefixes at $k$ and $k{+}2$ on a common ordered draw.  The
+proof first handles the support-boundary case where the downward boundary atom
+has probability zero directly; only otherwise does it divide to obtain the
+ratio $(K-t)/(N-K-t)\ge0$ for $K>N/2$. The complementary case follows by
+pass/fail reflection (Appendix~\ref{app:proofs}). An exact-rational CPU audit
+checks every admissible $(N,K,k)$ for $2\le N\le64$, including
+$(32,17,29)$.
+\end{proof}
+
+\paragraph{Conditional certificate.}
+Given prior $H$ and an observed prefix $(x,k)$, define the posterior flip
+probability
+\begin{equation}
+\cert(x,k) \;:=\; \P_H\big(\mathrm{side}(K,N)\neq\mathrm{side}(x,k)\,\big|\,x,k\big),
+\qquad \text{posterior} \propto H[K]\cdot\HG(N,K,k,x).
+\label{eq:cond}
+\end{equation}
+We define the terminal certificate by $\cert(x,N):=0$. At a
+posterior-supported terminal state, the hypergeometric likelihood has support
+only on $K=x_N$, so this convention equals the conditional flip probability:
+$\cert(x_N,N)=0$. It also gives the correct endpoint value for a
+zero-prior-mass row of a frozen certificate table, because the observed total
+count already fixes the binary full-$N$ replay decision.
+
+\begin{theorem}[Adaptive is free]
+\label{thm:tower}
+Let $\tau$ be any stopping time measurable w.r.t.\ the prefix filtration that
+stops only at states with $\cert(x_\tau,\tau)\le\alpha$. The terminal state
+$k=N$ satisfies this same rule because $\cert(x_N,N)=0$. Then
+$\P(\MV(\tau)\neq\MV(N)) = \E[\cert(x_\tau,\tau)] \le \alpha$,
+with equality in the identity and no union bound over stopping times.
+\end{theorem}
+\begin{proof}
+$\P(\flip)=\E[\P(\flip\mid\text{prefix path})]$. For any path stopped at
+$(x,k)$, $\P(\MV(N)\neq\mathrm{side}(x,k)\mid\text{path})=\cert(x,k)$ since
+the posterior is exactly the conditional law of $K$ and $\MV(N)$ is a
+function of $K$. At $\tau=N$, $x_N=K$ and hence this conditional probability
+is $\cert(x_N,N)=0$; at every earlier stopped state it is at most $\alpha$ by
+the rule. Thus the integrand is bounded pointwise by $\alpha$, and taking
+expectations gives the claim.
+\end{proof}
+
+\textbf{BAYES-H} is the rule $\tau=\min\{k\ge 3:\cert(x_k,k)\le\alpha\}$ with
+$H=\widehat H_m$, the calibration empirical mixture. Its per-task exact flip
+probability and expected stopping time under any true count $K$ are computable
+by a linear-time DP over prefix states $(k,x)$ (Appendix~\ref{app:dp}),
+enabling exact calibration and evaluation without Monte Carlo.
+
+\begin{theorem}[Population layer]
+\label{thm:pop}
+Let $g(K;\alpha,\widehat H_m)$ be the exact per-task flip probability of
+BAYES-H under count $K$, and let
+$\bar g_{\calD}$, $s^2_{\calD}$ be its mean and variance over $m$ calibration
+problems. With probability $1-\delta$ over the calibration sample,
+\[
+\P_{\text{replay},H}(\flip) \;\le\; \bar g_{\calD}
++ \sqrt{\tfrac{2 s^2_{\calD}\log(4/\delta)}{m}}
++ \tfrac{7\log(4/\delta)}{3(m-1)},
+\]
+by the empirical-Bernstein inequality~\citep{maurer2009eb} applied to the
+bounded per-task flips $g\in[0,1]$, with $\delta$ split by Bonferroni over the
+pre-declared selection family ($J=64$ candidates; Section~\ref{sec:protocol}).
+\end{theorem}
+\begin{remark}[No Jensen gap]
+The population flip rate under replay is a \emph{linear} functional of $H$:
+$\P(\flip)=\sum_K H[K]\,g(K)$. Hence estimation error in $\widehat H_m$ enters
+only through the empirical mean of a bounded per-task quantity --- there is no
+Jensen correction, and empirical Bernstein is essentially tight at $m=4000$.
+\end{remark}
+\begin{proposition}[Exact deterministic TV sensitivity of a frozen rule]
+\label{prop:tv}
+Fix the rule (certificate tables frozen from $\widehat H$) and let $g(K)$ be
+its exact per-task flip probability. Over the total-variation ball
+$B_R=\{q:q\ge0,\sum_K q_K=1,\|q-\widehat H\|_1\le 2R\}$,
+\[
+V(R)\;:=\;\max_{q\in B_R}\;\textstyle\sum_K q_K\,g(K)
+\]
+is a linear program whose optimum is a two-sided greedy: add mass to atoms in
+descending $g$ (capped by $q_K\le1$) and drain mass from atoms in ascending
+$g$ (capped by $\widehat H_K$); $V(R)$ is hence computable in closed form in
+$O(N\log N)$. For the positive radii and realized capacities checked in the
+supplied LP grids, it is strictly below the $1$-Lipschitz envelope
+$\flip(\widehat H)+R$; no universal strict-refinement claim is made. The
+\emph{critical radius} $\tau^*(\alpha)=\max\{R:V(R)\le\alpha\}$ is a
+deterministic property of the frozen rule and fitted reference mixture. It
+becomes a population certificate only after separately proving that an unknown
+target mixture lies in $B_R$, which current artifacts do not do.
+\end{proposition}
+On the OMR carrier the critical radii are
+$\tau^*(0.10/0.05/0.02/0.01)=0.144/0.078/0.074/0.052$
+(shard~0) and $0.157/0.082/0.076/0.024$ (shard~1)
+(\texttt{tv\_robustness\_r481\_result.json}; the closed form matches a direct
+simplex LP to $10^{-6}$ on a $6\times4\times2$ grid of radii, levels and
+shards). Three consequences: \emph{(i)} at the observed cross-shard mismatch
+$R=0.042$, the fixed-rule sensitivity calculation returns $0.039$ at the
+$0.05$ table and $0.016$ at the $0.02$ table. It describes an assumed ball
+around a fitted mixture, not containment of either shard's unknown population
+mixture; at $0.01$, $\tau^*(0.01)=0.024<0.042$. \emph{(ii)} Tightening a frozen
+table gives a deterministic $B_R$ sensitivity calculation (at $R=0.05$, the
+$0.10$ table re-evaluated at $0.05$ has $V(R)=0.042$ and $80.3\%$ replay count
+reduction), not a ``validity band'' without a target-mixture confidence set;
+\emph{(iii)} at every level a $36$--$47\%$ mass of atoms has
+$g(K)=0$ exactly (the certificate stops only on states the prefix already
+decides), which is why $V(R)$ grows far slower than the Lipschitz rate
+$R\cdot\max_K g(K)$.
+\emph{Cross-carrier.} On the RLVE carrier ($N{=}8$; same frozen FIT prior as
+Section~\ref{sec:experiments}, no TEST re-read) the same closed form gives
+$\tau^*(0.10/0.05/0.02/0.01)=0.199/0.551/0.213/0.449$
+(\texttt{tv\_robustness\_rlve\_r482\_result.json}; LP cross-check matches to
+$10^{-6}$). The radii are \emph{larger} than on OMR at every level even
+though the RLVE prior is no more heterogeneous (het-excess variance
+$0.0999$ vs $0.129$): the RLVE prior concentrates $74$--$87\%$ of its mass
+on \emph{zero}-$g$ atoms (vs $36$--$47\%$ on OMR), and with only $N{=}8$
+atoms the worst-case adversary has few high-$g$ directions in which to
+move mass. Across carriers $\tau^*$ co-varies with the \emph{alignment} of
+the prior with the zero-$g$ set and is uncorrelated with heterogeneity
+(het-excess vs $\tau^*$: Spearman $0.01$; het-excess vs alignment: $0.05$
+--- the two candidate drivers are not confounded). The
+alignment--$\tau^*$ co-variation is a \emph{between-carrier} law: pooled
+Spearman $0.75$ over the 16 carrier$\times$level cells, $1.0$ over the
+four carrier means, $0.63$ with the two whole-simplex-plateau cells
+removed; \emph{within} OMR it is negative ($-0.95$/$-0.89$ per shard ---
+tightening the level moves the zero-g set only at the most-aggressive
+end, where mass is added on the lowest-$g$ atoms), positive within RLVE
+($0.32$) and OpenR1 ($1.0$) (decomposition audit:
+\texttt{spearman\_decomposition\_r486\_result.json};
+Appendix~\ref{app:tau}). (Two disclosures: $\tau^*$
+bisection uses $R\in[0,1]$ here ($0.551>0.5$ exceeds the $[0,0.5]$ range
+sufficient for OMR); $\tau^*$ is non-monotone in $\alpha$ ---
+$\tau^*(0.05)>\tau^*(0.10)$ --- because tightening $\alpha$ zeroes $K{=}6$
+($g:0.107\!\to\!0$) and shrinks $K{=}5$ ($0.339\!\to\!0.071$), flattening
+the $g$-profile's top faster than the budget tightens; internal drops
+exist as well (the curve has $7$ rule-change breakpoints on the plotted
+range, Figure~\ref{fig:tau}), so $\tau^*$ should not be read as globally
+monotone in $\alpha$.)
+\emph{Three-atom edge case.} On OpenR1 ($M{=}2$; same frozen FIT prior, no
+TEST re-read) the support is three atoms $p\in\{0,\tfrac12,1\}$ and
+$g(0)=g(1)=0$ at every level (a decided prefix cannot be overturned by one
+more rollout), so the worst case is a pure one-sided pump into the unique
+positive-$g$ atom: $V(R)=\flip(\widehat H)+g_{\max}R$ exactly and
+$\tau^*(\alpha)=\alpha/g_{\max}-\widehat H(\tfrac12)$ in closed form
+(\texttt{tv\_robustness\_openr1\_r483\_result.json}; scan match $10^{-9}$,
+LP $10^{-6}$). Since $g_{\max}$ tracks the certificates ($0.0785/0.0460$):
+$\tau^*(0.10)=\tau^*(0.05)=0.168$ (halving $\alpha$ past $0.0785$ halves
+$g_{\max}$, $0.25\!\to\!0.125$), while $\tau^*(0.02)=\tau^*(0.01)=1$ ---
+below the smallest certificate the frozen rule never stops, $V(R)\equiv0$,
+no prior shift can break it. Non-monotonicity is thus maximal here
+($0.168\!\to\!1$); zero-$g$ mass $76.8\%$ sits between OMR's $36$--$47\%$
+and RLVE's $74$--$87\%$, completing the pattern from the low-support side.
+\emph{Conservation curve.} Appendix~\ref{app:tau} maps
+$\tau^*(\alpha)$ on the dense continuum $\alpha\in[10^{-3},0.2]$ for all
+three carriers: the curve is analytically staircase-shaped ---
+non-decreasing inside each constant-rule interval, so that every jump of
+$\tau^*$ is a strict \emph{drop} exactly at a certificate threshold
+(analytic on OpenR1: $\tau^*$ drops by $0.314$ at $\alpha=0.0785$ and by
+$0.864$ at $0.0460$). The practical reading is a
+staircase interpretation of the certificate level: at a rule-change
+breakpoint, a small budget relaxation buys a discrete jump in certified
+drift tolerance, so $\alpha$ should be set on a step, not inside one.
+
+\begin{remark}[Continuous-$\alpha$ selection is free for \textsc{Bayes-H}]
+\label{rem:nested}
+The stopping condition $c_{\widehat H}(x,k)\le\alpha$ does not involve
+$\alpha$ on the left-hand side, so the \textsc{Bayes-H} rule family is
+\emph{nested} in $\alpha$: as $\alpha$ varies continuously, the rule changes
+only at the finitely many breakpoints given by the distinct values of
+$c_{\widehat H}(x,k)$ --- at most $\sum_{k=3}^{N}(k+1)$ stoppable states
+($555$ at $N{=}32$; $267$ distinct values observed, plus the never-stop
+rule). These are three distinct counts: $555$ stoppable states bound the
+possible rule changes; only $267$ \emph{distinct} certificate values are
+observed on the support, and the rule family has one rule per value
+\emph{plus} the never-stop rule ($268$ in total; shrunk to $182$ below
+for the tested range). A union bound over this breakpoint family
+therefore
+certifies the \emph{entire continuum} $\alpha\in(0,0.10]$
+simultaneously --- no pre-declared $\alpha$ grid is needed. The family can
+be shrunk further with no loss: for the range $\alpha\in(0,0.10]$ only the
+$181$ distinct positive certificate values ${\le}0.10$ are
+rule-distinguishing (values $>0.10$ never trigger any rule in the range;
+zero-certificate states stop under every $\alpha>0$), so the exact
+effective family has $182$ rules ($J=6{,}501$ including the FIXED-$k$ part)
+instead of the $9{,}339$ obtained by counting all observed breakpoints; the
+four reference selections below are unchanged and their UCBs tighten by
+${\le}6\times10^{-4}$ (\texttt{prop\_562bound\_r479\_result.json}). On our
+calibration pool the enlarged family
+($J_{\rm cont}=9{,}339$ vs.\ $J=64$) inflates UCBs only through the
+logarithmic factor; the selected replay-count-optimal \textsc{Bayes-H} rule is
+bit-for-bit identical at $\alpha\in\{0.10,0.05,0.02\}$ and tightens only at
+$\alpha=0.01$ (mean $k$ $10.3\!\to\!11.9$), while the weaker FIXED-EB
+baseline loses its $\alpha=0.02$ budget under \emph{either} family size
+(\texttt{alpha\_continuous\_r478\_result.json}).
+\end{remark}
+
+\section{Protocol: FIT/CAL/TEST with a legitimate selection family}
+\label{sec:protocol}
+
+\textbf{Split.} 11{,}607 problems are partitioned once (seeded) into FIT
+(4000), CAL (4000), TEST (3607). FIT estimates $\widehat H$ and freezes the
+BAYES-H certificate tables. CAL selects rules from the pre-declared family:
+fixed-$k$ candidates $k\in\{3,5,\dots,31\}\times\alpha\in\{0.10,0.05,0.02,
+0.01\}$ (60 certificates) and BAYES-H at the same 4 levels, with simultaneous
+empirical-Bernstein UCBs at per-test $\delta=0.05/64$. $k^*(\alpha)$ is the
+smallest budget whose CAL UCB is $\le\alpha$; BAYES-H is accepted at level
+$\alpha$ iff its CAL UCB is $\le\alpha$. TEST is read exactly once. All
+evaluation uses the exact per-task flip functions (\eqref{eq:exact} for
+fixed-$k$; the DP of Appendix~\ref{app:dp} for BAYES-H), so TEST numbers are
+exact replay quantities, not MC estimates; the DP itself is cross-checked
+against replay MC (max deviation $0.043$ within $3\sigma_{\rm MC}=0.075$).
+
+\textbf{Baselines.} FULL-$N$; FIXED-HOEF (fixed budget selected with
+distribution-free Hoeffding UCBs, the strongest model-free competitor);
+FIXED-EB (fixed budget with the same mixture-aware empirical-Bernstein
+machinery as BAYES-H --- isolates the value of adaptivity);
+BAYES-UNIF (uniform prior; not a certificate when the prior is wrong);
+WINDOW3 (ESC-style: stop when 3 consecutive samples agree with the current
+majority --- no certificate knob).
+
+\section{Experiments}
+\label{sec:experiments}
+
+\paragraph{Carrier.} OpenMathReasoning CoT shard 0~\citep{moshkov2025openmathreasoning} (CC-BY-4.0): the
+\texttt{pass\_rate\_72b\_tir} column gives, for 11{,}607 unique problems, the
+exact pass count $K$ of Qwen2.5-Math-72B-TIR over $N=32$ rollouts --- no
+answer-extraction noise. Pass rates are strongly bimodal: $45\%$ of problems
+have $p\le0.1$ or $p\ge0.9$; $11.6\%$ sit in $[0.4,0.6]$. This carrier is a
+count-only carrier used for the \emph{count-exchangeable replay} analysis:
+it supplies per-task counts but no rollout order, so the random-prefix
+assumption is a modeling condition rather than an observed chronology
+(Section~\ref{sec:drift}).
+
+\paragraph{Main table.} Table~\ref{tab:main} reports the single TEST readout
+(Bonferroni CI radius $0.0286$ across the 9 reported rules). In this section,
+``valid'' means replay full-vote flip $\le\alpha$; TEST is descriptive
+(selection was certified on CAL). Neither flip nor count reduction is gold
+correctness or an operational token, latency, or cancellation measurement.
+
+\begin{table}[t]
+\centering\small
+\caption{TEST readout ($n=3607$ problems, $N=32$; $8$ rule--level rows
+under the Bonferroni CI of Section~\ref{sec:protocol} plus FULL-$32$ as the
+zero-count-reduction reference). Replay count reduction $=1-\bar k/32$.
+BAYES-H attains the largest valid replay count reduction at $\alpha=0.05$ and $0.02$;
+at $\alpha=0.10$ FIXED-EB has $84.4\%$ replay count reduction versus BAYES-H $84.0\%$ (a
+$0.4$-point gap in mean replay count on this test pool, descriptive, no paired
+CI computed for this pair), while BAYES-H keeps the lowest realized
+flip at every level.
+WINDOW3 has the largest replay count reduction but is invalid at $\alpha\le0.05$.}
+\label{tab:main}
+\begin{tabular}{llccc}
+\toprule
+Rule & $\alpha$ & replay full-vote flip & mean $k$ & count reduction \\
+\midrule
+FULL-32 & --- & 0 & 32.0 & 0 \\
+WINDOW3 (ESC-style) & --- & \textbf{0.0577} & 4.4 & 86.2\% \\
+\midrule
+FIXED-HOEF $k^*{=}7$  & 0.10 & 0.0645 & 7.0 & 78.1\% \\
+FIXED-EB   $k^*{=}5$  & 0.10 & 0.0794 & 5.0 & 84.4\% \\
+BAYES-H               & 0.10 & \textbf{0.0370} & 5.1 & \textbf{84.0\%} \\
+\midrule
+FIXED-HOEF $k^*{=}27$ & 0.05 & 0.0156 & 27.0 & 15.6\% \\
+FIXED-EB   $k^*{=}17$ & 0.05 & 0.0324 & 17.0 & 46.9\% \\
+BAYES-H               & 0.05 & \textbf{0.0249} & 6.1 & \textbf{80.9\%} \\
+\midrule
+FIXED-HOEF & 0.02 & \multicolumn{3}{c}{\emph{no certifiable budget}} \\
+FIXED-EB   $k^*{=}31$ & 0.02 & 0.0083 & 31.0 & 3.1\% \\
+BAYES-H               & 0.02 & \textbf{0.0091} & 8.5 & \textbf{73.5\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Fair comparison.} Against the strongest distribution-free baseline
+(FIXED-HOEF) at the same $\alpha$, BAYES-H's paired per-problem replay-count-reduction gap is
+$+0.058$ (CI radius $0.029$) at $\alpha=0.10$ and $+0.652\pm0.029$ at
+$\alpha=0.05$ --- a $5.2\times$ improvement over the baseline's $15.6\%$
+count reduction; at $\alpha=0.02$ the baseline has \emph{no} certifiable budget while
+BAYES-H still has a $73.5\%$ reduction. Against the strongest mixture-aware fixed budget
+(FIXED-EB), adaptivity adds $+34$ points of replay count reduction at $\alpha=0.05$
+($80.9\%$ vs $46.9\%$) and $+70$ points at $\alpha=0.02$ --- the adaptive
+advantage grows as $\alpha$ tightens, because the conditional certificate
+stops early exactly on the bimodal mass (extreme-$K$ problems stop at
+$k\approx5$) and waits only on the $11.6\%$ of mid-difficulty problems.
+
+\paragraph{Cross-source transfer.} Splitting CAL/TEST across the four AoPS
+problem sources (train on three, test on the fourth), BAYES-H stays valid on
+all transfers (replay flip $0.021$--$0.033<\alpha=0.05$; count reduction $79$--$83\%$).
+This supplied count-replay readout is descriptive of these source splits; it
+does not establish ordered online transfer.
+
+\paragraph{Second-shard replication and prior-mismatch transfer.}
+We replicate the entire chain on a disjoint carrier, OpenMathReasoning CoT
+shard~1 (11{,}454 problems, same $N{=}32$ pass counts; SHA-256 pinned), whose
+mixture structure is near-identical (heterogeneity excess $0.125$ vs $0.129$;
+$44.4\%$ extreme-$p$ mass). Two runs share the CAL/TEST problems of shard~1 and
+differ only in the prior's provenance. \emph{(i) Within-shard}: the prior is
+fit on shard~1's own FIT split; every qualitative replay conclusion reproduces ---
+BAYES-H has $80.6\%$ replay count reduction at realized flip $0.025$ ($\alpha=0.05$) and $73.1\%$ at
+$0.009$ ($\alpha=0.02$), vs $15.6\%$ and \emph{no certifiable budget} for
+FIXED-HOEF. \emph{(ii) Cross-shard prior transfer}: the prior is fit on
+shard~0 FIT (fitted-mixture TV distance to the shard~1 fit $=0.042$) and the
+certificate is selected and read on shard~1. All numbers move by $\le0.4$
+points (count reduction $80.6\%$/$73.2\%$; flips $0.025$/$0.009$). This is a
+small movement in one supplied count-replay transfer and a deterministic
+fitted-mixture sensitivity diagnostic, not a statistical population-transfer
+certificate or a demonstration of robustness to naturally ordered online
+rollouts (Section~\ref{sec:model}).
+
+\paragraph{Second model--carrier pair: OpenR1-Math-220k (DeepSeek-R1, $M=2$).}
+To probe the mechanism under a different model and a structurally opposite
+carrier, we run the identical chain on OpenR1-Math-220k (MIT; 9{,}374 unique
+problems, two deduplicated DeepSeek-R1 rollouts each, HF snapshot
+\texttt{e4e141ec}). Under the replay model, the full vote is
+the 2-vote majority (ties broken by a pre-drawn fair coin), the only stoppable
+prefix is $k=1$, and per-problem risk is analytic. The only identifiable
+prior at $M=2$ is coarse (three atoms $p\in\{0,\tfrac12,1\}$, fit by exact
+pair-type moment matching): $25\%$ always-fail, $23\%$ coin-flip, $52\%$
+always-pass. Results (FIT/CAL/TEST 3000/3000/2853):
+\emph{(i)} the conditional certificate attains the replay risk--count \emph{frontier}:
+at $\alpha=0.20$ it stops on every problem (flip $0.059\le\alpha$,
+$50\%$ replay count reduction); at $\alpha=0.10$ full stopping has the tightest
+distribution-free UCB $0.080\le\alpha$ and is certified with the same
+realized flip and count reduction; at $\alpha=0.05$ it stops only on the
+sub-population whose observed prefix certifies (positive-side prefix),
+giving $32\%$ replay count reduction at flip $0.029\le\alpha$; at $\alpha=0.02$ it \emph{never}
+stops --- and no legal certificate can, since stopping at $k{=}1$ on any
+problem carries posterior risk $>0.02$; \emph{(ii)} the realized flip of
+always stopping at $k{=}1$ ($0.059$) matches its analytic value
+$\E_H[p(1{-}p)]=0.058$ to Monte-Carlo precision. Replay count reduction is bought by mixture \emph{structure} that a prefix can
+resolve: with $M=2$ there is at most one draw of prefix information, and the
+certificate extracts exactly the count reduction that structure allows --- $50\%$ at
+loose levels, partial at $\alpha=0.05$, honestly nothing at $\alpha=0.02$ ---
+versus $81\%$/$73\%$ at $\alpha=0.05/0.02$ on the $N{=}32$ OMR carrier. This
+is cross-model replay evidence for the stated mechanism; it does not test
+chronological online deployment, gold correctness, or operational cost.
+
+\paragraph{Third model--carrier pair: RLVE (Qwen3-4B, $N=8$).} The two
+carriers above close the extremes ($N{=}32$ rich-prefix vs $M{=}2$
+near-prefix-free). To probe the intermediate regime under a third model
+family and a different task family, we run the identical chain on RLVE
+teacher rollouts (Qwen3-4B-Thinking-2507, pass@8 on 9{,}000 verifiable
+counting/combinatorics environments; Apache-2.0; HF snapshot
+\texttt{eaeec946}). Success is the offline Gym-verifier reward being positive
+(a small mass of fractional partial credit is counted as failure). The
+mixture is again strongly U-shaped ($42\%$ extreme problems, heterogeneity
+excess $0.100$ over the binomial baseline). Results (FIT/CAL/TEST
+3000/3000/3000): \emph{(i)} BAYES-H has replay count reduction $57.6\%$/$50.9\%$/$48.2\%$/$45.4\%$
+at $\alpha=0.10/0.05/0.02/0.01$ with realized flips
+$0.031$/$0.010$/$0.005$/$0.002$ --- conservative at every level;
+\emph{(ii)} the certificate passes at \emph{every} level down to
+$\alpha=0.01$, while \emph{no} distribution-free budget is certifiable below
+$\alpha=0.10$ (FIXED-EB and FIXED-Hoeffding both null at
+$\alpha\le0.05$) --- at $\alpha=0.10$ the paired replay-count-reduction gap over
+FIXED-Hoeffding is $+0.20$ (CI radius $0.03$, significant); \emph{(iii)} the
+exact DP prediction matches a 3{,}000-draw replay Monte-Carlo on held-out
+problems (flip within $0.004$, mean $k$ within $0.04$). Two descriptive
+diagnostics: the recorded sample-id success slope is flat
+(pooled slope $-7.8\times10^{-5}$/trial; per-position rates $0.316$--$0.326$),
+consistent with near-exchangeable sampling in this carrier; and the replay count reduction
+interpolates with resolvable structure exactly as the mechanism predicts
+($81\%$ at $N{=}32$ with 15 stoppable budgets, $45$--$58\%$ at $N{=}8$ with
+3, $32$--$50\%$ at $M{=}2$ with 1; all in-distribution replay readouts collected in
+Appendix~\ref{app:matrix}). The sample-id diagnostic does not audit an online
+policy or make the count-replay certificate valid for deployment order.
+
+\paragraph{Why the window heuristic fails.} On mid-difficulty problems
+($K\approx16$), three consecutive agreements with the current majority is a
+\emph{common} event under near-coin-flip draws, not evidence the vote has
+settled: WINDOW3 realizes flip $0.058$ at mean $k=4.4$. Its flip rate is
+nearly flat in $\alpha$ (it has no certificate knob): it can only be tuned by
+window length, and its certified population UCB is $0.061$
+(\texttt{adaptive\_sweep\_r468\_result.json}), so it barely misses even the
+loosest tested level $\alpha=0.10$ on the full OMR test pool.
+
+\section{Synthetic ordered drift: failure domain and margin repair}
+\label{sec:drift}
+
+The replay model assumes prefixes are exchangeable with the held remainder.
+Because the carrier contains no observed chronology, we apply three
+\emph{pre-fixed synthetic} drift mechanisms to its true counts
+($\delta\in\{0,0.05,0.10,0.15,0.20\}$, 2000 TEST problems, 500 orders each):
+\textbf{E1} (front-load: the first $k$ draws are enriched/depleted in passes
+by count $D=\lceil 2\delta\min(K,N{-}K)\rceil$), \textbf{E2} (linear per-draw
+pass-rate trend $p_j=K/N+\delta(2j/(N{-}1){-}1)$), \textbf{E3} (adversarial
+block: the last $\lceil\delta N\rceil$ draws drift toward the minority side).
+
+Findings (full tables in Appendix~\ref{app:drift}):
+(i) all methods break under E1 by $\delta=0.10$--$0.15$ in this harness; the certificate is
+honest about its premise --- E1 violates exchangeability by construction;
+(ii) under the gentler E2/E3, BAYES-H is the \emph{most} robust stopper in this synthetic grid: at
+$\alpha=0.10$ it remains valid to $\delta=0.20$ under E2 (flip $0.083$) while
+FIXED-$k$ breaks at $\delta=0.15$ and WINDOW3 breaks at $\delta=0.20$
+(flip $0.104$; under E3 WINDOW3 stays valid throughout, its last-window
+rule never reaching the drifting tail); at $\alpha=0.05$ under E3 it
+breaks only at $\delta=0.15$ (flip $0.052$), while FIXED-EB survives (it stops
+at $k=17$, having seen half the block); (iii) an exploratory margin scan
+illustrates a synthetic flip/count tradeoff. No frozen margin-selection record
+is bundled, so its thresholds are not confirmatory. Under E3 at $\alpha=0.05$,
+the explored margin $\gamma=0.025$
+covers $\delta\le0.15$ (flip $0.0495$, replay count reduction $77.2\%$ vs $81.0\%$
+unmargined in the stress harness; the unmargined exact TEST readout of
+Table~\ref{tab:main} is $80.9\%$); covering the extreme $\delta=0.20$
+adversarial block requires
+$\gamma>0.03$ (count-reduction cost $>7$ points), and under the smoother E2 trend
+$\gamma=0.03$ covers the full tested range $\delta\le0.20$ (flip $0.0491$,
+count reduction $71.8\%$). The drift budget $\delta$ could be estimated on CAL
+only if ordered rollouts are retained; on this count-only carrier it is assumed.
+This synthetic analysis neither measures nor certifies natural online order.
+
+\section{Limitations}
+\label{sec:limits}
+(i) The public carrier provides pass \emph{counts}, not ordered rollouts: all
+main results are exact only under the count-exchangeable replay model; the
+synthetic stress mechanisms of Section~\ref{sec:drift} only characterize
+specified departures from that model. The certificate is a replay-model conditional
+certificate, not an e-process: validity under arbitrary online stopping
+times in ordered deployment is outside the stated claims. No supplied run
+compares the stopped answer with gold correctness, or records generated tokens,
+latency, cancellation acknowledgement, or post-cancellation work; full-vote
+agreement and $1-\bar k/N$ cannot substitute for those endpoints. (ii) The mixture prior is estimated from 4000
+calibration problems of the same distribution; adversarial mixture shift
+beyond the tested transfer range can break the certificate; the exact
+critical radii of Proposition~\ref{prop:tv} give deterministic frozen-rule
+sensitivity radii over an assumed fitted-mixture TV ball
+($\tau^*=0.024$--$0.157$ across levels and shards); they do not establish
+target-population containment.  Within that assumed ball the failure boundary
+is sharp --- at $\alpha=0.01$ on shard~1 the observed cross-shard
+mismatch $0.042$ already exceeds $\tau^*(0.01)=0.024$; and the radii are
+\emph{rule-conditional}: $\tau^*(\alpha)$ is a staircase with jumps at the
+certificate thresholds (Appendix~\ref{app:tau}), so the level $\alpha$
+should be read as choosing a step of that staircase, not a point of a
+smooth trade-off. Along the estimation axis, Appendix~\ref{app:tau}(e)
+shows $\tau^*$ is not monotone in the prior-fit size $m$; the
+decomposition of Appendix~\ref{app:tau}(f) attributes this to the
+\emph{rule} the fit induces (freezing the prior leaves the
+non-monotonicity intact; freezing the rule removes the largest dips),
+not the prior's sampling error. Appendix~\ref{app:tau}(g) turns that
+attribution into a constructive repair: a per-atom flip budget
+implemented as a certificate-ordered subset of stopping states provably
+dominates the induced profile, restores the full simplex
+($\tau^*=1$, trivial frozen-rule regime) at $70$ of $72$ cells for
+$+1\%$--$+11\%$ extra votes, and repairs the coarse-fit breaks below
+--- while two alternatives (prior support truncation, deadline
+truncation) provably do not. On OMR shard~1 the coarsest fit
+$m{=}125$ breaks the
+transferred certificate at $\alpha\le0.02$ while $m\ge250$ --- or the
+flip-budget repair at any $m$ --- restores it.
+Appendix~\ref{app:matrix} collects every in-distribution readout and its
+failure boundary in one matrix.
+(iii) Lemma~\ref{lem:exact}'s monotonicity is proved in closed form
+(Appendix~\ref{app:proofs}) and independently verified exhaustively at
+$N=32$.
+(iv) Main-table counts come from one model--task pair
+(Qwen2.5-Math-72B-TIR, math problems); generality across problem pools is
+supported by the disjoint second-shard replication and cross-shard prior
+transfer, and generality across models and task families by two further
+model--carrier pairs --- DeepSeek-R1 rollouts on OpenR1-Math-220k ($M=2$),
+on which the certificate attains its replay risk--count frontier, and
+Qwen3-4B rollouts on RLVE verifiable environments ($N=8$), on which it is
+certified at every tested level and interpolates with the resolvable mixture
+structure (Section~\ref{sec:experiments}).
+(v) At $k=N$, the observed pass count equals $K$, so the binary pass-count
+replay decision agrees with itself and $\cert(x_N,N)=0$. Terminal stops add
+zero replay flip for every true count; this endpoint convention is shared by
+Theorem~\ref{thm:tower} and the DP in Appendix~\ref{app:dp}.
+
+\section{Conclusion}
+Treating across-task heterogeneity as the certificate object turns early
+stopping for majority voting into an exact conditional-inference problem under
+the replay model: adaptivity is free (tower property), calibration is one
+empirical-Bernstein step over problems, and the supplied OMR readout has an
+$81\%$ replay rollout-count reduction at full-vote flip level $0.05$, where
+the strongest distribution-free baseline has $16\%$ and the strongest fixed
+mixture-aware budget $47\%$. The same framework admits a synthetic
+ordered-drift analysis with a margin repair, while natural online order, gold
+correctness, and actual token/latency/cancellation costs remain open.
+
+\section*{Reproducibility statement}
+The count-replay analyses, assumptions, split protocol, and complete proofs
+are specified in Sections~\ref{sec:model}--\ref{sec:protocol} and the
+appendix. The supplied artifacts, pinned carrier checksums, deterministic
+seeds, and claim checker are indexed in the anonymous supplementary
+reproduction package; its current limitations, including unavailable upstream
+carrier paths and the absence of ordered online telemetry, are stated in
+Section~\ref{sec:limits}.
+
+\section*{AI-use statement}
+Generative AI tools were used to assist manuscript-language revision,
+evidence and citation auditing, build checks, and internal pre-submission
+review, including the Codex multi-agent revision and audit documented for this
+version. A generative image tool was also used to compose Figure~\ref{fig:overview}'s
+conceptual layout; its quantitative labels were independently checked against
+the cited on-disk result artifacts. These tools did not generate, execute, or
+replace the reported scientific experiments, their quantitative result
+artifacts or values, or the final technical judgments; the authors reviewed
+the changes and remain responsible for the paper.
+
+\bibliography{references}
+\bibliographystyle{iclr2027_conference}
+
+\appendix
+\input{appendix_proofs}
+
+\input{appendix_dp}
+
+\section{Feature comparison and appendix roadmap}
+\label{app:positioning}
+This appendix separates proof (Appendix~A), exact DP bookkeeping (Appendix~B),
+synthetic diagnostics, and fixed-rule sensitivity. None expands the main
+count-exchangeable replay claim to online correctness or operational cost.
+\begin{table}[h]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{0.17\linewidth}p{0.23\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+\toprule
+Work & Endpoint & Order/model & Guarantee / selection \\
+\midrule
+ASC \citep{aggarwal2023asc}; ESC \citep{li2024esc} & adaptive self-consistency & implementation-specific sequential sampling & no claim here about their universal full-vote certificate \\
+MARS \citep{chen2026mars} & parallel trace vote movement & parallel traces/checkpoints & conservative future-movement bound; distinct from this replay posterior \\
+Conformal \citep{vovk2005algorithmic}; CS \citep{howard2021cs} & coverage / time-uniform mean bounds & exchangeable / i.i.d.-sequential & established marginal or anytime tools, not this conditional flip object \\
+This work & full-$N$ binary pass-count replay disagreement & count-exchangeable random prefix & posterior flip certificate; FIT/CAL rule selection, TEST replay readout \\
+\bottomrule
+\end{tabular}
+\caption{Source-verified feature comparison. Relationships are deliberately
+endpoint- and model-specific; this table makes no priority or ordered-online claim.}
+\label{tab:feature-compare}
+\end{table}
+
+\section{Full drift tables}
+\label{app:drift}
+Tables~\ref{tab:drift_a005} and~\ref{tab:drift_a01} report the complete
+drift stress grid behind Section~\ref{sec:drift}
+(\texttt{drift\_stress\_r469\_result.json}; 2000 TEST problems, 500
+orders per cell). Under the smooth mechanisms E2/E3, BAYES-H is the most
+robust stopper at both levels; under the premise-breaking E1 front-load
+all certificates fail together, as they should.
+\input{drift_tables}
+
+\section{The critical-radius conservation curve}
+\label{app:tau}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_tau_conservation.png}
+\caption{Deterministic fixed-rule sensitivity radius $\tau^*(\alpha)$ over
+an assumed fitted-mixture TV ball; this is not a confidence set for, or a
+containment claim about, an unknown target population.  Proposition~\ref{prop:tv}
+is evaluated on the continuum $\alpha\in[10^{-3},0.2]$
+(step $5\!\times\!10^{-4}$), computed exactly per level from the frozen
+$g$-profiles of the three carriers (OMR both FIT shards; OpenR1 exact in
+closed form). Grey tick marks: the four reference levels; red dotted
+lines: the OpenR1 certificate thresholds $0.0785/0.0460$ where the frozen
+rule changes. Artifact:
+\texttt{tv\_conservation\_r484\_result.json}.}
+\label{fig:tau}
+\end{figure}
+Figure~\ref{fig:tau} makes the rule-change structure of the certificate
+visible. \emph{(a) Staircase law.} Within any $\alpha$-interval on which
+the frozen rule is unchanged, the whole vector $g$ --- hence $V(R)$ ---
+is constant, so $\tau^*(\alpha)=\max\{R:V(R)\le\alpha\}$ is
+\emph{non-decreasing}; every strict decrease of $\tau^*$ coincides with a
+rule-change breakpoint (verified at every grid cell of every carrier;
+the rule-change counts on the plotted range are $96/93/7/2$ for OMR
+shard~0 / OMR shard~1 / RLVE / OpenR1).
+\emph{(b) Analytic breakpoints on OpenR1.} With
+$V(R)=\flip(\widehat H)+g_{\max}R$ exactly,
+$\tau^*(\alpha)=\alpha/g_{\max}-\widehat H(\tfrac12)$: at
+$\alpha=0.07852$ the fail-prefix stop engages and $g_{\max}$ doubles
+($0.125\!\to\!0.25$), so $\tau^*$ jumps \emph{down} $0.396\!\to\!0.082$
+($\Delta=-0.314$); at $\alpha=0.04598$ the pass-prefix stop disengages
+and the frozen rule degenerates to never-stop ($V(R)\equiv0$ for any
+prior), so the whole-simplex plateau $\tau^*=1$ holds \emph{below} this
+threshold and $\tau^*$ jumps \emph{down} $1\!\to\!0.136$
+($\Delta=-0.864$) as $\alpha$ crosses it upward. \emph{(c) Whole-simplex plateaus.}
+Wherever the frozen rule's worst case cannot exceed $\alpha$ for
+\emph{any} prior ($\max_K g(K)\le\alpha$), $\tau^*=1$: RLVE for
+$\alpha<0.002$ and OpenR1 for $\alpha<0.0460$; OMR's rule never stops
+only below $10^{-3}$, off the plotted range. \emph{(d) Alignment
+co-variation (decomposed).} The zero-$g$ alignment number co-varies with
+$\tau^*$ at pooled Spearman $0.75$ across the 16 carrier$\times$level
+cells (descriptive; the per-cell alignment is itself $\alpha$-dependent).
+The decomposition audit
+(\texttt{spearman\_decomposition\_r486\_result.json}) shows this is a
+between-carrier law, not a within-carrier one: $1.0$ across the four
+carrier means, $0.63$ on the 14 non-plateau cells, $0.44$--$0.90$ under
+leave-one-carrier-out; within-carrier it is $-0.95$/$-0.89$ (OMR shards),
+$+0.32$ (RLVE), $+1.0$ (OpenR1) --- the OMR reversal is the staircase
+mechanism itself (level tightening adds zero-g mass on the lowest-$g$
+atoms only). Heterogeneity is not a confounder: het-excess vs $\tau^*$
+Spearman $0.01$, het-excess vs alignment $0.05$ (16 cells).
+\emph{Practical reading.} The staircase shape is a design signal for
+choosing the certificate level: inside a constant-rule interval,
+loosening $\alpha$ buys certified drift tolerance gradually; at a
+breakpoint it buys (or loses) a discrete jump --- $\alpha$ should be set
+on a step, not inside one.
+\emph{(e) How much FIT data buys how much robustness.} Rebuilding the
+prior from nested prefixes of the frozen FIT order at
+$m\in\{\tfrac{1}{32},\dots,1\}\times m_{\mathrm{full}}$ and recomputing
+$\tau^*_m(\alpha)$ exactly
+(\texttt{prior\_fit\_size\_r491\_result.json}) gives an operational size
+rule. On OMR the $\tau^*_m(0.05)$ curves already clear the observed
+cross-shard transfer $0.042$ at the smallest tested pool $m{=}125$
+(shard~0: $0.062$; shard~1: $0.046$), i.e.\ cross-shard robustness does
+\emph{not} require the full $4000$-problem fit. The radius is
+\emph{not} monotone in $m$ (OMR shard~1 at $\alpha=0.01$: $0.010$ at
+$m{=}125$, up to $0.056$ at $m{=}1000$, back to $0.024$ at $m{=}4000$):
+growing the fit moves both the prior (better) and the frozen rule
+(larger $g_{\max}$ possible), and the rule channel can dominate ---
+$\tau^*_m$ is a property of the fitted \emph{pair} $(\widehat H_m,
+\text{rule}_m)$, not of the sample size alone. The closed loop of
+Proposition~\ref{prop:tv} holds at every one of the 51 cells with
+$\mathrm{TV}(\widehat H_m,\widehat H_{\mathrm{full}})\le\tau^*_m$: the
+$m$-rule's exact flip under the full-data prior never exceeds $\alpha$
+(0 violations), while at the coarsest OMR shard~1 fit ($m{=}125$, TV
+$0.175$, outside the ball) the transferred rule genuinely breaks
+(flip $0.0244>0.02$, $0.0165>0.01$) and is repaired from $m{=}250$
+onward --- inside/outside the radius predicts validity/failure exactly.
+The estimation error itself scales as $\mathrm{TV}_m\approx C/\sqrt m$
+(within-carrier spread of $\mathrm{TV}_m\sqrt m$ below $1.5\times$ on OMR;
+the RLVE spread reaches $3.5\times$ only because its coarsest prefixes
+carry a missing-mode error $\sim\!\sqrt{m_{\mathrm{full}}/m}$ larger).
+\emph{(f) Which channel moves $\tau^*_m$: rule, not prior --- with one
+caveat.} We decompose the $m$-sensitivity into its two moving parts by
+computing, at every $(\text{carrier},m,\alpha)$ cell, the two
+counterfactual radii (\texttt{rule\_channel\_r494\_result.json}):
+$\tau^{*\,\mathrm{pf}}_m=\tau^*(\widehat H_{\mathrm{full}},g_m)$ freezes
+the prior at the full fit and lets only the \emph{rule} vary with $m$,
+and $\tau^{*\,\mathrm{rf}}_m=\tau^*(\widehat H_m,g_{\mathrm{full}})$
+freezes the rule and lets only the \emph{prior} vary. The recomputed
+both-moving curve reproduces the $m$-grid of
+\texttt{prior\_fit\_size\_r491\_result.json} bit-exactly (0/72
+mismatches). Three findings. \emph{(i) The rule channel drives the
+non-monotonicity.} With the prior frozen at $\widehat H_{\mathrm{full}}$,
+$\tau^{*\,\mathrm{pf}}_m$ is still non-monotone at OMR shard~1
+$\alpha{=}0.01$: $0.000$ at $m{=}125$ rising to $0.060$ at $m{=}1000$
+then falling to $0.024$ at $m{=}4000$ --- the same up-then-down shape as
+the both-moving curve --- because the refitted rule's $g_{\max}$ itself
+varies non-monotonically ($0.563\to0.075\to0.098$) as the coarse prefix
+shifts which budgets are certifiable. \emph{(ii) The estimation channel
+is benign on average but \emph{not} uniformly.} Holding the rule fixed,
+a coarser prior can \emph{shrink} the radius below the full-fit value in
+31 of 72 cells (all on OMR shard~1 and RLVE; largest deficit $0.053$ at
+RLVE $m{=}93$, $\alpha{=}0.05$). The mechanism is the base-flip term
+$\sum_K \widehat H[K]\,g(K)$: a coarse prefix that under-covers the
+likely-correct (low-$g$) region and over-weights high-$g$ mass raises the
+base flip, and --- because the \emph{frozen full rule} already has large
+$g$ exactly on those atoms --- the certificate has less slack to spend on
+drift. This is the missing-mode failure of (e) seen through the rule:
+the same coarse prefix that carries a $\sim\!\sqrt{m_{\mathrm{full}}/m}$
+estimation error also pays it on the worst (largest-$g$) coordinates.
+\emph{(iii) The RLVE coarsest dip is pure rule-channel.} The collapse of
+the both-moving radius at RLVE $m{=}187$, $\alpha{=}0.05$ ($0.235$, far
+below both $m{=}93$ at $0.616$ and $m{=}375$ at $0.534$) survives with
+the prior frozen ($\tau^{*\,\mathrm{pf}}_{187}=0.222$) and vanishes with
+the rule frozen ($\tau^{*\,\mathrm{rf}}_{187}=0.530$): it is entirely a
+$g_{\max}$ event ($0.179$ vs.\ $0.071$ for the full rule), not an
+estimation one. \emph{Reading.} The robustness certificate is governed by
+the \emph{rule} the fit induces more than by the prior's sampling error:
+two fits of the same size can certify very different radii because the
+induced rule differs, and the only lever that reliably buys radius is one
+that shrinks the induced $g$-profile (e.g.\ the margin repair of
+Section~\ref{sec:drift}), not one that merely adds FIT data.
+\emph{(g) A constructive repair that buys radius: flip-budget state
+subsets.} The reading of (f) --- shrink the induced $g$-profile --- is
+here made executable
+(\texttt{full\_sweep\_r498e\_result.json}). Fix a per-atom flip budget
+$c$. On each atom $K$, order the original rule's stopping states by
+their certificate value and keep the longest prefix whose cumulative
+flip contribution is at most $c$; states not kept run to $n$. The
+realized subset rule satisfies, pointwise on every atom,
+$g_S(K)\le\min(g_{\mathrm{orig}}(K),c)$ (domination), its stopping set
+is a subset of the original rule's (it never stops earlier, so the
+replay-count cost is only extra votes), and its exact radius is
+recomputed by the same linear program --- nothing is re-estimated from
+data. Sweeping $c\in\{0.30,\dots,0.01\}$ over all 72
+carrier$\times m\times\alpha$ cells of (e): recomputation anchors the
+grid bit-exactly (0/72 mismatches), domination holds at every atom of
+every cell, and at the best cap every cell reaches $\tau^*=1$: for
+$70$ of $72$ cells this is a strict gain over the original radius at
+$+1\%$ to $+11\%$ mean votes (max $+11.3\%$ at OMR
+shard~0 $m{=}500$, $\alpha{=}0.10$; RLVE never exceeds $+3.3\%$),
+while the remaining two (RLVE at $\alpha{=}0.02$) are already
+whole-simplex under the original rule and the sweep selects no cap.
+The $\tau^*=1$-by-cap cells sit in the
+\emph{trivial-validity} regime: the capped profile satisfies
+$\max_K g_S(K)\le\alpha$ \emph{and} $\mathrm{base}_S\le\alpha$ by
+construction, so the certificate survives \emph{any} bounded prior
+shift. This is not ``infinite robustness for free'': the bill is paid
+by the realized base-flip level $\mathrm{base}_S$ (e.g.\
+$0.0054\ll\alpha{=}0.05$ at OMR $m{=}4000$, cap $0.02$) and by the
+extra votes, both reported per cell. The pitfall cell of (f) is
+repaired exactly: RLVE $m{=}187$, $\alpha{=}0.05$ goes from
+$\tau^*=0.235$ to $1.0$ at cap $0.07$ with $+0.5\%$ votes; the coarse
+OMR shard~1 $m{=}125$ fits all exceed half their full-fit radius at
+every level (e.g.\ $\alpha{=}0.01$: $0.0095\to1.0$). Two negative
+results delimit the mechanism. First, \emph{support truncation fails}:
+zeroing the low-mass atoms of the prior and renormalizing changes the
+induced certificate not at all (bit-identical $g$-profiles, 0
+differences in 6 probed cells $\times$ 5 truncation levels;
+\texttt{support\_trunc\_repair\_r498\_result.json}) --- the spikes of
+(f) live on near-zero-mass boundary atoms that the base term never
+visits but the $\ell_1$ adversary targets, and removing them from the
+prior does not touch the local likelihood geometry that induces them.
+Second, \emph{deadline truncation fails}: capping each atom's stopping
+time at $\kappa(K)$ is non-monotone in $\kappa$ (flip $0.014$ at
+$\kappa{=}8$ rising to $0.357$ at $\kappa{=}7$ and $0.5$ at
+$\kappa{=}5$ on a probed RLVE atom) and can certify \emph{less} than
+the original rule (RLVE $m{=}187$, $\alpha{=}0.05$: $0.235\to0.133$;
+\texttt{efficiency\_r498c\_result.json}) --- a hard deadline deletes
+informative late states wholesale, whereas the certificate-order
+subset deletes exactly the states that are expensive to certify.
+Together with (f) this closes the loop: moving the prior does nothing,
+moving the time axis hurts, moving the \emph{stopping-state set} in
+certificate order repairs --- the rule channel is the lever, and the
+effective control is a flip budget, not a data budget. The repair is
+also not a degenerate retreat to stopping at the first informative
+prefix: a fixed $k{=}3$ stopper on OMR shard~1 $m{=}125$ has base flip
+$0.093$ ($9\times$ above $\alpha{=}0.01$, $\tau^*=0$) against the
+repaired rule's $\mathrm{base}_S=0.0036$.
+\emph{Universal budget.} The sweep also pins down a single
+carrier- and $m$-independent repair budget
+(\texttt{universal\_cap\_r500\_result.json}): at cap $0.01$ ---
+the smallest level of the paper's grid --- \emph{every} one of the
+$72$ cells reaches $\tau^*=1$, at $+1.0\%$ to $+22.3\%$ mean votes
+(OMR; RLVE $\le+5.2\%$) and realized base flip $\le0.0038$. The
+boundary is sharp within the scanned grid: at cap $0.015$ exactly
+the $18$ cells with $\alpha{=}0.01$ ($6$ per carrier, every $m$)
+still fall short of the whole simplex, while all $54$ cells with
+$\alpha\ge0.02$ are already repaired. A budget at or below the
+smallest level of interest therefore repairs every fit size and
+every carrier we tested, and no smaller scanned budget suffices for
+the strictest level --- the repair law is a property of the cap
+relative to $\alpha$, not of $m$ or the carrier. A fine-scale pass
+(\texttt{critical\_cap\_r503\_result.json}; caps at $5\times10^{-4}$
+resolution plus bisection to ${\approx}6\times10^{-7}$ on the
+full-radius prefix) sharpens this into an exact edge law. Because
+domination gives $\max_K g_S(K)\le c$ pointwise, every cap
+$c\le\alpha$ certifies the whole simplex mechanically, so the
+effective critical cap $c^*=\sup\{c:\tau^*(c)=1\}$ satisfies
+$c^*\ge\alpha$ in every cell; the supremum is attained strictly
+above $\alpha$ whenever the realized staircase leaves
+$\max_K g_S(K)\le\alpha$ beyond $c=\alpha$ --- which happens in all
+$72$ cells. The margin above $\alpha$ is carrier-resolved: it stays
+${\le}+0.8\%$ at $\alpha\ge0.02$ on OMR (one shard~1 cell excepted,
+${+}2.8\%$) and reaches ${+}10.6\%$ at
+$\alpha{=}0.01$ on OMR (fine $N{=}32$ certificate geometry). On RLVE
+the margin is not just measured but \emph{derived}
+(\texttt{edge\_law\_r504\_result.json}): the flip mass of stopping at
+state $(k,x)$ on an atom is the hypergeometric reach probability
+$\binom{K}{x}\binom{n-K}{k-x}/\binom{n}{k}$, a rational number that
+does not depend on the fitted prior; the smallest certificate-greedy
+achievable flip sum above $\alpha$ is thus computable from the
+certificate table alone, and it equals the scan-measured edge wherever
+the scan bracketed one (all $18$ such cells). On RLVE ($N{=}8$) this quantum
+sits at $c^*{=}3/28$ at $\alpha{=}0.10$ ($15/14\cdot\alpha$), $1/14$
+at $\alpha{=}0.05$ ($10/7\cdot\alpha$), and $1/70$ at
+$\alpha{=}0.01$ ($10/7\cdot\alpha$), identical at every one of the six
+fit sizes --- the edge is combinatorics of the binding atom, not of the
+prior. At $\alpha{=}0.02$ the cell splits by a certificate straddle:
+at the four fit sizes whose binding state $(4,1)$ has certificate
+${\le}0.02$ the edge is $1/14$ ($25/7\cdot\alpha$, beyond the scanned
+band, which had reported only the censored bound $c^*{\ge}2\alpha$),
+while at $m\in\{93,750\}$ that state's certificate crosses
+$\alpha{=}0.02$ under the coarse-prefix prior, every achievable flip
+sum stays ${\le}\alpha$, and the full radius survives \emph{every}
+budget ($\tau^*{=}1$ certified at cap $0.5$, $\max_K g_S{=}1/56$). On
+OMR ($N{=}32$) no such $O(\alpha)$ gap exists: the per-atom
+closed-form edge upper-bounds the budget-constrained scan edge
+(equality at $11$ of $48$ cells) and stays within ${+}10.6\%$ of
+$\alpha$ in every cell --- the quantization of the repair edge is a
+small-$N$ phenomenon. A tightness audit of the bound
+(\texttt{edge\_tightness\_r505\_result.json}) separates the $48$ OMR
+cells into two regimes by the sign of the certified slack one step below
+the closed edge: in $11$ cells the realized $\max_K g_S$ at cap
+$c^*_{\mathrm{closed}}{-}\epsilon$ is still ${\le}\alpha$ (the
+binding atom's crossing state has not yet entered), so the scan edge and
+the closed edge coincide up to the scan's bracket resolution --- the
+closed form is tight; in the remaining $37$ cells the realized $\max_K
+g_S$ at $c^*_{\mathrm{closed}}{-}\epsilon$ already exceeds $\alpha$
+by $2.9\times10^{-5}$ to $3.7\times10^{-3}$, so the
+budget-constrained greedy must drop the crossing prefix and
+$c^*_{\mathrm{scan}}<c^*_{\mathrm{closed}}$ strictly. The two regimes
+are disjoint in sign (nearest slacks $-2.43\times10^{-5}$ and
+$+2.91\times10^{-5}$, an inner margin ratio of $1.20\times$ ---
+correcting the ${\ge}2.4\times$ printed in v5.19--v5.20), so tightness
+is decided by a sign, not a fitted threshold. (This audit also corrected
+the equality count reported above in v5.18 from $12$ to $11$: the
+twelfth cell, shard~1 $m{=}2000$ $\alpha{=}0.10$, differs by
+$8.2\times10^{-5}$ --- two orders of magnitude above the scan's
+rounding noise --- and had been absorbed by the verifier's $10^{-4}$
+tolerance.) A discriminating audit at sub-artifact resolution
+(\texttt{discriminant\_r507\_result.json}) head-to-heads the slack-sign
+classifier against the two falsified first-draft conditions (recorded
+in \texttt{edge\_tightness\_r505\_result.json}) on all $48$ cells: the
+sign rule is exact
+($11$~TP~/~$37$~TN, no errors, invariant to the probe offset over
+$[5\times10^{-8},10^{-6}]$); the unique-binding-atom biconditional errs
+on $22$ cells ($19$~FP~$+3$~FN); and the best fixed margin threshold
+achieves only the always-strict constant ($11$ errors). The audit also
+maps the tolerance window itself: the $11$-cell tight count is stable on
+$[5\times10^{-7},2\times10^{-6}]$, degenerates to $3$ at
+$2.5\times10^{-7}$ (the scan edge's six-decimal storage spreads exact
+equalities to $\pm4\times10^{-7}$), and would absorb the genuine twelfth
+cell only above $8.22\times10^{-5}$ --- the usable discriminating band
+is $[5\times10^{-7},8.22\times10^{-5})$, floored by the artifact's own
+rounding resolution. Under $\pm5\times10^{-7}$ scan perturbation
+(worst-case rounding) the sign rule and the scan verdict agree on all
+$48$ cells; at exactly one bisection step ($\pm6\times10^{-7}$) a single
+boundary cell flips per side, and no strict cell is ever absorbed. The universal $c\le\min\alpha$ rule is thus the
+carrier-independent safe budget, and any budget inside the derived
+margin above $\alpha$ is free extra stopping mass, not a risk.
+\emph{One geometry} (\texttt{discrete\_geometry\_r506\_result.json}).
+All three non-monotone phenomena of this section are one object, the
+discrete stopping-state set: $\tau^*(\text{cap})$ is \emph{not} a
+monotone function ($323$ of $792$ adjacent-cap pairs on the coarse
+$12$-cap grid violate monotonicity; the r501 working note misprinted
+the pair count), because both scalarizations it reads jump with the
+certificate-ordered prefix. Yet its full-radius crossing set is
+always a \emph{prefix}: on the fine grid, every cap at or below $c^*$
+certifies the whole simplex and no cap above $c^*$ does ($0$ holes
+and $0$ overhangs across all $72$ cells). The reconciliation is
+structural, not curve-fitting: shrinking the cap excludes a
+certificate-ascending prefix, so both scalars $\max_K g_S$ and
+$\mathrm{base}_S$ are monotone in the cap ($0$ and $0$ violations
+respectively); once $\tau^*{=}1$ both lie at or below $\alpha$ and
+must stay there, while inside the sub-unit region the two
+scalarizations disagree and the staircase interior is free to wobble.
+The deadline's flip sequence is the same object read along the time
+axis ($0.014, 0.357, 0.214, 0.5, 0.243, 0.5$ as $\kappa$ shrinks on
+the probed RLVE atom), and the closed-form edge is the same object
+read exactly: the hypergeometric flip masses are the quantum, the
+prefix structure gives the edge $c^*$, and the slack sign at one step
+below the closed edge decides its tightness. Reading any of the three
+as a smooth dial invites exactly the three failures documented above;
+reading it as a discrete set gives the safe budget, the derived edge,
+and the two operating ends (cheapest marginal repair at
+${+}0.09\%$--${+}1.29\%$ votes; universal repair at
+${+}1.05\%$--${+}16.9\%$) of one rule.
+
+\begin{proposition}[Prefix law and two-scalar monotonicity of the
+full-radius crossing set]
+\label{prop:prefix}
+Fix a cell $(\widehat H_m, \alpha)$ and let $g_{S(c)}$ be the realized
+profile of the certificate-ordered state-subset rule at flip budget
+$c$, with scalarizations $\overline g(c)=\max_K g_{S(c)}(K)$ and
+$\mathrm{base}_S(c)=\sum_K \widehat H_m[K]\,g_{S(c)}(K)$, and write
+$\tau(c)=\tau^*(\widehat H_m, g_{S(c)}; \alpha)$. Then:
+\emph{(i)}~both scalarizations are nondecreasing in $c$;
+\emph{(ii)}~for every $c$, $\tau(c)=1$ if and only if
+$\mathrm{base}_S(c)\le\alpha$ and $\overline g(c)\le\alpha$;
+\emph{(iii)}~the full-radius crossing set $\{c:\tau(c)=1\}$ is downward
+closed --- a prefix --- while $\tau(c)$ itself is free to be
+non-monotone inside the sub-unit region; and the crossing out of
+$\tau{=}1$ as the budget grows is $\mathrm{base}_S$-driven: below
+$\alpha$ both conditions of \emph{(ii)} already hold at $c=\alpha$ (by
+domination $\overline g(\alpha)\le\alpha$) and persist for all
+$c<\alpha$ by \emph{(i)}, so at $c>\alpha$ only the
+$\mathrm{base}_S(c)\le\alpha$ condition can bind.
+\end{proposition}
+\begin{proof}
+\emph{(i)}~With nondecreasing budget, the greedy keep rule retains a
+nested family of kept sets: every state kept at $c'$ is also kept at
+$c>c'$ --- the certificate-sorted scan reaches that state with at least
+as much remaining budget, and its own contribution is unchanged. Hence
+$S(c')\subseteq S(c)$, and since each kept state's flip contribution is
+nonnegative, both $\overline g$ and $\mathrm{base}_S$ are nondecreasing.
+\emph{(ii)}~By Proposition~\ref{prop:tv} the two-sided greedy over
+$B_R$ adds mass at the highest-$g$ atom and drains it from the
+lowest-$g$ one, so for $R\in[0,1]$,
+$V(R)=\mathrm{base}_S(c)+R\,(\overline g(c)-\mathrm{base}_S(c))$ ---
+linear in $R$ with slope $\overline g(c)-\mathrm{base}_S(c)\ge0$, hence
+$\sup_{R\le1}V(R)=V(1)=\overline g(c)$, and
+$\sup_{R\le1}V(R)\le\alpha$ holds exactly under the two stated
+conditions. \emph{(iii)}~By \emph{(ii)} the crossing set is an
+intersection of two sublevel sets of functions nondecreasing in $c$
+(\emph{i)}), and a sublevel set of a nondecreasing function is downward
+closed; the intersection of two prefixes is a prefix. Inside the
+sub-unit region neither condition of \emph{(ii)} is binding, so $\tau$
+may wobble there (and does: $323$ of $792$ adjacent-cap comparisons on
+the coarse grid); on the fine grid the crossing set has $0$ holes and
+$0$ overhangs in all $72$ cells, and on the coarse grid the $323$
+violations decompose into $253$ strictly sub-unit wobbles plus $70$
+upward jumps \emph{at} the prefix edge, with zero holes
+(\texttt{prefix\_prop\_r508\_result.json}).
+\end{proof}
+
+\section{Cross-carrier evidence matrix and unified mechanism}
+\label{app:matrix}
+Table~\ref{tab:matrix} collects every in-distribution TEST readout of the
+paper in one place: the four model--carrier pairs (dependence/resolvable
+structure decreasing from left to right), all stoppers, all certified
+levels, and one descriptive $\alpha{=}0.01$ CAL-side row for OMR (where
+the certified family of Section~\ref{sec:protocol} reports only down to
+$\alpha{=}0.02$). Every flip in this matrix is replay agreement with a
+corresponding full vote and every saving is replay count reduction; it is not
+gold correctness or operational cost. Validity was certified on CAL (``cert''); TEST is a
+single descriptive readout under the Bonferroni radius
+($0.0286$ OMR shard~0; $0.0292$ shard~1; $0.0310$ OpenR1; $0.0307$ RLVE).
+Artifacts: \texttt{fit\_cal\_test\_r469}, \texttt{shard1\_robust\_r471}
+(R1/R2), \texttt{openr1\_m2\_pilot\_r473}, \texttt{rlve\_n8\_r474}.
+
+\begin{table}[h]
+\centering\small
+\caption{Replay evidence matrix: carrier (dependence level) $\times$ baseline
+$\times$ endpoint. ``null'' = no certifiable replay budget at that level;
+``---'' = not applicable / not reported. FULL rows are the zero-count-reduction
+reference. Seeds $20260815$ throughout.}
+\label{tab:matrix}
+\begin{tabular}{lllcccc}
+\toprule
+Carrier & rule & $\alpha$ & cert & replay flip & mean $k$ & count reduction \\
+\midrule
+OMR s0 ($N{=}32$)   & FIXED-HOEF & .10 & 0.0970 & 0.0645 & 7.0 & 78.1\% \\
+                    & FIXED-EB   & .10 & 0.0958 & 0.0794 & 5.0 & 84.4\% \\
+                    & BAYES-H    & .10 & 0.0495 & 0.0370 & 5.1 & 84.0\% \\
+                    & FIXED-HOEF & .05 & 0.0471 & 0.0156 & 27.0 & 15.6\% \\
+                    & FIXED-EB   & .05 & 0.0461 & 0.0324 & 17.0 & 46.9\% \\
+                    & BAYES-H    & .05 & 0.0350 & 0.0249 & 6.1 & 80.9\% \\
+                    & FIXED-HOEF & .02 & null & --- & --- & --- \\
+                    & FIXED-EB   & .02 & 0.0171 & 0.0083 & 31.0 & 3.1\% \\
+                    & BAYES-H    & .02 & 0.0163 & 0.0091 & 8.5 & 73.5\% \\
+                    & BAYES-H    & .01 & 0.0119 & --- & --- & --- \\
+                    & FULL-32    & --- & --- & 0 & 32.0 & 0 \\
+\midrule
+OMR s1 ($N{=}32$)   & FIXED-HOEF & .05 & 0.0488 & 0.0171 & 25.0 & 21.9\% \\
+                    & FIXED-EB   & .05 & 0.0486 & 0.0357 & 15.0 & 53.1\% \\
+                    & BAYES-H    & .05 & 0.0340 & 0.0246 & 6.2 & 80.6\% \\
+                    & BAYES-H$^\dagger$ & .05 & 0.0341 & 0.0247 & 6.2 & 80.6\% \\
+                    & BAYES-H    & .02 & 0.0158 & 0.0088 & 8.6 & 73.1\% \\
+                    & BAYES-H$^\dagger$ & .02 & 0.0159 & 0.0089 & 8.6 & 73.2\% \\
+\midrule
+OpenR1 ($M{=}2$)    & FIXED-1    & --- & 0.0707 & 0.0592 & 1.0 & 50.0\% \\
+                    & BAYES-H    & .10 & 0.0707 & 0.0592 & 1.0 & 50.0\% \\
+                    & BAYES-H    & .05 & 0.0383 & 0.0294 & 1.4 & 32.1\% \\
+                    & BAYES-H    & .02 & 0.0047 & 0 & 2.0 & 0 \\
+\midrule
+RLVE ($N{=}8$)      & FIXED-HOEF & .10 & 0.0942 & 0.0613 & 5.0 & 37.5\% \\
+                    & FIXED-EB   & .10 & 0.0783 & 0.0613 & 5.0 & 37.5\% \\
+                    & BAYES-H    & .10 & 0.0469 & 0.0314 & 3.4 & 57.6\% \\
+                    & FIXED-EB/HOEF & .05--.01 & null & --- & --- & --- \\
+                    & BAYES-H    & .05 & 0.0184 & 0.0103 & 3.9 & 50.9\% \\
+                    & BAYES-H    & .02 & 0.0121 & 0.0046 & 4.1 & 48.2\% \\
+                    & BAYES-H    & .01 & 0.0081 & 0.0019 & 4.4 & 45.4\% \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\begin{minipage}{\linewidth}\footnotesize
+$^\dagger$Cross-shard prior transfer (prior fit on shard~0 FIT,
+$\mathrm{TV}{=}0.042$ to the shard~1 prior); all numbers move ${\le}0.4$
+points against within-shard. WINDOW3 (no certificate knob) is omitted from
+the matrix: it has the largest replay count reduction ($86.2\%$) but is invalid at $\alpha\le0.05$
+(flip $0.0577$; Table~\ref{tab:main}).
+\end{minipage}
+\end{table}
+
+\emph{Unified mechanism.} One quantity --- the prior's $g$-profile ---
+organizes every panel of the paper. (i) \emph{In-distribution}, replay count
+reduction tracks the resolvable mixture structure: mass on extreme-$K$
+problems stops at $k\approx5$ (OMR, $81\%$ reduction at $\alpha{=}0.05$);
+with only $N{=}8$ draws and $74$--$87\%$ of prior mass on zero-$g$
+atoms, three stoppable budgets remain and the count reduction interpolates to
+$45$--$58\%$ (RLVE); at $M{=}2$ the single stoppable budget yields
+$32$--$50\%$ and the certificate degenerates to never-stop exactly when
+$\max_K g(K)\le\alpha$ (OpenR1 at $\alpha{=}0.02$: count reduction $0$, flip $0$
+--- the certificate never over-stops). (ii) \emph{Under prior shift},
+the same profile sets the critical radius: $\tau^*$ is increasing in the
+zero-$g$ atom mass across carriers (Spearman $1.0$ on carrier means, 16
+cells; het-excess variance is not the driver: RLVE $0.0999<$ OMR $0.129$
+yet tolerates more), with the within-OMR negative trend
+($-0.95$/$-0.89$) a staircase artifact (decomposition audit,
+\texttt{spearman\_decomposition\_r486\_result.json}). (iii) \emph{Under
+synthetic ordered drift}, adaptivity is itself the robustness channel in the
+specified harness: BAYES-H re-reads the accumulating evidence each draw, so it
+is the most robust stopper under the smooth E2/E3 mechanisms (valid to $\delta{=}0.20$
+under E2 at $\alpha{=}0.10$ where FIXED-$k$ breaks at $0.15$), and a
+margin $\gamma$ on the certificate buys flip control at a quantified replay-count
+cost ($\gamma{=}0.03$ covers E2 $\delta\le0.20$: flip $0.0491$, count reduction
+$71.8\%$ vs $79.7\%$ unmargined; $\gamma{=}0.025$ covers E3
+$\delta\le0.15$: flip $0.0495$, count reduction $77.2\%$ vs $81.0\%$;
+\texttt{margin\_repair\_r469\_result.json}). (iv) \emph{The failure
+boundary is sharp on every axis}: premise-breaking E1 breaks all
+certificates together by $\delta{=}0.10$--$0.15$; on shard~1 at
+$\alpha{=}0.01$ the observed cross-shard mismatch $0.042$ exceeds
+$\tau^*(0.01){=}0.024$ and TV alone does not certify the transfer; the
+coarsest fit $m{=}125$ sits outside its ball (TV $0.175$) and genuinely
+breaks at $\alpha\le0.02$ (Appendix~\ref{app:tau}(e)). Where the paper
+claims a win, the margin is large and certified; where it does not, the
+limiting quantity is named and measured.
+
+\section{Reproducibility}
+\label{app:repro}
+All numbers trace to JSON artifacts listed in REPRO\_README.md; carrier
+SHA-256 pinned; deterministic seeds; CPU-only; total compute under 25 minutes.
+
+\end{document}

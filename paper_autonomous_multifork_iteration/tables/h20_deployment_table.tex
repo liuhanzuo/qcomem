@@ -1,0 +1,26 @@
+\begin{table}[!ht]
+\caption{Unpooled same-checkpoint H20 context on the eight-item Qasper/2WikiMQA slice.  The first block is an in-process Transformers deployment cohort with three timing repeats per item.  HYPIC~\citep{liu2026hypic} timing/F1 comes from a separate 24-cell TP=1 official-code cohort; its Store values come from an independent receipt-instrumented 8+8-cell cohort.  All use Qwen3.5-35B-A3B, one H20-3e per item, a 4,096-token cap, greedy decoding, and at most 32 generated tokens.  Timing is interpreted within block; no cross-block speedup, production-capacity, broad-quality, or ForkAudit-ownership claim is made.}
+\label{tab:h20-deployment}
+\centering\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+Method & Persistent state & Store (MiB) & TTFT (s) & TPOT (ms) & tok/s & F1 \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Transformers 5.14.1 in-process deployment cohort}}\\
+Vanilla dense & -- & -- & 0.649 & 648.75 & 1.36 & 39.42 \\
+Full-prefix KV cache & Q16 & 140.34 & 0.163 & 54.11 & 13.38 & 39.14 \\
+CoMem state & Q8 & 15.89 & 0.673 & 55.44 & 7.15 & 39.14 \\
+CoMem mixed state & Q4/Q4/Q8 & 10.01 & 0.674 & 54.97 & 7.19 & 39.01 \\
+CoMem per-layer mixed & mixed & 9.74 & 0.673 & 55.07 & 7.19 & 39.11 \\
+CoMem state & Q4 & 8.41 & 0.674 & 55.02 & 7.19 & 36.09 \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{HYPIC commit 98147c0 timing/F1; receipt-instrumented Store; SGLang 0.5.14, TP=1}}\\
+Official HYPIC code: full recompute & -- & -- & 0.217 & 49.21 & 14.77 & 39.14 \\
+Official HYPIC code: prefix cache & Radix prefix & 139.53 & 0.072 & 50.15 & 19.07 & 39.14 \\
+HYPIC (transition + seam 8) & segment transition & 324.09 & 0.101 & 52.13 & 17.67 & 39.63 \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+\parbox{0.97\textwidth}{\footnotesize Store is the median retained-document tensor payload: persistent document bytes for CoMem/full-prefix reuse and the union of target-entry-owned physical tensor byte ranges for Prefix Cache/HYPIC.  It excludes Python metadata, preallocated pools, NVML/process deltas, and admission capacity.  HYPIC timing/F1 uses streaming-client wall-clock from 24 cells; HYPIC Store uses a separate 16-cell externally replayed receipt cohort.  Published Qwen3.5 HYPIC panels use TP=2, whereas this fixed same-slice adaptation uses TP=1.}
+\end{table}

@@ -1,0 +1,191 @@
+{
+  "schema_version": "1.0",
+  "adjudicator_role": "independent_technical_adjudicator",
+  "scope": {
+    "snapshot_read_scope": "/Users/liuhanzuo/MacLLM-Bench/paper_portfolio_iteration/a11-correlated-majority-vote/review/round_02/submission",
+    "reviewed_question": "Only the two specified technical allegations and whether Theorem 1 depends on them.",
+    "excluded": [
+      "parent directories",
+      "other review materials",
+      "whole-paper rescoring"
+    ]
+  },
+  "verdict_vocabulary": [
+    "resolved_claim_valid",
+    "allegation_valid",
+    "partially_valid",
+    "cannot_verify"
+  ],
+  "allegations": [
+    {
+      "id": "A",
+      "short_name": "K-indexed certificate-ordered subset is not an executable prefix policy",
+      "verdict": "allegation_valid",
+      "allegation": "Appendix E(g)'s certificate-ordered state subset is constructed separately for the unobserved final count K, rather than as one shared prefix-observable S(x,k), yet the manuscript calls it executable and a repair.",
+      "source_locations": [
+        {
+          "file": "source/paper.tex",
+          "lines": "921-936",
+          "pdf": "p.16, displayed lines 861-863",
+          "evidence": "The text says 'Fix a per-atom flip budget c. On each atom K, order ... stopping states' and then calls the construction 'executable'."
+        },
+        {
+          "file": "artifacts/results/prefix_prop_r508.py",
+          "lines": "16-18",
+          "evidence": "Its own construction definition says 'subset_profile: per atom K, keep the cert-ascending prefix'."
+        },
+        {
+          "file": "artifacts/results/critical_cap_r503.py",
+          "lines": "80-99",
+          "evidence": "profile_at iterates over K and calls subset_profile(K, cert, a, c, n_sym), producing a separately selected g_S(K) for each K."
+        },
+        {
+          "file": "artifacts/results/edge_law_r504.py",
+          "lines": "97-124",
+          "evidence": "Both the closed-form construction and the reported profile loop over K; tau_of_cap calls subset_profile(K, cert, alpha, cap, n) separately for each K."
+        },
+        {
+          "file": "source/paper.tex",
+          "lines": "272-303",
+          "pdf": "p.4, Theorem 1",
+          "evidence": "The online model observes a prefix (x,k); Theorem 1 requires a stopping time measurable with respect to that prefix filtration."
+        }
+      ],
+      "technical_finding": {
+        "submitted_object": "The submitted procedure is a family {S_K(c)} indexed by the final count K. It selects a certificate-ordered prefix after filtering/counting flip-contributing states under that same K.",
+        "observability": "Before termination, K is unobserved. A deployable stopping policy must instead specify one membership decision S(x,k) for every prefix state, independent of K.",
+        "missing_witness": "No common state table S(x,k), no consistency assertion across all K that can reach the same (x,k), and no DP evaluation using one such common table are supplied. The stored artifacts expose only K-wise calls/profiles, not a shared policy.",
+        "precision_on_nonexistence": "The evidence proves that the submitted construction/evaluation is K-indexed and does not establish a shared prefix policy. It does not prove the stronger universal statement that no alternative shared S could ever be constructed. That caveat does not rescue the manuscript's current 'executable' or 'repair' claim."
+      },
+      "mathematical_reasoning": [
+        "For a fixed prefix state z=(x,k), an online rule must choose stop or continue from z alone: 1{z in S}. It cannot select 1{z in S_K} because K is only revealed at k=N.",
+        "The per-atom flip contribution used by the construction depends on K through both the hypergeometric reach probability P_K(X_k=x) and whether side(x,k) differs from side(K,N). Consequently, retaining the longest certificate-order prefix separately under every K is an oracle profile operation unless consistency of the selected states is proved.",
+        "A vector K -> g_{S_K}(K) can be entered into the TV LP, but it is not, without a common S, the flip profile of a single stopping time. The resulting domination g_{S_K}(K) <= min(g_orig(K),c) is therefore a coordinate-wise oracle bound, not an implementation guarantee."
+      ],
+      "affected_claims": {
+        "main_text": [
+          {
+            "location": "source/paper.tex:690-707",
+            "effect": "The main-text summary that Appendix E(g) gives a constructive per-atom repair, dominates the induced profile, restores tau*=1 in 70/72 cells, and repairs coarse-fit breaks is not supported as a claim about an executable policy."
+          }
+        ],
+        "appendix": [
+          {
+            "location": "source/paper.tex:921-1069",
+            "effect": "All state-subset numerical repair, universal-cap, edge-law, and 'trivial-validity' claims use the K-indexed profile and must not be stated as properties of a deployed prefix stopper."
+          },
+          {
+            "location": "source/paper.tex:1070-1142 and artifacts/results/prefix_prop_r508.py:16-32",
+            "effect": "The discrete-geometry/Proposition-2 discussion is about the same K-wise construction; even a corrected TV proof would not make it a prefix-observable repair."
+          }
+        ],
+        "unaffected_by_A": [
+          "The original BAYES-H rule and its fixed-rule DP evaluation use a certificate table indexed by observable (x,k); this allegation does not by itself invalidate those results.",
+          "Theorem 1 as a statement about genuinely prefix-measurable stopping times remains valid; see theorem_1_dependency below."
+        ]
+      },
+      "minimal_current_evidence_fix": {
+        "reproof_and_rerun_required_for_repair_claim": [
+          "Define and serialize one common set S_c of prefix states using only frozen quantities available at (x,k) (for example, a prior-averaged or worst-case constrained selection rule); do not pass K to membership selection.",
+          "Mechanically verify that each prefix state has exactly one stop/continue decision, that S_c is a subset of the original certificate stop set, and that its stopping time is prefix-measurable.",
+          "Recompute every g_{S_c}(K) with the same single S_c, then rerun the capacity-aware TV LP and all reported cap/radius/cost sweeps. Only those recomputed results may support executable-repair, domination, or 70/72 claims."
+        ],
+        "minimal_downgrade_without_new_evidence": "Remove 'executable', 'deployable', and repair/validity claims plus their numerical scope. At most describe the existing calculation as an oracle K-wise profile-capping sensitivity analysis, explicitly saying it is not a stopping policy."
+      }
+    },
+    {
+      "id": "B",
+      "short_name": "Proposition 2 incorrectly linearizes the capacity-constrained TV LP",
+      "verdict": "allegation_valid",
+      "allegation": "Proposition 2's proof claims V(R)=base+R(gmax-base) for every R in [0,1]. This is false for the capacity-constrained total-variation LP, including H=(1/2,1/2), g=(0,1), R=1/4.",
+      "source_locations": [
+        {
+          "file": "source/paper.tex",
+          "lines": "332-350",
+          "pdf": "pp.4-5, Proposition 1",
+          "evidence": "The correct general object is defined as the TV-ball LP and described as a two-sided greedy with donor/recipient capacities."
+        },
+        {
+          "file": "source/paper.tex",
+          "lines": "1098-1143, especially 1125-1132",
+          "pdf": "pp.18-19, Proposition 2 and proof",
+          "evidence": "The proof asserts the all-R affine formula and derives the endpoint conclusion from it."
+        },
+        {
+          "file": "artifacts/results/prefix_prop_r508.py",
+          "lines": "24-32",
+          "evidence": "The machine-witness prose repeats the same all-R affine formula as the proof of Proposition 2."
+        }
+      ],
+      "counterexample": {
+        "inputs": {
+          "H": [0.5, 0.5],
+          "g": [0.0, 1.0],
+          "R": 0.25
+        },
+        "feasible_adversary": {
+          "q": [0.25, 0.75],
+          "l1_distance": 0.5,
+          "constraint_check": "0.5 = 2R, so q belongs to B_R",
+          "objective": 0.75
+        },
+        "optimality": "With two atoms, q_1 can increase from 0.5 by at most the TV transport budget R=0.25; hence q_1<=0.75 and V(1/4)=0.75.",
+        "claimed_formula": {
+          "base": 0.5,
+          "gmax": 1.0,
+          "value": 0.625
+        },
+        "contradiction": "0.75 != 0.625. More generally here V(R)=0.5+R for 0<=R<=0.5 and V(R)=1 for 0.5<=R<=1, which is capacity-limited piecewise linear, not the stated chord."
+      },
+      "technical_finding": {
+        "error": "The TV LP transports R units of probability mass from low-g atoms to high-g atoms until a donor empties or a recipient fills. Its marginal slope is the current recipient g minus the current donor g, so capacities create breakpoints. The formula base+R(gmax-base) is not the general two-sided-greedy optimum.",
+        "what_remains_true": "For any fixed profile g, B_0={H}, B_1 is the full simplex, and B_R is nested. Therefore V(0)=base, V(1)=gmax, and V is nondecreasing. These endpoint facts, not the false linearization, suffice for the full-radius characterization.",
+        "correct_full_radius_statement": "tau(c)=1 iff V(1)<=alpha iff gmax(c)<=alpha. The manuscript's conjunction base_S(c)<=alpha and gmax(c)<=alpha is equivalent but redundant because base_S(c) is a convex average and base_S(c)<=gmax(c).",
+        "additional_proof_consequence": "The assertion in Proposition 2(iii) that above c=alpha 'only the base_S condition can bind' is not implied by monotonicity or domination: gmax_S(c) may increase past alpha for c>alpha. It must be removed or demoted to a separately verified empirical observation."
+      },
+      "affected_claims": {
+        "main_text": [
+          {
+            "location": "source/paper.tex:332-350",
+            "effect": "The main Proposition 1 definition and capacity-aware two-sided-greedy claim are not refuted by this counterexample; the false affine formula is not stated there as the general formula."
+          },
+          {
+            "location": "source/paper.tex:690-707",
+            "effect": "The main-text constructive-repair synopsis is already unsupported by A; B additionally removes Proposition 2 as a valid proof for its full-radius/prefix-law explanation."
+          }
+        ],
+        "appendix": [
+          {
+            "location": "source/paper.tex:1098-1143",
+            "effect": "Proposition 2's proof is invalid as written. Its downward-closed crossing-set conclusion can be reproved from a genuine common-policy construction and monotonicity of gmax, but the displayed all-R formula and the base-driven conclusion cannot remain."
+          },
+          {
+            "location": "source/paper.tex:1070-1096 and artifacts/results/prefix_prop_r508.py:24-32",
+            "effect": "Claims interpreting the crossing geometry through the false affine TV law require correction; the stored numerical LP outputs are not independently invalidated solely by this algebraic counterexample, but this proof/witness cannot validate them."
+          }
+        ]
+      },
+      "minimal_current_evidence_fix": {
+        "reproof": [
+          "Delete the all-R identity. State the capacity-aware greedy as piecewise linear (or leave it as the LP/greedy algorithm).",
+          "For the full-radius step, prove B_R is nested, B_0={H}, and B_1 is the simplex. Then V is nondecreasing, V(1)=max_K g(K), and tau=1 iff max_K g(K)<=alpha.",
+          "Keep a two-condition display only if desired for readability, but mark base<=gmax and do not claim it is an independent binding condition. Remove the claimed base-driven crossing result unless a separate theorem provides a sufficient condition."
+        ],
+        "numerical_claims": "Retain numerical radius claims only where their actual capacity-aware LP/greedy implementation is rerun or auditable. Do not use the Proposition-2 affine formula as their analytic justification."
+      }
+    }
+  ],
+  "theorem_1_dependency": {
+    "theorem": "Theorem 1, 'Adaptive is free' (source/paper.tex:287-303; PDF p.4)",
+    "verdict": "resolved_claim_valid",
+    "depends_on_allegation_A": false,
+    "depends_on_allegation_B": false,
+    "reasoning": [
+      "Theorem 1 is proved directly from the conditional certificate, the tower property, the terminal convention, and the assumption that tau is prefix-filtration measurable and stops only where cert(x,k)<=alpha.",
+      "It neither invokes the TV LP nor Proposition 2, which occur later in the manuscript/Appendix E(g).",
+      "A K-indexed subset family cannot be claimed as an instance of Theorem 1 because it violates the theorem's prefix-measurability premise; this limits the alleged repair, not Theorem 1 itself."
+    ],
+    "scope_note": "This adjudication does not re-evaluate other assumptions behind Theorem 1; it only checks dependency on allegations A and B."
+  },
+  "bottom_line": "Both allegations are valid. Theorem 1 and the basic capacity-aware TV LP proposition do not depend on the two defects. The Appendix E(g) executable-repair program must be withdrawn or rerun with one shared prefix-observable state table, and Proposition 2 must be reproved without the false all-R linear TV identity."
+}

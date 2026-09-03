@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "experiment_id": "A11-WOR-CS-COMPARISON-OMR-R1",
+  "analysis_type": "cpu_exact_count_replay",
+  "input": {
+    "relative_path": "../../evidence/repro_bundle_round4/omr_problem_manifest.json",
+    "sha256": "a9df3733783566d772836705b2d9a0bb5f7a1560ad4d75cc899479ae6bd0f096",
+    "derived_data_boundary": "conditional_on_anonymous_count_manifest",
+    "N": 32,
+    "split_seed": 20260815,
+    "split_counts": {
+      "FIT": 4000,
+      "CAL": 4000,
+      "TEST": 3607
+    }
+  },
+  "endpoint": {
+    "positive_full_count_condition": "K > N/2",
+    "tie_side": 0,
+    "min_stop_k": 3,
+    "terminal_fallback": "observe_N_and_return_full_count_side"
+  },
+  "alphas": ["0.10", "0.05", "0.02", "0.01"],
+  "primary_alpha": "0.05",
+  "methods": {
+    "BAYES-H": {
+      "prior": "FIT_empirical_final_count_distribution",
+      "decision": "stop_if_frozen_posterior_opposite_prefix_side_le_alpha_return_prefix_side"
+    },
+    "BAYES-UNIF": {
+      "prior": "uniform_over_K_0_through_N",
+      "decision": "stop_if_frozen_posterior_opposite_prefix_side_le_alpha_return_prefix_side"
+    },
+    "WOR-PPR-CS": {
+      "source": "Waudby-Smith_and_Ramdas_NeurIPS_2020_Theorem_2.1",
+      "working_prior": "beta_binomial_a_1_b_1_uniform_over_K",
+      "confidence_set_threshold": "prior_posterior_ratio_strictly_less_than_1_over_alpha",
+      "running_intersection": true,
+      "decision": "stop_if_nonempty_running_set_wholly_on_one_full_majority_side_return_that_side",
+      "empty_intersection": "continue"
+    }
+  },
+  "calibration": {
+    "family_size": 12,
+    "family": "3_methods_x_4_named_alphas",
+    "delta": "0.05",
+    "per_rule_delta": "0.05/12",
+    "ucb": "empirical_bernstein_maurer_pontil_as_in_frozen_A11_runner",
+    "test_does_not_select": true
+  },
+  "test_readout": {
+    "report_all_preregistered_rows": true,
+    "row_ci_family_size": 12,
+    "row_ci_delta": "0.05/12",
+    "paired_gap_family_size": 8,
+    "paired_gap_delta": "0.05/8",
+    "paired_comparators": ["BAYES-UNIF", "WOR-PPR-CS"],
+    "primary_interpretation": "alpha_0.05_only",
+    "status": "descriptive_not_a_second_population_guarantee"
+  },
+  "randomness": {
+    "analysis_rng": "none_exact_dynamic_program",
+    "split_rng": "validate_only_existing_Python_random_seed_20260815"
+  },
+  "outputs": {
+    "directory": "outputs",
+    "preflight": "preflight_report.json",
+    "fit_lock": "fit_lock.json",
+    "cal_lock": "cal_lock.json",
+    "formal_result": "formal_result.json",
+    "verification": "verification_report.json"
+  },
+  "overwrite_policy": "refuse"
+}
+

@@ -1,0 +1,212 @@
+\documentclass{article}
+\usepackage{iclr2026_conference}
+\usepackage{times}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{longtable}
+\usepackage{amsmath}
+\usepackage{url}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+\title{Resident multi-request shared-document reuse for Q16 vLLM: a reproducible audit on Qwen3.5-35B}
+\author{Anonymous}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We report a controlled, reproducible study of resident-request sharing for long-context inference with Qwen3.5-35B-A3B under strict same-kernel constraints. Under single-stream, single-batch execution, Q16 precision, and fixed geometry and input governance, we compare two ownership strategies over resident counts
+$N=\{1,2,4,8,16,32\}$:
+\emph{fresh} full-document duplication and
+\emph{shared-document reuse}.
+
+We use the same PG-19 train-only windows, one fixed document of 4,095 tokens (worst-case partial-tail), the same tokenizer model layout, and synchronized environment/build settings. Our findings are two-fold:
+\begin{itemize}
+  \item Across all N, both arms produce exact token and full-vocab-logit trajectories, with exact final logical K/V and GDN state.
+  \item The shared-document design reduces resident parse-book scaling linearly: each additional resident request saves about 85 MiB (80 MiB from avoided document copy, 5 MiB from per-request private state structure), with controlled memory scaling across N up to 32.
+\end{itemize}
+
+This manuscript only claims correctness-preserving memory-structure effects for the closed experiment slice above. We do \emph{not} claim improvements in throughput, latency, scheduler behavior, ragged batching, multi-document generalization, Q8/Q4 behavior, or downstream quality (F1/EM) changes.
+
+\textbf{Contributions:}
+\begin{itemize}
+  \item A reproducible 8-rank multi-resident experimental suite for fixed one-kernel, same-batch inference.
+  \item Raw-level replayed validity checks for token, full-vocab logits, logical K/V, and GDN state.
+  \item A fully auditable parse-book scaling model with explicit provenance and protocol gating.
+\end{itemize}
+\end{abstract}
+
+\section{Introduction}
+When the number of resident requests grows, resident-query systems often duplicate more state than necessary if each request stores a full physical copy of the same long document. Our goal is to test whether shared-document reuse can reduce parse-book growth while preserving exactness in a fixed-scope kernel setup.
+
+Earlier passes had verified same-kernel exactness for single request. The remaining gap was a systematic, reproducible scan of resident count $N>1$ and corresponding capacity--consistency tradeoffs.
+
+This work studies:
+\begin{itemize}
+  \item one process and one model invocation path (single kernel family),
+  \item one stream, batch size 1,
+  \item Q16 precision,
+  \item PG-19 train-only validation.
+\end{itemize}
+
+We report results only for this scope and explicitly avoid global deployment claims.
+
+\section{Related Work}
+This work is positioned as a systems reproducibility study of memory sharing under fixed execution semantics.
+\begin{itemize}
+  \item Transformer attention is the base building block~\citep{vaswani2017attention}.
+  \item FlashAttention reduces attention memory-access overhead through tiled kernels~\citep{dao2022flashattention}.
+  \item vLLM's paged attention exposes practical cache reuse paths but does not solve all protocol or reproducibility requirements by itself~\citep{vllm2024pagedattention}.
+\end{itemize}
+
+Our contribution is not a new kernel. It is a reproducible evidence chain showing how shared-document reuse scales for resident requests under strict protocol and raw-level replay gates.
+
+\section{Methodology}
+\subsection{Experiment design}
+We compare two arms:
+\begin{itemize}
+  \item \textbf{Fresh baseline.} Shared prefill and pack are fixed, then each request gets an independent full document + private region.
+  \item \textbf{Shared-document reuse.} The document block remains shared in a read-only source arena; each request owns only private pages for partial-tail copy-on-write and append state.
+\end{itemize}
+
+\subsection{Model and execution}
+Model and kernel:
+\begin{itemize}
+  \item Qwen3.5-35B-A3B, 40 layers, full-attention layers at indices $\{3,7,11,15,19,23,27,31,35,39\}$ (10 layers).
+  \item vLLM 0.26 unified attention with Triton kernel, batch size $q=1$, and Q16 execution.
+  \item page size $128$, head dimension $256$, full attention layers $n_{\text{layer}}=10$.
+  \item Environment: PyTorch 2.11.0+cu129, Transformers 5.14.1, Triton 3.6.0, FlashInfer 0.6.14.
+\end{itemize}
+
+We run
+\[
+N \in \{1,2,4,8,16,32\},\quad q=32,\quad g=8,\quad d=4095,\quad n_{\text{layer}}=10.
+\]
+
+\subsection{Data governance}
+Each rank uses a different PG-19 train window. For each rank we fix 32 non-overlapping 32-token queries per book (stride 64), no synthetic query markers, and forbid source6-9, source68-99, or test-v2 reads in this experiment. All windows, query banks, and train-only objects are hashed and checked against frozen manifest identities.
+
+The document length is fixed at 4,095 tokens ($\mod 128 = 127$), making partial-tail behavior explicit and providing a conservative stress condition.
+
+\subsection{Capacity units}
+For one layer in this setting,
+\[
+ C_{32}^{\text{layer}} = 2{,}621{,}440\ \text{bytes}.
+\]
+For 10 full-attention layers, total is $10 \times C_{32}^{\text{layer}}=26{,}214{,}400$ bytes ($\approx25$ MiB). All capacity numbers used below are for these 10 full-attention layers (not per-layer values).
+
+Let:
+\[
+\text{fresh}(N)=80\text{ MiB}+90N\text{ MiB},\quad
+\text{reuse}(N)=80\text{ MiB}+5N\text{ MiB},\quad
+\Delta(N)=85N\text{ MiB}.
+\]
+Here 80 MiB reflects shared source document copy avoidance, and $5N$ MiB is private reservation growth in shared mode.
+
+\section{Correctness protocol}
+For each raw shard, we record trajectories and enforce replay in aggregate:
+\begin{itemize}
+  \item full token sequence,
+  \item full-vocab logit tensors,
+  \item final logical K/V,
+  \item GDN state (60 tensors, full exact checks),
+  \item call descriptors and kernel identity.
+\end{itemize}
+
+We reject reports that pass on aggregate booleans alone. The replay pipeline recomputes medians and validates layer, protocol, query provenance, allocator baselines, and storage formulas from raw measurements.
+
+\textbf{Observed invariants.}
+\begin{itemize}
+  \item Fresh and reuse are exact for token and full-logit outputs (ratio 1.0).
+  \item Final logical K/V and GDN state are exact between arms.
+  \item No dense fallback or full-document cat is used.
+  \item Cross-$N$ prefix isolation holds: the same request index is stable across resident-counts.
+\end{itemize}
+
+HF-based references are treated as non-blocking diagnostics only and are not used as the primary deployment claim.
+
+\section{Capacity and resource results}
+Closed-form parse-book scaling in 10-layer full-attention scope:
+\begin{table}[h]
+\centering
+\begin{tabular}{cccccc}
+\toprule
+N & fresh (MiB) & reuse (MiB) & controlled savings (MiB) & avoided doc copy (MiB)\\
+\midrule
+1 & 170 & 85 & 85 & 80\\
+2 & 260 & 90 & 170 & 160\\
+4 & 440 & 100 & 340 & 320\\
+8 & 800 & 120 & 680 & 640\\
+16 & 1520 & 160 & 1360 & 1280\\
+32 & 2960 & 240 & 2720 & 2560\\
+\bottomrule
+\end{tabular}
+\caption{Median parse-book scale (10 full-attention layers) over 8 ranks.}
+\end{table}
+
+These are parse-book quantities only and are not equivalent to total GPU memory.
+
+For allocator-based reporting, we use PyTorch allocator \texttt{allocated/reserved} (not NVML peaks). All reported values are medians over 8 ranks, with raw replays as the source of truth.
+
+At $N=32$, absolute production peak allocated drops from
+$74{,}623{,}183{,}360$~bytes (fresh) to
+$71{,}765{,}915{,}136$~bytes (reuse), a reduction of
+$2{,}857{,}268{,}224$~bytes ($\approx 2.661$~GiB).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ccccc}
+\toprule
+N & fresh setup+generation current delta & reuse setup+generation current delta & difference & absolute allocated peak (GiB)\\
+\midrule
+1 & 147.135 MiB & 61.883 MiB & 85.252 MiB & 64.896 / 64.813\\
+2 & 298.522 MiB & 126.766 MiB & 171.757 MiB & 65.048 / 64.881\\
+4 & 591.286 MiB & 249.520 MiB & 341.767 MiB & 65.345 / 65.011\\
+8 & 1177.831 MiB & 495.045 MiB & 682.786 MiB & 65.936 / 65.270\\
+16 & 2355.406 MiB & 990.081 MiB & 1365.325 MiB & 67.126 / 65.792\\
+32 & 4705.065 MiB & 1980.162 MiB & 2724.903 MiB & 69.498 / 66.837\\
+\bottomrule
+\end{tabular}
+\caption{Current allocated deltas and peak allocated (8-rank medians).}
+\end{table}
+
+\section{Reproducibility and audit}
+Execution used Job~237580 / Trial~1840837 and completed successfully.
+Stage order:
+\texttt{00\_start $\rightarrow$ 01\_static\_preflight\_ok $\rightarrow$ 02\_resident\_shards\_ok $\rightarrow$ 99\_done},
+with no FAILED artifacts.
+
+Every raw shard and summary file is hash-checked with frozen identities (code, model, data, manifest, windows, query banks, and run metadata). Aggregate replay validates:
+\begin{itemize}
+  \item protocol identity,
+  \item raw call descriptors,
+  \item raw trajectory equality,
+  \item allocator continuity,
+  \item storage formulas.
+\end{itemize}
+
+Key evidence identifiers:
+\texttt{summary cbb5d861...c0401},
+\texttt{scientific ledger 14fd1c0c...faf363}.
+\section{Discussion and limitations}
+Under this controlled protocol, shared-document reuse improves parse-book scaling and preserves same-kernel exactness for resident counts up to $N=32$.
+
+Our claims are intentionally scoped:
+\begin{itemize}
+  \item no global NVML or end-to-end system-memory conclusion,
+  \item no claim of throughput or latency speedup,
+  \item no inference about multi-document mixing, ragged batching, scheduler concurrency, Q8/Q4, or downstream quality metrics.
+\end{itemize}
+
+Next steps include explicit integration with production scheduling traces and broader quality traces under the same replay gates.
+
+\section{Conclusion}
+This work provides a strict, reproducible accounting of resident multi-request shared-document reuse under fixed same-kernel conditions. In this setting, parse-book demand declines linearly with $N$, with exactness preserved across tokens, logits, logical K/V, and GDN state.
+
+At $N=32$, parse-book controlled savings reach 2,720 MiB, and allocator peak allocated is reduced by approximately 2.661 GiB at the median over 8 ranks. We therefore report these values as scoped evidence, not as system-level deployment guarantees.
+\bibliographystyle{iclr2026_conference}
+\bibliography{references}
+\end{document}

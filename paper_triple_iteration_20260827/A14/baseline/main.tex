@@ -1,0 +1,707 @@
+\documentclass{article}
+
+\usepackage{iclr2026_conference,times}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,booktabs,tabularx,graphicx,microtype,float}
+\usepackage[hidelinks]{hyperref}
+
+% Ragged-right paragraph columns avoid stretched word spacing in narrow tables
+% while preserving the ICLR body/table font sizes.
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% Keep the expanded information-design pass within the ICLR page budget while
+% retaining normal caption/body sizes and all six formalized tables.
+\setlength{\textfloatsep}{4pt plus 2pt minus 1pt}
+\setlength{\floatsep}{3pt plus 2pt minus 1pt}
+\setlength{\intextsep}{4pt plus 2pt minus 1pt}
+\setlength{\dbltextfloatsep}{4pt plus 2pt minus 1pt}
+\setlength{\dblfloatsep}{3pt plus 2pt minus 1pt}
+\setlength{\abovecaptionskip}{4pt plus 1pt minus 1pt}
+
+\newcommand{\sconf}{\texttt{s\_conf}}
+\newcommand{\rinj}{\texttt{rand\_inject}}
+\newcommand{\ainj}{\texttt{anti\_inject}}
+\newcommand{\finj}{\texttt{fixed\_inject}}
+\newcommand{\mcu}{\texttt{mc\_uniform}}
+\newcommand{\pp}{\,\mathrm{pp}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\II}{\mathbb{1}}
+
+\title{Non-Interchangeable Scoring Protocols and a Draw-Count-Matched Reference:\\
+A Narrow Measurement Study on LLaDA-8B and GSM8K-MC}
+\author{Anonymous Authors}
+
+\begin{document}
+\lhead{Under review as a conference paper at ICLR 2026}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+Multiple-choice accuracy for a diffusion language model is not determined by
+the model alone: the scorer chooses which option tokens are visible, when they
+are revealed, and whether revealed ground-truth tokens are fed back into later
+steps.  We audit that measurement construction on one bounded bed:
+LLaDA-8B-Instruct with balanced four-choice GSM8K-MC.
+
+On a confirmatory $n{=}400$ pool \sconf{} exceeds the non-injected
+\mcu{} reference by $+13.0\pp$ at the per-candidate
+$n_{{\rm mc},i}=2L_i$ total-NFE-fair equalization point ($b/c=109/57$,
+exact $p=6.6\!\times\!10^{-5}$; four tested budgets, conservative read
+$+9.0\pp$).  This \emph{refutes} the narrow account that the advantage is
+an artifact of the reference receiving less compute, but establishes no
+budget-independent law.  On a disjoint fresh pool a fixed left-to-right
+order whose \emph{schedule selection} reads no model output still beats
+\sconf{}; confidence ordering is therefore neither necessary nor uniquely
+optimal on this answer format.  Rank-agreement and distractor-perturbation
+diagnostics support only a bed-local, sign-consistent non-interchangeability
+reading; we do not claim dose-response, cross-bed transfer, or isolated
+causal attribution to feedback.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Masked diffusion language models assign a multiple-choice answer only after a
+scoring protocol turns option-level denoising losses into a ranking.  That
+protocol is part of the measurement instrument.  In particular, a scorer may
+reveal candidate tokens sequentially and feed the known candidate token back
+into the context, or it may score a randomly masked subset without such
+feedback.  Even two feedback-based scorers can use different reveal schedules.
+Treating their accuracies as if they were readings from the same ruler hides a
+change in what was measured.
+
+We audit this construction on one LLaDA-8B-Instruct $\times$ GSM8K-MC
+four-option bed: two historical balanced pilot pools, a confirmatory
+$400$-question pool for the reference-arm contrast, and a disjoint fresh
+$819$-question pool for reveal order.  The study makes three pool-specific
+claims:
+
+\begin{enumerate}
+  \item On the tested $n{=}400$ reference-budget curve, \sconf{}'s advantage
+  over the non-injected reference is positive and significant at every budget
+  and narrows as the reference receives more compute
+  (Table~\ref{tab:gt-result}, Figure~\ref{fig:decisive-paired}).  The registered
+  matched-$L$ point remains primary.  At the per-candidate total-NFE-fair
+  $2L$ endpoint, where both arms receive $2L_i$ forwards, the same bed retains
+  the $+13.0\pp$ headline gap (exact $p=4.8\!\times\!10^{-5}$ and
+  $6.6\!\times\!10^{-5}$); the highest-budget read remains the conservative
+  one.  This rules out a less-reference-compute-only account on the tested
+  curve, but not budget dependence off the curve.  Because the comparison is
+  a complete protocol swap, it does not isolate feedback causally.
+  \item On the disjoint fresh pool, reveal order under the tested persisted
+  schedule survives its $k{=}1$ multiplicity family.  A fixed schedule whose
+  selection reads no model output nevertheless beats \sconf{} on average
+  (Table~\ref{tab:reveal-order-batches}); the margin strengthens in the
+  answer-pool construction stratum and reverses at answer position 0
+  (Appendix Table~\ref{tab:fresh-strata-app}).  Confidence ordering is therefore neither
+  necessary nor uniquely optimal on this answer format, and the result does
+  not establish an exclusively causal confidence mechanism.
+  \item The protocols are not interchangeable on this bed: changing the
+  scorer changes per-question option rankings and choice-set sensitivity.
+  Pairwise cross-protocol Kendall $\tau$ lies only just above the random arm's
+  own self-$\tau$ floor, so it bounds protocol-specific disagreement rather
+  than proving distinctness.  The deterministic \sconf{}--\finj{} agreement
+  provides a separate comparison (Table~\ref{tab:rank-diagnostics}).
+\end{enumerate}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.80\textwidth]{figures/protocol_teaser_imagegen_refine8_v4.png}
+  \caption{Conceptual scoring-protocol fork, and the measurement-level view of
+  this study.  The same item and model feed all five arms of
+  Table~\ref{tab:arms}: confidence, anti-confidence, fixed, seeded-random, and
+  random-mask paths.  Feedback arrows stay inside the four injected paths; the
+  random-mask path has none.  Each path ends in the same generic score-vector
+  object, so no winner or item-level ranking is drawn, and the two rulers
+  distinguish nominal draw count from total NFE.  This generated artwork
+  contains no experimental values; all quantitative results are data-derived.}
+  \label{fig:teaser}
+\end{figure*}
+
+The contribution is a protocol audit rather than a new scoring algorithm: a
+paired, decision-record-level decomposition of comparisons that would otherwise collapse
+model and scorer into one accuracy number, with the negative boundary stated
+up front---neither the design nor its measurements support a dose-response
+curve, a concavity claim, or transfer to another model, dataset, or judge.
+
+\section{Related Work and Local Evidence Context}
+\label{sec:related}
+
+LLaDA introduced the 8B masked-diffusion model used here
+\citep{nie2025llada}; iLLaDA later introduced confidence-based
+multiple-choice scoring \citep{nie2026illada}.  That scorer reveals the most
+confident candidate token and feeds the known token into later steps, so a
+comparison with a Monte Carlo-style scorer replaces protocol components as
+well as the accounting rule.  We audit that replacement, not the published
+benchmark values.  GSM8K \citep{cobbe2021gsm8k} supplies only the controlled
+four-choice bed; our claims do not transfer beyond it.
+
+Scorer dependence is established more broadly: benchmarks vary with task and
+prompt format \citep{brown2020fewshot,hendrycks2021mmlu,lin2022truthfulqa,chen2021codex};
+frameworks distinguish raw from length-normalized scoring and expose prompt
+sensitivity \citep{liang2023helm,biderman2024lessons,zhu2024promptrobust}; and
+audits cover judge design, contamination, and aggregation
+\citep{perez2022modelwritten,jain2024livecodebench,wang2023selfconsistency}.
+Our contribution is the measured masked-diffusion protocol swing on a stated
+budget curve.
+
+The closest mechanism literatures are mask-out objectives
+\citep{nie2025llada,nie2026illada,sahoo2024mdlm}, multiple-choice
+normalization and position sensitivity \citep{holtzman2021surface,zheng2024selection},
+and confidence-guided diffusion decoding \citep{nie2025llada}.  Our controls
+extend these concerns to token injection: a fixed left-to-right schedule can
+beat confidence ordering on this answer format, but no cited work or result
+here establishes a transferable injected-feedback effect.
+
+\section{Setup}
+\label{sec:setup}
+
+\paragraph{Bed and pairing.}
+Each item pairs one GSM8K question with four candidate answers scored by
+LLaDA-8B-Instruct \citep{nie2025llada} with frozen weights.  Choice sets were
+frozen but differ by pool, and the fresh pool is \emph{internally}
+heterogeneous by construction: the historical, $n=400$, and first 336 fresh
+items use deterministic near-miss distractors; the remaining 483 fresh items
+use three distinct values drawn from a frozen GSM8K answer pool.  Every arm
+reuses the recorded choice set.  Historical and $n=400$ pools are exactly
+answer-position balanced; the fresh pool is approximate.  Fresh-pool contrasts
+therefore mix protocol effects with construction stratum, and post-hoc position
+standardization leaves the fresh--pilot difference, so we report them as
+strata-confounded.  Inference uses BF16, no temperature,
+and no generation.  Confidence and fixed schedules are deterministic; the
+seeded-random result is one persisted schedule.  Because its runner used an
+unpinned Python string hash, replay is anchored to stored per-candidate orders,
+not the nominal seed alone.  Appendix~\ref{app:repro} lists identifiers,
+prompts, orders, and seeds.  Historical pools use 12 or 16 items per answer
+position ($n=48/64$); the $n=400$ and fresh $n=819$ pools are non-overlapping.
+Within each pool, arms score the same items, so contrasts are paired by
+question.  Top-1 exact correctness is the sole endpoint; no partial credit is
+assigned.
+
+\paragraph{Five arms.}
+For candidate tokens $y_{1:L_i}$, an injected arm chooses a permutation of
+positions, reads cross-entropy before each reveal, inserts the known candidate
+token at that position, and repeats until the candidate is visible.  It sums
+the per-step cross-entropies and selects the option with minimum score.
+\sconf{} chooses the next minimum-cross-entropy position; \rinj{} uses a
+deterministically seeded random order; \ainj{} chooses the maximum-cross-entropy
+position; and \finj{} uses fixed left-to-right order.  The fifth arm, \mcu{},
+draws a masked subset of size $k \sim \mathrm{U}\{1,\dots,L\}$ at each of
+$n_{\rm mc}$ draws (LLaDA upper-bound estimator), reads the partial-mask
+cross-entropy at the masked positions, and rescales per option by the standard
+factor $L_i/k$, so each draw is an unbiased length-corrected estimate of the
+full mask-out score and the arm returns their mean; ties break by first
+index.  The $n_{\rm mc}{=}1$ single draw is this paper's minimum-budget arm;
+it differs operationally from the LLaDA/iLLaDA default confidence scorer,
+whose reveal targets the model's own argmax token rather than the injected
+ground-truth candidate.  Thus ``protocol family''
+denotes the full tuple of feedback rule, reveal schedule, and scoring dose---not
+the model name alone.\footnote{The anonymous artifact describes the exact
+sampler, prompt, mask construction, random-seed policy, and first-index tie
+rule.}  Table~\ref{tab:arms} summarizes these protocol components.
+
+\begin{table}[t]
+\centering
+\setlength{\tabcolsep}{3.4pt}
+\caption{The five scoring arms.  $L_i$ is candidate length.  The scoring-forward
+count excludes the additional $L_i$ adaptive schedule-selection forwards for
+confidence and anti-confidence order; nominal draw matching is therefore not
+total-NFE matching.}
+\label{tab:arms}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Arm & Reveal schedule & GT feedback & Scoring forwards \\
+\midrule
+\sconf{} & min-CE first & yes & $L_i$ ($+L_i$ select) \\
+\rinj{} & seeded random & yes & $L_i$ \\
+\ainj{} & max-CE first & yes & $L_i$ ($+L_i$ select) \\
+\finj{} & fixed order & yes & $L_i$ \\
+\mcu{} & random mask & no & \multicolumn{1}{c}{$1$ ($n_{\rm mc}{=}1$)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Statistics and derived diagnostics.}
+For paired binary correctness indicators, $b$ and $c$ count discordant directions,
+$m=b+c$, and $\widehat\Delta=(b-c)/n$.  We report the exact two-sided McNemar
+test \citep{mcnemar1947} and the locked 95\% interval.  Paired intervals default
+to the registered standard error $\widehat{\mathrm{SE}}=\sqrt{m}/n$; each
+question-bootstrap or paired-bootstrap interval is named as such in its own
+caption.  An
+alternative mean-corrected form moves the reported registered-SE bounds
+negligibly on the $n=400$ pool and is convention-sensitive only on the small
+pilot pools, changing no verdict anywhere---Appendix
+Table~\ref{tab:order-six-ci} prints both conventions side by side.  The
+pre-registered interpretation gate requires $m\geq25$ before a paired contrast
+is promoted.  For protocol agreement, Kendall
+$\tau$ \citep{kendall1938} is recomputed within each item from the two
+four-option score vectors after dropping tied pairs, then averaged across
+items.  Choice-set sensitivity is an offline deterministic overlay: each of
+the three distractors is shrunk by 25\%, and a flip is counted if the selected
+option changes (with perturbation counts stated per pool in the appendix).
+These are descriptive protocol diagnostics, not hypothesis tests.
+
+\paragraph{Load-bearing estimand.}
+The primary announcement is the paired mean accuracy gap
+$\Delta=\EE_i[\II(A(q_i){=}y_i){-}\II(B(q_i){=}y_i)]=\Pr(A(q){=}y){-}\Pr(B(q){=}y)$
+under nominal draw-count matching: $q_i$ is a fixed item tuple (question,
+designated answer, deterministic four-option pool from the same scorer), the
+expectation is over the $n$ items of a named pool, and the budget unit is the
+nominal per-candidate scoring draw (each arm spends $L_i$ forwards per
+candidate; nominal, not total NFE, per Table~\ref{tab:arms}).  Estimation is
+the paired $\widehat\Delta=(b-c)/n$ with the exact two-sided McNemar test;
+$\Delta$ is a protocol gap, not a mechanism attribution.  Registration kept
+the nominal matched-$L$ point ($n_{\rm mc}{=}L$, draw-count only) primary; that
+primary point and the per-candidate total-NFE-fair equalization at $2L$ are
+both measured on the $n{=}400$ bed, and the reported curve still treats the
+$+9.0\pp$ high-budget endpoint as its conservative read
+(Table~\ref{tab:gt-result}).
+
+\paragraph{Multiplicity.}
+The confirmatory five-arm analysis uses all ten pairwise tests as one Holm
+family \citep{holm1979} at $\alpha=0.05$; the smallest-step threshold is $0.005$.  The fresh
+fixed-order adjudication has one preregistered load-bearing pair
+(\sconf{}--\finj{}, $k=1$).  As a conservative sensitivity, we also name a
+five-test reporting family: \sconf{} versus \rinj{}, \ainj{}, \finj{},
+single-draw \mcu{}, and draw-count-matched \mcu{}.  Under Holm at
+$\alpha=0.05$, the fixed-order result remains significant even under the
+worst-case factor-five adjustment ($p=0.0194$).  This named five-test set is a
+robustness disclosure, not a retroactive change to the registered $k=1$
+endpoint.
+
+
+
+\paragraph{Registration and principal-contrast selection.}
+The initial registration fixes the bed, five arms, $m{\geq}25$ promotion gate,
+and exact paired testing.  Draw-count matching was selected only after the
+small-pool scan, so every small-sample row is historical/exploratory.  A
+separate confirmatory registration fixed the $n=400$ draw-count-matched
+contrast, the ten-test Holm family, and the power stop before data.  Its
+planning MDE and its magnitude gate are distinct, unchanged quantities: the
+planning MDE sized the $n=400$ pool, while the same $4\pp$ promotion bar --- a
+\emph{point-estimate} gate, not an inferential lower-bound gate, so the
+high-budget read's lower bound of $3.46\pp$ neither clears $4\pp$ nor needs to
+--- applies to the matched-$L$, total-NFE-fair $2L$, and high-budget reads on
+that bed, all three of which clear it (Table~\ref{tab:gt-result}).  A
+separately pre-registered exploratory $25\pp$ tier applies only to the
+historical small rows, not as a stricter second bar for any $n=400$ read; this
+unified rule \emph{refutes} the earlier asymmetric thresholding.  The corrected
+high-budget $n=400$ run and the anonymous decision chronology are in Appendix
+Tables~\ref{tab:estimator-scan} and~\ref{tab:revision-chain}.
+\section{The Reference Remains Lower Across the Tested Budget Curve on This Bed}
+\label{sec:result1}
+
+The answer-level budget curve joins independently registered $n=400$ runs, with
+$n_{\rm mc}{=}128$ as the conservative high-budget main read.  Its decisive row
+is the total-NFE-fair $2L$ point, where both arms spend $2L_i$ forwards per
+candidate (Table~\ref{tab:gt-result}).  The pre-registered nominal matched-$L$
+endpoint instead set $n_{{\rm mc},i}=L_i$, matching only the injected arm's
+$L_i$ scoring steps and not its schedule-selection passes, token-forwards, or
+total NFE; that draw-count-matched point is separately measured on this bed
+(paired $b/c=106/54$), and the $2L/2L$ row returns the same $+13.0\pp$ gap from
+a numerically distinct paired record ($b/c=109/57$), so the two endpoints differ
+in discordance pattern but not in headline effect.  The candidate-length
+distribution is in Appendix Table~\ref{tab:candidate-lengths}.  At
+the headline operating point the paired result survives the ten-test Holm
+family; Table~\ref{tab:gt-result} and Figure~\ref{fig:decisive-paired} report
+the arm accuracies, discordances, estimate, interval, and exact test.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.98\columnwidth]{figures/decisive_paired_forest_refine10.pdf}
+  \caption{Data-derived paired forest of the tested $n{=}400$ reference-budget
+  curve: the same four contrasts, frozen records, and intervals as
+  Table~\ref{tab:gt-result}, with no new decoding.  Square area scales with the
+  discordant count $m$; filled squares mark question-bootstrap intervals and
+  open squares registered paired-SE intervals.  The matched-$L$ primary endpoint
+  and the decisive total-NFE-fair $2L$ equalization coincide at $+13.0\pp$,
+  while the reference improves with budget, contracting the gap to the
+  conservative $+9.0\pp$ read.  All four intervals exclude zero.  The dotted
+  $4\pp$ line is the registered \emph{point-estimate} promotion bar, not a
+  lower-bound requirement, so the high-budget interval reaching $3.46\pp$ is
+  expected (\S\ref{sec:setup}).  Regenerated by
+  \protect\path{paper/src/figures/decisive_paired_forest_refine10.py}.}
+  \label{fig:decisive-paired}
+\end{figure}
+
+\paragraph{Same-bed likelihood readout.}
+For each deterministic injected policy, summed candidate cross-entropy is the
+exact negative log-likelihood under that sequential unmasking policy.  Since
+selection is its $\arg\min$, score and likelihood rankings coincide \emph{by
+construction}; this identity is not an additional comparison.
+Table~\ref{tab:samebed-likelihood} shows both ground-truth signal and a policy
+shift on the same questions: true-answer readout falls from $1.88$ to $1.21$
+nats/token under \sconf{} versus fixed order.  Thus the gap is localized to a
+protocol-dependent likelihood readout, without a cross-bed claim.  These are
+teacher-forced option likelihoods, not generation; \mcu{} remains a separate
+mask-out family whose ELBO-style estimand is not point-comparable to sequential
+reveal.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Same-bed per-token negative log-likelihood (nats; lower is better;
+$n{=}400$).  $\rho$ relates true-option nats to correctness.
+For \finj{}/\sconf{}, paired true-option directions are $349/40$ with 11 ties
+($n_{\rm selected}{=}389$, exact two-sided $p=1.1\!\times\!10^{-62}$).
+\mcu{} is the separate mask-out family.}
+\label{tab:samebed-likelihood}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Arm & chosen nats/tok & true-opt nats/tok & $\rho$ (true-opt, correct) & acc.\% \\
+\midrule
+\sconf{} & 1.75 & 1.88 & $-0.12$ & 42.75 \\
+\finj{}  & 1.02 & 1.21 & $-0.28$ & 45.50 \\
+\ainj{}  & 1.20 & 1.43 & $-0.35$ & 40.75 \\
+\rinj{}  & 1.18 & 1.62 & $-0.41$ & 39.00 \\
+\mcu{} (ELBO family) & 0.19 & 0.77 & $-0.43$ & 28.75 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.2pt}
+\caption{Tested reference-budget curve in ascending reference budget
+(reference/\sconf{} total NFE in parentheses; row labels are the per-candidate
+budget labels of Appendix Table~\ref{tab:compute-ledger}).  The decisive row is
+total-NFE-fair equalization at $2L$, where the reference uses
+$n_{{\rm mc},i}=2L_i$ forwards and \sconf{} $L_i$ scoring plus $L_i$
+schedule-selection forwards.  The pre-registered nominal matched-$L$ point
+(reference $n_{{\rm mc},i}=L_i$, nominal draw-count match only, primary endpoint
+per registration) is measured on the same $n{=}400$ items as that decisive row,
+with the same \sconf{} trajectories ($171/400$) and the same $+13.0\pp$
+headline, so the two endpoints are numerically distinct paired records with
+interchangeable headline readings.\protect\footnotemark{}  The two
+$n_{{\rm mc},i}$ rows quote question-bootstrap intervals (20k, seed 20260824)
+and the rest the registered paired SE $\sqrt{m}/n$; tests are exact two-sided
+McNemar; Figure~\ref{fig:decisive-paired} plots the four $n{=}400$ rows.  The
+$n{=}64$ scan is exploratory and superseded.}
+\label{tab:gt-result}
+\begin{tabularx}{\textwidth}{@{}YrrrrrlY@{}}
+\toprule
+Reference point (ref/\sconf{} NFE) & $n$ & Acc.\ pair (\sconf{}/ref) & $b/c$ & $\widehat\Delta$ & 95\% CI & Exact $p$ & Role \\
+\midrule
+Single draw ($1/2L$) & 400 & 42.75/28.75\% & 113/57 & $+14.0\pp$ & $[7.61,20.39]$ & $2.1\!\times\!10^{-5}$ & corroboration \\
+$n_{{\rm mc},i}=L_i$ ($L/2L$) & 400 & 42.75/29.75\% & 106/54 & $+13.0\pp$ & $[7.00,19.00]$ & $4.8\!\times\!10^{-5}$ & pre-registered primary \\
+$n_{{\rm mc},i}=2L_i$ ($2L/2L$) & 400 & 42.75/29.75\% & 109/57 & $+13.0\pp$ & $[6.75,19.25]$ & $6.6\!\times\!10^{-5}$ & NFE-fair equalization (decisive) \\
+$n_{\rm mc}=128$ ($128/2L$) & 400 & 42.75/33.75\% & 82/46 & $+9.0\pp$ & $[3.46,14.54]$ & 0.0019 & conservative read \\
+$n_{{\rm mc},i}=L_i$ ($L/2L$) & 64 & 53.12/28.12\% & 24/8 & $+25.0\pp$ & $[7.68,42.32]$ & 0.007 & exploratory (superseded) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\footnotetext{The $n{=}400$ single-draw row uses
+\path{results/c1_n400_20260819-104302/perq_r0.jsonl}; the matched-$L$ row uses
+\path{results/nmc_sweep_grid128_20260823-023717/perq_r0.jsonl}; the $2L/2L$
+(total-NFE-fair) and high-budget rows use
+\path{results/nmc_sweep_grid128_20260824-192820/perq_r0.jsonl}
+($n_{\rm selected}{=}400$ in each).  ``Same bed'' is a checked property of the
+two records, not an assumption: \sconf{} is per-item identical across them
+($171/400$) and so is $n_{\rm mc}{=}128$ ($135/400$); only the two reference
+samplers differ.}
+
+These are operating points of one replacement, not independent triangulation.
+The monotone reference rise contracts but does not erase the gap, refuting a
+pure low-compute artifact on the tested curve, exact $2L$ included; any
+budget-independent law off the measured points remains untested, and the paired
+result isolates neither feedback, schedule, nor budget.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.0pt}
+\caption{Reference-arm calibration against the chance level of each declared
+four-choice pool (exact one-sided binomial tests on the arm's own correct
+count).  Rows 2--4 are the same $n=400$ pool at three scoring budgets; the last
+row is a historical pilot on a different pool, not a large-pool substitute.
+These five tests are the paper's one uncorrected family, so the last column
+scores each against the Bonferroni--5 bar $\alpha=0.05/5=0.01$: three rows clear
+it and the two lowest-budget $n{=}400$ reads do not.  The per-candidate
+draw-matched row sets $n_{{\rm mc},i}{=}L_i$ per candidate.  Those two remain
+corroborative chance checks either way; no headline claim rests on this family,
+because the headline claims are the paired McNemar contrasts of
+Table~\ref{tab:gt-result}, which are unchanged by any correction applied here.}
+\label{tab:reference-calibration}
+\begin{tabular}{@{}lrrrrlc@{}}
+\toprule
+Reference arm & $n$ & Correct & Accuracy & Chance & Exact $p$ & Bonf.--5 \\
+\midrule
+Seeded-random reveal, fresh & 819 & 398 & 48.60\% & 25\% & $6.56\!\times\!10^{-48}$ & clears \\
+\mcu{}, single draw & 400 & 115 & 28.75\% & 25\% & 0.0486 & no \\
+\mcu{}, per-candidate draw-matched & 400 & 119 & 29.75\% & 25\% & 0.0176 & no \\
+\mcu{}, $n_{\rm mc}=128$ & 400 & 135 & 33.75\% & 25\% & $5.6\!\times\!10^{-5}$ & clears \\
+\mcu{}, $n_{\rm mc}=128$ pilot & 64 & 27 & 42.19\% & 25\% & 0.0019 & clears \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:reference-calibration} shows every tested reference above its
+pool's chance level at the nominal one-sided level and farther above it with
+budget; under Bonferroni--5 the two lowest-budget $n{=}400$ reads become
+\emph{undetermined} against chance rather than at chance, which does not touch
+the paired contrasts in Table~\ref{tab:gt-result} and Appendix
+Table~\ref{tab:estimator-scan}.  The
+$n=400$ high-budget read is significant and clears the same $4\pp$ bar as the
+primary, whereas the $n=64$ pilot remains underpowered under its exploratory
+tier and is superseded, at the identical $n_{\rm mc}{=}128$ operating point, by
+that measured $n{=}400$ row.  Thus chance calibration and compute both
+\emph{refute} a pure budget artifact; budget independence as a law off the
+tested curve stays \emph{honestly unresolved}.  The rest of the nested $n=64$
+scan is retained only as exploratory evidence (Appendix
+Table~\ref{tab:estimator-scan}, Figure~\ref{fig:accuracy}), and the
+identification projection in \S\ref{sec:limitations} is not answer accuracy.
+
+\paragraph{Analysis map.}
+Table~\ref{tab:analysis-map} consolidates every headline estimand: pool,
+registration status, direction, multiplicity family, primary interval
+convention, and final verdict.  It is the single index into the
+Tables~\ref{tab:gt-result}, \ref{tab:reference-calibration},
+\ref{tab:reveal-order-batches}, Appendix Table~\ref{tab:fresh-strata-app} and
+\ref{tab:rank-diagnostics} evidence trail; per-estimand alternative
+conventions remain in Appendix
+Tables~\ref{tab:estimator-scan}, \ref{tab:order-six-ci}.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.4pt}
+\caption{Analysis map: headline estimands of this paper.
+\emph{Pool} = question bed; \emph{Prereg.\ status} = whether the endpoint
+was fixed before observing data;
+\emph{Direction} = pre-registered read direction ($+$ = first-listed arm
+better, $-$ = second-listed arm better, $0$ = symmetric/diagnostic);
+\emph{Family} = multiplicity correction under which the displayed $p$ is
+read; \emph{Primary interval} = the registered or displayed uncertainty
+convention; \emph{Verdict} = the registered or post-hoc reading
+(Holm survive / Bonf.\ clear / CI or LB excludes $0$ or fails to).
+Discounted secondary diagnostics (chance calibration, strata) follow the
+same per-row convention.}
+\label{tab:analysis-map}
+\begin{tabular}{@{}p{0.20\textwidth} c p{0.13\textwidth} c p{0.11\textwidth} p{0.21\textwidth} c @{}}
+\toprule
+Estimand & Pool & Status & Dir & Family & Verdict & Table \\
+\midrule
+\sconf{} vs \mcu{} matched-$L$ & $n{=}400$ & pre-reg.\ primary & $+$ & Holm--10 & Holm survives ($+13.0\pp$, $[7.00,19.00]$) & \ref{tab:gt-result} \\
+\sconf{} vs \mcu{} $2L/2L$ & $n{=}400$ & post-sel.\ sec.\ (decisive) & $+$ & Holm--10 & Holm survives ($+13.0\pp$, $[6.75,19.25]$) & \ref{tab:gt-result} \\
+\sconf{} vs \mcu{} $128/2L$ & $n{=}400$ & pre-registered & $+$ & Holm--10 & Holm survives ($+9.0\pp$, $[3.46,14.54]$) & \ref{tab:gt-result} \\
+\sconf{} vs \rinj{} fresh & $n{=}819$ & post-sel.\ sec.\ & $+$ & $k{=}1$ (1s LB) & LB ${>}0$ ($+12.58\pp$) & \ref{tab:reveal-order-batches} \\
+\sconf{} vs \finj{} fresh & $n{=}819$ & pre-reg.\ single pair & $-$ & $k{=}1$ (5-test Holm) & A: fixed wins ($-5.62\pp$) & \ref{tab:reveal-order-batches} \\
+\sconf{} vs \finj{} pilot & $n{=}400$ & pre-reg.\ control & $-$ & reg.\ MDE$_{80}$ & \textsc{not detected} & \ref{tab:reveal-order-batches} \\
+five-option probe & $n{=}64$ & pre-reg.\ Tier-25 & $+$ & discordance gate & \textsc{undetermined} & \ref{tab:estimator-scan}$^{\ddagger}$ \\
+\sconf{} vs \rinj{} pos $0$ & fresh pos $0$ & post-hoc (Bonf.\ 4) & $+$ & Bonferroni--4 & Bonf.\ survives ($+12.56\pp$) & App.~\ref{tab:fresh-strata-app} \\
+\sconf{} vs \mcu{} chance & $n{=}400$ draws & post-hoc fam-5 & $+$ & Bonferroni--5 & 3/5 clear ($\alpha{=}0.01$) & \ref{tab:reference-calibration} \\
+protocol $\tau$ & $n{=}64$ & descriptive & $0$ & -- & distinct by floor ($0.48$) & \ref{tab:rank-diagnostics} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+
+\footnotesize
+\emph{Primary interval} conventions by row (all Table~\ref{tab:gt-result}
+and remaining paired rows): registered paired SE $\sqrt{m}/n$ for matched-$L$
+and $128/2L$; question bootstrap (B=20k) for $2L/2L$; paired bootstrap for
+fresh; registered one-sided LB for fresh $\widehat\Delta$; exact McNemar $p$
+for strata; exact binomial for chance.  $^{\ddagger}$Five-option probe full
+counts in Appendix Table~\ref{tab:estimator-scan}.
+\normalsize
+\end{table*}
+
+\section{Scoring Protocols Are Not Interchangeable on This Bed}
+\label{sec:result2}
+
+The score vectors produced by \sconf{} and \finj{}---two deterministic
+protocols, so no schedule-seed noise enters---disagree clearly in rank
+($\tau{\approx}0.48$; Table~\ref{tab:rank-diagnostics}), consistent with
+genuinely distinct protocols.  Between \sconf{} and the seeded-random \rinj{},
+the item-level $\tau$ means sit only $0.01$--$0.10$ above the random arm's
+\emph{own} self-$\tau$ floor (Figure~\ref{fig:tau}); because that floor's
+dispersion exceeds the gap, we read that value as an \emph{upper bound} on
+protocol-specific rank disagreement rather than as evidence of distinctness,
+and the deterministic pair carries the load-bearing reading.  Replacing the scoring protocol is accordingly
+not a harmless implementation detail, even among protocols that use
+ground-truth feedback.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.40\textwidth]{figures/tau_box_n48.pdf}\hfill
+  \includegraphics[width=0.40\textwidth]{figures/tau_box_n64.pdf}
+  \caption{Data-derived per-question Kendall $\tau$ distributions for
+  \sconf{} versus \rinj{}.  Points are deterministic question-level values;
+  boxes show quartiles and the center line shows the median.  The mean printed
+  below each box is the locked overlay value rounded to three decimals
+  (Table~\ref{tab:rank-diagnostics} gives four).  The comparison floor is the
+  random arm's own self-$\tau$ (mean $0.2361$, Table~\ref{tab:rank-diagnostics});
+  the cross-protocol means sit only $0.01$--$0.10$ above it, i.e.\ within the
+  floor's dispersion, so this panel is descriptive, not inferential.}
+  \label{fig:tau}
+\end{figure*}
+
+Choice-set perturbation provides a second, operational reading.
+Appendix Table~\ref{tab:flips} reports the exact-count rates for both protocols
+at $n=64$; the historical $n=48$ result is sign-consistent.
+The between-protocol gap persists in sign across the two samples, although it
+narrows in the larger sample.  The 25\% overlay is a design-chosen proportional
+shrink of each protocol's own distractor scores, not a scale-invariant or
+scale-fair one, so we compare only persistence and sign, never cross-scorer
+magnitudes, and no significance or power claim attaches to these deterministic
+perturbations.  Together with rank disagreement, they support only a
+sign-consistent, bed-local non-interchangeability reading.
+
+\section{Structured Reveal Beats the Tested Seeded-Random Policy, but Confidence Is Not Unique}
+\label{sec:result3}
+
+Sections~\ref{sec:result1}--\ref{sec:result2} establish the reference gap and
+bed-local non-interchangeability, not reveal order.  After the registered
+$n{=}400$ contrast was \emph{undetermined} (Appendix~\ref{sec:boundary}), a
+fresh, disjoint $n{=}819$ pool used the same pairing; its endpoint is one
+recorded seeded-random policy, not a schedule-seed average.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\parskip}{1pt}
+\setlength{\tabcolsep}{1.9pt}
+\caption{Reveal-order evidence and attribution control.  Fresh is secondary,
+pilot undetermined, and pooled a heterogeneous-pool disclosure; their
+magnitudes differ ($z{=}2.41$, $p{=}0.016$; robust $z{=}2.32$).  The fixed
+control bounds \sconf{}'s advantage at $+2.32\pp$ (95\% CI upper), and only
+2.1\% of order traces match.  Cells mark one-sided (1s, constant $2.4865$) or
+two-sided (2s, $2.8016$) intervals/MDE$_{80}$, each as registered per endpoint
+(the fresh endpoint's registered rule is one-sided); Appendix Figure~\ref{fig:forest-app}
+uses the paired-bootstrap two-sided CI for the fresh row as a display
+convention.  Raw exact two-sided McNemar $p$ per row: fresh $204/101$,
+$p{=}3.7\!\times\!10^{-9}$; fresh-fixed $99/145$, $p{=}0.0039$; fixed
+control $p{=}0.334$ (pilot/pooled as per their registered rules).
+All use paired SE $\sqrt{m}/n$.  The fresh row collapses the two construction
+strata that Appendix Table~\ref{tab:fresh-strata-app} reports separately.}
+\label{tab:reveal-order-batches}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lrrrlll@{}}
+\toprule
+Reading (contrast) & $n$ & $\widehat\Delta$ & $m$ & Interval / LB & MDE$_{80}$ & Role \\
+\midrule
+Fresh$^{\mathrm{d}}$ & 819 & $+12.58\pp$ & 305 & \shortstack[l]{1s LB\\$+9.07\pp$} & \shortstack[l]{$5.30\pp$\\(1s)} & \shortstack[l]{post-selection\\secondary} \\
+Pilot$^{\mathrm{d}}$ & 400 & $+3.75\pp$ & 141 & \shortstack[l]{2s CI\\$[-2.07,+9.57]\pp$} & \shortstack[l]{$8.32\pp$\\(2s)} & undetermined \\
+Pooled$^{\mathrm{d}}$ & 1219 & $+9.68\pp$ & 446 & \shortstack[l]{1s LB\\$+6.83\pp$} & \shortstack[l]{$4.31\pp$\\(1s)} & \shortstack[l]{secondary\\disclosure$^{\mathrm{a}}$} \\
+Fresh fixed$^{\mathrm{b,e}}$ & 819 & $-5.62\pp$ & 244 & \shortstack[l]{2s CI\\$[-9.36,-1.88]\pp$} & $5.34\pp$ (2s) & A: fixed wins \\
+Fixed control$^{\mathrm{e}}$ & 400 & $-2.75\pp$ & 107 & \shortstack[l]{2s CI\\$[-7.82,+2.32]\pp$} & \shortstack[l]{$7.24\pp$ (2s)\\CI upper $+2.32\pp$$^{\mathrm{c}}$} & \shortstack[l]{not detected\\($p{=}0.334$)} \\
+\bottomrule
+\end{tabular*}
+\vspace{2pt}
+
+\footnotesize $^{\mathrm{a}}$\,A sample-size-weighted average of the two
+heterogeneous pools, \emph{not} a cross-bed mechanism constant; retained for
+completeness after the registered heterogeneity check ($z{=}2.41$,
+$p{=}0.016$) triggered the disclosed post-data elevation of the fresh endpoint.
+
+$^{\mathrm{b}}$\,Fresh \sconf{} versus \finj{} is the single pre-specified
+pair ($k{=}1$) and survives the worst-case five-test Holm family
+($p{=}0.0194$).  Tagged MDE$_{80}$ cells use the caption's tail convention and
+claim no equivalence; Appendix Table~\ref{tab:order-six-ci} shows the
+alternative SE convention changes no verdict.
+
+$^{\mathrm{c}}\,$That row's role is an exclusion rather than a detection, so it
+intentionally carries \emph{both} its MDE$_{80}$ and its CI upper bound.
+
+$^{\mathrm{d}}\,$Contrast: \sconf{} versus \rinj{} (seeded-random).
+$^{\mathrm{e}}\,$Contrast: \sconf{} versus \finj{} (fixed order).\normalsize
+\end{table*}
+
+\paragraph{Persisted-schedule sensitivity.}  The single pinned seeded-random
+schedule is one realization, not an average over the seeded-random family.
+Two existing checks sharpen this boundary without new decoding.  The registered
+pilot-versus-fresh heterogeneity test gives
+$\delta_{\rm diff}=8.83\pp$, $z=2.41$, and two-sided $p=0.016$, so pool
+composition alone produces shifts of roughly $8\pp$ with the schedule pinned.
+The persisted schedule matches the fixed left-to-right trace on only $2.1\%$
+of items ($17/819$; Table~\ref{tab:reveal-order-batches}).  Appendix
+Table~\ref{tab:endpoint-tree-app} therefore records the fresh endpoint as
+post-selection secondary.  Multi-seed replays with pinned schedule seeds remain
+the required follow-up (\S\ref{sec:limitations}).
+
+\paragraph{Fresh-pool strata audit.}
+Appendix Table~\ref{tab:fresh-strata-app} re-tabulates frozen per-item contrasts by
+construction and answer position.  The \sconf{}-over-random margin survives
+both constructions; the fixed-order advantage retains its sign but is
+significant only in the answer-pool stratum, and reverses at position $0$
+($+12.56\pp$, $p{=}0.0031$).  The position audit is post-hoc (not
+pre-registered), but positions $0/1$ ($p{=}0.0031/0.0032$) survive
+Bonferroni--4 ($\alpha/4{=}0.0125$), making the reversal
+multiplicity-controlled rather than selected.  These are paired-record
+re-tabulations, not new decoding.
+
+\paragraph{Endpoint decision tree.}
+Appendix Table~\ref{tab:endpoint-tree-app} separates the pre-data rules from the post-data
+endpoint elevation.  Preregistration did \emph{not} assign fresh-only priority:
+step 4 is an explicitly post-data choice, motivated by the failure of a
+common-effect interpretation.
+
+\paragraph{Pool heterogeneity is disclosed, not merged.}
+Appendix Figure~\ref{fig:forest-app} and Table~\ref{tab:reveal-order-batches} retain every
+pool.  The fresh comparison is significant under its registered one-sided
+$\alpha=.05$ rule but was elevated only after heterogeneity was observed, so it
+is post-selection secondary evidence; pooled remains a weighted disclosure.
+Charging two-pool selection still gives a fresh lower bound of $+8.40\pp$ at
+$\alpha=0.025$, and the pre-specified fresh \sconf{}--\finj{} adjudication
+survives both multiplicity accounts (Table~\ref{tab:reveal-order-batches}, note
+b).  This supports a structured-order boundary, not equivalence or a uniquely
+confidence-driven mechanism.
+
+\paragraph{Boundary: what ``reveal order'' attributes here, and what it does not.}
+The \sconf{}--\rinj{} ablation covers one persisted random schedule.  A
+fixed order that selects its schedule without model output beats \sconf{} on
+the fresh pool on average, but the margin is construction-dependent and
+reverses at answer position 0 (Appendix Table~\ref{tab:fresh-strata-app}); the
+pooled-fresh sign repeats at $n{=}400$ and reverses on historical $n{=}64$
+(Figure~\ref{fig:accuracy}).  No fixed-order cross-pool test supports merging.
+All six $n{=}400$ order contrasts remain Holm-nonsignificant, including the
+cleanest same-bed zero-effect row, \sconf{} versus \ainj{} ($+2.00\pp$, exact
+$p{=}0.573$; Appendix Table~\ref{tab:order-six-ci}).  Thus confidence is neither
+necessary, uniquely optimal, nor exclusively causal on this bed.
+
+\paragraph{Boundary effect and winner-curse description.}
+Appendix~\ref{sec:boundary} gives the pilot/extension winner-curse analysis,
+the $n{=}400$ undetermined reading, both registered MDE forms, and power rules.
+\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{Bed, mechanism, and reliability.}
+One checkpoint and one four-choice GSM8K bed support no cross-model, task, or
+judge prediction.  The \sconf{}--\mcu{} swap changes feedback, path, and passes
+jointly, so the tested compute result does not factorize the mechanism.  The
+frozen rerun and leave-one-out audit pass their stated gates, but neither adds
+multi-seed evidence; multi-seed accuracy and $\tau$ require new decoding, and
+the 48-item self-$\tau$ remains a noise floor (Appendix
+Table~\ref{tab:robustness-gates}).
+
+\paragraph{External validity and compute.}
+The design supports no dose response, concavity, or cross-bed prediction band;
+the five-choice probe remains \emph{UNDETERMINED} (Appendix
+Table~\ref{tab:5option}), and length-normalized likelihood was not measured.
+The compute ledger covers scoring rather than generation.  Exact $2L$ rules out
+the narrow artifact only on the tested curve, while the historical high-budget
+$n=64$ row remains underpowered (Table~\ref{tab:gt-result}; Appendix
+Table~\ref{tab:compute-contrast}).
+
+\section{Conclusion}
+On this single bed, the scoring protocol materially changes the measurement.
+Confidence injection beats the tested non-injected reference across the
+measured budget curve, including exact $2L$, which rules out only a
+less-reference-compute account.  A fixed schedule wins on average on the fresh
+pool but reverses at position 0 (Appendix Table~\ref{tab:fresh-strata-app}), so confidence
+ordering is neither necessary nor uniquely optimal on this answer format.
+These findings establish bed-local protocol non-interchangeability; off-curve,
+multi-seed, causal, and generalization claims remain unresolved
+(Appendix~\ref{app:repro}).
+
+% P5_MAIN_TEXT_END
+\label{p5:main-text-end}
+\bibliography{refs}
+\bibliographystyle{iclr2026_conference}
+
+\appendix
+\raggedbottom
+\input{appendix_refine5}
+
+\end{document}

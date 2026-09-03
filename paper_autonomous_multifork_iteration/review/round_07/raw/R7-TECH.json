@@ -1,0 +1,96 @@
+{
+  "reviewer_id": "R7-TECH",
+  "round": 7,
+  "snapshot_sha256": "5327aacb5e1e3bb59e70814c4e633ac0d4b0f590336cbeb78a0c6f2ae713560a",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The ownership definitions, group-level 2x2 factorial, phase predicates, memory estimands, and bounded-oracle conclusions are internally consistent. Snapshot provenance passed for all 963 declared files, and I independently completed the RR2, GDN, and lifecycle replays. Soundness remains below excellent because semantic correctness is sampled and conditional, dispatch provenance is partial, and the only different-runtime instantiation fails its clean semantic oracle.",
+    "presentation": "The paper is unusually precise about cohort separation, estimands, negative results, and exclusions. Tables 3-4 and 10-13 make the evidence boundary auditable. Remaining problems are the overloaded abstract, use of unqualified 'bitwise-identical' before the CPU-FP32 canonicalization is disclosed, and a mismatch between the decision rule's blind-recomputation requirement and what the primary replay actually checks for cross-N consistency.",
+    "contribution": "An executable ownership-and-accounting audit for heterogeneous KV/GDN state is useful and reasonably distinct as an integration contribution. However, it is demonstrated successfully on one custom Qwen3.5/vLLM-Torch adapter and schedule; the different-runtime experiment is a clean-oracle failure. This makes the current contribution rigorous but narrow relative to the breadth expected from a general audit framework."
+  },
+  "paper_summary": "ForkAudit specifies seven ownership, lifecycle, dispatch, relational, and provenance targets for hybrid LLM state. Its primary Qwen3.5 case crosses full-copy versus shared-document KV with materialized versus borrowed-then-rebound GDN state at N={1,8,32}. It reports exact registered observables across four cells, pointer-free storage witnesses, selected FP32 attention and GDN recurrence checks, nine targeted live faults, phase-separated allocator measurements, a same-adapter cancellation/reclamation cohort, and a failed Transformers-runtime transfer.",
+  "strongest_verified_contribution": "The strongest verified result is the phase-aware ownership factorial: across 96 configurations, all four group-level KV-by-GDN cells preserve registered semantics while the storage timelines directly distinguish permitted setup aliasing from mandatory post-transition disjointness. The RR2 replay reconstructed 96 timelines and 288 phase artifacts, including non-vacuous N=1 request-base checks, and all nine storage adversary tests passed.",
+  "strengths": [
+    "Section 3 and Appendix E define ownership operationally using storage ranges, lifecycle phases, and explicit permitted aliasing rather than inferring isolation from token equality.",
+    "The factorial logic is cleanly separated: holding KV policy fixed preserves normalized KV receipts across GDN policies, and holding GDN policy fixed preserves normalized GDN receipts across KV policies (C-RR2-FACT-01; E-RR2-OWNERSHIP-MUTANTS).",
+    "The selected attention oracle is reconstructed from physical document blocks and append shadows rather than the candidate logical view; all eight rows replay below 0.005 with maximum relative L2 0.0017432502481433169 (Section 5.2; Figure 3; C-RR2-ORACLE-01).",
+    "The fully preregistered GDN oracle cleanly states its post-normalization boundary, passes four layers, and rejects four distinct wrong recurrences (Section 5.3; Table 12; C-R6-GDN-ORACLE-01).",
+    "The memory analysis separates page geometry, allocator deltas, phase peaks, and unmeasured NVML/service capacity. Table 1 supports the bounded KV-factor effect without claiming speed or production capacity.",
+    "The Transformers result is retained as a negative rather than converted into portability evidence: all eight clean rows fail the dense oracle despite relational agreement (Table 11; C-R6-RUNTIME-NEG-01).",
+    "The snapshot provenance audit passed, and the RR2, GDN, and lifecycle replay commands independently reproduced their declared outcomes."
+  ],
+  "questions": [
+    "What concrete component explains the 0.377545-0.933235 relative-L2 failures in the Transformers DynamicCache cohort: adapter construction, split-depth state, masking/position semantics, the dense baseline, or another cause? Can this be localized without interpreting the failure as intrinsic to the runtime?",
+    "Why does the shipped RR2 offline replay compare semantics only across arms within each N and omit the cross-N comparison required by target 7? The raw RR2 shards permit 288 all-arm adjacent-fan-out request comparisons, which I independently checked and found passing.",
+    "What is the native device dtype of the primary full-vocabulary logits before CPU-FP32 canonicalization, and can the artifact bind that native dtype and a pre-copy equality receipt?",
+    "How was the 0.005 attention tolerance chosen relative to the archived 80-row diagnostic? Please distinguish preregistration timing from empirical calibration and report a sensitivity or fault-magnitude analysis.",
+    "Is a clean second adapter considered necessary for validating ForkAudit as a transferable audit framework, or is the intended contribution strictly the interface plus this single successful reference instantiation?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R7-TECH-01", "severity": "major", "dimensions": ["significance", "experimental_rigor", "technical_soundness"],
+      "location": "PDF p.4, Section 3 'Runtime-independent decision rule'; p.8, Section 5.3; p.17, Table 11; p.18, Appendix J",
+      "claim_ids": ["C-R6-RUNTIME-NEG-01", "C-UNSUPPORTED-GENERAL", "C-UNSUPPORTED-SEMANTIC"],
+      "evidence_ids": ["E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE", "E-RR2-OWNERSHIP-MUTANTS", "E-R6-FULLY-PREREGISTERED-GDN-ORACLE"],
+      "observed_evidence": "The only successful complete instantiation is the primary custom Qwen3.5/vLLM-attention plus Transformers-Torch-GDN adapter. In the different-runtime cohort, all eight matched-clean ranks fail the preregistered dense semantic oracle with relative L2 0.377545-0.933235, producing 16 clean-false-positive fault classifications. The aggregate appropriately marks runtime transfer as not established.",
+      "why_it_matters": "A runtime-independent record schema can be defined without transfer evidence, but the scientific value of an executable audit framework depends on showing that an independent adapter can satisfy the clean contract. The current negative cannot distinguish an implementation defect from a limitation or ambiguity in the contract, so it caps the general contribution even though the paper does not falsely claim positive portability.",
+      "required_fix": "Either add one preregistered, clean positive instantiation on an independently implemented runtime or second hybrid model, or narrow the contribution everywhere to an interface proposal validated on one reference adapter. If retaining the negative, localize its clean failure and state explicitly that it is not causal evidence against DynamicCache or Transformers.",
+      "verification_test": "Before executing faults, require the independent adapter to pass every applicable clean ownership predicate and an independent semantic oracle on all preregistered ranks. Then rerun fault classification and require zero clean false positives, zero wrong-gate detections, and zero escapes. For claim narrowing, audit the abstract, Sections 1 and 3, conclusion, and artifact map for consistent single-adapter wording.",
+      "evidence_needed": "A preregistration, independent adapter implementation, raw semantic and ownership artifacts, clean aggregate, and replay; alternatively, fully consistent claim narrowing using current evidence.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-TECH-02", "severity": "minor", "dimensions": ["technical_soundness", "reproducibility", "clarity"],
+      "location": "PDF p.4, target 7 and runtime-independent decision rule; p.12, Figure 4; p.14, Table 4; p.19, Table 13; evidence/round_04_rr2_package/replay/replay_rr2.py",
+      "claim_ids": ["C-ISOLATE-01", "C-RR2-FACT-01"], "evidence_ids": ["E-MF-SUMMARY", "E-MF-SHARDS", "E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "Table 4's 248 cross-N comparisons come from the earlier two-arm capacity cohort. The RR2 producer source checks N=1 to 8 and N=8 to 32, and the frozen RR2 shards themselves pass 288 all-arm request comparisons, but the advertised offline RR2 replay only enforces equality among arms within each N and never recomputes cross-N consistency.",
+      "why_it_matters": "Section 3 defines a target as fully witnessed only when an independent aggregate blindly recomputes its predicate. The current package contains sufficient raw evidence, but its principal replay does not enforce this headline target and Table 4 does not make the cohort dependency immediately visible.",
+      "required_fix": "Extend the RR2 replay to recompute cross-N equality for every arm and rank, emit exact query/request counts, and bind the result into derived_summary_v2.json. Annotate Table 4 with the cohort supporting each target.",
+      "verification_test": "Run the updated replay on the frozen artifacts and require 288 passing RR2 all-arm adjacent-fan-out request comparisons. In a temporary copy, alter one larger-N semantic digest while rebuilding local JSON structure and verify that the cross-N gate fails.",
+      "evidence_needed": "A replay patch and regenerated derived summary using the already shipped raw RR2 evidence; no new GPU experiment is needed.", "expected_impact": "medium", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-TECH-03", "severity": "minor", "dimensions": ["clarity", "limitations_responsible_claims", "technical_soundness"],
+      "location": "PDF p.1, Abstract; p.4, target 6; p.6, Section 4.3; p.14, Table 4", "claim_ids": ["C-EXACT-01", "C-RR2-FACT-01"], "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "The abstract calls full-logit trajectories 'bitwise-identical,' whereas Section 4.3 specifies equality of contiguous CPU-FP32 canonical bytes and explicitly notes the absence of an archived pre-copy device-side torch.equal receipt. Logical KV and GDN equality are likewise represented primarily by digests.",
+      "why_it_matters": "The result is still exact for the registered canonical representation, but unqualified 'bitwise-identical' can be read as equality of native device tensors and execution state. This is stronger than the archived evidence directly establishes.",
+      "required_fix": "Qualify the abstract and target-6 wording as 'identical registered token trajectories and canonical CPU-FP32/logical-state digests,' or add native device dtype, shape, byte digest, and pre-copy equality receipts.",
+      "verification_test": "Check that every headline exactness statement names the representation being compared. If new receipts are added, independently verify native dtype/shape bindings and device-side equality before conversion or copying.",
+      "evidence_needed": "Textual claim correction using current evidence, or new native-device receipts from a rerun.", "expected_impact": "low", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-TECH-04", "severity": "minor", "dimensions": ["reproducibility", "citation_integrity"],
+      "location": "PDF p.12, Appendix A Reproducibility Statement; p.19, Table 13", "claim_ids": ["C-RR2-FACT-01", "C-RR2-ORACLE-01", "C-RR2-MUT-01"], "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "The paper discloses that the primary GPU run failed terminal recursive closure because pycache files appeared after the code ledger was frozen. The GPU aggregate and later offline replay are separately verified, but not bound by one successfully closed run identifier.",
+      "why_it_matters": "The numerical and ownership results remain replayable, but the strongest provenance chain is split between a live execution and a later package reconstruction. This prevents an end-to-end claim that one immutable run produced, aggregated, cleaned, closed, and replayed all primary artifacts.",
+      "required_fix": "Rerun the primary pipeline with bytecode writing disabled and a closure rule that excludes or predeclares generated files, then bind GPU execution, aggregation, cleanup, final source ledger, raw ledger, and replay under one run identifier. Otherwise keep the limitation prominent.",
+      "verification_test": "Execute the closed pipeline in a fresh environment and require the terminal recursive manifest, source ledger, raw ledger, aggregate, and replay outputs to verify under the same run ID with no unregistered files.",
+      "evidence_needed": "A new closed-run provenance package if the stronger provenance claim is desired; no change is required for the current explicitly limited claim.", "expected_impact": "low", "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern identified. The study evaluates systems behavior on PG-19 training text, makes no downstream safety or quality claim, and includes an appropriate limitations-oriented ethics statement.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It reviewed only the specified frozen snapshot and the provided review protocol, rubric, and calibration reference.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A preregistered clean positive instantiation on an independently implemented runtime or second hybrid model, followed by fault tests with zero clean false positives.",
+    "Broader independent semantic validation, such as all-layer sampled attention/GDN coverage across multiple geometries or an end-to-end dense/full-model oracle.",
+    "An RR2 replay that directly enforces all seven applicable targets, including cross-N consistency, and binds native logit representations.",
+    "A single-run terminally closed provenance chain covering live GPU execution through offline replay."
+  ],
+  "evidence_that_would_lower_score": [
+    "A raw-artifact replay showing any cross-arm or cross-N divergence not represented in the registered aggregate.",
+    "Evidence that normalized storage IDs were not faithfully derived from live storage identities, invalidating disjointness predicates.",
+    "Localization of the Transformers failure to a flaw shared with the primary semantic oracle or primary adapter.",
+    "A rerun showing that memory differences depend materially on cell order, retained instrumentation, or an inconsistent post-priming baseline."
+  ],
+  "review_limitations": [
+    "I did not regenerate the live GPU experiments because the required model weights, PG-19 inputs, and H20 environment are external to the snapshot.",
+    "I verified the snapshot provenance and completed the shipped RR2, GDN, and lifecycle offline replays.",
+    "I did not independently survey literature beyond the supplied calibration material and manuscript bibliography."
+  ]
+}

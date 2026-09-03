@@ -1,0 +1,131 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "b1eed7ac44c179e68b6d31e3b7235d19ddb1094fc99de461246f36a1de2d5edb",
+  "role": "novelty_positioning",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "论文对撤回范围相当诚实，32k 全上下文 arm 的两行 inference-mode 修复后确实有一个 G=4、三轮的可行性记录；但 NOT_MEASURED register 的完整性只相对于作者自己枚举的 ledger，pattern scanner 只能检查列举短语，跨案例验证只是命中计数。它无法验证语义完整性，也没有独立自然样本上的检测或误报性能。",
+    "presentation": "状态词、表格和 scope labels 组织严谨，14 页视觉完整；然而论文大部分篇幅在解释内部 C/D/S/R 编号、撤回谱系、哪些数字不可引用以及字符串扫描器的覆盖边界。读者很难从中提炼一个可普遍采用且经过验证的方法，内部档案说明压过了科学问题。",
+    "contribution": "论文明确不提供 KV-selector、adapter-matched、16k guarded rerun、并发吞吐或质量结论，真正贡献是作者声明账本上的 NOT_MEASURED 表与短语检查器。论文自己承认 GSN 的 undeveloped goals、checklists 和结构化文档早已存在；当前窄实现没有独立验证或明显超越这些先例，未形成足够的 ICLR 新知识或能力。"
+  },
+  "paper_summary": "这是一篇对已撤回 KV-selective serving 研究的审计说明。作者把历史主张分成 MEASURED、DERIVED、ESTIMATE、NOT_MEASURED 等状态，并提供字符串/文件级扫描器来检查每行 scope 是否被越界复用。静态审计发现 full-context worker 缺少 inference-mode guard 和 vendored selector 参数名不匹配；只修复并重跑了前者。32k、G=4 时峰值 70.73 GB、三轮共 12 请求且无 OOM，但 KV-selector、adapter-matched arm、16k guarded rerun、吞吐/延迟和核心成本-质量结论仍未测量，原研究解释保持撤回。",
+  "strongest_verified_contribution": "第 6 节表 4 把一个此前被误读为硬件容量边界的失败定位为应用层 grad-mode leak，并在同一 32k full-context 路径上修复后得到有限但清楚的可运行记录；作者没有把这一修复外推成 selector、吞吐或完整系统结果。",
+  "strengths": [
+    "对撤回的核心 serving/quality 主张没有粉饰，明确列出 KV-selector、adapter、16k rerun 和 LongEval 配对输出仍未测量。",
+    "把实测、推导、估计、外推和 inspection-grade 证据分开，避免 139.2 GB 的 pre-guard 16k 记录被继续当作硬件极限。",
+    "披露 G=4 只有 3 个有效独立轮次、G=1 只是路径一致性检查，而非第二个并发数据点。",
+    "逐页视觉检查覆盖全部 14 页，图表和表格未见裁切或覆盖。"
+  ],
+  "questions": [
+    "如果 register 的全集由作者自己定义，第三方如何发现从未进入 ledger 的关键主张，而不是只验证作者列出的行都存在？",
+    "pattern-scoped scanner 相比 GSN、机器可读 checklist、artifact evaluation 和 assertion/CI 工具提供了什么可测的新能力？",
+    "为什么第 8 节跨案例只比较 68 与 91 个 signal hits，而不报告对人工语义标签的精确率、召回率或遗漏类型？",
+    "在 KV-selector、adapter 与核心 cost-quality 路径均未重跑的情况下，这篇稿件为何应作为 ICLR 研究论文而不是撤稿说明、artifact report 或 reproducibility note？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C3-I1",
+      "severity": "critical",
+      "dimensions": ["novelty", "significance", "limitations_responsible_claims"],
+      "location": "第 1 页摘要与第 1 节 Contributions；第 2 页 Related Work；第 9 页结论",
+      "claim_ids": [],
+      "evidence_ids": ["Figure 1", "Table 2 NOT_MEASURED register"],
+      "observed_evidence": "论文主动说明 archived cost-quality conclusion 不恢复，并把贡献限定为 scope statements、作者枚举 ledger 上的 NOT_MEASURED register、per-row labels 和 pattern-scoped gate。第 2 页又承认 GSN 已经显式表示未建立的目标，register 只是该思想的窄 machine-checked instance。",
+      "why_it_matters": "当前稿件既没有新的 KV-serving 方法/结论，也没有被验证的新审计理论。撤回与诚实报告很重要，但本身不是足够的 ICLR 科学贡献；核心产物与既有 assurance/checklist 机制的差异主要是具体格式。",
+      "required_fix": "将稿件重定位为 artifact/reproducibility/negative-results note，或增加一个真正通用的审计方法贡献：形式化语义、可判定保证、第三方数据集和相对现有 assurance/checklist 工具的定量基线。标题与摘要应停止让读者期待 KV-selective serving 研究结果。",
+      "verification_test": "修改后应能用一句不依赖本次撤回内部 ID 的话说明新能力，并在独立项目上以预设指标证明该能力超过现有方法；否则该稿不满足主会贡献门槛。",
+      "evidence_needed": "跨组织/跨项目的独立验证、现有工具基线、语义级错误标签与效果指标；或完整恢复原 serving 研究的可验证结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-I2",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "reproducibility"],
+      "location": "第 4–6 页第 4–5 节；第 9 页第 8 节；第 11–12 页附录 B/C",
+      "claim_ids": [],
+      "evidence_ids": ["Table 2", "Table 5", "independent-annotator recovery"],
+      "observed_evidence": "register 的完整性只相对于作者构造的 C/D/S ledger；generator 与 checker 共享同一源，因而只能检测行缺失/状态漂移。所谓跨案例转移是在另一稿上计数 91 个六类 signal hits，对本稿为 68 个；没有金标准、精确率、召回率或下游决策效用。盲读者恢复 14 个已存在 ID 也不能发现未被作者枚举的主张。",
+      "why_it_matters": "同源生成与检查容易证明内部一致性，却不能证明完整性或审计有效性。当前验证接近自我一致性测试，不能支持可推广的报告工具。",
+      "required_fix": "构建第三方定义、独立标注的多项目 claim/violation 数据集；冻结 ledger 生成规则和 scanner 后，报告遗漏、误报、跨域迁移和人工审计节省，并与 GSN/checklist/简单关键词基线比较。",
+      "verification_test": "测试集的主张全集与违规标签不得由 scanner 作者定义；在揭盲前冻结规则，按项目分层留出，并报告逐类混淆矩阵和失败案例。",
+      "evidence_needed": "独立标注者、自然项目样本、盲评协议、基线与置信区间。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-I3",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "第 5 页表 2 的 D1–D6/S1 行；第 8–9 页第 6 节与表 4；第 9 页结论",
+      "claim_ids": ["D1", "D1-16k", "D2", "D3", "D6", "S1/S3/S6"],
+      "evidence_ids": ["Table 4"],
+      "observed_evidence": "修复后的唯一并发结果是 full-context、无 adapter、无 selector 的 32k arm；G=4 只有 3 个有效独立 round。16k guarded rerun、KV-selector finite fetch、adapter recovery、单臂机制隔离与 LongEval 逐题配对均为 NOT_MEASURED，且论文不提供吞吐、可扩展性或延迟结论。",
+      "why_it_matters": "这只证明一个两行 guard 修复使一个操作点不再 OOM，不能回答题目中的 KV-selective serving 成本、质量或可行性。按指定 KV-cache 校准，实用 serving 主张应有真实 baselines、完整生命周期、内存核算和端到端性能；这些核心要素均缺失。",
+      "required_fix": "若保留 serving 主题，先恢复并冻结 selector 与 adapter 身份，运行 matched full-context/KV-selective arms 的多长度、多并发端到端实验，并报告质量、吞吐、p95 延迟、峰值和持久存储；否则删去 serving 研究框架，只作为方法学说明投稿到合适轨道。",
+      "verification_test": "所有标题性 serving 结论必须由可重跑的 matched arms 支持，至少有两个模型/工作负载或充分说明单点范围，并将 3-round 可行性记录与性能估计严格分开。",
+      "evidence_needed": "修复后的 selector/adapter、独立重复、完整 decode 与质量测量、真实最近系统基线。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-I4",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "novelty", "clarity"],
+      "location": "第 3 页第 3.1–3.2 节 G1–G4；第 4 页第 4 节；第 12 页 Coverage self-critique",
+      "claim_ids": [],
+      "evidence_ids": ["G1", "G2", "G3", "G4", "Table 5"],
+      "observed_evidence": "scope gate 依赖明确枚举的 token/phrase patterns；论文披露旧版曾让吞吐式表述从 enumeration 外通过，代码块被豁免，语义替换或文本窗口外 clue 也不会被 exact-set checker 发现。六类 scanner 对本稿 27 个 honesty structures 中有 9 个完全无覆盖。",
+      "why_it_matters": "字符串存在/缺失不是语义保证；作者可以用同义改写绕过禁止项，也可以在合法短语附近提出越界推断。机器返回零并不等于论证安全，容易造成虚假的 assurance。",
+      "required_fix": "把 scanner 明确降为 lint，不称其为 scope predicate 的充分保证；若要声称可执行 assurance，需要定义机器可读 claim schema 与语义绑定，加入系统性的同义改写/对抗测试，并由独立标注评估覆盖。",
+      "verification_test": "在未参与开发的人工对抗集上，测试同义改写、否定、跨句引用、代码块和表格复用；报告错误率并确认论文不把通过 scanner 等同于语义正确。",
+      "evidence_needed": "语义级标注集、对抗改写、独立评估与简单关键词/规则基线。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-I5",
+      "severity": "minor",
+      "dimensions": ["clarity"],
+      "location": "第 1–9 页主文及第 12–14 页附录 D–F",
+      "claim_ids": [],
+      "evidence_ids": ["Tables 1–8"],
+      "observed_evidence": "C4/C7/C9/C13、D1–D6、S1/S3/S6、R142 与七种状态构成高度项目特定的词汇，主文多次重复哪些推断被禁止；第 14 页仅放置一张小表并留有大量空白。",
+      "why_it_matters": "这使稿件更像内部事故档案而非可迁移方法论文，也掩盖了唯一实测修复结果。",
+      "required_fix": "以问题—方法—独立验证—限制重构主文，把内部 ledger glossary、撤回历史和复用纪律压缩为补充材料；增加一个项目无关的最小示例。",
+      "verification_test": "不接触原项目的读者应能在两页内理解工具输入、算法、输出、保证和失败模式，并能将其应用到一个新 archive。",
+      "evidence_needed": "不需要新实验来修复版式，但项目无关示例应来自独立数据。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未涉及人类受试者或个人数据；主要风险是机器检查通过被误读为科学正确或完整性证明，已在问题 C3-I4 中作为方法责任边界处理。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R1 生成，仅用于内部投稿前质量控制；该子代理只读取冻结 PDF、指定审稿规则及针对 C2/C3 的 ICLR KV-cache 校准材料，未与其他评审通信，也未读取其他评审输出。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "在第三方定义的自然 archive 数据集上证明 register/scanner 相对现有 assurance/checklist 工具的检测、误报或审计效率优势。",
+    "提供语义级而非短语级的形式化与对抗覆盖证据。",
+    "若保留 KV-serving 主题，完成 selector、adapter、质量与端到端性能的 matched rerun。"
+  ],
+  "evidence_that_would_lower_score": [
+    "独立审计发现 ledger 中遗漏 load-bearing claim，说明 exact-set completeness 只是在错误全集上的闭合。",
+    "同义改写或跨句复用可系统绕过 G1–G4，而论文仍把通过结果当作 assurance。",
+    "复跑显示 32k 结果不可重现，或 guard 之外还有未披露的关键运行差异。"
+  ],
+  "review_limitations": [
+    "本评审严格只读取指定冻结 PDF、官方审稿规则与指定的 ICLR KV-cache 校准材料；未读取论文声称随附的 bundle、scanner、日志、代码或旧稿。",
+    "因此无法亲自执行论文列出的零 GPU 命令，也无法验证 24/24 manifest、hash、第三方 replay 或 32k GPU 记录；相关判断仅基于 PDF 陈述。",
+    "按任务要求未联网，也未核验外部引文；新颖性仅相对于 PDF 相关工作与指定校准锚点判断。",
+    "逐页视觉核查覆盖全部 14 页；未发现裁切、重叠或缺页，第 14 页留白较多。"
+  ]
+}

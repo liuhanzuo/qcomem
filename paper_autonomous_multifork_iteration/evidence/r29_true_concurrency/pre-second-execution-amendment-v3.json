@@ -1,0 +1,105 @@
+{
+  "schema_version": "qcomem-forkaudit-r29-pre-second-execution-amendment-v3",
+  "created_at": "2026-08-25T11:58:20+08:00",
+  "created_before_second_gpu_execution": true,
+  "second_gpu_execution_had_started": false,
+  "experiment_id": "E-R29-TRUE-CONCURRENT-LIFECYCLE-A",
+  "design_preregistration_raw_sha256": "5c9fc301ec63e2702d097b9d9be9c68758164c653c6c7b53fedad290428a9a96",
+  "retained_history": {
+    "v1_source_ledger": {
+      "path": "source-code.sha256",
+      "raw_sha256": "d528e8dcd187ddd44527c8364b2f682c21e2222cce3a23466d76085362766f01"
+    },
+    "v2_preexecution_amendment": {
+      "path": "preexecution-amendment-v2.json",
+      "raw_sha256": "0ada9fc7ce87786865d8db5988cbb556348f869d5bb876c27d140e5d29ede734"
+    },
+    "v2_source_ledger": {
+      "path": "source-code-v2.sha256",
+      "raw_sha256": "1b91a216e990cf7e0fb96aff809ce4d316300e1e05c7062fa2d0677a8b9fc5ea",
+      "executed_runner_sha256": "1dff7aa912eb4bde394cc5799709f92ea13b13f906a23d42c3ae706548696f8e",
+      "executed_replay_sha256": "0ff6b384a5e1be772777578265882b8b50ac5d759a80d42092771483e4eb7042",
+      "executed_test_sha256": "3c3742f035ae24452939c78c449844b325f8465d4a5a97040105f03a251095df",
+      "executed_launcher_sha256": "f25f9a0b0ee2f83c3f182f2b63ccc0ceb38e724112985fdbaa6f44434c1023de"
+    }
+  },
+  "first_attempt": {
+    "qs_job_id": 249885,
+    "qs_trial_id": 1898483,
+    "run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-true-concurrent-lifecycle-20260825a",
+    "assigned_gpu_uuid": "GPU-d68c370d-c6bb-1c1a-91a7-88d573ea8128",
+    "observed_stages": [
+      "00-started",
+      "01-preflight-passed"
+    ],
+    "formal_result_generated": false,
+    "independent_replay_generated": false,
+    "terminal_ledger_generated": false,
+    "failure_classification": "post-model-computation infrastructure serialization failure; not a scientific negative result",
+    "exception": {
+      "type": "TypeError",
+      "message": "Object of type _CUuuid is not JSON serializable",
+      "location": "r29_true_concurrent_lifecycle.py main() -> atomic_json(formal-result)",
+      "stderr_log_sha256": "f54d7d09bd5a79fbb992ee538937952ab59b3315e6e937b96c257af43d586a40"
+    },
+    "partial_disclosure": {
+      "read_scope": "traceback plus the two sidecar byte sizes and SHA-256 values only",
+      "overlap_outcome_read": false,
+      "lifecycle_outcome_read": false,
+      "primary_success_read": false,
+      "sidecars": [
+        {
+          "name": "serialized-logits.fp32.bin",
+          "bytes": 3973120,
+          "sha256": "c60e83d719a995d06b22ebf6819e6567fa1da25b64d0107d811dffd37cc75d28"
+        },
+        {
+          "name": "concurrent-logits.fp32.bin",
+          "bytes": 3973120,
+          "sha256": "c60e83d719a995d06b22ebf6819e6567fa1da25b64d0107d811dffd37cc75d28"
+        }
+      ],
+      "scientific_use": "The partial files are retained as failed-attempt history and are ineligible as formal evidence because no formal result or independent replay was committed."
+    }
+  },
+  "blocker": "The complete in-memory formal payload placed torch.cuda.get_device_properties(0).uuid, a private PyTorch _CUuuid wrapper, directly in the hardware receipt. Model execution and sidecar writes finished, but the atomic JSON writer rejected that object before formal-result commit.",
+  "amendments": [
+    {
+      "file": "gpu/r29_true_concurrent_lifecycle.py",
+      "before_sha256": "1dff7aa912eb4bde394cc5799709f92ea13b13f906a23d42c3ae706548696f8e",
+      "after_sha256": "401a19314ea3efd24731ed4f2fea9515e961f4532359af566fafe38148c98302",
+      "change": "Normalize the device UUID to None or str, normalize Torch/CUDA version scalars to strings, assemble the same complete formal envelope through one helper, and fail closed with strict json.dumps(allow_nan=False) before atomic write. No model call, tensor, schedule, treatment, oracle, gate, or outcome rule changed."
+    },
+    {
+      "file": "gpu/test_r29_true_concurrent_lifecycle.py",
+      "before_sha256": "3c3742f035ae24452939c78c449844b325f8465d4a5a97040105f03a251095df",
+      "after_sha256": "39a83031d88f12fa3f06391c19fb24bd8b21a131ff40f6365376f286f5ddcbc4",
+      "change": "Add a regression test that passes a mocked _CUuuid-like object through the production hardware-receipt helper, builds the complete formal-result envelope, and requires strict json.dumps success."
+    },
+    {
+      "file": "gpu/launch_r29_true_concurrent_lifecycle_1gpu.sh",
+      "before_sha256": "f25f9a0b0ee2f83c3f182f2b63ccc0ceb38e724112985fdbaa6f44434c1023de",
+      "after_sha256": "c90d0908be745578a27ddd14b2baa6c17c06c994c33acf7cc35fcc0bad592b8a",
+      "change": "Update only the embedded runner and focused-test SHA values to bind the v3 sources."
+    }
+  ],
+  "unchanged": {
+    "scientific_question": true,
+    "model_and_revision": true,
+    "input_tokens_and_hashes": true,
+    "resident_count_and_geometry": true,
+    "serialized_and_concurrent_treatments": true,
+    "cancel_zero_scrub_replacement_schedule": true,
+    "output_and_operator_oracles": true,
+    "success_and_outcome_rules": true,
+    "resource_request": true,
+    "claim_boundary": true,
+    "replay_source_sha256": "0ff6b384a5e1be772777578265882b8b50ac5d759a80d42092771483e4eb7042"
+  },
+  "second_attempt": {
+    "required_fresh_run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-true-concurrent-lifecycle-20260825b",
+    "must_not_reuse_first_run_dir": true,
+    "outcome_policy": "Preserve any pass, failure, or negative result; do not silently discard it."
+  },
+  "v3_disposition": "Only source-code-v3.sha256 is executable for the second attempt. The original scientific design remains authoritative and byte-identical."
+}

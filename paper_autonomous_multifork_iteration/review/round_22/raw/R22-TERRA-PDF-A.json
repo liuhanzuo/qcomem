@@ -1,0 +1,96 @@
+{
+  "reviewer_id": "R22-TERRA-PDF-A",
+  "round": 22,
+  "snapshot_sha256": "308f9d22f4f2f1687cd49017578c38b16f53b6b9cabddd2acec4152d3842754a",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 4, "contribution": 3},
+  "dimension_justifications": {
+    "soundness": "The conditional, receipt-level claims are carefully scoped and supported by a coherent 2x2 ownership factorial, lifecycle witnesses, selected independent numerical checks, and matched live faults (Sections 3-5; Figure 3; Tables 5, 7, 15, and 17). However, the paper itself reports incomplete terminal source-tree closure and cannot independently recapture the producer; selected operator oracles also do not cover upstream activation construction or end-to-end semantics (Section 6; Section 7; Appendix I). These are substantive limitations, but they do not invalidate the explicitly conditional audit result.",
+    "presentation": "Excellent. The paper cleanly separates the contract, experimental scope, claim authorization, and limitations. Figures 1-3 and Tables 4-5 make the intended evidentiary boundary unusually easy to assess, and the manuscript is visually polished. Some appendices are dense, but they remain readable and directly support verification.",
+    "contribution": "The main contribution is a useful integration of known testing, provenance, ownership, and memory-accounting ideas into a phase-aware receipt contract for hybrid KV/recurrent state. The paper positions this novelty candidly (Appendix Tables 9-10). Its significance is limited by validation on one frozen stack and sequential schedule, but the contract and evidence taxonomy should be useful to hybrid-serving implementers."
+  },
+  "paper_summary": "ForkAudit proposes a receipt-bound audit contract for safe forking of hybrid LLM state, distinguishing immutable document KV from mutable recurrent GDN state and separating logical, allocator, and service-capacity memory denominators. In a Qwen3.5-35B-A3B case study, it crosses full-copy versus shared-document KV with materialized versus borrowed GDN bases at N={1,8,32}; reports matching registered observables, storage-lifecycle predicates, selected dense-FP32/NumPy operator checks, live-fault gate reachability, and allocator deltas (Sections 3-5; Tables 5, 7, 15).",
+  "strongest_verified_contribution": "A clearly specified, phase-aware ownership witness for hybrid state: borrowed GDN bases may alias only before first transition, after which request-local tensors must be disjoint from bases and peers, paired with explicit typed-record/replay obligations (Section 3; Figure 2; Appendix D).",
+  "strengths": [
+    "It identifies an important systems distinction that output agreement alone cannot establish: request isolation and memory-denominator savings are separate claims (Introduction, pp. 1-2).",
+    "The primary factorial is well structured: 96 rank-fan-out-factor configurations, all four ownership cells, and 288 adjacent-fan-out comparisons are reported separately from contextual cohorts (Section 5.3; Table 4).",
+    "The authors are unusually disciplined about evidence scope: Figures 1 and 3, Table 5, and Section 6 explicitly distinguish conditional receipt replay, selected numerical support, positive controls, and non-claims about scheduling or capacity.",
+    "The paper includes constructive fault sensitivity rather than relying only on clean-run equivalence; Table 7 maps nine live injected faults to predeclared gates.",
+    "Memory reporting is appropriately denominator-aware: controlled pools, post-pack allocator peaks, and full-lifecycle peaks are distinguished instead of being conflated with NVML or admission capacity (Section 4.4; Table 6)."
+  ],
+  "questions": [
+    "Can the authors provide a terminally closed, independently reproducible source snapshot for the primary run, and explain precisely why the post-ledger pycache change cannot be excluded or incorporated without invalidating the original ledger?",
+    "What evidence would show that the ownership contract remains valid under concurrent kernels, ragged/continuous batching, scheduler cancellation, and a compiled-kernel/autotuning change rather than the recorded Python callable?",
+    "For the deployment-context F1 values in Table 2, please specify the eight workload instances, prompts, scoring details, per-workload results, and variability across the three timing repeats."
+  ],
+  "issues": [
+    {
+      "issue_id": "I1-incomplete-terminal-source-closure",
+      "severity": "major",
+      "dimensions": ["reproducibility", "technical_soundness", "limitations_responsible_claims"],
+      "location": "Section 7, p. 8; Appendix Table 5, p. 13; Appendix J/Table 18, p. 21",
+      "claim_ids": ["frozen-identity", "receipt-replayable-audit"],
+      "evidence_ids": ["reproducibility-statement", "table-5-decision-status", "table-18-artifact-map"],
+      "observed_evidence": "The manuscript states that post-ledger pycache files broke terminal code-tree closure, so frozen identity is only partial; it further states that receipt replay does not independently recapture the producer. Table 5 labels frozen identity partial, and Table 18 only points to an accompanying package.",
+      "why_it_matters": "For a paper whose central contribution is a receipt-bound audit, an unclosed executed source tree weakens the binding from the receipts to the exact candidate implementation. The claimed result remains meaningful under the stated honest-capture boundary, but outside readers cannot fully verify the stronger provenance premise from the described material.",
+      "required_fix": "Release a cryptographically closed, immutable executed source/environment snapshot or a documented reconstruction that proves equivalence to the pre-output bound tree; explicitly separate any claims that still depend on an unverified producer.",
+      "verification_test": "An independent party should reproduce the manifest bindings and replay from the released closed snapshot, with no untracked post-ledger files and with resulting receipt digests matching the registered aggregate.",
+      "evidence_needed": "A terminal source-tree manifest, environment/container digest, command provenance, and independent rerun/replay report.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I2-selected-oracles-leave-common-mode-paths-open",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "Sections 3.1 and 4.3, pp. 4-5; Sections 5.4-5.5, p. 7; Section 6, p. 8; Appendix I, p. 20",
+      "claim_ids": ["hybrid-state-isolation", "numerical-correctness-support"],
+      "evidence_ids": ["attention-oracle-eight-rows", "gdn-oracle-four-layers", "cross-arm-digest-equality"],
+      "observed_evidence": "The attention oracle covers eight selected captured post-RoPE rows, while the GDN oracle covers four captured post-normalization transitions; the paper explicitly excludes upstream activation construction, q/k normalization, all GDN layers, compiled-binary identity, and end-to-end verification. Cross-cell equivalence is relational and therefore cannot independently rule out shared defects.",
+      "why_it_matters": "The tests substantiate selected ownership predicates and selected operators, but a systematic common-mode bug before the capture boundary or in an untested layer/schedule could preserve all registered cross-arm digests. This limits how strongly the audit can be interpreted as evidence of whole-model hybrid correctness.",
+      "required_fix": "Either narrow the headline claims further to receipt-level ownership only, or add independent end-to-end/reference checks across more layers, sequence geometries, and execution schedules, including an independently built implementation or recapture path.",
+      "verification_test": "Demonstrate agreement with an independent end-to-end reference over sampled full sequences and show detection of held-out upstream, layer, and scheduling faults not used to design the current gates.",
+      "evidence_needed": "Held-out fault campaign, broader operator coverage, and independent end-to-end comparisons spanning the omitted boundaries.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I3-deployment-context-is-too-aggregated",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "clarity", "reproducibility"],
+      "location": "Section 5.2 and Table 2, p. 6; Appendix I, p. 20",
+      "claim_ids": ["quality-speed-state-tradeoff"],
+      "evidence_ids": ["table-2-deployment-context"],
+      "observed_evidence": "Table 2 reports medians over 24 measurements and an eight-workload mean F1, with only three timing repeats per configuration. Per-workload scores, dispersion, exact workload composition, and scoring details are not shown in the PDF.",
+      "why_it_matters": "The authors appropriately present this table as context rather than primary audit evidence, but aggregate values make it difficult to assess whether the reported quality/state tradeoff is robust or dominated by particular workloads.",
+      "required_fix": "Add per-workload outcomes, dispersion or raw trial summaries, exact evaluation prompts/scoring, and a clearer distinction between timing repetitions and independent workload units.",
+      "verification_test": "Recompute Table 2 from disclosed per-workload results and verify that the reported ranking and caveated Q16 interpretation persist across workloads.",
+      "evidence_needed": "Per-workload F1 and latency records plus evaluation protocol details.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics issue is apparent from the manuscript. The paper includes an ethics statement and acknowledges that memory efficiency may scale deployment; its use of PG-19 training text and systems measurements does not introduce a specific unaddressed human-subject or deployment claim (Appendix A, p. 12).",
+  "llm_usage_disclosure": "This internal review was produced with LLM assistance from the frozen PDF-only snapshot. It did not inspect source code, artifacts, prior reviews, external web sources, or other repository materials.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A closed executed-source and environment snapshot independently replayed by a third party.",
+    "Independent end-to-end validation and held-out fault testing beyond the current selected captured-input boundaries.",
+    "Demonstrations across concurrent/ragged scheduling, additional hybrid models, page sizes, and state precisions.",
+    "Per-workload deployment-context results with reproducible evaluation and uncertainty reporting."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure to reconcile the final source tree with the pre-output ledger or a replay mismatch under a closed snapshot.",
+    "A held-out common-mode, upstream, or scheduler fault that passes the current receipts while violating isolation or semantics.",
+    "Per-workload deployment results showing that the reported F1/state tradeoff is not robust."
+  ],
+  "review_limitations": [
+    "This was a PDF-only review; I did not execute or inspect the referenced accompanying artifacts.",
+    "Assessment of cited prior work and artifact availability is limited to what the manuscript states."
+  ]
+}

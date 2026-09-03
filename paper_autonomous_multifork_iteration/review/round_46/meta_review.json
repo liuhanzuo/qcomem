@@ -1,0 +1,369 @@
+{
+  "round": 46,
+  "snapshot_sha256": "0d7912b44772f7a786b16f3559f54ecbad214a763d3d8f7a9a1697c93029e923",
+  "reviewer_count": 5,
+  "consensus_strengths": [
+    "Whole-entry retained-state accounting for a hybrid split-replay entry (Eq. 2; Appendix C, Table 4) is the paper's real and verified contribution. All five reviewers rebuilt it independently and I rebuilt it a sixth time from the PDF alone: the packed-size identity bytes(n,b)=ceil(n/64)(8b+4) plus the component inventory at T=3807.25 reproduces 136.235, 34.683, 9.661, 9.395, 7.536 and 56.438 MiB exactly. Counting only the depth-j residual, as CoMem does, demonstrably understates what a hybrid deployment must retain.",
+    "Voluntary dtype-versus-packing decomposition that cuts the paper's own headline. The paper discloses that 30.000 of the 136.235 MiB reference is FP32 GDN recurrent state in excess of BF16, prints the like-for-like 10.9965x alongside the flattering 14.10x, and uses Appendix C to explain rather than hide why the printed 3.590x split-to-frozen step exceeds its own 3.5556x Q4 format ceiling (normalised: 2.969x). Deriving and printing the number that is worse for the paper is the single most credible thing in the manuscript and every reviewer said so.",
+    "Denominator discipline. Store (entry-owned retained tensor payload), post-priming allocator delta, and unmeasured process/NVML memory are defined separately, never mixed, and never made additive; the exclusion list is printed twice; Sec. 5.6 states plainly that reducing Store does not prove lower peak VRAM or admitted capacity.",
+    "Cohort separation is enforced rather than asserted. Table 1 is physically blocked into two never-pooled executions each differenced against its own full-prefix arm; Table 2 is labelled a subset rather than a replication; Table 7 is an explicit cohort-to-claim authorization matrix with named exclusions; unmeasured metrics (Recall) are left blank rather than imputed.",
+    "Adverse and self-undercutting results are reported at the same prominence as the positive ones: TTFT is worse than exact caching and worse than dense recomputation; throughput roughly halves; the aggressive policy's interval sits entirely below zero; the audited fork ties the paper's own paged-prefix baseline on both allocator endpoints and loses on generation increment (1.950 vs 0.019 GiB); the ForkAudit alias finding is reduced by the authors to localization rather than exclusive detection because a plain persistent-base content invariant catches it too.",
+    "Prior art is disclaimed rather than repackaged. The quantizer is stated to be the standard asymmetric affine form FlexGen already used, per-layer width assignment is stated to be prior art from KVTuner/AsymKV, and Table 14 states that CoMem 'supplies the split-replay foundation; we do not claim that primitive as new.'",
+    "Appendix B publishes the complete interval inventory (all 42 paired bootstraps, including the 24 that used a different reference arm), discloses that the previously published -0.39 understated the deployment-relevant loss by ~13%, gives unit/count/method/seed and a five-seed Monte-Carlo sensitivity bound, and never converts a zero-crossing interval into equivalence.",
+    "The composition gap is disclosed in every place a reader could look (abstract, Fig. 1 caption, Sec. 4.3, Sec. 4.4, Sec. 5.1 'Executed systems', Sec. 5.5, Sec. 5.6) and the artifact record agrees with the PDF rather than contradicting it. This is the most common overclaim in audit-plus-system papers and the paper does not make it."
+  ],
+  "consensus_weaknesses": [
+    "CONFIRMED, four of five reviewers, critical: the two halves of the contribution are each measured in a configuration from which the other is absent, so the composed system has no end-to-end evidence. Sec. 4.3 states the Transformers implementation behind Tables 1 and 2 'materializes a full private copy of the dequantized entry per query, so it shares nothing and exercises neither borrowing nor copy-on-write'; Sec. 5.1 states 'no FORKAUDIT verdict here covers those packed entries'; method_provenance.tsv row M-QCOMEM-READ-FORK independently confirms 'no shared immutable document state, no borrowed recurrent base and no copy-on-write tail' on that path. The three obligations specific to the proposed Read (dequantized-view immutability, residual-chunk binding, packed-entry lifetime) are named by the paper itself as untested.",
+    "CONFIRMED: the 5.84x advantage over the quantized exact cache is bit-width confounded and the confound is nowhere disclosed. The paper describes the arm twice as 'the same codec' but it is not the same bit vector. See unsupported_reviewer_claims and decision_rationale for the rebuilt decomposition.",
+    "CONFIRMED: the 3.41-point mean-F1 advantage over full-prefix Q8 is asserted in the abstract, an intro bullet, Sec. 5.4 and the conclusion, but the paper states it computed no paired interval between the two arms and that their intervals against the shared reference overlap over roughly [-1.97, 0.32]. Both arms come from one execution over the same 60 item keys, so the paired item-level bootstrap the paper already runs is directly applicable and was not run for the single most decision-relevant pair.",
+    "CONFIRMED: the operating-point run supplies the abstract's second headline (56.438 MiB, 5.84x, +3.41 points), the j=13 control and every 60-item TTFT, and has zero traceability in the submitted artifacts. I grepped both TSVs myself: '56.438', '50.885', '54.297', '16.101', '0.656', '20260903', '5.84', '3.41' and 'operating-point' return zero hits in claim_evidence_map.tsv and zero in method_provenance.tsv, and Table 30 has no row for it. The paper's own stated traceability mechanism does not cover its most argumentatively load-bearing execution.",
+    "CONFIRMED: the only latency table does not internally reconcile and its throughput column is undefined. Under tok/s = n/(TTFT+(n-1)*TPOT) the Table 2 columns imply n~5.3 for the full-prefix row, n~7.4 for the Q-CoMem rows, and no positive n for the dense row; I reproduced this independently. Separately, Table 2's dense TPOT (648.75 ms) equals its TTFT (0.649 s), the signature of re-prefilling per token, while Sec. 5.3 reports TPOT 'between 54.4 and 56.0 ms at every arm' on a superset of the same items on the same stack, a ~12x discrepancy the paper never mentions while calling the other run's dense arm 'honest dense recomputation'.",
+    "CONFIRMED: the Store estimand defined three times in the PDF as 'the physical byte-range union owned by one retained entry' is not what the printed column measures. The authors' own method_provenance.tsv row M-QCOMEM-DEPLOY-STORE states the printed column is persistent_document_nbytes (an nbytes sum), that the byte-range union is a different quantity it also computes, and concludes verbatim that 'Table 2's caption claim that Store is the physical byte-range union is therefore not what the printed column measures'. Appendix H.1 then uses the byte-range-union framing to license the only cross-runtime retained-state comparison in the paper.",
+    "CONFIRMED: the 136.235-vs-140.34 reconciliation is presented as exact ('0.000 MiB left to the accounting') but does not close under the paper's own component model. Store is affine in T: full-prefix = 0.01953125T + 61.875 and frozen = 0.001647949T + 3.38672 MiB. Inverting 140.34 gives T=4017.4 and inverting 10.01 gives T=4019.1, i.e. 5.5% above the stated 3807.25 cohort mean, not the 3.8% stated twice. The gap is plausibly a median-versus-mean document-length artifact, but the paper asserts closure rather than explaining it.",
+    "CONFIRMED: the archival panel's generation budget is never stated in the PDF (the provenance record gives max_new_tokens 128 for Qasper and 32 for 2WikiMQA, while the timing panel caps all arms at 32). This is the likely explanation for the unremarked 54.68-vs-39.14 F1 level gap between Table 1 and Table 2 on items drawn from the same cohort, and it means the eight items are a subset of the cohort but not of the measurement protocol.",
+    "CONFIRMED: the abstract mixes cohorts in the one place the paper's own procedural commitment forbids. The latency paragraph opens under 'On an archival 60-item Qasper/2WikiMQA validation cohort' and then quotes 0.163 s, 13.38 vs 7.15-7.19 tok/s and 54.11 ms TPOT, every one an eight-item median from Table 2. A 60-item TTFT measurement exists in the same paper (0.181 / 0.656 s) and is not the one quoted; throughput and TPOT were never measured on 60 items.",
+    "CONFIRMED: the paper's only measured same-stack comparisons against real published systems sit in appendix tables (20-23) that pages 1-9 never cite. On the identical eight items and hardware, Table 22 records SGLang 0.5.17 Radix at 0.146 s TTFT / 15.83 tok/s / F1 39.14 and HYPIC prefix cache at 0.072 s / 19.07 tok/s / F1 39.14, against Q-CoMem's 0.673-0.674 s and 7.15-7.19 tok/s at F1 39.01-39.14, while retaining 139.53 and 324.09 MiB against 15.89. The trade-off is currently stated only against two in-house endpoints.",
+    "CONFIRMED: no dispersion statistic accompanies any timing number anywhere in the paper, although three repeats and one warm-up are declared and ranges are reported for a peripheral CPU replay measurement. The 'TPOT within 2.5%' claim and the frozen-vs-dense TTFT ordering both live inside the band where shared-GPU repeat noise plausibly sits.",
+    "CONFIRMED: the quantizer is under-specified for reproduction. The grouping axis is never stated although Sec. 2 identifies the grouping axis as exactly what distinguishes KIVI, KVQuant and XQuant; Eq. 3 is undefined for a constant group (u=m gives s=0); the dequantizer is never written. The headline quality column is a property of this specific packer, and the layer-policy search and aggregation scripts are among the 11 rows in method_provenance.tsv carrying the literal marker 'NOT ARCHIVED'.",
+    "CONFIRMED citation-integrity defect: reference Bai et al. 2024b is annotated as 'LongBench v1 official evaluation code ... F1 computed by LongBench/metrics.py::qa_f1_score via LongBench/eval.py' and Appendix A claims 'its official F1 implementation', but method_provenance.tsv M-QCOMEM-F1 records an in-house 'LongBench-style' reimplementation with two documented deviations (empty-prediction/empty-reference cases return float(pred_tokens==ref_tokens); ASCII-only punctuation stripping). Every F1 number, delta and interval in the paper comes from that reimplementation.",
+    "CONFIRMED presentation defects: both main-text figures carry label classes at roughly 55% of body-text size, making the only protocol diagram and the only per-layer policy map unreadable at print size; one policy carries six different names across the manuscript and the reference arm carries two names in two registers ('full-prefix Q16' vs 'full-prefix, native dtype'), inviting a reader to conflate the 56.438 MiB Q8 on p.7 with the 15.89 MiB Q8 on p.8; and the like-for-like all-BF16 column that measures what the paper actually contributes appears only in a 7 pt footnote while 14.10x leads the abstract, Sec. 5.2 and the conclusion.",
+    "CONFIRMED but a placement rather than an honesty problem: the abstract leads the ownership result with '4.901 to 2.229 GiB final (54.5%) and 4.920 to 2.843 GiB peak (42.2%)' against an arm the authors themselves describe as a controlled ownership factor and not an optimized baseline ('no serving engine copies a shared prefix per request'). Table 18 shows the paged-prefix baseline reaching exactly 2.229/2.843, so against the appropriate reference the ownership component's allocator content is 0.0%, and it is 1.931 GiB worse on generation increment. The tie is disclosed, but in a subordinate clause after the headline figure.",
+    "Residual, single-reviewer but partially supported: XQuant is disposed of in one subordinate clause although it is structurally the closest prior art to the paper's core mechanism (persist a quantized intermediate representation, recompute downstream state rather than retain it). The distinction the paper needs to argue is the cut point and the heterogeneous hybrid lower-layer state, not the trade itself."
+  ],
+  "material_disagreements": [
+    {
+      "topic": "Soundness: is the paper's analysis sound at 3 (REV-3, REV-4) or 2 (REV-1, REV-2, REV-5)?",
+      "positions": [
+        "REV-3 and REV-4 score Soundness 3: they re-derived the entire memory analysis and found it airtight to the last decimal, with the dtype confound self-disclosed and the format-ceiling apparent violation explained rather than hidden.",
+        "REV-1, REV-2 and REV-5 score Soundness 2: REV-2 re-derived the latency analysis and found the three timing columns non-composing under any standard relation and the 136.235/140.34 reconciliation not closing; REV-5 found the Store estimand contradicted by the authors' own provenance record."
+      ],
+      "recommended_resolution": "Both sides are correct about different tables and must not be averaged into a single verdict. The memory analysis is sound at a 3-4 level and I verified it a sixth time. The latency analysis is sound at a 1-2 level: I independently confirmed that no single generated-token count reconciles Table 2's TTFT/TPOT/tok-s columns and that the dense row admits no positive solution at all. The aggregate is 2 because the latency panel carries the abstract's entire cost claim, and a trade-off paper whose cost side does not reconcile has a substantive gap in a central claim. Authors should not read REV-3/REV-4's Soundness 3 as licensing the latency table.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Presentation: 2 (REV-1, REV-2, REV-3) versus 3 (REV-4, REV-5) — the split tracks access mode exactly.",
+      "positions": [
+        "The three pdf_only reviewers score Presentation 2: illegible figures, six names for one policy, two names for the reference arm, an undefined tok/s column, an unstated generation budget, an unexplained 15.5-point F1 level gap, and the like-for-like denominator buried in a footnote.",
+        "The two pdf_plus_repository reviewers score Presentation 3: the TSVs resolved the generation budget (128/32), the Store estimand, and the F1 scorer, so several apparent presentation defects read to them as artifact-documented rather than missing."
+      ],
+      "recommended_resolution": "Side with 2 and preserve the provenance point explicitly. Every item the artifact-aware reviewers resolved from the TSVs is an item a conference reviewer with the PDF alone cannot resolve, and in two cases (Store estimand, F1 scorer attribution) the artifact does not resolve the objection but confirms that the PDF states something the artifact contradicts. The pdf_only Presentation 2 is the correct rating for a submission that will be read as a PDF. Do not dismiss REV-3-05 (the 54.68-vs-39.14 gap) on the ground that REV-4 could explain it from ISS-08's provenance row: that is precisely the disclosure the PDF owes.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Does the paper's extensive disclosure of the composition gap change the Contribution rating?",
+      "positions": [
+        "REV-3 and REV-5 treat the disclosure as a first-order strength and among the most credible things in the manuscript; REV-5 explicitly notes the paper does not make the field's most common audit-plus-system overclaim.",
+        "REV-1, REV-2 and REV-5's own REV-5-07 treat the gap as bounding the significance of the whole design regardless of how well it is disclosed."
+      ],
+      "recommended_resolution": "Both hold, in different dimensions, and the panel is right not to have collapsed them. Disclosure is what keeps Soundness at 2 and not 1: the paper's claims match its evidence, and that is a genuine integrity strength worth stating in the decision letter. But disclosure is not evidence. Contribution is scored on demonstrated new knowledge, and the paper's stated identity — quantized hybrid split-replay entries that are safely shareable across concurrent requests — has zero end-to-end measurement. Contribution therefore stays at 2, and no amount of additional disclosure prose can move it. The authors should be told this plainly, because the natural response to four critical reviews about the gap is to disclose harder, and that response would waste a round.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Is the abstract's 54.5%/42.2% allocator headline an overclaim (REV-1-03, REV-2 TS-03) or adequately disclosed (REV-3, REV-5 list the disclosure among the paper's strengths)?",
+      "positions": [
+        "REV-1 and REV-2: quoting a two-significant-figure reduction against an arm the authors themselves call a strawman, whose content against the appropriate reference is 0.0%, is a reference-arm problem of exactly the kind Appendix B repairs for the F1 intervals.",
+        "REV-3 and REV-5: the tie against the paged-prefix baseline and the 1.950-vs-0.019 GiB generation-increment penalty are both stated in the same paragraph and in Table 18, which is the honest posture."
+      ],
+      "recommended_resolution": "This is a placement problem, not an honesty problem, and should be resolved as one. The disclosure exists and is accurate; it is subordinate to the headline figure in the abstract. Fix by rebalancing the sentence so the tie and the generation-increment penalty are co-ordinate with the 54.5%/42.2%, not by adding or removing evidence. No experiment is implicated.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Whether the same-stack published baselines (Tables 20-23) belong in the main text — raised by REV-3 alone.",
+      "positions": [
+        "REV-3-06: the paper's only measured comparisons against real published systems are in appendix tables the main text never cites, and promoting them would make the trade-off statement honest.",
+        "No other reviewer raised it; the paper's own framing is that these panels are unpooled context authorizing only within-framework interpretation."
+      ],
+      "recommended_resolution": "Preserve and endorse REV-3's position. Being a single-reviewer finding does not weaken it: Table 22 is on the identical eight items and identical hardware, which is exactly the matched condition the paper's non-pooling doctrine is designed to permit. Stating that a published hybrid prefix cache reaches first token 4.6-9.4x faster at equal F1 while retaining 8.8-20x more state strengthens rather than weakens a capacity-first argument. One caveat for the authors: REV-3's 'about 20x' is right against HYPIC (324.09/15.89 = 20.4x) but the closest reference, SGLang prefix cache at 139.53 MiB, is 8.8x against Q-CoMem Q8 and 13.9x against the frozen point. Print all three levels rather than the most flattering ratio, consistent with the paper's existing practice in Appendix H.1.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "XQuant positioning (REV-1-04) — raised by the novelty reviewer alone.",
+      "positions": [
+        "REV-1: XQuant also stores a quantized intermediate and recomputes downstream state, so it is the closest prior art on the paper's core mechanism and receives the thinnest treatment in the manuscript.",
+        "Implicit in the other four reviews: the differentiating sentence about heterogeneous versus homogeneous caches is accepted without challenge."
+      ],
+      "recommended_resolution": "Partially supported and worth a paragraph, not an experiment. REV-1 is right that the one-clause dismissal is thin and that the sentence 'each method compresses one homogeneous cache along a single execution path' is false as applied to XQuant. But the distinction the paper can defend is real: XQuant caches layer-input activations and rematerializes K and V within a dense attention stack, whereas Q-CoMem persists a depth-j boundary residual together with the heterogeneous lower-layer attention KV and convolution/recurrent state a hybrid backbone needs. Ask for an argued distinction; a bounded same-checkpoint transfer in the style of Table 20 would be stronger but is not required.",
+      "needs_adjudicator": false
+    }
+  ],
+  "unsupported_reviewer_claims": [
+    {
+      "reviewer_issue_id": "R46-REV-1-02",
+      "reason": "REJECTED as an inference. REV-1 argues the full-prefix Q8 arm is 'likely defective' because a 3.78 F1 loss contradicts the KV-quantization literature the paper cites, including Table 19's KVTuner row describing nearly-lossless 3.25-bit. This is an appeal to other papers' settings and does not survive three checks I made. (i) The arm is not a KV-only quantizer. Rebuilding it from Table 4, 56.438 MiB = 20 x 1.9752 (attention K and V at Q8) + 30 x 0.5644 (GDN convolution and recurrent state at Q8); the 16.932 MiB GDN term is 30% of the arm and is precisely the state family the paper's own cited Quamba/Quamba2/MambaQuant line treats as harder than KV. No result in KIVI, KVQuant or KVTuner covers quantized GDN recurrent state, so the literature REV-1 invokes does not bound this arm. (ii) The point estimate is not statistically distinguishable from zero: -3.78 with a 95% paired interval of [-9.12, 0.32] on 60 items. Calling an arm defective on a non-significant point estimate whose interval is 9.4 points wide is an over-read, and it is the same error the reviewer would criticise in the other direction. (iii) The paper's own Table 19 already prints the comparability boundary for the KVTuner row: Llama-3.1-8B-Instruct and Qwen2.5-7B-Instruct on mathematical reasoning, and 'it does not quantize a split residual or recurrent state, and no common Qwen3.5 slice exists'. The allegation is rejected. PRESERVED residual: the arm is undiagnosed, and the paper owes a per-state-family attribution of the 3.78 points (attention-Q8-only versus GDN-Q8-only) so the reader can tell whether the loss is a property of the codec or of that specific arm. That obligation is carried forward as action C3, and it is the sound version of what REV-1 was reaching for."
+    },
+    {
+      "reviewer_issue_id": "TS-02",
+      "reason": "PARTIALLY REJECTED: premise and arithmetic confirmed, conclusion rejected. Confirmed: Sec. 4.3 states the implementation behind Tables 1 and 2 'materializes a full private copy of the dequantized entry per query', and 28.683 MiB is exactly the paper's own all-BF16 value for the split entry (14.8721 + 2 x 3.7180 + 6 x 0.0625 + 6 x 1.0000). Confirmed: 9.661 + 28.683N = 136.235 at N = 4.41, so the crossover is between 4 and 5 as stated. REJECTED: the conclusion that this bounds the capacity claim to low concurrency, because the transient charge is applied to one side only. By the same Table 4, the full-prefix reference's own 30 GDN convolution and recurrent states are mutable and must be private per request: 30 x (0.0625 + 1.0000) = 31.875 MiB per request in BF16, or 61.875 MiB in the native FP32 the reference actually uses, on top of a 136.235 MiB intercept. Under symmetric accounting Q-CoMem has both the smaller intercept (9.661 vs 136.235) and the smaller per-request slope (28.683 vs 31.875 BF16 / 61.875 native) and therefore never crosses at any N. The paper additionally scopes Store to retained tensor payload and states outright that it does not claim lower total process memory. PRESERVED residual, which is sound and important: Eq. 1's motivating premise that M_active is method-independent and set by request shape is falsified by the paper's own Read path, and no transient working-set figure appears anywhere in the paper, so a reader cannot evaluate the concurrency envelope without doing this arithmetic unaided. That is carried forward as action A3, which is pure re-analysis of Table 4 and which disposes of REV-2's objection on the paper's own terms."
+    },
+    {
+      "reviewer_issue_id": "R46-REV-3-06",
+      "reason": "SUBSTANTIVELY CONFIRMED with one numerical caveat, recorded here so the authors do not adopt the imprecision. REV-3's framing that a published hybrid prefix cache reaches first token 6.6-9x faster 'at about 20x more retained state' is right for HYPIC (324.09/15.89 = 20.4x) but not for the nearest reference: SGLang prefix cache retains 139.53 MiB, which is 8.8x Q-CoMem Q8 (15.89 MiB) and 13.9x the frozen point (10.01 MiB). When promoting Table 22 into the main text, print the three retained-state levels rather than a single ratio, consistent with the paper's existing practice in Appendix H.1."
+    }
+  ],
+  "meta_score": 4,
+  "meta_recommendation": "marginally_below",
+  "evidence_ceiling": 4,
+  "prioritized_actions": [
+    {
+      "action_id": "A1",
+      "issue_ids": ["ISS-01"],
+      "action_type": "analysis",
+      "description": "Decompose the 5.84x retained-state advantage over the quantized exact cache into its split and bit-width factors, using only Table 4. I rebuilt REV-4's arithmetic from the paper's own component table and it survives exactly: full-prefix Q8 = 20 x 1.9752 + 30 x (0.0332 + 0.5312) = 56.436 MiB, matching the printed 56.438; applying the frozen policy's own attention width to the unsplit entry gives 20 x 1.0457 + 30 x 0.5644 = 37.846 MiB; 37.846/9.661 = 3.9174 and 56.436/37.846 = 1.4912, whose product is 5.8416, the printed 5.84. The paper describes the arm twice as 'the same codec applied to the unsplit entry' and never states that it is a different bit vector, so a reader reasonably takes 5.84x as the capacity advantage of split replay at matched precision. Restate the abstract, the intro bullet, Sec. 5.2, Sec. 5.4 and the conclusion as approximately 3.92x at matched attention width and 5.84x against the Q8 arm as measured, and add the 37.85 MiB width-matched point to Table 1 or Appendix C. Note for the authors: this narrows the claim, it does not destroy it — 3.92x is still a substantial split-depth advantage, and reporting it net of the confound is the same move the paper already made voluntarily for the 14.10x/10.9965x dtype confound. Doing it for one headline and not the other is the inconsistency reviewers noticed.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Every occurrence of 5.84x in the manuscript is accompanied by the 3.918x x 1.491x decomposition and the 37.85 MiB width-matched point, and the abstract no longer implies a matched-precision comparison. An independent reader can rebuild all three numbers from Table 4 without back-derivation.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A2",
+      "issue_ids": ["ISS-02"],
+      "action_type": "analysis",
+      "description": "Compute the paired item-level bootstrap interval for frozen Q4/Q4/Q8 (j=7) minus full-prefix Q8 on the operating-point run and add it to the Table 3 inventory. Both arms come from one execution over the same 60 item keys, so the machinery the paper already runs applies directly; the paper's stated reason for not computing it ('none was computed between two non-reference arms') is a convention, not an obstacle, and Appendix B's own promise is that no interval is computed but unreported. If the interval crosses zero, qualify the 3.41-point claim in the abstract, the intro bullet, Sec. 5.4 and the conclusion accordingly, and keep the existing and correct warning that a zero-crossing interval is not equivalence.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": ["A5"],
+      "verification_criterion": "Table 3 contains the frozen-minus-Q8 paired interval with its unit, resample count and seed, and no sentence in the paper asserts the F1 ordering more strongly than that interval supports.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A3",
+      "issue_ids": ["TS-02"],
+      "action_type": "analysis",
+      "description": "Report the transient dequantization working set for both arms and correct Eq. 1's premise. From Table 4: the implemented Read materializes 28.683 MiB per concurrent request (the all-BF16 split entry), while the full-prefix reference's own mutable GDN convolution and recurrent state is 31.875 MiB per request in BF16 and 61.875 MiB in the native FP32 it actually uses. Print both slopes alongside both intercepts, state the resulting resident-byte lines explicitly, and amend Sec. 3 so that M_active is no longer asserted to be method-independent — the paper's own Read path makes it entry-size-dependent. This both closes a genuine motivation-level gap and pre-empts the crossover objection on the paper's own numbers, since under symmetric accounting Q-CoMem has the smaller intercept and the smaller slope and never crosses. All inputs already exist in Table 4; no measurement is required.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Sec. 3 or Sec. 5.2 contains a transient-term row or paragraph giving per-request working-set bytes for the frozen point and the full-prefix reference under one dtype convention, and Eq. 1's surrounding text no longer claims M_active is method-independent.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A4",
+      "issue_ids": ["TS-05", "ISS-06"],
+      "action_type": "analysis",
+      "description": "Close or withdraw the 136.235-versus-140.34 reconciliation. Under the paper's own affine model (full-prefix 0.01953125T + 61.875 MiB; frozen 0.001647949T + 3.38672 MiB), inverting 140.34 gives T = 4017.4 tokens and inverting 10.01 gives T = 4019.1, i.e. 5.5% above the 60-item mean of 3807.25, not the 3.8% stated twice. The most likely resolution is that Table 2's Store is a median over eight documents while Table 1's is a mean over sixty, so the implied length is a median length and the stated 3.8% is a mean-length comparison; state that explicitly, print both cohorts' document-length statistics, and either derive the correct percentage or replace '0.000 MiB left to the accounting' with the reconciliation that actually closes. In a paper whose principal contribution is exact byte accounting, a stated exact closure that does not close is disproportionately damaging.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Both cohorts' document-length statistics are printed, and the reconciliation between 136.235/140.34 and 9.661/10.01 closes under the Appendix C model to the precision claimed, or the exactness claim is withdrawn.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A5",
+      "issue_ids": ["ISS-03", "R46-REV-5-01"],
+      "action_type": "code",
+      "description": "Register the operating-point run in the paper's own traceability machinery: a named package with a content hash, per-item Store/F1/TTFT shards, a Table 30 row, and rows in claim_evidence_map.tsv and method_provenance.tsv binding 56.438 MiB, 5.84x, +3.41 points, the j=13 control (16.101 MiB, -3.40) and all five 60-item TTFT values. I verified the gap myself: '56.438', '50.885', '54.297', '16.101', '0.656', '20260903' and 'operating-point' each return zero hits in both submitted TSVs. This is the one experimental block an artifact-aware reviewer cannot check at all, and it is the block supplying the abstract's competitive comparison. It also gates A2, since the paired interval requires the per-item F1 shards from that run.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [],
+      "verification_criterion": "Grepping claim_evidence_map.tsv and method_provenance.tsv for 56.438, 50.885, 54.297, 16.101 and the run's seed returns rows binding each to a hashed package, and Table 30 lists that package.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A6",
+      "issue_ids": ["ISS-05", "R46-REV-5-02"],
+      "action_type": "analysis",
+      "description": "Correct the Store estimand. The PDF defines it three times as the physical byte-range union owned by one retained entry; method_provenance.tsv M-QCOMEM-DEPLOY-STORE states the printed column is persistent_document_nbytes and says in terms that the Table 2 caption claim 'is therefore not what the printed column measures'. Either restate the definition in Sec. 5.1, the Table 2 caption and Sec. 5.6 as the nbytes sum actually used, or print both columns. Then restate the Appendix H.1 cross-runtime comparison (139.53 / 324.09 / 15.89 MiB, and the 0.58% agreement between 139.53 and 140.34) under the estimand actually used, since that comparison is currently licensed by the byte-range-union framing.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Every definition of Store in the PDF names the quantity the code computes, and no cross-runtime comparison is licensed by an estimand the printed column does not use.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A7",
+      "issue_ids": ["R46-REV-5-05"],
+      "action_type": "citation",
+      "description": "Correct the F1 scorer attribution. The reference annotation for Bai et al. 2024b names LongBench/metrics.py::qa_f1_score via LongBench/eval.py and Appendix A calls it 'its official F1 implementation', but method_provenance.tsv M-QCOMEM-F1 records an in-house LongBench-style reimplementation with two documented deviations (empty-prediction and empty-reference cases returning float(pred_tokens == ref_tokens); ASCII-only punctuation stripping). Describe it as a LongBench-style reimplementation, state both deviations in the main text, and keep the citation as the protocol source rather than the code source. Every F1 value, delta and bootstrap interval in the paper depends on this scorer, so the misattribution is load-bearing.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "No sentence or reference annotation in the paper claims the upstream official implementation produced the reported F1 values, and the two deviations appear in the main text.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A8",
+      "issue_ids": ["TS-04", "R46-REV-3-07"],
+      "action_type": "analysis",
+      "description": "Repair or withdraw the Table 2 latency panel. Two independent pdf_only reviewers and I separately found that no single generated-token count reconciles its three timing columns: solving n/(TTFT + (n-1)*TPOT) = tok/s gives n ~ 5.3 for the full-prefix row, n ~ 7.4 for the Q-CoMem rows, and no positive solution for the dense row, whose printed 1.36 tok/s is 12% below the 1.541 its own TTFT and TPOT pin it to. Separately, the dense arm's TPOT (648.75 ms) equals its TTFT to three digits — the signature of re-prefilling at every decode step — while Sec. 5.3 reports dense TPOT of 54.4-56.0 ms on a superset of the same items on the same stack, a 12x discrepancy the paper never mentions while calling the other run's dense arm 'honest dense recomputation'. Define tok/s precisely, print per-arm generated-token counts, and either explain the Table 2 dense arm or remove it from the panel. Mark this as re-analysis if the per-repeat timing shards were retained; if they were not, it becomes a re-run and moves to the experiment tier.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [],
+      "verification_criterion": "Every cell of the latency panel is reconstructible from its stated metric definitions and per-arm token counts, the two dense TPOT values are reconciled or one is withdrawn, and the abstract's throughput sentence rests on a defined metric.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B1",
+      "issue_ids": ["ISS-08", "R46-REV-3-05"],
+      "action_type": "writing",
+      "description": "State the generation budget for every cohort in the PDF (the provenance record gives max_new_tokens 128 for Qasper and 32 for 2WikiMQA on the archival panel; the timing panel caps every arm at 32) and use it to explain the currently unremarked 54.68-versus-39.14 F1 level gap between Table 1 and Table 2 on items drawn from the same cohort. Say explicitly that the eight items are a subset of the cohort but not of the measurement protocol, so 'subset rather than independent replication' is not read as 'same measurement on fewer items'. Also address the policy-ordering inversion between the two panels in the same place.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Each cohort's per-dataset generation budget is printed in the PDF, and the F1 level gap and the policy-ordering inversion between Tables 1 and 2 are both explained where a reader meets them.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B2",
+      "issue_ids": ["ISS-04"],
+      "action_type": "writing",
+      "description": "Fix the abstract's cohort mixing. The latency sentence opens inside a paragraph scoped to 'an archival 60-item Qasper/2WikiMQA validation cohort' but every number in it (0.163 s, 13.38 versus 7.15-7.19 tok/s, 54.11 ms) is an eight-item median from Table 2, while a 60-item TTFT measurement exists in the same paper (0.181 s full-prefix, 0.656 s frozen) and is not the one quoted. Either mark the cohort switch or quote the 60-item values. This is the paper's own non-pooling commitment applied to itself, and it is the first thing a reader checks.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Every number in the abstract carries its cohort and statistic, and no eight-item median appears under a 60-item framing.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B3",
+      "issue_ids": ["R46-REV-3-06"],
+      "action_type": "claim_narrowing",
+      "description": "Promote the same-stack published-system comparisons (Tables 18 and 20-22) from uncited appendices into Sec. 5.3, Sec. 5.5 and the abstract. On the identical eight items and hardware, SGLang 0.5.17 Radix reaches first token in 0.146 s at 15.83 tok/s and F1 39.14, and HYPIC prefix cache in 0.072 s at 19.07 tok/s and F1 39.14, against Q-CoMem's 0.673-0.674 s at 7.15-7.19 tok/s and F1 39.01-39.14, while retaining 139.53 and 324.09 MiB against 15.89. State the trade-off against a published hybrid prefix cache rather than only against two in-house endpoints, and print the three retained-state levels rather than a single ratio. This is a strictly harder latency comparison than the one currently in the abstract and the paper should make it anyway: a capacity-first argument is more credible, not less, when the latency cost is stated against the strongest available reference.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "The main text cites Tables 20-22, and Sec. 5.3 and the abstract state the TTFT and retained-state comparison against SGLang Radix and HYPIC on the matched eight-item slice.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B4",
+      "issue_ids": ["R46-REV-3-04", "R46-REV-1-03", "TS-03"],
+      "action_type": "writing",
+      "description": "Rebalance the two headline presentations. (i) Promote the like-for-like all-BF16 column (106.235 / 28.683 / 9.661 / 9.395 / 7.536 MiB at 1.00 / 3.7038 / 10.9965 / 11.3073 / 14.0969x, split-to-frozen step 2.97x) out of the 7 pt footnote into Table 1 proper, and lead with it where the paper currently leads with 14.10x, since it is the ratio that measures what the paper contributes. (ii) Make the paged-prefix tie and the 1.950-versus-0.019 GiB generation-increment penalty co-ordinate with the 54.5%/42.2% figure in the abstract rather than subordinate to it, since against the appropriate reference the ownership component's allocator content is 0.0% and it is 1.931 GiB worse on one endpoint. Both are placement fixes; the underlying disclosures are already accurate and should be preserved.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Table 1 prints the all-BF16 column at body size; the abstract's ownership sentence states the tie and the generation-increment penalty in the same register as the 54.5%/42.2%.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B5",
+      "issue_ids": ["TS-06", "R46-REV-5-06", "R46-REV-5-03", "R46-REV-5-04"],
+      "action_type": "writing",
+      "description": "Complete the reproduction specification. Give the quantizer's grouping axis, the constant-group convention for Eq. 3 (u = m gives s = 0), and the dequantizer. Give the Tables 1-2 stack its full recipe: Python version, CUDA version, model revision (the provenance record has 59d61f3, absent from the PDF), and the bootstrap RNG implementation, since seed plus resample count does not determine percentile endpoints across RNG libraries. State the distribution channel for the research package and the release status of the 11 method_provenance rows marked NOT ARCHIVED — which include the split depth, all three bit policies, the policy search, the byte accountant and the bootstrap, i.e. exactly the components that select the reported operating point and produce the reported uncertainty.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [],
+      "verification_criterion": "A reader with the PDF can implement the quantizer unambiguously; the Tables 1-2 stack recipe matches the completeness of the Table 5 audit-stack recipe; and the PDF states what a reader receives and what remains unreleased.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B6",
+      "issue_ids": ["R46-REV-3-02", "R46-REV-3-03"],
+      "action_type": "figure",
+      "description": "Enlarge Figure 1 and Figure 2 label text to at least 8 pt (currently ~5 pt against 8.9 pt body), and stabilize nomenclature: one name per policy (the calibrated per-layer policy currently carries six) and one name per reference arm (currently 'full-prefix Q16' and 'full-prefix, native dtype' for the same arm, inviting readers to conflate the 56.438 MiB Q8 of p.7 with the 15.89 MiB Q8 of p.8). Add a one-line policy glossary.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "All figure labels are legible at print size, and each policy and reference arm has a single name used consistently across abstract, body, tables and appendices.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "B7",
+      "issue_ids": ["R46-REV-1-04"],
+      "action_type": "writing",
+      "description": "Add a dedicated XQuant positioning paragraph. Persisting a quantized intermediate representation and paying recomputation to avoid retaining downstream state is structurally XQuant's thesis, so the sentence 'each method compresses one homogeneous cache along a single execution path' is not true of it. Argue the actual distinction — the cut point is a depth-j boundary residual rather than layer-input activations, and the retained object includes the heterogeneous lower-layer attention KV plus convolution and recurrent state a hybrid backbone needs — rather than relying on the homogeneity claim.",
+      "expected_impact": "medium",
+      "confidence": "medium",
+      "cost": "low",
+      "dependencies": [],
+      "verification_criterion": "Sec. 2 contains a paragraph distinguishing Q-CoMem from XQuant on grounds that survive the fact that XQuant also stores a quantized intermediate and recomputes.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "C1",
+      "issue_ids": ["R46-REV-1-01", "TS-01", "R46-REV-3-01", "R46-REV-5-07"],
+      "action_type": "experiment",
+      "description": "THE decisive experiment, and the only change that can lift Contribution above 2. One execution in which the packed Q4/Q4/Q8 entry at j=7 is shared across N > 1 resident requests under the Sec. 4.3 ownership discipline — shared immutable dequantized document tensors, request-local mutable state, copy-on-write tails, recurrent rebinding — with ForkAudit coverage and verdicts, Store, F1 and allocator endpoints all reported from that single run. It must cover the three obligations the paper itself names as untested: dequantized-view immutability, residual-chunk binding, and packed-entry lifetime. The vLLM paged implementation named in method_provenance.tsv (qcomem_vllm_paged_kernel.py) appears to be the natural host, which suggests the engineering distance is smaller than the manuscript's framing implies. If this is genuinely out of reach for the next round, the alternative is not more disclosure — disclosure is already saturated and cannot move Contribution — but honest retitling and rescoping to two separately evidenced results, with the composition removed from the abstract's claim structure and from Figure 1's single-protocol depiction.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "high",
+      "dependencies": ["A5"],
+      "verification_criterion": "One table sourced from one execution reports ForkAudit coverage and verdicts for all seven targets plus the three packed-entry obligations, together with Store, F1 and allocator endpoints, on the quantized split path at N > 1.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "C2",
+      "issue_ids": ["ISS-01"],
+      "action_type": "experiment",
+      "description": "Run the width-matched quantized exact-cache arm — the frozen policy's bit vector applied to the unsplit entry, predicted at ~37.85 MiB/document from Table 4 — on the same 60 items, with its mean F1 and paired interval against that run's full-prefix reference. A1 removes the confound from the memory claim by re-analysis alone, but only this arm establishes whether the split retains its advantage when the exact cache is given the same precision budget, which is the comparison a reader wants. If the width-matched arm loses substantial F1, that is itself a strong and reportable result: it would show the split is what makes the aggressive width affordable.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": ["A1", "A5"],
+      "verification_criterion": "Table 1's operating-point block contains a width-matched exact-cache row with Store, mean F1 and a paired interval against the same reference, and the abstract's comparative claim is stated against it.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "C3",
+      "issue_ids": ["R46-REV-1-02"],
+      "action_type": "experiment",
+      "description": "Attribute the full-prefix Q8 arm's 3.78-point loss by state family: attention-KV-only at Q8 with GDN left native, and GDN-only at Q8 with attention left native, on the same 60 items. This is the sound version of REV-1's suspicion, answered on the paper's own stack rather than by appeal to other papers' models and tasks. Roughly 30% of that arm's 56.438 MiB is quantized GDN convolution and recurrent state, a family the paper's own cited Quamba/MambaQuant line treats as harder than KV and that no cited KV-quantization result covers, so the most likely finding is that the loss is concentrated there — which would be a genuinely useful result about hybrid backbones and would simultaneously defend the comparator against the straw-baseline charge.",
+      "expected_impact": "medium",
+      "confidence": "medium",
+      "cost": "medium",
+      "dependencies": ["A5"],
+      "verification_criterion": "The paper reports per-state-family F1 attribution for the Q8 exact-cache arm, so a reader can tell whether the 3.78 points is a property of the codec or of quantizing hybrid recurrent state.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "C4",
+      "issue_ids": ["ISS-07"],
+      "action_type": "experiment",
+      "description": "Report repeat-level dispersion (min-max or IQR over the three declared repeats) for every TTFT, TPOT and tok/s cell in Tables 1, 2, 21 and 22, plus the explicit aggregation rule. The paper reports ranges for a peripheral CPU replay measurement but none for the headline latency panel, and both the 'TPOT within 2.5%' claim and the frozen-versus-dense TTFT ordering sit inside the band where shared-GPU repeat noise plausibly lives. If the per-repeat values were retained this is re-analysis and belongs with A8; if only medians were kept it is a cheap re-run.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": ["A8"],
+      "verification_criterion": "Every timing cell carries a dispersion statistic and the aggregation rule is stated, and the 2.5% TPOT band and the TTFT ordering are shown to survive it.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "C5",
+      "issue_ids": ["R46-REV-1-05"],
+      "action_type": "experiment",
+      "description": "Lowest priority. A split-depth sweep beyond the single j=13 control, so the quality cost of splitting is characterised as a function of depth rather than pinned by one control point, and a second backbone or dataset family to establish that the frozen policy is not a property of this one Qwen3.5/H20 stack. Defer until C1 and C2 land; without them this adds breadth to a contribution whose central composition is still unmeasured.",
+      "expected_impact": "low",
+      "confidence": "medium",
+      "cost": "high",
+      "dependencies": ["C1", "C2"],
+      "verification_criterion": "A depth sweep with at least three interior depths is reported with paired intervals, on at least one additional backbone or dataset family.",
+      "possible_with_current_evidence": false
+    }
+  ],
+  "must_resolve_before_accept": [
+    "C1, or an honest rescoping. Either produce one execution in which the packed split entry is shared across concurrent requests under the Sec. 4.3 discipline with ForkAudit verdicts, Store, F1 and allocator endpoints from that single run, or retitle and restructure the paper as two separately evidenced results and remove the composition from the abstract's claim structure and Figure 1's single-protocol depiction. Contribution cannot exceed 2 while the paper's stated identity is a composition with zero end-to-end evidence, and further disclosure prose cannot substitute.",
+    "A1: the 5.84x must be reported net of its bit-width confound. I confirmed the decomposition exactly from Table 4 (3.918x split x 1.491x width). The paper already made this move voluntarily for the 14.10x dtype confound; making it for one headline and not the other is not defensible.",
+    "A2: the paired interval between the frozen point and full-prefix Q8 must be computed and printed, and the 3.41-point claim qualified by what it shows. Appendix B's own promise is that no interval is computed but unreported, and this is the paper's most decision-relevant pair.",
+    "A5: the operating-point run must be registered with a content hash, per-item shards, a Table 30 row and claim-map entries. As submitted, the abstract's competitive comparison has zero traceability in either artifact file — I verified zero hits for its every distinctive value.",
+    "A6: the Store estimand in the PDF must name the quantity the code computes. The authors' own provenance record states the Table 2 caption is wrong about this, and Appendix H.1's cross-runtime comparison is currently licensed by the incorrect framing.",
+    "A8: the latency panel must reconcile or be withdrawn. No generated-token count satisfies its three columns simultaneously, and the dense arm's TPOT disagrees with the same paper's other dense measurement by 12x, unremarked.",
+    "A7: the F1 scorer must not be attributed to the upstream official LongBench implementation when the provenance record documents an in-house reimplementation with two behavioural deviations. Every F1 number in the paper depends on it.",
+    "B1: the archival panel's generation budget must appear in the PDF, and the 54.68-versus-39.14 F1 level gap between Tables 1 and 2 must be explained where a reader meets it."
+  ],
+  "score_gaming_suggestions_to_reject": [
+    "Deleting or softening the Sec. 4.3 sentence that the implementation 'shares nothing and exercises neither borrowing nor copy-on-write', or the Sec. 5.1 sentence that 'no FORKAUDIT verdict here covers those packed entries'. These disclosures are the paper's strongest integrity asset and the reason Soundness is 2 rather than 1. Removing them to conceal the composition gap would convert a scoped-honest paper into an overclaiming one and should be treated as a decisive negative in the next round.",
+    "Responding to the four critical reviews about the composition gap by adding more disclosure prose. Disclosure is already saturated across the abstract, Fig. 1 caption, Sec. 4.3, Sec. 4.4, Sec. 5.1, Sec. 5.5 and Sec. 5.6, and it cannot move Contribution. Only C1 or an honest rescoping can.",
+    "Reporting only the 3.918x width-matched figure and dropping the 5.84x, or vice versa. Both belong in the paper with the decomposition between them, exactly as 14.10x and 10.9965x are both reported today.",
+    "Computing the frozen-versus-Q8 paired interval and, if it crosses zero, describing it as equivalence, noninferiority, or 'no significant difference'. The paper currently warns against precisely this and must keep doing so.",
+    "Dropping the all-BF16 restatement, the aggressive-policy row whose interval sits below zero, the adverse TTFT rows, or the 1.950-versus-0.019 GiB generation-increment penalty in order to improve the apparent result. Every one of these was cited by multiple reviewers as a strength.",
+    "Withdrawing the promotion of Tables 20-22 into the main text on the ground that the comparison is unflattering. It is unflattering on latency and favourable on capacity, which is exactly the trade the paper claims; stating it against the strongest available same-stack reference strengthens the argument.",
+    "Reporting the retained-state advantage over published prefix caches as a single most-flattering ratio (20x against HYPIC) rather than the three measured levels (139.53 / 324.09 / 15.89 MiB), which would repeat in a new place the selective-denominator pattern Appendix C exists to avoid.",
+    "Narrowing the claimed scope so far that the paper becomes unfalsifiable — e.g. restating every result as 'a bounded point estimate on one stack' without the comparative content. Scope discipline is a strength here, but the fix for a confounded comparison is to decompose or measure it, not to stop making it."
+  ],
+  "decision_rationale": "Meta-score 4, marginally below the acceptance threshold. I reach the same number as the unanimous panel but by a different route, and the route matters more than the coincidence: I overturn the novelty reviewer's central allegation in the paper's favour and confirm the experimental-rigor reviewer's central allegation against it, and the two corrections roughly cancel.\n\nAdjudicated snapshot: paper_sha256 0d7912b4...29e923, common to both views; pdf_only snapshot ae1a2e12...c6fdb4, pdf_plus_repository snapshot 528556f1...92429a.\n\nWHAT I VERIFIED MYSELF. (a) REV-4's ISS-01 survives exactly. Rebuilding both arms from Table 4: full-prefix Q8 = 20 x 1.9752 + 30 x (0.0332 + 0.5312) = 56.436 MiB against the printed 56.438; the frozen policy's own attention width applied to the unsplit entry = 20 x 1.0457 + 30 x 0.5644 = 37.846 MiB; 37.846/9.661 = 3.9174, 56.436/37.846 = 1.4912, product 5.8416 = the printed 5.84. The comparison is genuinely bit-width confounded and the paper never says so, describing the arm twice as 'the same codec' when it is a different bit vector. This is the same class of confound the paper voluntarily exposed for its 14.10x dtype ratio, which makes the omission conspicuous rather than merely unfortunate. It narrows the claim without destroying it: 3.92x at matched width is still substantial. (b) REV-1's inference that the Q8 baseline is defective does not survive. The arm is not a KV-only quantizer — 16.932 of its 56.438 MiB is GDN convolution and recurrent state at Q8, the family the paper's own cited Quamba/MambaQuant line treats as harder and that no cited KV result covers; the -3.78 carries a 95% paired interval of [-9.12, 0.32] that crosses zero, so the loss is not distinguishable from zero on 60 items and 'likely defective' over-reads a non-significant estimate; and the paper's Table 19 already prints KVTuner's comparability boundary in terms. This is an appeal to other papers' settings and I reject it, while preserving the sound residual as action C3: the arm is undiagnosed and owes a per-state-family attribution. (c) REV-2's TS-02 is right in premise and arithmetic and wrong in conclusion. Sec. 4.3 does state the implementation materializes a full private copy per query, 28.683 MiB is exactly the paper's own all-BF16 split-entry value, and 9.661 + 28.683N crosses 136.235 at N = 4.41. But the transient charge is applied to one side only: by the same Table 4 the full-prefix reference's own mutable GDN state is 31.875 MiB per request in BF16 and 61.875 in its native FP32, so under symmetric accounting Q-CoMem has both the smaller intercept and the smaller slope and never crosses at any N. The capacity claim is not bounded to low concurrency. What survives, and matters, is that Eq. 1's premise that M_active is method-independent is falsified by the paper's own Read path and that no transient working-set number appears anywhere — a motivation-level gap fixable as pure re-analysis (A3). (d) The composition gap is confirmed from three independent directions: the PDF's own Sec. 4.3 and Sec. 5.1, and the artifact row M-QCOMEM-READ-FORK, which states that the borrow/rebind/tail-COW discipline 'belongs to the separate vLLM paged implementation, not to this path'.\n\nHOW DISCLOSURE BEARS ON THE RATING. This is the panel's most important open question and it deserves a direct answer. The paper's disclosure of the gap is exemplary and I want it preserved verbatim; it is why Soundness is 2 rather than 1, because the paper's claims match its evidence and it does not make the field's standard audit-plus-system overclaim. But disclosure is not evidence, and Contribution is scored on demonstrated new knowledge. What this paper demonstrates is: a byte-accounting result that, once Table 4 is given, follows analytically from a bit vector and a component inventory; two F1 deltas whose intervals cross zero; an adverse latency characterization whose only table does not internally reconcile; and an ownership audit of a configuration that is not the proposed system. That is a fair, narrow contribution — a 2 — and I agree with the panel's median. The practical consequence for the authors is that the natural response to four critical reviews about the gap is to disclose harder, and that response would waste an entire round.\n\nWHY 4 AND NOT 2, AND NOT 6. Not 2, because nothing here is a false claim. The defects are of framing, omission and un-run re-analysis, most are cheap to fix, the verified accounting contribution is real and independently reconstructible by five reviewers and me, and the paper repeatedly reports numbers against its own interest. Not 6, because the second headline is confounded and undisclosed, the interval licensing the comparative quality ordering was never computed although the machinery exists, the run supplying both sits outside the paper's own traceability system entirely, the Store estimand as defined is contradicted by the authors' own provenance record, the only latency table does not reconcile under any generated-token count, and the composed system that gives the paper its title has no end-to-end evidence.\n\nCEILINGS. Under current evidence, with nothing new executed and no changes made, the ceiling is 4. If the non-experimental changes land in full — A1 through A8 plus B1 through B7, i.e. the width decomposition, the missing paired interval, the transient-term accounting, the Store reconciliation, the operating-point registration, the estimand and scorer corrections, the latency-panel repair, and the scoping and presentation work — the ceiling is 6: a correctly scoped paper whose every number reconciles and whose comparisons are stated net of their confounds, carrying a real if narrow measurement contribution. It cannot exceed 6 by re-analysis alone, because Contribution is capped at 2 while the composition is unmeasured. Reaching 8 requires C1, and C2 to make the comparative capacity claim competitive rather than merely decomposed. Note that four of five reviewers put the current ceiling at 4 and all five predicted 6 after required changes, which matches this assessment independently.\n\nACCESS-MODE PROVENANCE. The Presentation split is 2/2/2 among the three pdf_only reviewers and 3/3 among the two with repository access, and that is not noise. Several objections the artifact-aware reviewers could resolve from the TSVs — the generation budget, the Store estimand, the F1 scorer — are exactly the objections a conference reviewer with the PDF alone cannot resolve, and in two of those three cases the artifact does not answer the objection but confirms that the PDF asserts something the artifact contradicts. REV-3-05's unexplained 15.5-point F1 gap must not be dismissed because REV-4's ISS-08 could explain it from a provenance row; that row is precisely the disclosure the PDF owes, which is why B1 is a must-resolve rather than a nicety. I have scored Presentation as the pdf_only reviewers saw it.\n\nSEQUENCING. A1, A3, A4, A6 and A7 are free-standing re-analysis and writing that can start immediately. A5 gates A2, C1, C2 and C3, so it should be done first among the artifact work. A8 is re-analysis if the per-repeat timing shards survive and a re-run otherwise, and it gates C4. C1 is the only action that changes the paper's category, and if it is out of reach the honest move is rescoping, not more prose."
+}

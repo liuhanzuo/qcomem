@@ -1,0 +1,129 @@
+{
+  "reviewer_id": "a11-r3-clarity",
+  "round": 3,
+  "snapshot_sha256": "683d2d58f3eead73dba6344efefe02a17d9904f9170b77fb6364a6e1735dc6ee",
+  "role": "clarity_presentation",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "For the explicitly stated count-exchangeable replay model, the paper gives a coherent conditional-posterior construction (Section 4, pp. 4--5) and a FIT/CAL selection layer (Section 5, p. 6). The supplied artifact values agree with the main OMR table (EV-OMR-R469 / artifacts/results/fit_cal_test_r469_result.json). I do not score it excellent because the snapshot lacks the raw inputs and environment needed to independently reconstruct the empirical chain, and because the paper correctly does not establish ordered online validity.",
+    "presentation": "The paper is well structured, defines the replay endpoint before its theorem, and consistently distinguishes replay flip/count reduction from answer correctness and operational cost (abstract, Sections 3 and 8). The rendered tables are readable. Presentation falls short of excellent because the central overview figure compresses an important synthetic-only boundary, has a visible stray square in panel (b), and Appendix F uses an ambiguous 'cert' column label that collides with the conditional certificate notation.",
+    "contribution": "The exact posterior flip certificate plus CAL selection is a useful, clearly delimited contribution for count-exchangeable binary pass-count replay. Its present significance is narrower than an online early-stopping result: the paper itself states that it has no delivered-answer correctness, generated-token, latency, cancellation, or naturally ordered rollout evidence (Section 8, p. 9; C04)."
+  },
+  "paper_summary": "This paper studies adaptive stopping only in a count-exchangeable binary pass-count replay model. It defines BAYES-H, which stops when the posterior probability that the current prefix decision disagrees with the full-N pass-count decision is at most alpha, proves a tower-property replay bound, and uses a FIT-frozen/CAL-selected empirical-Bernstein rule family. It reports large replay rollout-count reductions on OMR and supporting replay analyses on OpenR1 and RLVE, while expressly excluding claims about delivered-answer correctness, online order, or operational savings.",
+  "strongest_verified_contribution": "Within the supplied evidence, the strongest contribution is the sharply scoped replay result: the conditional posterior target is defined precisely in Section 4 (Eq. 2 and Theorem 1, p. 4), and the FIT/CAL/TEST protocol makes the reported OMR alpha=0.05 readout auditable to artifacts (Table 1, p. 7; EV-OMR-R469 reports 0.02489 replay flip and 0.8085 count reduction).",
+  "strengths": [
+    "The central object is defined before use: Sections 3--4 distinguish a binary pass-count replay decision from a delivered answer, and the same boundary is repeated in the abstract and limitations.",
+    "The organization supports verification: model, method, selection protocol, experiments, and failure-domain analysis appear in a logical order, with exact locations for theorems and the principal table.",
+    "The paper handles negative scope honestly. Section 8 and C04 explicitly rule out interpreting full-vote agreement or 1 - mean(k)/N as correctness, tokens, latency, or cancellation savings.",
+    "Figure 1 and Table 1 make the alpha=0.05 comparison easy to locate, and the Figure 1 numerical labels are linked to A11-FIG1-EARLYSTOP-OVERVIEW / EV-OMR-R469 rather than treated as independent measurements."
+  ],
+  "questions": [
+    "Can the authors release a reviewer-safe package containing the exact count vectors or a permitted content-preserving derivative, split membership, deterministic reconstruction script, and environment lock so that Table 1 and the cross-carrier matrix can be rerun independently?",
+    "Can Figure 1 panel (c) label its drift result as synthetic and exploratory directly in the panel, rather than relying on the caption for this scope boundary?",
+    "Can Table 5 rename 'cert' to a fully specified CAL empirical-Bernstein UCB (and state the conditioning/FIT-frozen rule), to distinguish it from the per-prefix posterior certificate c_H(x,k)?"
+  ],
+  "issues": [
+    {
+      "issue_id": "A11-C-PROV-01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "Sections 5--6 and Table 1 (pp. 6--8); Reproducibility Statement (p. 9); evidence/repository_inventory.md, 'Round-2 reviewer-safe snapshot boundary'; evidence/experiment_registry.json, EXP-OMR-R469.",
+      "claim_ids": [
+        "C02",
+        "C04"
+      ],
+      "evidence_ids": [
+        "EXP-OMR-R469",
+        "EV-OMR-R469",
+        "INV-MISSING-ORDER",
+        "INV-MISSING-ENDPOINT",
+        "INV-MISSING-COST"
+      ],
+      "observed_evidence": "The OMR result JSON records the printed FIT/CAL/TEST sizes and Table 1 values, but EXP-OMR-R469 is explicitly 'supplied_artifact_not_rerun.' The inventory says the snapshot lacks raw task membership, duplicate-check outputs, original selection timestamps, predictions, and an environment lock, and identifies independent end-to-end replay as a residual blocker. The planned ordered correctness/cost experiment is also explicitly unexecuted.",
+      "why_it_matters": "The numerical claims are traceable but not independently reproducible from this package. This does not contradict the paper's carefully limited replay claim, but it materially limits confidence in the reported empirical magnitudes and keeps the practical value unverified.",
+      "required_fix": "Release a double-blind-safe reconstruction package with the exact permitted count data or a documented content-preserving derivative, split identifiers, deterministic scripts/configuration, dependency lock, and a clean rerun log matching Tables 1 and 5. Separately, execute the preregistered ordered correctness/cost protocol or continue to keep every practical-deployment claim out of scope.",
+      "verification_test": "A clean reviewer environment rebuilds the OMR, shard-1, OpenR1, and RLVE tables from supplied inputs and matches the reported values at their stated precision; any ordered study is accepted only if its immutable ledgers satisfy the protocol's trace, evaluator, and cancellation checks.",
+      "evidence_needed": "Released raw or content-preserving replay inputs, split manifests, hashes, configuration/environment lock, rerun logs, and, for any practical claim, a completed integrity-valid EXP-ORDERED-CORRECTNESS-COST result.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A11-C-PRES-01",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Figure 1, p. 2, especially panels (a)--(c) and its caption; Sections 3 and 7--8 (pp. 3, 8--9).",
+      "claim_ids": [
+        "C01",
+        "C03",
+        "C04",
+        "C08"
+      ],
+      "evidence_ids": [
+        "A11-FIG1-EARLYSTOP-OVERVIEW",
+        "EV-MARGIN-R469"
+      ],
+      "observed_evidence": "The prose and Figure 1 caption correctly state that the margin is only a stated synthetic-drift result, but panel (c) itself says 'Certified dominance + drift margin' and its note says only 'drift.' A figure-first reader can therefore miss the synthetic/exploratory condition. Panel (b) also visibly retains a small empty square; the visual provenance record acknowledges it as a cosmetic artifact.",
+      "why_it_matters": "The distinction between count-exchangeable replay and ordered deployment is the paper's most decision-relevant limitation. It should remain unambiguous even when the figure is read apart from the body text.",
+      "required_fix": "Revise the panel-(c) title/note to say 'replay dominance + synthetic-drift sensitivity (exploratory)' or equivalent, add 'random replay permutation, not logged chronology' near panel (a)'s prefix depiction, and remove the stray square in panel (b).",
+      "verification_test": "At final PDF print size, a reader who sees Figure 1 and its caption alone can identify that the numbers are replay quantities and that the margin is synthetic/exploratory rather than online-deployment validation; no stray icon remains.",
+      "evidence_needed": "An updated Figure 1 asset and a visual inspection of the final rendered PDF page.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A11-C-PRES-02",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Appendix F, Table 5, p. 17, read with Section 4 Eq. (2), p. 4, and Section 5, p. 6.",
+      "claim_ids": [
+        "C01",
+        "C02"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-OMR-OTHER"
+      ],
+      "observed_evidence": "Table 5 labels a numerical column 'cert.' Its introduction says validity was certified on CAL, whereas Section 4 uses c_H(x,k) for a conditional posterior certificate and Section 5 defines CAL empirical-Bernstein UCB selection. The terse table header does not identify which quantity is printed or its conditioning.",
+      "why_it_matters": "Readers comparing carriers can incorrectly equate a CAL population UCB with the per-prefix posterior certificate, obscuring the two-layer argument that is central to the paper.",
+      "required_fix": "Rename the column 'CAL EB UCB' (or equivalent) and add a compact table note that it is computed for a FIT-frozen rule family with the stated Bonferroni allocation; reserve 'posterior certificate' for c_H(x,k).",
+      "verification_test": "A reader can identify the endpoint, data split, and type of every Table 5 numerical column without consulting Section 5.",
+      "evidence_needed": "A revised Table 5 and its rendered PDF page.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics concern is evident in the scoped replay analysis. The manuscript discloses its generative-AI assistance and repeatedly warns against treating replay quantities as online correctness or operational savings; that boundary should remain prominent to avoid downstream misuse.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It reviewed only the specified frozen snapshot, did not use network access, and did not modify manuscript or evidence files.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A clean, double-blind reproducibility release that reconstructs the main and cross-carrier replay tables from supplied inputs and frozen splits.",
+    "A completed, integrity-valid formal ordered online study with gold correctness and measured completed-token/latency/cancellation endpoints under EXP-ORDERED-CORRECTNESS-COST.",
+    "A revised Figure 1 and Table 5 that preserve the replay/synthetic scope without requiring readers to infer it from surrounding prose."
+  ],
+  "evidence_that_would_lower_score": [
+    "A clean rerun that cannot reproduce the CAL selections, Table 1 values, or cross-carrier matrix from the released inputs.",
+    "Ordered traces showing non-prefix-measurable decisions, chronological drift that breaks the stated certificate outside the expressly synthetic setting, or missing evaluator/cancellation records in a claimed online study.",
+    "Evidence that the displayed replay endpoint was represented as delivered-answer correctness or real operational savings despite the paper's stated boundary."
+  ],
+  "review_limitations": [
+    "The frozen snapshot omits the raw count data, task/split membership, raw predictions, and environment material, so I could assess traceability but not independently rerun the empirical pipeline.",
+    "The review was intentionally isolated from external literature and prior review rounds; novelty and citation assessment is limited to the bundled literature matrix and bibliography."
+  ]
+}

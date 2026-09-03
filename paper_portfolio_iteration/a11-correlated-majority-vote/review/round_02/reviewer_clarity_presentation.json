@@ -1,0 +1,159 @@
+{
+  "reviewer_id": "a11-r2-clarity",
+  "round": 2,
+  "snapshot_sha256": "33c6a81aa1581f2b00e5c2f7cce8ff126d15749e57380103d0eb50ccac0ca39f",
+  "role": "clarity_presentation",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "Within the explicitly stated count-exchangeable replay model, the manuscript gives a coherent posterior-certificate argument, a population-layer selection procedure, and exact-DP readouts. The paper appropriately does not claim ordered-online or delivered-answer validity. I did not independently re-prove the theorems, and the practical scope remains narrower than the title may initially suggest.",
+    "presentation": "The core model, endpoint, and major caveats are unusually explicit, and Table 1, Figure 1, and the limitations section make the main replay result recoverable. However, the reader must reconcile several distinct notions of guarantee across the abstract, Sections 4--5, and the robustness material before understanding which evidence is confirmatory, descriptive, or merely deterministic sensitivity; this is a substantive organization burden rather than a local copy-editing issue.",
+    "contribution": "The conditional full-vote-disagreement certificate and the controlled FIT/CAL/TEST replay comparison are a useful, clearly delimited contribution for count-exchangeable majority-vote replay. The reported practical implication is limited because the supplied carriers do not observe rollout order or delivered-answer correctness/cost, a boundary the manuscript itself states repeatedly."
+  },
+  "paper_summary": "The paper studies adaptive early stopping for a binary pass-count majority vote. It models a task's N outcomes by a count K drawn from a cross-task mixture H, treats a prefix as a uniform draw without replacement, and stops BAYES-H when the posterior probability that the prefix decision disagrees with the full-N decision is at most alpha. It proves the conditional replay guarantee, selects rules with FIT/CAL/TEST empirical-Bernstein control, and reports exact replay flip/count results on OMR plus two additional model--carrier pairs. It also reports only synthetic ordered-drift diagnostics and expressly excludes claims about chronological deployment, answer correctness, and operational savings.",
+  "strongest_verified_contribution": "For the stated count-exchangeable replay endpoint, the paper coherently connects the posterior flip rule to an exact conditional/tower-property argument and a pre-specified CAL selection protocol; the main OMR table then gives a traceable held-out replay comparison (C01--C02).",
+  "strengths": [
+    "The endpoint is defined with welcome precision: Sections 3 and 8 state that flip is binary pass-count replay disagreement with the corresponding full-N decision, not answer-majority correctness or operational cost (C01, C04).",
+    "The logical spine is easy to reconstruct once the reader reaches Sections 3--5: model, conditional certificate, population selection layer, and single TEST readout are separated rather than silently conflated.",
+    "Figure 1 communicates the heterogeneity-to-posterior-stopping intuition effectively, and its caption explicitly ties the displayed numbers to replay artifacts rather than online measurements.",
+    "The paper is candid about negative and boundary evidence: the window heuristic failure, synthetic-only drift analysis, exploratory margin thresholds, and non-certifying cross-shard TV diagnostic are all disclosed (C03, C07, C08).",
+    "Table 1 directly exposes the important alpha=0.10 exception, where FIXED-EB has slightly higher count reduction than BAYES-H, rather than preserving an overbroad dominance claim (C05)."
+  ],
+  "questions": [
+    "Can the authors add a compact claim-status/scope table near the end of the introduction that separates (a) the conditional replay theorem, (b) CAL population-UCB selection, (c) held-out TEST replay observations, (d) deterministic fitted-mixture TV sensitivity, and (e) synthetic ordered-drift diagnostics?",
+    "Why retain the lengthy cross-carrier critical-radius and continuous-alpha exposition in the main-text method section before the FIT/CAL/TEST protocol, rather than moving the numerical detail to Appendix E and keeping only the scope-relevant proposition and one takeaway?",
+    "Will the authors make Table 1 visibly distinguish a CAL-certified selected rule from a TEST descriptive flip observation, for example by adding the CAL UCB/certification status or an explicit cross-reference to Table 5?",
+    "Can Figure 2 label the grey reference alpha ticks directly and identify the reference levels in the legend/caption so its claimed staircase behavior can be read without reconstructing the tick locations?"
+  ],
+  "issues": [
+    {
+      "issue_id": "CP-01",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract, pp. 1--2; Section 4, pp. 4--5 (especially Proposition 1 and the continuous-alpha remark); Section 5, p. 6; Appendix E/F, pp. 15--20.",
+      "claim_ids": [
+        "C01",
+        "C02",
+        "C03",
+        "C07",
+        "C08"
+      ],
+      "evidence_ids": [
+        "EV-THEORY-TOWER",
+        "EV-OMR-R469",
+        "EV-DRIFT-R469",
+        "EV-MARGIN-R469",
+        "EV-TV-R481",
+        "EV-TV-R482",
+        "EV-TV-R483"
+      ],
+      "observed_evidence": "The abstract juxtaposes an exact posterior certificate, an empirical-Bernstein population layer, one held-out replay readout, deterministic fitted-mixture TV movement, and synthetic drift robustness in one dense narrative. Section 4 presents extended TV/continuous-alpha results before Section 5 defines what CAL selection certifies and what TEST only describes. The paper states the individual boundaries accurately (e.g., Proposition 1 says the TV ball is not target-population containment; Section 6 calls TEST descriptive), but their relationship is not summarized in one reader-facing hierarchy.",
+      "why_it_matters": "The central scientific distinction is scope: exact conditional replay logic, finite-sample CAL selection, a held-out replay measurement, and a synthetic or deterministic robustness diagnostic are not interchangeable. Requiring readers to reconstruct that taxonomy makes a careful paper easier to overread as an ordered-deployment guarantee and makes the actual contribution harder to evaluate.",
+      "required_fix": "Add a one-screen claim-status map near the end of the introduction and use the same labels in the abstract/main tables: theorem under count-exchangeable replay; CAL UCB selection guarantee; TEST descriptive replay result; deterministic assumed-TV sensitivity; synthetic ordered-drift diagnostic. Keep Proposition 1's scope statement in the main text, but move most cross-carrier numerics and continuous-alpha bookkeeping to Appendix E or a short boxed takeaway after the protocol.",
+      "verification_test": "A reader should be able to identify the endpoint, assumptions, guarantee type, data split, and whether each headline quantity is confirmatory or descriptive from the introduction plus Table 1, without consulting Appendix E. No headline should imply an ordered-online, answer-correctness, or operational-cost guarantee.",
+      "evidence_needed": "No new experiment is required; this is a reorganization and labeling change grounded in the current evidence package.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "CP-02",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Introduction, PDF pp. 1--2: the opening paragraph beginning 'For a count-only replay analysis' is split by Figure 1 and its long caption.",
+      "claim_ids": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "evidence_ids": [
+        "EV-THEORY-TOWER",
+        "EV-OMR-R469",
+        "EV-DRIFT-R469"
+      ],
+      "observed_evidence": "The sentence ends page 1 with 'two deployment factors remain outside' and resumes below the full-width Figure 1/caption on page 2 with 'its evidence'. The figure itself is informative but already carries several messages (mixture model, posterior rule, theorem, calibration, one quantitative comparison, drift margin, and replication).",
+      "why_it_matters": "The first scope qualification is a reader's first defense against mistaking the replay endpoint for an online deployment result. Interrupting it with a dense overview figure weakens the opening narrative and makes the visual compete with, rather than reinforce, the definition.",
+      "required_fix": "Place Figure 1 after the complete opening scope paragraph (or revise float placement), and trim its in-panel prose to the mechanism plus one headline replay comparison; retain the detailed caveats in the caption or a nearby scope box.",
+      "verification_test": "In the rendered PDF, the full sentence describing both out-of-evidence deployment factors appears continuously before the figure, and the figure can be understood at normal zoom without reading a second abstract inside its panels.",
+      "evidence_needed": "A rebuilt PDF is sufficient.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "CP-03",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "Section 6 and Table 1, PDF p. 6; compare Appendix F Table 5, PDF p. 19.",
+      "claim_ids": [
+        "C02"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-CHECK-R508"
+      ],
+      "observed_evidence": "The prose immediately before Table 1 correctly says that 'valid' means observed replay flip <= alpha and that TEST is descriptive because selection was certified on CAL. However, the primary table shows only TEST flip/mean-k/reduction, whereas Table 5 later exposes the CAL 'cert' values. A reader who starts with the main table must cross-reference Section 5 and Appendix F to distinguish observed success from the selection evidence.",
+      "why_it_matters": "This distinction is material to interpreting the comparison fairly: a low TEST flip is not itself the finite-sample selection guarantee. The current prose is accurate, but the visual presentation makes the distinction unnecessarily easy to miss.",
+      "required_fix": "Add a compact CAL-UCB/certification column to Table 1, or label its eligible rows 'CAL-selected; TEST descriptive' and point directly to the corresponding CAL values in Table 5. Keep the existing explicit definition of the replay endpoint.",
+      "verification_test": "A reader of Table 1 alone can tell which quantity was used to certify/select the rule and which quantity is the one-time TEST readout, with no inference from the word 'valid'.",
+      "evidence_needed": "No new evidence is required; the existing CAL values in Table 5 and registered artifacts suffice.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "CP-04",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Appendix E, Figure 2 and caption, PDF p. 15.",
+      "claim_ids": [
+        "C07"
+      ],
+      "evidence_ids": [
+        "EV-TV-R481",
+        "EV-TV-R482",
+        "EV-TV-R483"
+      ],
+      "observed_evidence": "The subtitle and caption clearly say the plot is a deterministic assumed-TV-ball diagnostic, which is good. But the grey baseline tick marks labelled only collectively as 'reference alpha levels' have no individual values, while several close curves and discontinuities must be related to 0.01/0.02/0.05/0.10 in the text.",
+      "why_it_matters": "The appendix argues that alpha has a staircase interpretation. Unlabelled reference levels make the key visual comparison less independently readable and increase the risk that readers treat the curves as a smooth operating trade-off.",
+      "required_fix": "Label the four reference alpha ticks directly (or add vertical guide lines with labels), and add a concise legend/caption sentence identifying the plotted carrier curves and discontinuity markers.",
+      "verification_test": "A reader can locate each reported reference level and match it to its curve behavior from the figure alone at normal PDF zoom.",
+      "evidence_needed": "A revised rendered figure is sufficient.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct human-subject, privacy, or harmful-deployment issue is established by the supplied snapshot. The important responsible-claim concern is already acknowledged by the paper: count-only replay cannot establish ordered online behavior, delivered-answer correctness, or actual operational savings.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It assessed only the supplied frozen snapshot and rubric; it did not access prior rounds, author plans, or external literature beyond the snapshot.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clearer claim-status hierarchy and main-table certification labeling using the current artifacts would materially improve assessability but would not by itself change the evidence ceiling.",
+    "To support a score above the current ceiling, provide a preregistered or otherwise leakage-controlled evaluation on retained ordered rollouts that measures stopped delivered-answer correctness and realized token/latency/cancellation costs, with an appropriate full-N comparator.",
+    "Replicate that ordered evaluation across at least one additional model/task carrier while preserving the distinction between replay guarantees and deployment evidence."
+  ],
+  "evidence_that_would_lower_score": [
+    "A contradiction between the stated count-exchangeable assumptions and the posterior/tower calculation, or inability to reproduce the registered OMR replay values, would lower the assessment.",
+    "Evidence that Table 1's selected rules were selected using TEST information, or that CAL UCBs do not support their reported eligibility, would lower the assessment.",
+    "Any revision that presents the synthetic drift or fitted-mixture TV diagnostics as a population-transfer or ordered-online certificate would lower the assessment."
+  ],
+  "review_limitations": [
+    "I evaluated the paper and supplied local artifacts under the frozen-snapshot protocol; I did not independently execute the experiments or independently re-prove every theorem.",
+    "Novelty assessment is limited to the snapshot's related-work material and citations; broader literature verification was not performed.",
+    "The supplied MANIFEST declares the required snapshot hash 33c6a81aa1581f2b00e5c2f7cce8ff126d15749e57380103d0eb50ccac0ca39f, and all 112 listed per-file SHA-256 values match their corresponding snapshot files. However, recomputing the aggregate exactly as the MANIFEST header specifies (sorted '<file-sha256><two spaces><snapshot-path><LF>' lines, MANIFEST excluded) produced 474193173378d2b09c35d8b5fc18253944b057d4420eb7d1e32b044624c780a9 rather than the declared aggregate; this prevents independent verification of the aggregate construction despite the matching per-file entries."
+  ]
+}

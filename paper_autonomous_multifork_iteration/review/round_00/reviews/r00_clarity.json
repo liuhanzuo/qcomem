@@ -1,0 +1,215 @@
+{
+  "reviewer_id": "r00-clarity",
+  "round": 0,
+  "snapshot_sha256": "691d902c895efbc2a85bc13d08b072d02cf33b81aa967c3c6fd5e9fa0f7cec58",
+  "role": "clarity_presentation",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The deliberately narrow claims are generally aligned with the registered same-kernel, cross-arm, cross-fan-out, ownership, and allocator evidence. Confidence is limited because the paper does not operationally specify every audit step, particularly recurrent-state rebinding, and the runtime tensors cannot be recomputed offline.",
+    "presentation": "The problem, contribution boundary, figures, and limitations are unusually clear. Presentation falls short of excellent because central arm names and memory denominators are inconsistent, several audit terms and count derivations are implicit, artifact paths do not resolve within the frozen package, and an appendix table floats into the bibliography.",
+    "contribution": "The ownership-contract and denominator-aware audit framing is useful and distinct from proposing another cache policy. Its demonstrated scope remains narrow: one model/runtime configuration, one sequential schedule, and no direct runtime fault-injection study or independent deployment setting."
+  },
+  "paper_summary": "ForkAudit specifies ownership and measurement invariants for shared-prefix inference in hybrid attention-recurrent language models. A Qwen3.5-35B-A3B case study compares source-retaining materialized and shared-document controls using the same fused attention kernel, checks exact output and state agreement plus cross-fan-out invariance, and contrasts deterministic page-pool accounting with PyTorch allocator peaks. The paper explicitly disclaims kernel, scheduler, latency, throughput, and production-capacity improvements.",
+  "strongest_verified_contribution": "The strongest contribution is the concrete combination of same-kernel cross-arm equivalence, cross-fan-out request invariance, immutable-prefix checks, private-reservation checks, and denominator-separated memory reporting on a hybrid model, with explicit evidence and claim boundaries.",
+  "strengths": [
+    "The Abstract and Introduction identify two concrete hazards—mutable hybrid state and incompatible memory denominators—and clearly state what the work does not claim.",
+    "Figure 1 gives an effective high-level comparison of source-retaining materialization and shared-document ownership, including recurrent-state handling.",
+    "Figure 2 communicates the difference between local cache-pool and whole-process allocator ratios more effectively than prose alone.",
+    "Section 5.1 correctly distinguishes 504 repeated request instances from 256 unique queries instead of presenting them as independent samples.",
+    "Section 6 provides unusually specific limitations covering scheduling, concurrency, hardware, precision, baselines, memory accounting, and unavailable tensor values."
+  ],
+  "questions": [
+    "What is the exact step-by-step meaning of functional GDN rebinding, and are request-local GDN tensors directly checked for storage aliasing as well as value equality and persistent-base immutability?",
+    "Can the authors show that the audit detects representative runtime ownership faults, such as shared mutable recurrent state, overlapping reservations, omitted partial-tail COW, or cross-request contamination, rather than only serialized-artifact tampering?",
+    "Which canonical names should readers use for the two arms, and can every occurrence of the 12.33x ratio explicitly identify the source-retaining, non-production control topology?",
+    "Can the artifact map be regenerated using paths that resolve inside the submitted package and be automatically checked against MANIFEST.json?",
+    "How are the counts 504, 4,032, 5,040, 80,640, 60 GDN tensors per request, and 96 measured arms derived from the protocol?"
+  ],
+  "issues": [
+    {
+      "issue_id": "r00-clarity-I1",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "Section 4.4 (p. 4), Appendix B (p. 9), and Section 6 Evidence limitations (p. 6)",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-CPU-TESTS",
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The reported mutation study injects 28 serialized-artifact tamper cases and establishes schema fail-closure. The paper explicitly says it does not inject faults into a production scheduler, while Appendix B lists representative ownership failures without demonstrating that those runtime faults were actually introduced and detected.",
+      "why_it_matters": "The central contribution is an audit protocol, so evidence that a clean implementation passes is insufficient to establish fault-detection usefulness or coverage. This limits the significance of the general protocol beyond the single implementation.",
+      "required_fix": "Inject representative runtime faults tied to the seven invariants, including recurrent-state aliasing, partial-tail mutation, overlapping private pages, wrong dispatch, and cross-request contamination. Report which invariant catches each fault and apply the audit in at least one additional model, backend, or scheduler setting if claiming broader utility.",
+      "verification_test": "Every injected fault must fail its intended invariant before aggregate acceptance, the unmodified implementation must still pass, and the paper must report a fault-to-invariant result matrix with artifact identifiers.",
+      "evidence_needed": "New runtime mutation results and, for a stronger generality claim, results from an independent hybrid-model or serving-runtime setting.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "r00-clarity-I2",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Equation 1 and invariants 2–7 in Section 3 (pp. 2–3), Section 4.2 (p. 4), Table 2 (p. 5), and Appendix B (p. 9)",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-CALL-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN",
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The manuscript presents seven requirements and then summarizes hashes and aggregate outcomes, but it never gives an executable sequence mapping each invariant to state operands, checkpoint timing, comparator, failure condition, and result field. In particular, functional GDN rebinding is repeatedly named but not defined operationally, and the origin of 60 GDN tensors per request is unexplained.",
+      "why_it_matters": "Because the protocol itself is the method, readers should be able to reconstruct it without reverse-engineering the supplied code. The current exposition makes it difficult to assess whether the tests fully implement the stated contract.",
+      "required_fix": "Add concise pseudocode for fork construction, request-local GDN installation, generation, and validation, plus a main-body invariant matrix listing objects, assertions, checkpoints, result counts, and artifact fields. Define the GDN state structure and aliasing semantics explicitly.",
+      "verification_test": "An independent reader should be able to derive every Table 2 count and trace every invariant to a concrete assertion and artifact field without opening implementation code.",
+      "evidence_needed": "Existing method-provenance and execution records may suffice if exposed clearly; add a direct GDN storage-alias check if none currently exists.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "r00-clarity-I3",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Reproducibility Statement (p. 7), Appendix D Table 5 (p. 10), evidence/experiment_registry.json, and evidence/method_provenance.tsv",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "Appendix D points to raw/multifork-resident-summary.json and raw/resident-shards/*.json, but the frozen snapshot has no raw directory; the included artifacts reside under gpu-qwen35-vllm-paged-multifork-resident-20260814a. The experiment registry similarly uses ../results paths, and method provenance uses ../gpu paths that do not resolve within the snapshot. Entries such as 'paper claim map' and 'code tests' are not exact paths.",
+      "why_it_matters": "Traceability is a headline property of ForkAudit. Broken or ambiguous paths force reviewers to rediscover files manually and undermine the claimed machine-readable claim map.",
+      "required_fix": "Generate all artifact and provenance paths from the immutable snapshot manifest, use exact snapshot-relative paths, and provide stable field or JSON-pointer locations for every headline claim.",
+      "verification_test": "Run an automated link checker from the snapshot root requiring every declared file path to exist, every referenced JSON pointer or symbol to resolve, and every claim/evidence identifier to join uniquely.",
+      "evidence_needed": "No new scientific experiment is needed; the existing package must be relinked and mechanically validated.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "r00-clarity-I4",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract (p. 1), Introduction contribution 3 (pp. 1–2), Figure 1 and surrounding text (p. 3), Sections 5.2–5.3 (pp. 5–6), and Conclusion (p. 7)",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The manuscript alternates among fresh, materialized, source-retaining fresh, reuse, share, and shared-document labels. The Abstract and Conclusion foreground the 12.33x pool ratio without immediately explaining that the materialized arm retains the common source and duplicated private capacity and is not an optimized production baseline.",
+      "why_it_matters": "The memory ratio is the paper's most memorable number. Inconsistent labels and delayed topology qualifications invite an incorrect production-savings interpretation.",
+      "required_fix": "Choose one canonical name for each arm throughout. Qualify every headline ratio as belonging to the source-retaining controlled topology and state its included allocations in the Abstract or immediately adjacent text.",
+      "verification_test": "A terminology audit should find only the canonical arm names, and a reader shown only the Abstract and Figure 1 should correctly reconstruct the 80+90N versus 80+5N accounting and its non-production scope.",
+      "evidence_needed": "No new experiment; wording and labels must be checked against C-POOL-01 and the registered page geometry.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "r00-clarity-I5",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Table 1 (p. 4), Section 4.2 (p. 4), Table 2 (p. 5), and Section 5.4 (pp. 5–6)",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-CALL-01",
+        "C-FAIR-01",
+        "C-BACKEND-NEG-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-FAIR-SUMMARY",
+        "E-HF-NEG"
+      ],
+      "observed_evidence": "Terms including ABBA, TTFT, TPOT, materialized-mask bytes, production peak, Q16-as-BF16, semantic row, and the 60-tensor GDN state are undefined or only partially explained. Table 2 mixes unique queries, repeated request pairs, generation steps, layer pairs, tensor groups, and kernel calls without derivation formulas.",
+      "why_it_matters": "The large audit counts can appear inflated or incomparable unless their units and multiplicities are explicit, and undefined serving terminology raises the entry cost for readers outside the immediate systems niche.",
+      "required_fix": "Expand acronyms on first use, define artifact-specific labels, and add a count-derivation column or short equation block connecting ranks, fan-outs, arms, requests, steps, layers, and tensors.",
+      "verification_test": "Every acronym and audit unit should be defined before use, and all reported counts should be reproducible from the frozen protocol using displayed arithmetic.",
+      "evidence_needed": "Existing protocol and aggregate records are sufficient.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "r00-clarity-I6",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Rendered PDF pp. 9–10, especially Table 3 and Appendix headings A and D",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY"
+      ],
+      "observed_evidence": "Table 3, intended as the Complete Capacity Ledger, floats above the final bibliography entry on p. 9; the Appendix A heading then appears with no content beneath it. Appendix D contains awkward wrapped labels and paths, followed by most of a blank page.",
+      "why_it_matters": "The float interrupts the reference list, disconnects a table from its appendix heading, and makes the supplement appear unfinished despite otherwise polished rendering.",
+      "required_fix": "Prevent appendix floats from crossing the bibliography boundary, place Table 3 directly after Appendix A, and use wrapping columns or URL-aware formatting for Appendix D.",
+      "verification_test": "Render the complete PDF and verify that the bibliography is uninterrupted, every appendix heading is followed by its content, paths are legible, and no avoidable nearly blank page remains.",
+      "evidence_needed": "No new evidence; a rebuilt and visually inspected PDF is sufficient.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern identified. The paper evaluates systems behavior on PG-19, makes no human-subject claim, and explicitly declines safety, bias, privacy, and deployment-quality conclusions.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It had access only to the frozen round-00 submission snapshot and the prescribed review rubric, protocol, and schema; it did not receive prior reviews, author plans, target scores, or revision history.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "Runtime fault-injection results showing that each ownership invariant detects realistic implementation failures rather than only malformed serialized artifacts.",
+    "A second hybrid model, backend, or real serving scheduler demonstrating that the audit contract transfers beyond the frozen Qwen3.5 sequential case.",
+    "A factorial KV-share/GDN-share study that isolates recurrent-prefix sharing and a production-relevant scheduler evaluation with process-level memory and capacity measurements.",
+    "A self-contained algorithm, invariant-result matrix, and mechanically valid artifact map that raise presentation and reproducibility without expanding claims."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any raw-shard replay contradicting the reported exactness counts, cross-fan-out invariance, prefix immutability, or private-state disjointness.",
+    "Evidence that request-local GDN state aliases across requests or mutates the persistent base despite matching output hashes.",
+    "Evidence that the 12.33x ratio depends on allocations not held fixed as described or is presented as a production full-copy comparison.",
+    "Failure to resolve the snapshot-relative artifact paths or reproduce the registered assertions from the submitted package."
+  ],
+  "review_limitations": [
+    "The review was intentionally blind and did not verify literature outside the frozen citation materials.",
+    "All ten pages of the compiled PDF were visually inspected together with the manuscript source, claim map, provenance map, experiment registry, and selected aggregate fields.",
+    "The GPU experiment was not rerun, and the review did not exhaustively inspect every field of all eight large raw shard files."
+  ]
+}

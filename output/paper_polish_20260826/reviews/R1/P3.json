@@ -1,0 +1,151 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "c047b9974119a16a69aaf7981a3621e3dfcb0cf47672cabb075f6fad8cdf4b83",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文严谨地区分了横截面 Kendall 符号与同一样本配对效应，并以 seed 为推断单位，但核心的“路径支持”解释仍受两个未消除的识别问题限制：进入更早同时意味着经历更多梯度更新；而在不同 ridge 载体上观察到的正向估计器偏差不能排除 sine 载体上的负向伪差。因而负向 g 是可信的载体内观测，却尚不足以唯一归因为路径顺序。",
+    "presentation": "问题、估计量、符号方向和主张边界总体清楚，图表无裁切且表格可读；不过 B2、配对臂、ridge counter-arm 与多种四态标签之间的叙事较密，且 τ 的幅度门槛与 g 的判定语义没有被明确分开。",
+    "contribution": "同一样本跨进入位置配对、并揭示 value-conditioned routing 可在 set-ordered 世界制造横截面信号，是有用的测量提醒。但实验仅含两个合成 logistic 载体，且相关工作没有建立与数据顺序、课程学习和序列化数据价值研究的精确边界，当前贡献显得窄且可能是对既有训练顺序效应的重新表述。"
+  },
+  "paper_summary": "论文考察数据价值究竟只依赖所选集合，还是会随样本进入 WSD 优化日程的位置变化。作者在两个 24 维合成 logistic 载体上比较三种进入构造，并以 16 个 seed 为推断单位。横截面 B2 在两载体上均给出较大负 Kendall τ，但 set-ordered routing stress test 表明该信号可由按参考价值路由产生；因此主要证据来自将同一目标在早、晚位置间移动的配对效应。该效应在注册的 sine 载体上为 g=-0.186、95% CI [-0.258,-0.115]，在线性载体上不确定。一个 set-ordered ridge counter-arm 又显示配对估计器在若干分配上有非负偏差。论文据此仅主张载体依赖的受控测量，而不对一般数据价值作二元结论。",
+  "strongest_verified_contribution": "最强的已验证贡献是：在固定样本身份和 held-out readout 的设计中，横截面 B2 相关可以被 reference-conditioned routing 在 set-ordered substrate 上复现，而同一样本早/晚移动的配对统计给出与横截面符号含义不同的读数；这清楚展示了“样本选择/路由信号”与“样本内位置效应”不能混读。",
+  "strengths": [
+    "第 2 页公式 (1)-(3) 明确定义 path value、seed-level Kendall 统计量和 set-valued 比较器，并在第 4 页 §4.2 明确解释负 g 与负横截面 τ 的相反语义。",
+    "第 3-6 页完整报告 16-seed 区间、同 seed 构造对比、Wilcoxon 结果、Bonferroni 家族控制、正负控制和 allocation sweep，没有把统计显著性直接等同于最小有意义效应。",
+    "第 4 页 §4.3 和第 6-7 页限制/结论主动披露 sealed binary rule 被 canonical ridge allocation 触发、线性载体未识别、跨载体幅度校正不成立，避免了普遍性过度主张。",
+    "所有页面版面完整，Figure 1 对 same-sample lane 与 B2 stress-test lane 的区分直观。"
+  ],
+  "questions": [
+    "能否给出一个保持每个目标总曝光次数/梯度更新次数相同、只交换相对顺序的配对构造？若该构造下 sine 的负 g 仍在，路径顺序解释会明显更强。",
+    "为何不同 ridge substrate 上的正向估计器偏差足以排除 sine substrate 上的负向估计器伪差？是否存在同一 sine 数据与同一 readout 上、由解析式保证 set-ordered 的校准臂？",
+    "与课程学习、样本排序/重放日程、在线或序列数据价值、随机排列 Shapley/LOO 估计等邻近工作相比，本文配对估计量的精确新颖性是什么？",
+    "第 2 页为 Kendall τ 冻结的 |τ|=0.10 幅度门槛，是否也用于第 4-5 页的标准化配对统计 g？若是，二者采用同一数值阈值的科学依据是什么；若否，PATH-SUPPORTED-neg 的操作定义是什么？",
+    "匿名补充材料是否包含可从完整 SHA-256 解析的原始 seed-level 值与执行命令，而不仅是第 7-8 页列出的文件名和哈希前缀？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P3-R1-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "citation_integrity"
+      ],
+      "location": "PDF 第 1 页 §1（第 33-48 行）与第 6 页 §6 Related Work（第 303-312 行）",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "相关工作用 Datamodels/TRAK 代表 set-indexed attribution，用 Pythia 代表训练轨迹，并引用通用的方差与预注册文献；PDF 内没有讨论课程学习、数据/样本排序、重放或采样日程、序列化/在线数据价值、基于排列的价值定义等与“进入顺序影响边际价值”直接相邻的研究。",
+      "why_it_matters": "论文的算法增量并非一个新模型，而是问题设定与识别设计；因此最接近工作的缺失会直接决定这究竟是新的数据价值概念，还是已知训练顺序效应换用 LOO/Kendall 表达。当前 PDF 无法支撑清晰的新颖性边界。",
+      "required_fix": "扩展相关工作并给出 closest-work matrix，逐项比较对象（集合、排列、进入时间）、是否同一样本配对、是否匹配曝光预算、价值定义和推断单位；相应收窄任何 first/new 暗示。",
+      "verification_test": "修订稿应能为至少三个最接近研究类别各给出一条可证伪的差异陈述，且引言贡献句与相关工作中的差异完全一致。",
+      "evidence_needed": "经核验的邻近文献及其对局部差异陈述的支持；本审稿不联网，无法替作者确认具体优先权。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "P3-R1-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF 第 2-3 页 §3 Entry constructions（第 99-148 行）与第 4 页 §4.2（第 190-204 行）",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "目标从 0.15T、0.50T 或 0.85T 开始进入，而所有拟合共享同一个终止预算 T=300。把同一目标从 0.85T 移至 0.15T 不仅改变顺序，也显著增加其参与优化的更新次数；文中没有等曝光/等出现次数的顺序交换对照。",
+      "why_it_matters": "观测到的 g 可以由“更多训练曝光”解释，而不要求更一般的非交换路径效应。若论文身份是 path-ordered value，这一区分会改变概念贡献和可迁移解释。",
+      "required_fix": "增加等曝光但顺序不同的配对对照，或把主张严格改为“entry-time/exposure-dependent marginal value”，并明确不识别纯顺序效应。",
+      "verification_test": "在每个目标的更新次数和总权重严格相等时复算 seed-level g；报告预先固定的区间与对照差异，或全文检索确认所有 path/order 表述均已收窄为进入时间与曝光的联合效应。",
+      "evidence_needed": "新的 matched-exposure 正式实验，或不依赖该实验的系统性主张收窄。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R1-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF 第 4 页 §4.3（第 206-215 行）、第 6 页 Table 6（第 271-277 行）及第 6 页 §7（第 315-323 行）",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "已知 set-ordered ridge 的 identical paired estimator 在 canonical allocation 上给出 g=+0.102、CI [+0.028,+0.176]，并在四个 allocation 上均为正点估计。论文据此说该正偏差不能产生 sine 的负 g，但同时承认不能跨载体传输幅度，且只有一个 set-ordered substrate。",
+      "why_it_matters": "不同 substrate 上偏差的符号不必相同。ridge 上的正偏差不能逻辑排除 sine 数据、优化器或标准化分母诱发的负偏差，因此“PATH-SUPPORTED-neg”仍缺少同床校准。",
+      "required_fix": "构造与 sine carrier、目标集、readout、标准化和 allocation 尽可能相同、但由解析或交换性保证 order-invariant 的负对照；同时把现有 ridge 结果表述为发现潜在估计器偏差，而不是排除负向伪差的证书。",
+      "verification_test": "新的同床 set-ordered 对照在冻结规则下覆盖零，或其最坏负偏差界仍与 sine CI 分离；否则 Table 5 的 PATH-SUPPORTED 标签应降为 carrier-specific observed departure。",
+      "evidence_needed": "同床负对照的 seed-level 输出、预先固定的判定规则和最坏偏差界。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R1-04",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF 第 2 页 §3（第 101-105 行）、第 5 页 Table 5、以及第 6-7 页 §7-8",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "证据仅来自两个 24 维合成 logistic 载体；所谓 sine key 仍使用固定线性标签边界，论文也明确表示它不代表一般非线性模型或语言模型。线性载体未识别，唯一负向读数来自一个人工冲突构造。",
+      "why_it_matters": "在缺少自然数据、非凸模型或至少更多独立载体时，结果更像一个测量床案例，而非能改变 ICLR 读者如何选择数据价值范式的结论。主动披露限制提升可信度，但不自动提升贡献规模。",
+      "required_fix": "至少加入一个自然数据/非凸训练载体和一个预先指定的机制变化，或将稿件定位为短篇方法学测量说明，并减少对一般 data value 范式的标题承诺。",
+      "verification_test": "新载体使用同一样本配对和同床 set-ordered 校准，并在多个 seed 上复现可解释的效应；若不新增实验，标题、摘要和结论均须明确为 synthetic logistic case study。",
+      "evidence_needed": "跨载体复现、自然任务结果及其完整 seed-level 不确定性。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R1-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "technical_soundness"
+      ],
+      "location": "PDF 第 2 页 §2（第 83-90 行）与第 4-5 页 §4.2/Table 5",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "|τ|=0.10 被定义为 Kendall τ 的最小有意义幅度；之后标准化均值差 g 也以四态/路径支持语言呈现，但 PDF 未给出 g 的独立幅度门槛或说明为何可共享 0.10。",
+      "why_it_matters": "τ 与 g 是不同尺度的统计量。模糊的门槛语义会让读者误把 sine CI 低于 -0.10 当作已预注册的实际显著性结论。",
+      "required_fix": "为 g 单独给出预注册判定规则与科学依据，或只报告其区间和方向而不使用跨统计量的幅度标签。",
+      "verification_test": "所有表格标签可由文中明确、唯一、统计量特定的规则机械复算。",
+      "evidence_needed": "g 门槛的冻结记录；若不存在，则需删除幅度性标签。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究使用合成数据与 CPU logistic 模型，PDF 明确说明无人体参与者或个人信息；未发现需要会议伦理升级处理的问题。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；该子代理未与任何其他评审通信，也未接触作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "等曝光、仅改变相对顺序的正式配对实验仍复现 sine 的负向效应。",
+    "同一 carrier/readout 上的 set-ordered oracle 对照把负向估计器伪差界定在 sine CI 之外。",
+    "至少一个自然数据或非凸模型载体复现，并保留 seed-level 配对不确定性。",
+    "完整的 closest-work 比较证明该识别设计区别于既有课程学习、样本排序和序列数据价值方法。"
+  ],
+  "evidence_that_would_lower_score": [
+    "负向 g 在等曝光对照下消失，表明现象主要是训练次数而非顺序。",
+    "同床 set-ordered 对照产生与 sine 同方向、相近幅度的负向偏差。",
+    "原始 seed-level 记录无法复算 Table 4-6 或同一统计量在工件中出现不一致版本。",
+    "更完整的 PDF 内文献核验表明同一样本进入位置配对已是既有方法而论文未说明增量。"
+  ],
+  "review_limitations": [
+    "按任务约束仅相对于 PDF 自身的相关工作评价新颖性；未联网检索或核验更广文献，因此优先权判断具有不确定性。",
+    "仅审阅冻结 PDF，未读取源文件、代码、原始 JSON、补充工件或执行实验，无法独立核验数值与哈希前缀所指内容。"
+  ]
+}

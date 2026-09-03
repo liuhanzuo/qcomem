@@ -1,0 +1,982 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      ACTIVATION -TAIL T URNOVER AND L AYER -W ISE PTQ
+002   D EGRADATION : A N E XPLORATORY T WO -C HECKPOINT
+003
+004   S TUDY
+005
+006
+       Anonymous authors
+007
+       Paper under double-blind review
+008
+009
+010
+011                                                A BSTRACT
+012
+013
+014         We test whether a quantization-free activation statistic can rank layer-wise post-training
+015         quantization (PTQ) damage. On Qwen3-4B and Qwen3-1.7B, under 4-bit weight-only
+016         HQQ and a templated calibration-to-deployment prompt shift, we correlate each probed
+017
+            block’s activation-tail turnover with the perplexity increase caused by quantizing that
+            block alone. On corrected pad-masked labels, the point association is positive on Qwen3-
+018
+            4B (ρ ≈ 0.56) and weak with an uninformative interval on Qwen3-1.7B (ρ ≈ +0.12).
+019
+            The 4B direction survives the reported outcome-noise and prompt-level predictor analyses,
+020         but interval conventions disagree about zero exclusion. Moreover, turnover is nearly
+021         collinear with block depth; the masked partial correlations are wide and include zero, so
+022         independent predictive value beyond depth is unresolved. The payload is bit-identical
+023         across three physical hosts, establishing pipeline determinism rather than independent
+024         replication (neff = 1 across runs). Because the analysis units are 11–12 dependent
+025         layers from one checkpoint per size, only two of eight preregistered cells were run, and
+026         the registered trigger gate is not resolved at the achieved label granularity, this is an
+027         exploratory boundary study rather than a deployable trigger certificate.
+028
+029
+030
+031
+032
+      1    I NTRODUCTION
+033
+034
+035
+      Serving a post-training-quantized (PTQ) language model raises a question that calibration-time
+036   accuracy does not answer: can current traffic reveal which quantized blocks will be most damaging?
+037   PTQ reliability can change under calibration drift and input noise (Yuan et al., 2023), and aggregate
+038   quality need not capture all quantization risks (Kadadekar, 2026). Prior fallback logic uses signals
+039   such as numerical overflow (Zhang et al., 2025), while other methods remove calibration dependence
+040   from the quantizer (Son et al., 2025). A candidate runtime trigger must be computable without
+041   executing the quantized model and must rank blocks by their measured quantization damage.
+042   We take one concrete candidate for such a signal and try to falsify it. For each block we measure the
+043   activation-tail turnover: how much the ratio of the largest to the mean absolute activation entering that
+044   block shifts when the input distribution moves from the calibration prompt family to the deployment
+045   prompt family, both measured on the full-precision model. As the outcome we take the true per-block
+046   damage: quantize exactly that one block to 4-bit HQQ (Badri & Shaji, 2023) and measure the relative
+047   increase in deployment perplexity. If the candidate signal is a usable trigger, these two quantities
+048   should agree in rank within a model. Figure 1 summarizes the measurement and the answer.
+049   The two measured checkpoints give different point readings, but not an established population
+050   difference: Qwen3-4B (Yang et al., 2025) has a positive corrected-label association (ρ ≈ 0.56),
+051   whereas Qwen3-1.7B is weak and uncertain (ρ ≈ +0.12; Table 1, Fig. 2). On 4B, turnover is nearly
+052   collinear with depth, and the corrected partial analysis cannot separate them (§3.2). Bit-identical
+053   replay across three hosts makes the pipeline auditable, but not independently replicated. We therefore
+      report the candidate signal and its failure modes, not a trigger threshold or deployment certificate.
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+      How the candidate runtime signal is measured, and what it turns out to be
+056                                                                        PREDICTOR
+057                                      calibration proxy:             (no quantization)
+058                                        64 templated                   turnover(l) =
+                                         narrative prompts          standardized (dep − cal)
+059        full-precision carriers          (“wikitext”)               shift of max|hl|/|hl|           rank-correlate
+060        Qwen3-4B (36 blocks)                                                                     over probed blocks
+          Qwen3-1.7B (28 blocks)                                                                   (12 in 4B, 11 in 1.7B)
+061
+          HQQ 4-bit, weight-only        deployment proxy:                   OUTCOME                 ρ(turnover, degrad)
+062                                        64 templated               (one block at a time)
+063
+                                        arithmetic prompts                 degrad(l) =
+                                             (“gsm8k”)                 PPL(block l → HQQ4)
+064                                                                        / PPLfp − 1
+065
+066
+067   Measured readout (single deterministic draw; inference is over layers)
+068
+          Qwen3-4B: ρ = +0.559            Qwen3-1.7B: ρ = +0.118                            differs across two
+069             (masked)                         (masked)                               measured checkpoints
+070          robust to noise /                 uninformative                                  (observed, not
+071         prompt bootstrap;              (no depth alignment)                      established); layers not units
+           depth not resolved                                                         prereg gate AUROC ≥ 0.85:
+072
+                                                                                 0.800 4B (MERGE), 0.567 1.7B (KILL)
+073                                                                                      ⇒ not evaluable n=12
+074                                                                              (1-label flip spans KILL/MERGE/PASS)
+075
+076              no deployable trigger threshold is claimed — this is a boundary finding about a candidate signal
+077
+      Figure 1: What is measured and what comes out. The predictor (green) is computed on the full-
+078   precision model only, from the domain shift of each block’s activation-tail ratio; the outcome (amber)
+079   is measured by quantizing exactly one block at a time and re-measuring deployment-proxy perplex-
+080   ity. The two are then rank-correlated over probed blocks, separately per carrier. The lower row is
+081   the measured readout: a positive but depth-proxied relation on Qwen3-4B, a null relation on Qwen3-
+082
+      1.7B, and a pre-registered AUROC gate that is measured and not passed (Limitation F). Reproduce
+      with python3 experiments/qgate_tailturnover/r31_pipeline_teaser.py; headline and
+083   partial read at plot time from R43_MASKED_LADDER.json (masked primary) and the gate reading
+084   from R40_AUROC_GATE_MASKED.json (corrected pad-masked labels; Limitation F); figure sha16
+085   d5c5a05748f59be5. This is a programmatic diagram, not a generated image.
+086
+087   2     W HAT IS MEASURED
+088
+089   2.1     P REDICTOR : ACTIVATION - TAIL TURNOVER , COMPUTED WITHOUT QUANTIZATION
+090
+091   Let hl (x) be the hidden state entering block l of the full-precision model on prompt x (position l of
+092
+      the hidden-state sequence, with position 0 the embedding output), and define that block’s tail-mass
+      ratio on x as the ratio of the largest to the mean absolute activation over all positions and channels,
+093
+094                                                                 max |hl (x)|
+                                                NTMl (x) =                         .                                    (1)
+095                                                                   |hl (x)|
+096
+      Given a calibration prompt set Dcal and a deployment prompt set Ddep , the turnover of block l is the
+097   standardized shift of this ratio between the two sets,
+098
+099
+                                                 Ex∈Ddep [NTMl (x)] − Ex∈Dcal [NTMl (x)]
+                             turnover(l) =                 1
+                                                                                        ,                              (2)
+100                                                        2 sdDdep + sdDcal
+101   a Cohen’s-d-style effect size on a per-prompt statistic. Both expectations are taken on the full-
+102   precision model: the predictor never sees a quantized weight, which is the property a runtime trigger
+103   needs, and is also why turnover cannot be a mechanical artifact of the outcome.
+104
+105   2.2     O UTCOME : TRUE SINGLE - BLOCK QUANTIZATION DAMAGE
+106
+107   For each probed block l we rebuild the model from the full-precision checkpoint, replace every linear
+      layer inside block l — the attention and MLP projections, with a fail-closed assertion that at least six
+
+
+                                                                2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      modules were replaced — by a 4-bit HQQ weight-only layer with group size 64, leave every other
+109   block and the language-model head in full precision, and measure
+110
+111
+                                                   PPLDdep (Ml→HQQ4 )
+                                   degrad(l) =                        − 1.                                 (3)
+112                                                  PPLDdep (Mfp )
+113   The quantity of interest is then the rank correlation ρ(turnover, degrad) over probed blocks of one
+114   model: does a block whose activation tail turns over more also lose more when it, specifically, is
+115   quantized?
+116
+117   2.3   C ARRIERS , DOMAIN PROXIES , PROBE RULE
+118
+119   Two carriers of the Qwen3 family (Yang et al., 2025) are measured, Qwen3-4B (36 blocks) and
+120   Qwen3-1.7B (28 blocks), in bfloat16, on one NVIDIA H20-3e device per cell. The probe rule
+121   is the fixed index list [0, 1, 4, 7, 12, 17, 22, 27, −4, −3, −2, −1] resolved against the block count and
+122
+      de-duplicated, giving 12 probed blocks on 4B and 11 on 1.7B, i.e. early, middle and the four deepest
+      blocks; the largest probed index therefore pins the block count of each carrier. The two prompt families
+123
+      are 64 programmatically templated sentences each, one narrative and one arithmetic; they are labelled
+124
+      wikitext and gsm8k in the run configuration but are not those corpora, and Limitation C11 states
+125   exactly what they are. Tail statistics use up to 192 tokens per prompt and perplexity up to 256 tokens,
+126   with identical batching for the full-precision and the single-block-quantized models. Each cell writes
+127   one row containing the probed layer set, per-block turnover, full-precision deployment perplexity and
+128   per-block degradation; the decisive cells are 4B_hqq4_gsm8k and 1.7B_hqq4_gsm8k of one
+129   registered run configuration, replayed under a second trial on a different physical host (run, trial and
+130   host identifiers are withheld for double-blind review and given in the anonymous manifest).
+131
+132   2.4   E STIMATORS
+133
+134   Within a carrier we use the Spearman rank correlation over
+                                                             √ probed blocks. Uncertainty is reported two
+135
+      ways on purpose — a Fisher-z interval with SE = 1/ n − 3 and a percentile bootstrap resampling
+      blocks — because at these n the two families disagree about whether zero is excluded on 4B
+136
+      (Table 2); the same holds for a two-sided permutation p, which lands on either side of 0.05 depending
+137
+      on convention. We therefore condition no claim on a significance threshold, and instead report the
+138   point estimate together with leave-one-block-out (LOO) resampling and the pre-registered drop-
+139   block-27 re-check. Partial rank correlations are computed by residualizing ranks on ranks; they
+140   agree with the closed-form first-order partial correlation to better than 5 × 10−4 on both carriers,
+141   so the depth adjudication in §3.2 does not depend on that implementation choice. Cross-carrier
+142   difference is summarized as ∆z under Fisher’s transform with a bootstrap interval. An independent
+143   re-implementation of the estimators by a separate process (NumPy rank/tie handling, its own bootstrap
+144   and a fixed-seed permutation null with B=20000) reproduces ρ on both carriers to the digits printed
+145   here: the readout is estimator-independent, which is a different and weaker property than being
+146
+      data-independent.
+147
+148   3     R ESULTS
+149
+150   3.1   T HE RELATION IS CARRIER - DEPENDENT
+151
+152   Table 1 gives the readout for both carriers and Fig. 2 the underlying per-block scatter; the full
+153
+      Pearson/rank, CI, LOO and robustness series for the same cells is in Table 2, Panel A. All headline
+      numbers are on the corrected pad-masked degradation (C11); every robustness row is recomputed on
+154
+      the same masked labels (Table 2). On Qwen3-4B the rank (Spearman) correlation between turnover
+155
+      and single-block damage is positive (ρ = +0.559 masked; Table 1, Table 2, Panel A), and this masked
+156   positive relation is robust to both outcome measurement noise (P (ρ > 0) ≈ 0.998 over a noise
+157   envelope and a 64-prompt predictor bootstrap; Limitation C12) and to the depth baseline discussed
+158   next. On Qwen3-1.7B the masked relation is weak and its interval is uninformative (ρ ≈ +0.12;
+159   P (ρ > 0) ≈ 0.59), so we report a band classification (KILL under the pre-registered |r| < 0.15
+160   rule) rather than a null. The pre-registered rule and both verdicts are in Appendix Table 4; the
+161   rank/CI/LOO/robustness series for both carriers is in Table 2, Panel A. Because the pre-registration
+      defined its PASS/KILL rule over eight cells of which only two were run, we report these two cells as a
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162   Table 1: Heterogeneity of activation-tail turnover as a predictor of per-layer PTQ degradation across the two
+163   measured checkpoints (HQQ4 weight-only, arithmetic deployment proxy). Writing τ for turnover (Eq. 2), δ
+164   for single-block degradation (Eq. 3) on the corrected pad-masked labels (C11) and d for the block index, all
+165
+      ρ are rank (Spearman) correlations and ρ(·, · | ·) is a partial rank correlation, taken over probed blocks of the
+      same model — the unit of analysis is a layer, not an independent sample (C4, C9). On the masked labels the 4B
+166   raw relation is strong (ρ ≈ 0.56) and robust to noise (C12), while τ is nearly collinear with d and the masked
+167   partials do not resolve a depth-proxy attribution (both wide; §3.2, C5); on 1.7B the masked relation is weak and
+168   its interval uninformative. The historical unmasked (pad-polluted) values are reported as a superseded sensitivity
+169   row in Table 2.
+170
+                            probed                                                                     PPLfp on
+171         Carrier         blocks      ρ(τ, δ)    ρ(d, δ)     ρ(τ, d)    ρ(τ, δ | d)   ρ(d, δ | τ )   dep. proxy
+172
+            Qwen3-4B       12 of 36    +0.559      +0.511      +0.909      +0.266         +0.006        18.953
+173
+            Qwen3-1.7B     11 of 28    +0.118      +0.091      −0.082      +0.127         +0.102        19.597
+174
+175   Reconstruction. HQQ4 weight-only; calibration proxy = templated narrative prompts, deployment proxy =
+      templated arithmetic prompts, ncal = ndep = 64 (C11 states what these proxies are and are not). PPLfp is the
+176
+      full-precision deployment-proxy perplexity, the denominator of every degradation value. Probed-block lists,
+177   analysis JSON sha16s, and the double-blind-suppressed provenance (device / trial / host) are consolidated in
+178   Appendix Table 3. Uncertainty, robustness and power for these same cells are in Table 2.
+179
+180   boundary observation, not as a pass of that rule (Limitation C12). The cross-carrier difference points
+181   in the sign-flip direction (∆z ≈ +0.51 masked) but, with two cells and a seed-sensitive interval
+182   whose lower edge grazes zero, is observed not established (Table 2, Panel B).
+183   Two honest features of the outcome variable bound how much any of this can mean. First, the
+184   damage is extremely concentrated: in each carrier a single block dominates the readout and the largest
+185   remaining effect is several times smaller, while roughly half the probed blocks land slightly below the
+186   full-precision baseline (the concentration rows of Table 2, Panel A). A rank statistic over 11–12 such
+187   points is fragile by construction, which is why we report LOO rather than a single interval; on 4B
+188   the masked LOO range stays positive — the relation is not the artifact of one block, but it is carried
+189   by a handful of them. Second, the 1.7B cell being uninformative is not a measurement failure: its
+190   dominant block is just as damaged, it simply is not the block whose tail turns over most.
+191
+192   3.2    W HETHER THE 4B RELATION IS A DEPTH PROXY IS NOT RESOLVED
+193
+      Turnover and block index (depth) are nearly collinear on 4B (ρ(τ, d) ≈ 0.91), which makes the
+194
+      raw positive relation plausibly confounded by depth. On the unmasked (pad-polluted) labels the
+195
+      partial contrast appeared to resolve it: turnover given depth collapsed toward zero while depth
+196   given turnover stayed positive. On the corrected masked labels (the primary analysis) that contrast
+197   does not reproduce: the masked partial is ρ(τ, δ | d) ≈ +0.27 for turnover given depth and
+198   ρ(d, δ | τ ) ≈ +0.01 for depth given turnover (Table 1; layer-resampling bootstrap CIs, which are
+199   wide, in Appendix Table 3). Because turnover and depth are so collinear and n=12, neither partial is
+200   statistically resolved, and the two inferential endpoints point in different directions: on the AUROC
+201   endpoint turnover exceeds the depth baseline (0.800 vs. 0.686; Limitation F), while on the masked
+202   partials the direction is ambiguous. We therefore do not claim that turnover is a redacted depth proxy,
+203   nor that it has independent predictive value beyond depth: with 11–12 layer-level points we can
+204
+      locate the confound, not the cause (Limitation C5). Re-weighting the probed sample to uniform
+      depth coverage — removing the probe rule’s deliberate deep-decile dominance — lowers the reported
+205
+      association (0.559 → 0.401, R37_DEPTH_REWEIGHT_GATE3; Limitation E), and the masked
+206
+      leave-one-block-out range stays positive ([0.43, 0.72]; the minimum is the masked dominant-block
+207   removal, block 35). The 4B headline is thus positive and robust to noise (L C12) but its attribution
+208   between turnover and depth is genuinely unresolved. On 1.7B there is little to mediate: depth and
+209   damage are essentially unrelated (Table 1), consistent with the weak masked ρ. A mechanistic reading
+210   (weight-only damage concentrating where the residual stream has saturated) is directional only and
+211   unsupported by the unresolved partials.
+212
+213   3.3    D ETERMINISM OF THE READOUT, AND WHAT IT IS NOT
+214
+215   The decisive cells were executed three times on three different physical hosts and two trials. The
+      probed layer set, every turnover value, every per-block degradation value and the full-precision
+
+
+                                                              4
+           Under review as a conference paper at ICLR 2026
+
+
+
+
+216                                               Qwen3-4B — 12 of 36 blocks probed                Qwen3-1.7B — 11 of 28 blocks probed
+217                                                 ρ(turnover, degrad) = +0.559                      ρ(turnover, degrad) = +0.118
+218
+                                                0.5                         L35
+219                                                                                     35
+                                                                                                                                          25
+
+
+
+
+            per-layer PPL degradation
+220                                                                                                                           L27
+221                                             0.4                                     30
+222
+                                                                                        25                                                20
+                                                0.3
+
+
+
+                                                                                            block index (depth)                               block index (depth)
+223
+224
+
+
+
+
+      (PPL with block l in HQQ4) / PPLfp − 1
+                                                                                        20                                                15
+225                                             0.2
+226
+                                                                                        15
+227
+                                                0.1                        L17                                                            10
+228
+                                                                                        10
+229                                                          L4   L0 L12
+                                                                               L27                                     L0 L25 L17 L7
+                                                0.0                                                               L1    L26               5
+230
+                                                                      L22 L34 L7 L32    5
+231
+                                               −0.1     L1                       L33                                         L22 L4 L12
+232                                                                                     0                                        L24      0
+233
+234                                                    −25      0       25      50                 −60 −40 −20           0
+235                                                    activation-tail turnover: standardized (deployment − calibration)
+236                                                            shift of max|hl|/|hl|, both domains on the FP model
+237
+           Figure 2: Per-block activation-tail turnover (Eq. 2) against single-block PTQ degradation (Eq. 3), one point per
+238
+           probed block, coloured by block index. Left: Qwen3-4B, where turnover and damage both concentrate in the
+239        deepest blocks (yellow, upper right) — this alignment is the depth proxy quantified in §3.2. Right: Qwen3-1.7B,
+240        where the deepest probed blocks are spread across the turnover axis and the most damaged block (27) is not
+241        the one with the largest turnover. Axis labels state the estimator exactly; note that turnover is a deployment-
+242        minus-calibration shift measured on the full-precision model, in pooled standard-deviation units. Reproduce
+           with python3 experiments/qgate_tailturnover/r31_figure1_scatter_v2.py (0 GPU;
+243
+           plots the masked per-layer degradation, C11) from the cells of Table 1; figure sha16 51c69adc4f8f6ee0.
+244
+245
+           deployment perplexity agree exactly across all three runs (max |∆| = 0 in each field; digests in
+246
+           Table 2). This is worth stating because it makes the whole readout replayable by a reviewer at
+247
+           the same point, and because it rules out host- or scheduler-dependent numerical drift. It is equally
+248        important what it does not establish: the three runs are a deterministic replay of a single draw, not
+249        independent samples, so the effective sample across runs is neff = 1 and every interval in this paper
+250        is a statement about resampling layers, not runs. We consequently never describe this as cross-run
+251        independent replication.
+252
+253
+254
+            4                           L IMITATIONS
+255
+           The following are binding on how the results above may be read; several of them were fixed as
+256
+           disclosure requirements before this manuscript was written, and they are the reason the contribution
+257
+           is stated as a boundary finding.
+258
+259                                • (C4) The unit of analysis is a layer, not an independent sample. Each carrier contributes 12
+260                                  or 11 probed blocks of one model, and the two carriers share the Qwen3 architecture. Layers
+261                                  within a model are neither independent nor exchangeable, so every interval, partial correlation
+262                                  and power figure here is a layer-level statement carrying a pseudo-replication risk, and none of
+263                                  them supports a population-level claim about models.
+264                                • (C5) The confidence-interval family does not resolve    √ zero-exclusion on 4B. Using the
+265                                  conventional
+                                        √           Spearman    standard  error SE   =  1.06/  n − 3 (rather than the Pearson form
+266                                  1/ n − 3 sometimes applied to a rank statistic), the masked 4B Fisher-z interval contains
+267                                  zero, as does the percentile bootstrap and the permutation p across conventions (Table 2). No
+268                                  interval independently establishes positivity at n=12; the robustness of the masked 4B direction
+269                                  therefore rests on the noise envelope and prompt bootstrap of Limitation C12, not on any single
+                                     interval. No classification in this paper is conditioned on zero-exclusion or on p < 0.05.
+
+
+                                                                                       5
+              Under review as a conference paper at ICLR 2026
+
+
+
+
+270                                          (a) damage vs depth: ρ = +0.510                               (b) leave-one-block-out: [+0.427, + 0.718]
+                                      0.5
+                                                 four deepest probed blocks L35
+271
+                                                                                                               dashed line: all blocks, ρ = +0.559
+272                                                                                                      0.8
+
+
+
+
+      single-block PPL degradation
+                                      0.4
+273
+                                                                                                         0.7
+
+
+
+
+                                                                                   ρ(turnover, degrad)
+274
+275
+                                      0.3                                                                0.6
+276
+                                      0.2                                                                0.5
+277                                                                                                      0.4
+278                                   0.1                                                                0.3
+279                                                            L17
+280                                   0.0                                                                0.2
+281                                                                                                      0.1
+282                                  −0.1       L1
+                                                                                                         0.0
+283
+                                            0         10        20         30                                  0 1 4 7 12 17 22 27 32 33 34 35
+284                                                  block index (depth)                                                   block dropped
+285
+286           Figure 3: Depth attribution on Qwen3-4B, on the corrected masked labels. (a) Single-block damage against
+              block index, with the four deepest probed blocks shaded: the rank relation to depth is +0.511, and the deep
+287
+              zone contains the one block whose quantization is genuinely expensive (block 35) — but also blocks that
+288           are essentially free, which is why depth is a coarse predictor rather than a law. (b) Leave-one-block-out
+289           recomputation of ρ(turnover, degrad) (masked): every bar stays positive and the minimum is reached when the
+290           dominant block 35 is dropped (ρ=0.427), so no single block manufactures the relation; the attribution between
+291           turnover and depth is nevertheless unresolved on the masked partials (C5, §3.2). Reproduce with python3
+              experiments/qgate_tailturnover/r31_depth_attribution_v2.py (0 GPU; plots masked
+292
+              per-layer degradation and asserts the drawn masked LOO range against R43_MASKED_LADDER); figure sha16
+293           ec5d743786ec973c, backing analysis JSON sha16 fd1bea221759eb4c.
+294
+295                                  • (C6) A second analyzer in the repository is configuration-mismatched. One analysis script
+296                                    hard-codes a different results directory and a different cell pair than the cells actually executed.
+297                                    The readout here is computed directly with the same single-source estimator functions as the
+298                                    primary analyzer, so nothing in this paper depends on the mismatched script; we disclose it so
+299                                    that “the analyzer validated it” cannot be inferred.
+300                                  • (C7) The pre-registered safety gate’s second half (≥ 30% damage gain) was not measured,
+301                                    and the measured artifacts bound it below 30%. The pre-registration’s PASS condition was
+302                                    an AUROC ≥ 0.85 trigger together with a ≥30% reduction in deployment damage over a static
+303                                    clip baseline; the AUROC half is not evaluable at the achieved label resolution (Limitation F).
+304                                    On the damage-gain half, the measured deployment FP PPLs (18.95 on 4B, 19.60 on 1.7B)
+305                                    and the measured masked-fallback arms (best 16.29 / 16.95; R41_GAIN_BOUND) give a best
+306                                    relative recovery of ≈ 14% / ≈ 13.5%, below the 30% gate; reaching 30% would require
+307
+                                       a fallback PPL below the clean (fully-restored) floor. The gain half is therefore argued-not-
+                                       achievable on the measured data, though a definitive negative would need a fallback-baseline
+308
+                                       forward that was not run. Either way this paper makes no claim of having passed the registered
+309
+                                       gate.
+310
+311
+                                     • (F) The registered AUROC half is not evaluable at the achieved label resolution, and no
+                                       trigger is claimed. The label rule, band definitions, and the AUROC half computed on the
+312
+                                       corrected pad-masked labels are in Appendix Table 4 (0 GPU; R40_AUROC_GATE_MASKED):
+313
+                                       the 4B AUROC half is 0.800 (MERGE, not PASS) and the 1.7B half is 0.567 (KILL). Because
+314                                    positive is defined as masked degradation > 0 and over half the 4B |δ| values lie within one
+315                                    measurement-noise width of zero (C12), a single label flip moves the 4B AUROC across the
+316                                    KILL/MERGE/PASS span ([0.639, 0.889]), so the achieved n=12/11 label resolution (≈ 0.03
+317                                    AUROC per pair) cannot sharpen a 0.15-wide three-band rule. We therefore report the band
+318                                    reading as a fragility record, not as a firm pass-or-fail, and make no deployment-trigger claim
+319                                    on either the AUROC or the damage-gain half. On the masked labels the 4B turnover AUROC
+320                                    (0.800) sits above the trivial depth-baseline AUROC (0.686), so the AUROC endpoint does
+321                                    not independently establish a depth-only reading; the depth interpretation rests on the partial
+322
+                                       correlations of §3.2, which are themselves unresolved (C5).
+323                                  • (C8) The cross-carrier sign difference is not established, and the second-domain ex-
+                                       tension is a decision record, not a result. The ∆z bootstrap interval is a two-cell state-
+
+
+                                                                                         6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324   Table 2: Uncertainty, robustness and design-power ledger (all correlations over masked labels, C11). √ Panel A is
+325   per carrier; the top block is the masked primary ladder (corrected Fisher-z uses the Spearman SE 1.06/ n − 3;
+326   C5), the middle block adds the noise-envelope and joint predictor×outcome bootstraps (C12), and the bottom
+327
+      block retains the superseded unmasked (pad-polluted) values for audit. Panel B is the cross-carrier difference.
+      Every interval is over probed blocks of one model, so it quantifies sampling of layers, not of independent runs or
+328   models (C4); the projected column of Panel B is analytic design planning for unexecuted zh cells (C8), not a
+329   measured result.
+330
+331            Panel A — per-carrier readout (masked primary)
+               Quantity (over probed blocks)                  Qwen3-4B                       Qwen3-1.7B
+332
+333            ρ(turnover, degradation), rank (masked)                 +0.559                +0.118
+334            Pearson r(turnover, degradation) (masked)               +0.463                +0.016
+               Fisher-z 95% CI, Spearman SE (masked)               [−0.060, +0.868]      [−0.548, +0.693]
+335
+               Bootstrap percentile 95% CI on ρ (masked)           [−0.118, +0.928]      [−0.466, +0.613]
+336            Permutation p (two-sided, B=20000) (masked)              0.031                 0.373
+337            Leave-one-block-out range of ρ (masked)             [+0.427, +0.718]      [−0.018, +0.261]
+338            Drop dominant block, ρ (masked)                     +0.427 (block 35)     +0.261 (block 27)
+339            Largest single-block degradation (masked)           +0.473 (block 35)     +0.400 (block 27)
+               Second-largest |degradation| (masked)                0.108 (block 1)       0.044 (block 4)
+340
+341            Outcome-noise envelope P (ρ>0) (C12)                      0.9997                0.594
+342            Envelope 5th percentile of ρ (noise)                       0.273                −0.264
+343
+               Joint 2D (predictor×outcome) P (ρ>0) (C12)                 0.998                0.593
+344            Superseded (unmasked, pad-polluted; C11) — audit only
+345            ρ(turnover, degradation), rank                      +0.594                     −0.109
+               Fisher-z 95% CI (Pearson SE)                  [+0.031, +0.871]             [−0.665, +0.525]
+346
+347
+                 Panel B — cross-carrier difference and design power (layer-level)
+348              Quantity                                       measured (2 cells) projected (+zh)
+349
+                 ∆z = z(4B) − z(1.7B) (masked)                           +0.513                   —
+350
+                 ∆z boot. 95% CI, lower edge over 8 seeds             [−0.88, −0.78]              —
+351              ∆z boot. 95% CI, upper edge over 8 seeds             [+2.06, +2.17]              —
+352              Seeds whose ∆z CI excludes 0 (masked)                    0 of 8                  —
+353              Fisher SE of ∆z                                          0.486                 0.317
+354              Registered gate AUROC (masked) (F)                       0.800                 0.567
+                 AUROC, depth baseline (block index) (masked)             0.686                 0.500
+355
+                 Noise floor (max within-cell std)                        0.013                 0.019
+356              |δ| ≤ one noise width (masked)                            7/12                 4/11
+357              Masked rank-repro vs. saved labels (C11)                  0.74                  0.88
+358              Runs / hosts of the decisive readout, max |∆|            3 / 3, 0                —
+359
+      Reconstruction and method sensitivity. Masked ladder: r43_masked_ladder.py →
+360   R43_MASKED_LADDER.json; noise envelope: r42_noise_envelope.py →
+361   R42_NOISE_ENVELOPE.json; joint 2D prompt×outcome bootstrap:
+362   r44_turnover_prompt_bootstrap.py →
+363   R44_TURNOVER_PROMPT_BOOTSTRAP_{1.7B,4B}.json (predictor resampled over the 64 prompts
+      per family, outcome over the measured within-cell spreads, 104 draws each; C12). Rank/CI/LOO/power series
+364
+      for the same cells: r31_paper_numbers.py → R31_PAPER_NUMBERS.json (sha16
+365   6c26aced50960e6d). The ∆z seed-envelope note, partial-ρ bootstrap CIs, pre-registered correlation rule
+366   and depth-reweight note are consolidated in Appendix Table 3; the two pre-registered gate bands and their
+367   verdicts in Appendix Table 4. Effective cross-run sample is 1 (C9); no interval independently excludes zero on
+368   4B at n=12 (C5); a single label flip moves the 4B AUROC across [0.639, 0.889] (F, C12).
+369
+370
+            ment whose lower edge grazes zero and is unstable under resampling (∆z = +0.79; Ta-
+371
+            ble 2, Panel B and the seed-envelope note below it — it does not robustly exclude zero —
+372         R35_DELTA_Z_CI_FIX.json). It is therefore observed, not established. Adding the two
+373         unexecuted zh cells would tighten the Fisher SE and raise the power to detect the observed
+374         |∆z|, but even so would remain short of 0.80 power for the sign flip, which would need a
+375         larger |∆z| (Panel B and its footnote hold the exact numbers); their real value would be testing
+376         whether the 4B depth structure reappears in a second domain (projected power > 0.8, Panel B),
+377         not pinning the sign flip. Those cells were not run (estimated 0.5–1.5 GPU·h, pending budget
+            approval); the projected column of Table 2 is analytic design planning only.
+
+
+                                                              7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+         • (C9) Bit-identical replay is determinism, not independent replication. The agreement
+379        across three hosts and trials demonstrates pipeline determinism with an effective cross-run
+380        sample of 1. We write determinism or bit-exactness, never cross-run independent replication.
+381
+382      • (C10) No power analysis backs the primary test; the 4B direction is exploratory. No power
+383
+           analysis was performed for ρ(turnover, degrad) itself; the only power numbers available
+           (Table 2, Panel B) are layer-level design projections for the cross-carrier difference and for the
+384
+           depth effect. The 4B positive direction is accordingly reported as exploratory, not confirmatory:
+385
+           should any layer-level power analysis find the primary test underpowered, that result must be
+386        read as an exploratory observation and the confirmatory-sounding vocabulary dropped. Because
+387        the samples are layers, we make no trigger-threshold or deployment-level claim from it under
+388        any circumstance.
+389
+390
+         • (C11) The domain shift is a templated prompt-family shift, and the primary analysis is
+           on the corrected pad-masked perplexity. The families named wikitext/gsm8k are not
+391
+           the WikiText-2/GSM8K corpora but 64 single-template sentences each (a record-filing and
+392
+           an arithmetic word problem), so the shift is a clean low-diversity proxy with reproduction
+393        untested on real traffic. The primary analysis is computed on masked-perplexity degradation
+394        for all 12/11 probed layers (masked_from_log; pad fraction 0.004), and the historical
+395        unmasked (pad-polluted) values are reported only as a superseded sensitivity row. The masked
+396        headline is ρ(turnover, damage) = 0.559 on 4B and +0.12 on 1.7B (Table 1); the masked
+397        rank-reproduction vs. saved labels is 0.74 / 0.88 (Table 2, Panel B). Absolute perplexities in
+398        Table 1 are not compared with published values.
+399
+         • (C12) Effects are of the same order as the outcome’s reproduction noise except at one
+400        or two dominant blocks, and only 2 of the pre-registered 8 cells were run. The measured
+401        within-cell reproduction spreads of near-zero blocks are milliscale on both carriers (five-arm
+402        re-measures, R39_NOISE_RANK_SYNTHESIS; noise-floor rows in Table 2, Panel B), yet
+403        over half the 4B probed blocks have |δ| within one maximum noise width of zero. We bound
+404        the effect of this on the masked headline by a noise envelope (resampling each δ within its
+405        measured within-cell spread; R42_NOISE_ENVELOPE) and by a predictor bootstrap over the
+406        64 prompts per family (R44_TURNOVER_PROMPT_BOOTSTRAP): jointly the 4B masked
+407        P (ρ > 0) ≈ 0.998 (5th percentile ≈ 0.22), whereas the 1.7B masked P (ρ > 0) ≈ 0.59 —
+408
+           the 4B positive relation is robust to both noise sources, and the 1.7B cell is uninformative
+           rather than cleanly null. The 4B masked headline still rests on one or two dominant blocks: it
+409
+           drops to 0.43 with the maximum-damage block (block 35) removed, which is also the masked
+410
+           leave-one-block-out minimum (Table 2). Separately, the pre-registration defined PASS/KILL
+411        over eight cells (2 carriers × 2 quantizers × 2 shifts, ≤ 6 GPU·h); this study ran only two (one
+412        HQQ/4-bit quantizer, one shift, Scope), so the registered eight-cell rule is not directly evaluable
+413        — we report a two-cell boundary observation and claim neither a pass nor a kill of the registered
+414        rule.
+415
+         • (E) The deep-oversampling probe rule makes the depth structure partly a design artifact.
+416
+           The fixed probe rule [0, 1, 4, 7, 12, 17, 22, 27, −4, −3, −2, −1] deliberately places four of the
+417
+           twelve probed blocks in the deepest decile, so the depth-graded pile-up of §3.2 is in part
+418        a consequence of where we chose to probe rather than of the underlying per-layer damage
+419        distribution alone. We therefore read the depth result as a descriptive statement about this probe
+420        design, not as evidence about the uninspected layers, and the inference we draw is limited
+421        to the probed blocks. We quantify this probe bias on the measured sample by re-weighting
+422        each probed block to uniform depth coverage (R37_DEPTH_REWEIGHT_GATE3): on 4B
+423        the headline becomes ρ(τ, δ) = 0.401 when the deep decile ceases to dominate, and the depth
+424        correlations shrink to the same degree (Table 2, Panel A, re-weighted rows) — so the depth
+425        proxy survives re-weighting but is partly inflated by the probe rule. Re-running the single-
+426
+           block-quantized outcome for the unprobed blocks (a depth-uniform or full-layer probe) remains
+           the more expensive step beyond this study’s budget and is not performed here.
+427
+428      • Scope. Two carriers of one family, one quantizer, one bit width, one prompt-shift pair, one
+429        outcome metric. The 4B positive relation is largely (not fully) a depth proxy, so no independent-
+430        mechanism claim is made; and since the second carrier is uninformative (masked ρ ≈ +0.12
+431        with a wide interval), we cannot say whether the signal is generally weak-but-real rather than
+           absent on other checkpoints.
+
+
+                                                        8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      5    R ELATED WORK
+433
+434
+      Triggering and fallback. Runtime-safe quantization triggering has been approached from the nu-
+435   merical side, with block-level fallback to higher precision when overflow is detected during INT8
+436   training (Zhang et al., 2025), and from the quantizer side, by removing the calibration dependency that
+437   creates drift sensitivity (Son et al., 2025); neither certifies a deployment-time predictor of per-layer
+438   damage, which is what we test. We flag that Son et al. (2025) is a KV-cache method, whereas this
+439   paper quantizes weights only; the comparison is by intent (runtime-safe, calibration-free) rather than
+440   by modality. Reliability studies of PTQ motivate the test itself by showing how much worst-case
+441   behaviour moves under calibration and input shift (Yuan et al., 2023), and by arguing that task-quality
+442   metrics do not stand in for safety once weights are quantized (Kadadekar, 2026).
+443   Per-layer sensitivity. A long line of work treats blocks as individually vulnerable, but through
+444   different mechanisms. GPTQ minimizes second-order error compensation at a fixed width rather
+445   than allocating width by sensitivity (Frantar et al., 2023); LLM.int8() splits outlier columns within
+446   a single layer into high precision rather than ranking layers (Dettmers et al., 2022); AWQ applies
+447   activation-aware per-channel scaling without a layer-level sensitivity score (Lin et al., 2024); and
+448   mixed-precision schemes that do allocate width by a Hessian- or weight-based per-layer sensitivity
+449
+      score (Dong et al., 2019; Dettmers et al., 2023; Kim et al., 2024) — which are the natural competitors
+      to both turnover and our depth baseline — are computed from an offline model/service analysis, not
+450
+      from a deployment-time shift of the input distribution.
+451
+452   Activation outliers. The activation-outlier story that motivated activation-aware quantization has
+453   been shown to have a diminishing, calibration-set-dependent effect in modern LLMs (Paglieri et al.,
+454   2024); this provides relevant context for our observation. A tail-derived, calibration-shift-based signal
+455
+      that is positive and depth-confounded on one checkpoint (Qwen3-4B) and weak-to-uninformative
+      on a smaller sibling (Qwen3-1.7B, masked ρ = +0.12 with a wide interval) is consistent with a
+456
+      diminishing-outlier-effect account, but does not identify that mechanism. Our per-block framing
+457
+      asks the deployment-time question both literatures leave open — can the shift of a tail statistic rank
+458   per-block damage? — and finds that where it appears to, the ranking is largely inherited from block
+459   depth, so any candidate runtime signal must first beat the trivial structural baseline of block index.
+460
+461
+462
+      6    C ONCLUSION
+463
+464
+      Activation-tail turnover has a positive corrected-label point association with single-block PTQ damage
+      on Qwen3-4B (ρ ≈ 0.56) and a weak, uninformative association on Qwen3-1.7B (ρ ≈ +0.12). The
+465
+      cross-checkpoint difference is observed rather than established. On 4B, turnover is strongly entangled
+466
+      with block depth: reweighting and leave-one-block-out analyses retain a positive association, but
+467   the masked partial correlations do not resolve independent value beyond depth. Bit-identical replay
+468   makes the readout auditable, not independently replicated. These two checkpoints therefore support
+469   an exploratory design lesson—candidate layer-level signals should be tested against simple structural
+470   baselines and across domains—but not a universal fallback trigger. A second prompt domain and a
+471   measured fallback policy are the direct next tests.
+472
+473
+      A RTIFACT AVAILABILITY
+474
+475
+      Code, per-layer outcome data, and analysis scripts are released: the decisive *_hqq4_
+476   gsm8k.jsonl cells and r120 re-runs, the pad-masked recomputation (masked_from_
+477   log.json), noise-floor nuisance runs (nuisance_4B/1.7B.json), and the AUROC / ro-
+478   bustness tables (R40_AUROC_GATE_MASKED (canonical, masked labels) with the historical R38_
+479   AUROC_GATE and R39_NOISE_RANK_SYNTHESIS). Every number cites its repro_command.
+480   Models are the public Qwen3 checkpoints (Yang et al., 2025); quantization uses HQQ (Badri & Shaji,
+481   2023). No generated or synthetic evidence supports any headline claim.
+482
+483
+      R EFERENCES
+484
+485   Hicham Badri and Appu Shaji. Half-quadratic quantization of large machine learning models,
+        November 2023. URL https://dropbox.github.io/hqq_blog/.
+
+
+                                                         9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Tim Dettmers, Mike Lewis, Younes Belkada, and Luke Zettlemoyer. LLM.int8(): 8-bit matrix
+487     multiplication for transformers at scale. In Advances in Neural Information Processing Systems
+488     (NeurIPS), 2022. arXiv:2208.07339.
+489
+490
+      Tim Dettmers, Ruslan Svirschevski, Vage Egiazarian, Denis Kuznedelev, Elias Frantar, Saleh Ashk-
+491
+        boos, Alexander Borzunov, Torsten Hoefler, and Dan Alistarh. SpQR: A Sparse-Quantized
+492     Representation for Near-Lossless LLM Weight Compression. In International Conference on
+493     Learning Representations (ICLR), 2023. arXiv:2306.03078.
+494
+495
+      Zhen Dong, Zhewei Yao, Amir Gholami, Michael W. Mahoney, and Kurt Keutzer. HAWQ: Hes-
+496
+        sian AWare Quantization of neural networks with mixed-precision. In IEEE/CVF International
+497     Conference on Computer Vision (ICCV), 2019. arXiv:1905.03696.
+498
+499
+      Elias Frantar, Saleh Ashkboos, Torsten Hoefler, and Dan Alistarh. GPTQ: Accurate post-training
+500
+        quantization for generative pre-trained transformers. In International Conference on Learning
+501
+        Representations (ICLR), 2023. arXiv:2210.17323.
+502
+503
+504
+      Sahil Kadadekar. Quality is not a safety proxy under quantization. arXiv preprint arXiv:2606.10154,
+        2026.
+505
+506
+507   Sehoon Kim, Coleman Hooper, Amir Gholami, Zhen Dong, Xiuyu Li, Sheng Shen, Michael W.
+508     Mahoney, and Kurt Keutzer. SqueezeLLM: Dense-and-Sparse Quantization. arXiv preprint
+509
+        arXiv:2306.07629, 2024.
+510
+511   Ji Lin, Jiaming Tang, Haotian Tang, Shang Yang, Wei-Ming Chen, Wei-Chen Wang, Guangxuan
+512      Xiao, Xingyu Dang, Chuang Gan, and Song Han. AWQ: Activation-aware weight quantization for
+513      LLM compression and acceleration. In Proceedings of Machine Learning and Systems (MLSys),
+514
+         2024. arXiv:2306.00978.
+515
+516   Davide Paglieri, Saurabh Dash, Tim Rocktäschel, and Jack Parker-Holder. Outliers and calibration
+517     sets have diminishing effect on quantization of modern LLMs. arXiv preprint arXiv:2405.20835,
+518     2024.
+519
+520   Donghyun Son et al. NSNQuant: A double normalization approach for calibration-free low-bit vector
+521     quantization of KV cache. arXiv preprint arXiv:2505.18231, 2025.
+522
+523   An Yang et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388, 2025.
+524
+525
+      Zhihang Yuan, Jiawei Liu, Jiaxiang Wu, Dawei Yang, Qiang Wu, Guangyu Sun, Wenyu Liu, Xinggang
+526     Wang, and Bingzhe Wu. Benchmarking the reliability of post-training quantization: a particular
+527     focus on worst-case performance. arXiv preprint arXiv:2303.13003, 2023.
+528
+529
+      Pengle Zhang, Jia Wei, Jintao Zhang, Jun Zhu, and Jianfei Chen. Accurate INT8 training through
+530
+        dynamic block-level fallback. arXiv preprint arXiv:2503.08040, 2025.
+531
+532
+533
+534   A     P ROVENANCE AND PRE - REGISTERED GATE LEDGER
+535
+536   A.1   P ROVENANCE AND RECONSTRUCTION LEDGER
+537
+538   Table 3 collects the reconstruction and method-sensitivity notes that in the main text would otherwise
+539   sit as dense table footnotes (cf. Table 1 and Table 2, whose footnotes here keep only a one-line
+      pointer). All values are reproduced from the registered analysis JSONs listed in the source column.
+
+
+                                                       10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540   Table 3: Provenance and method-sensitivity ledger. All intervals are over probed blocks of one model — the unit
+541   of analysis is a layer, not an independent sample (C4).
+542
+       Quantity                     Qwen3-4B                     Qwen3-1.7B                   Source / repro
+543
+544    Probed blocks                12 of 36:                    11 of 28:                    fixed probe rule
+545                                 0,1,4,7,12,17,22,27,32–      0,1,4,7,12,17,22,24–27       0,1,4,7,12,17,22,
+                                    35                                                        27,−4, −3, −2, −1
+546
+       Fisher-z 95% CI on ρ         [+0.031, +0.871]             [−0.665, +0.525]             r31_paper_
+547                                                                                           numbers.py
+548    Bootstrap percentile 95%     [−0.085, +0.921]             [−0.718, +0.617]             r31_paper_
+549    CI on ρ                                                                                numbers.py
+550    Permutation p (two-sided,    0.045                        0.749                        r31_paper_
+       B=20000)                                                                               numbers.py
+551
+       Leave-one-block-out          [+0.473, +0.709]             [−0.273, +0.188]             r31_paper_
+552    range of ρ                                                                             numbers.py
+553    ∆z = z(4B) − z(1.7B)         0.794, [−0.04, +0.70]        —                            R35_DELTA_Z_CI_
+554    lower edge (8 seeds)                                                                   FIX.json
+555    ∆z upper edge (8 seeds);     [+0.21, +1.39]; 7 of 8       —                            r35_delta_z_ci_
+       seeds excl. 0                                                                          fix.py
+556
+       Fisher SE of ∆z              0.486 (0.317)                —                            R35_DELTA_Z_CI_
+557    (projected + zh)                                                                       FIX.json
+558    Power on |∆z|=0.794          0.37 (0.71)                  —                            Panel B
+559    (projected)
+560    Smallest |∆z| at 80%         1.36 (0.89)                  —                            Panel B
+       power (proj.)
+561
+       Partial-ρ boot. 95% CI,      [−0.49, +0.66]               —                            R34_PARTIAL_CI_
+562    turnover|depth                                                                         BOOTSTRAP.json
+563    Partial-ρ boot. 95% CI,      [−0.15, +0.88]               —                            r34_partial_ci_
+564    depth|turnover                                                                         bootstrap.py
+565    Permutation p                0.79 / 0.18                  —                            r34_partial_ci_
+       (layer-resampling)                                                                     bootstrap.py
+566
+       Depth-reweighted ρ(τ, δ)     0.401                        —                            R37_DEPTH_
+567    (4B)                                                                                   REWEIGHT_GATE3
+568    Analysis JSON sha16          6c26aced50960e6d             same                         r31_paper_
+569                                                                                           numbers.py
+570    Canonical payload digest 04ac77be066fbe87                 1b4143950e186756             sha256 dump,
+       (max |∆|=0)                                                                            sort_keys
+571
+       Evidence-ledger audit    e6325486081538cb                 b13c3221d8dedabc             frozen cross-seat id
+572    digest
+573
+574
+575
+576                           Table 3: Provenance and method-sensitivity ledger (continued).
+577
+578    Quantity                     Qwen3-4B                     Qwen3-1.7B                   Source / repro
+579    Registered gate AUROC        0.743 (p=0.10) / 0.500       —                            r38_auroc_
+580    (SAVED pad-polluted          (p=0.54)                                                  gate.py
+       labels, r38)
+581
+       Registered gate AUROC        0.800 (p=0.05) / 0.567       —                            R40_AUROC_GATE_
+582    (MASKED labels, r40)         (p=0.40)                                                  MASKED.json
+583    Depth-baseline AUROC         0.686 / 0.500                —                            r40_auroc_gate_
+584    (MASKED labels)                                                                        masked.py
+585    Sign flips, saved vs.        4 of 12                      1 of 11                      R40_AUROC_GATE_
+       masked labels                                                                          MASKED.json
+586
+587
+588
+589   Method-sensitivity notes. (i) Bootstrap draws are draw-sensitive at these n: a prior archived draw gives
+590   [−0.099, +0.922] on 4B vs. [−0.085, +0.921] here — both contain zero (C5). (ii) Two-sided p on 4B is
+591   convention-sensitive: 0.042 asymptotic, 0.0488 under the independent-estimator re-implementation, 0.045 here;
+      no claim is conditioned on p < 0.05. (iii) The three ∆z rows are the per-seed envelope (B=40000), i.e. a
+592
+      seed-unstable interval — why C8 calls the sign difference observed and not established. (vii) The partial-ρ CIs
+593   span zero, so the partial contrast is directionally consistent but not statistically resolved. Run config / device /
+      trial / host identifiers are withheld for double-blind review and given in the supplementary manifest.
+
+                                                              11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      A.2    P RE - REGISTERED GATE LEDGER
+595
+596   Table 4 is the decision record for the two pre-registered safety flags; it replaces in-prose repeats of
+597   the bands in Limitation F and §3.1.
+598
+599
+      Table 4: Pre-registered gate ledger: band rules, measured values, and verdict (computed 0 GPU from the regis-
+      tered cells on the corrected pad-masked labels; depth baseline is the trivial block-index predictor). The AUROC
+600   half is computed under masked labels as disclosed in Limitation F; the raw pad-polluted label readout is reported
+601   in Table 3 for the label-source record, and the full three-label-set table is R40_AUROC_GATE_MASKED.json.
+602
+603    Gate / rule                 Band definition             4B measured / 1.7B       Verdict
+                                                               measured (masked labels)
+604
+605    Pearson r PASS/KILL         PASS ≥ 0.3; MERGE           +0.490 / +0.021             PASS / KILL (2 cells
+606    (raw relation)              0.15 ≤ r < 0.3; KILL                                    only, C12)
+                                   < 0.15
+607
+       Registered AUROC gate       PASS: AUROC ≥ 0.85          0.800 (5/12; perm.          MERGE / KILL; NOT
+608                                and ≥ 30% gain;             p=0.05) / 0.567 (6/11;      passed; band fragile (F,
+609                                MERGE 0.7–0.85; KILL        p=0.40)                     C12)
+610                                < 0.7
+611    Damage-gain half (NOT       PASS requires ≥ 30%         FP PPL 18.95/19.60;         Feasibility-bound below
+       evaluated; no fallback      damage reduction            clean reference             target; no fallback
+612
+       forward)                                                16.29/16.95                 measured (C7)
+613                                                            (≈ 14%/13.5%
+614                                                            feasibility bound)
+615   Notes. Values are the AUROC half over probed blocks, labels positive iff masked degradation > 0
+616   (R40_AUROC_GATE_MASKED.json). At the corrected masked labels the trivial depth-baseline AUROC is
+617   0.686 (4B) / 0.500 (1.7B) — i.e. the depth baseline does not beat the turnover AUROC on either carrier,
+618   correcting Limitation F. The band verdict is fragile: a single label flip moves the 4B AUROC to anywhere in
+619
+      [0.639, 0.889], spanning KILL/MERGE/PASS, and the 4B mask label count rests on one near-zero layer (C12).
+      The gate’s damage-gain half (≥ 30%) needs a fallback-baseline simulation and was not run (C7). Both rules
+620   were defined over eight cells of which only two were run (C12), so both classifications are boundary
+621   observations, not passes or kills of the rules.
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+
+
+
+                                                            12
+

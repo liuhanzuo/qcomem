@@ -1,0 +1,908 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{graphicx}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{definition}{Definition}
+
+\title{Finite-Sample Safe Model Ranking under Subgroup-Mix Turnover}
+
+\author{Anonymous}
+\date{}
+
+\usepackage{multirow}
+\usepackage[section]{placeins}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+At deployment the class/subgroup mixture of a fixed pool of candidate models can shift
+(label-prior / subgroup-mix turnover) while each subgroup's class-conditional risk stays
+unchanged, so a model optimal for the collected mixture may cease to be optimal---and a
+worse model can be selected. We formalize \emph{safe ranking} as a finite-sample
+certification problem: given a calibration split, decide for every future mixture weight $w$
+whether to \emph{commit} a model with a certificate that its regret (loss minus the
+oracle-best model's loss at $w$) is at most an operator-set tolerance $\tau$, and otherwise
+\emph{abstain} honestly rather than hard-select a possibly-overturning pick. We prove a
+linear-band structure ($\mathrm{P1}$) giving joint coverage $\ge1-\delta$ of every mixture
+risk by weighted Clopper--Pearson bands, and a \emph{paired-difference} (MCB-style)
+certificate ($\mathrm{P3}$/Thm.~1) that bounds $\max\{0,\max_{j\ne i^*}(R_{i^*}-R_j)\}$ by pairing models on the
+\emph{same} calibration points, cancelling shared error. On four public carriers and four
+classifiers, the dependent held-out estimated-regret diagnostic finds no committed row above
+$\tau$ (reported violation fraction $0/\text{committed rows}$), and
+naively \emph{minimizing the upper band} is shown to be a vacuous or \emph{anti-selective}
+selector under heteroskedastic group widths---so we use \emph{point-estimate selection +
+certificate gating} ($\mathrm{M2}$/$\mathrm{M2.5}$), abstaining exactly on turnover-skew
+mixtures where forced point-estimate selection has higher observed regret. The paired certificate
+exposes an explicit \emph{certificate-price frontier}: the exact finite-sample bounds commit
+$0.269$--$0.260$ (matched $5$-seed means); a separately labelled asymptotic normal diagnostic
+has a $0.503$ committed rate, but is not finite-sample evidence.
+Under a \emph{label budget} (Sec.~\ref{sec:m3}), the dependent held-out diagnostic finds no
+violation over 3360 static-policy cells; the displayed aggregate commitment rates rank uniform
+above variance-aware rules on MNIST but below them on Fashion at low budget. These allocation
+contrasts are descriptive constructed-mixture results,
+not seed-level uncertainty estimates. Finally, we use a fixed-budget \emph{certificate-width surrogate}
+(Sec.~\ref{sec:m35}) to diagnose why allocations differ. Its water-filling calculation is not
+an optimization theorem for the actual candidate- and mixture-indexed regret UCB or a safe
+allocation rule.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Model selection is usually done once, on the mixture where data was collected. But at
+deployment the label/subgroup mix can move---a model trained on general web traffic now
+serves a skewed query stream; a classifier tuned on balanced data is deployed onto a single
+class-dominant population. Under \emph{label-prior shift (subgroup-mix turnover)} the
+class-conditional distribution $P(X\mid Y{=}g)$ is fixed but the mixture weight $w$ over
+subgroups is not. A model $i$'s risk is then linear in $w$,
+\begin{equation}
+  R_i(w)=\sum_{g} w_g\, r_{i,g},\qquad r_{i,g}=\mathbb{E}[\ell(\text{pred}_i, Y)\mid Y{=}g],
+  \label{eq:linear}
+\end{equation}
+so the identity of the best model, $\arg\min_i R_i(w)$, can change as $w$ moves across the
+simplex. Standard selection heuristics live at one of two extremes: \emph{single-point}
+selection (pick by the collected-mixture estimate) ignores $w$ entirely; \emph{worst-group /
+DRO / balanced-accuracy} selection ignores where $w$ actually is. None answers the
+deployment question: \emph{for a given future mixture $w$, can I both pick a model and
+certify its regret in finite sample---and when must I abstain rather than risk a pick that
+overturns $w\mapsto w'$?}
+
+We study this as a \emph{finite-sample safe ranking} problem with abstention: from a held-out
+calibration split, produce
+for each $w$ a decision \emph{commit}(model $i^*$ and a certificate that its regret
+$\le\tau$) or \emph{abstain} (report that $w$ is undecidable). The certificate is a
+finite-sample, coverage-guaranteed upper bound on the chosen model's regret, and is allowed
+to abstain where the certificate is wider than the operator-set tolerance
+(Sec.~\ref{sec:m2}, Tab.~\ref{tab:main}).  Abstention is a certificate outcome, not an
+operational-utility claim: its fallback, latency, and monetary costs are unmeasured here.
+
+\subsection{Contributions}
+\begin{enumerate}
+\item \textbf{Linear-band ranking structure} (Sec.~\ref{sec:theory}): if each entry
+$r_{i,g}$ is covered by a Clopper--Pearson interval with cell confidence
+$\delta/(G k)$, then every mixture risk satisfies $L_i(w)\le R_i(w)\le U_i(w)$ with joint
+coverage $\ge 1-\delta$ ($\mathrm{P1}$, Lemma~\ref{lem:band}); best-vs-rest regret of any
+chosen model has a \emph{sound} upper bound $U_{i^*}(w)-\min_j L_j(w)$ ($\mathrm{P2}$).
+\item \textbf{Paired-difference (MCB-style) certificate} ($\mathrm{P3}$, Thm.~\ref{thm:m25}):
+rather than subtract two \emph{absolute} bands, bound $\max_j(R_{i^*}-R_j)$ by
+\emph{paired within-CAL} differences (same points, same group). Pairing can reduce shared-error
+width, but no universal ordering against the absolute bound is claimed.
+\item \textbf{A mechanism-level caution on ``minimize-the-upper-band'' selection}
+(Sec.~\ref{sec:m1}): this pessimistic rule degenerates to the point estimate on homogeneous
+widths (vacuity) and \emph{can} reverse rank opinion under heteroskedastic widths
+(Prop.~\ref{prop:m1anti}); on real data it disagrees with point-estimate selection without a
+consistent direction. Framed as \emph{bands gate, they do not choose}.
+\item \textbf{Certificate-price frontier} (Sec.~\ref{sec:m2}, Tab.~\ref{tab:frontier}): the
+exact paired Maurer--Pontil variant commits $0.260$ vs.\ M2's $0.269$ (matched $5$-seed) with
+reported held-out violation fraction $0$ among committed rows. The $0.503$ normal/CLT result is reported only as an
+asymptotic diagnostic, never as finite-sample support.
+\item \textbf{Subgroup label allocation under a budget (M3, Sec.~\ref{sec:m3})}: static
+FIT-specified allocations preserve the certificate assumptions. Their constructed-mixture
+commitment contrasts are reported descriptively, because the frozen M3 summaries do not retain
+per-seed allocation outcomes for uncertainty analysis.
+\item \textbf{Fixed-budget width-surrogate diagnostic (M3.5, Sec.~\ref{sec:m35})}: for a
+stylized $\beta_g/\sqrt{n_g}$ width proxy, a single fixed mixture has the familiar
+water-filling solution $n_g\propto(w_g\beta_g)^{2/3}$ on positive coefficients (and zero
+allocation on zero coefficients). We use this only to interpret
+same-budget allocation experiments; it does \emph{not} optimize the paired regret UCB, prove
+safe allocation, or prescribe a deployment gate.
+\end{enumerate}
+
+\FloatBarrier
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2pt}
+\begin{tabular}{llll}
+\toprule
+Label & Decision role & Status & Primary location \\
+\midrule
+M1 & upper-band selection & negative diagnostic & Sec.~\ref{sec:m1} \\
+M2/P2 & estimate + absolute gate & exact certificate & Prop.~\ref{prop:p2}, Tab.~\ref{tab:main} \\
+M2.5/P3 (MPB/Hoeffding) & estimate + paired gate & exact certificate & Thm.~\ref{thm:m25}, Tab.~\ref{tab:frontier} \\
+M2.5 normal & paired gate & asymptotic diagnostic & Tab.~\ref{tab:frontier} \\
+M3 & FIT-static label allocation & constructed-mixture descriptive & Sec.~\ref{sec:m3} \\
+M3.5 & width-surrogate allocation & diagnostic, not a policy & Sec.~\ref{sec:m35} \\
+\bottomrule
+\end{tabular}
+\caption{Method-status taxonomy. ``Exact certificate'' is conditional on the stated
+turnover/calibration assumptions; every reported held-out quantity is a dependent diagnostic.}
+\label{tab:taxonomy}
+\end{table}
+
+\section{Problem and Setup}
+\label{sec:setup}
+
+\textbf{Candidates.} A fixed pool of $k$ candidate models $\mathcal{M}=\{M_1,\dots,M_k\}$
+trained on a \emph{fit} split, disjoint from all evaluation data.
+
+\textbf{Subgroups.} Data come from $G$ subgroups (we use ground-truth classes). The
+deployment prior is a weight vector $w$ on the simplex $\Delta^{G-1}$; per-model mixture
+risk is $R_i(w)=\sum_g w_g r_{i,g}$ (\eqref{eq:linear}).
+
+\begin{assumption}[subgroup-mix turnover]
+\label{ass:turnover}
+During deployment only the mixture weight $w$ shifts; each group's class-conditional
+distribution $P(X\mid Y{=}g)$ is unchanged, so each $r_{i,g}$ is constant. Reward
+evaluation uses group-IPS reweighting.
+\end{assumption}
+
+\textbf{Calibration.} A calibration split (disjoint from fit and test) with $n_g$ points in
+group $g$. The per-point error indicator of model $M_i$ in group $g$ is a Bernoulli with
+mean $r_{i,g}$. We get $\hat p_{i,g}$, a Clopper--Pearson exact interval
+$[l_{i,g},u_{i,g}]$ at cell confidence $\delta_{\rm cell}=\delta/(G k)$.
+
+\textbf{Decision problem.} For each deployment mixture $w$, output either
+\emph{commit}($i^*$, certificate ``true regret $\le\tau$'') or \emph{abstain}. Regret of a
+choice $i$ at $w$ is
+\[
+  \mathrm{regret}(i,w) \;=\; R_i(w)-\min_{j} R_j(w),
+\]
+i.e.\ the loss of choosing $i$ versus the oracle-best model at $w$. We certify this quantity
+from calibration data \emph{only}, never touching test.
+
+\section{Theory: Linear Bands and the Regret Certificate}
+\label{sec:theory}
+
+Throughout, $k=|\mathcal{M}|$, $G$ subgroups, $\delta\in(0,1)$. Let
+$\delta_{\rm cell}=\delta/(G k)$, and let $[l_{i,g},u_{i,g}]$ be the exact CP interval for
+$r_{i,g}$ at confidence $\delta_{\rm cell}$.
+
+\begin{lemma}[Linear band joint coverage]
+\label{lem:band}
+Let $E$ be the event that $r_{i,g}\in[l_{i,g},u_{i,g}]$ for all $(i,g)$. By
+Bonferroni, $\Pr(E)\ge 1-\delta$. On $E$, for every $w\in\Delta^{G-1}$ and every $i$,
+\[
+  L_i(w):=\sum_g w_g l_{i,g}\;\le\; R_i(w)\;\le\;
+  \sum_g w_g u_{i,g}=:U_i(w).
+\]
+\end{lemma}
+\begin{proof}
+Each $l,u$ is a CP bound for that cell; Bonferroni over the $G k$ cells gives
+$\Pr(E)\ge1-\delta$. On $E$, fix $w$; since $w_g\ge0$, $\sum_g w_g=1$, termwise monotonicity
+of the (deterministic) linear combination gives the sandwich.
+\end{proof}
+
+\begin{proposition}[Sound minimax regret bound $(\mathrm{P2})$]
+\label{prop:p2}
+Let $i^*$ be any chosen model and define
+$\mathrm{UB}_{i^*}(w)=U_{i^*}(w)-\min_j L_j(w)$. On $E$,
+\[
+  \mathrm{regret}(i^*,w)\;\le\;\mathrm{UB}_{i^*}(w).
+\]
+\end{proposition}
+\begin{proof}
+$R_{i^*}(w)\le U_{i^*}(w)$ (Lemma~\ref{lem:band}), and
+$\min_j R_j(w)\ge \min_j L_j(w)$ since $R_j\ge L_j$ pointwise. Subtracting the two
+(weaker) inequalities at their respective endpoints yields the bound; this holds for the
+comparator $j$ attaining the minimum.
+\end{proof}
+
+Proposition~\ref{prop:p2} is \emph{correct} but, as we show empirically
+(Sec.~\ref{sec:m1}), unsuitable as a selector. It is a good \emph{gate}: committing $i^*$
+whenever $\mathrm{UB}_{i^*}(w)\le\tau$ certifies true regret $\le\tau$ with coverage
+$\ge1-\delta$. The tighter the bound, the more mixtures can be committed. This motivates the
+paired certificate, which is the central finite-sample construction.
+
+\begin{definition}[Paired-difference certificate]
+\label{def:paired}
+For ordered pairs $(i,j)$, $i\ne j$, define the per-point paired difference on the
+calibration set
+\[
+  d_{ij}(\mathbf{x}) \;=\; \mathbb{1}\{\text{err}_i(\mathbf{x})\}
+        - \mathbb{1}\{\text{err}_j(\mathbf{x})\} \;\in\; \{-1,0,+1\},
+\]
+and its group-$g$ mean $\bar d_{ij,g}$, an unbiased estimator of $r_{i,g}-r_{j,g}$.
+Let $\alpha=\delta/(k(k-1)G)$ (Bonferroni over all ordered pairs $\times$ groups). For each
+$(i,j,g)$ take a one-sided upper confidence bound
+$\mathrm{UCB}_{ij,g}\ge r_{i,g}-r_{j,g}$ simultaneously with probability $\ge1-\delta$
+over all pairs/groups. Candidate variants (Sec.~\ref{sec:m2}, Tab.~\ref{tab:frontier})
+operate on $X_{ij}=(\bar d_{ij}+1)/2\in[0,1]$. The certificate value for chosen $i^*$ at $w$ is
+\[
+  \mathrm{UB}_{\mathrm{cf}}(i^*,w) \;=\;
+  \max\!\left\{0,\ \max_{j\ne i^*}\sum_{g} w_g\, \mathrm{UCB}_{i^*j,g}\right\}.
+\]
+\end{definition}
+
+\begin{theorem}[Paired-difference certificate is sound (MCB-style)]
+\label{thm:m25}
+On the simultaneous event of Definition~\ref{def:paired} (probability $\ge1-\delta$), for
+\emph{any} choice $i^*$,
+\[
+  \mathrm{regret}(i^*,w)\;\le\;\mathrm{UB}_{\mathrm{cf}}(i^*,w).
+\]
+Hence if $\mathrm{UB}_{\mathrm{cf}}(i^*,w)\le\tau$, committing $i^*$ is certified to have
+true regret $\le\tau$, with coverage $\ge1-\delta$.
+\end{theorem}
+\begin{proof}
+$\mathrm{regret}(i^*,w)=\max\{0,\max_{j\ne i^*}(R_{i^*}(w)-R_j(w))\}$: including the
+self-comparator contributes deterministically $0$, and the minimum is attained by a comparator.
+If the inner maximum is positive, fix a maximizing $j_*\ne i^*$. Since
+$E$ holds, $R_{i^*}(w)-R_{j_*}(w)=\sum_g w_g(r_{i^*,g}-r_{j_*,g})
+\le \sum_g w_g\,\mathrm{UCB}_{i^*j_*,g}$. This sum is exactly one term of the max in
+$\mathrm{UB}_{\mathrm{cf}}$, hence is bounded by it. If the inner maximum is nonpositive,
+regret is $0$ and the explicit outer maximum supplies the required bound.
+\end{proof}
+
+The key is \emph{paired} cancellation: $\mathrm{UB}_{\mathrm{cf}}$ subtracts models evaluated
+on the \emph{same} calibration points within each group, removing the shared per-point error
+that can inflate $\mathrm{UB}_{i^*}$ in Proposition~\ref{prop:p2}.
+
+\paragraph{Honest scope of the certificate.} Each $\mathrm{UCB}_{ij,g}$ is computed once,
+independently of $w$ (Bonferroni over ordered pairs $\times$ groups only, Def.~\ref{def:paired}),
+so the simultaneous event is a single event of probability $\ge1-\delta$ under which
+$\mathrm{UB}_{\mathrm{cf}}(i^*,w)=\max\{0,\max_{j\ne i^*}\sum_g w_g\mathrm{UCB}_{i^*j,g}\}$ is valid at the same
+time for \emph{all} $w$ on the simplex and all data-dependent choices $i^*(w)$: the paired
+certificate is \emph{simultaneous over the continuous simplex}, with no grid-level Bonferroni.
+We verify this with a dense off-grid Dirichlet $w$-sample
+(Sec.~\ref{sec:m35}, $1000$ points per (carrier,seed,budget), none on-grid): the dependent
+held-out diagnostic finds no committed violation (e.g.\ MNIST $\pi{=}0.5$ commits $2816/3000$ off-grid rows). The
+certificate certifies \emph{soundness} of commits, not optimal abstention; $\tau$ is an
+operator parameter, and we report the coverage--commitment tradeoff as a fact, not a theorem.
+
+\section{Why Bands Must Gate, Not Choose: M1 Verified Negative}
+\label{sec:m1}
+
+The most tempting ``safety'' rule is minimax selection,
+\[
+  i^*_{\mathrm{mmp}}=\arg\min_i \Big(\max_j \mathrm{UB}_{ij}(w)\Big),\quad
+  \mathrm{UB}_{ij}(w)=U_i(w)-L_j(w),
+\]
+i.e.\ pick the model whose worst-case gap to any other is smallest. We ran it on real data
+(digits, Fashion-MNIST, MNIST, 20News; $G$=class; $k$=4; LR/$C$-variants, SVC, MLP).
+
+\begin{proposition}[$M1$ degeneracy]
+\label{prop:m1}
+$\max_j (U_i(w)-L_j(w)) = U_i(w)-\min_j L_j(w)$, so
+$i^*_{\mathrm{mmp}}=\arg\min_i U_i(w)$: the ``max joint'' collapses to the minimizer of the
+upper band, whose lower side ($\min_j L_j$) is constant across $i$.
+\end{proposition}
+
+When CP widths are homogeneous, $\arg\min_i U_i(w)$ equals the point-estimate argmin
+(vacuity); under \emph{heteroskedastic} widths the rule is driven by the most pessimistic
+band and can pick a strictly worse model. On our real grid it matches point-estimate
+selection on every homogeneous-width row and diverges on mixture-ball vertices without a
+consistent direction (App.~\ref{app:m1}): the rank opinion is driven by band widths, not by
+the point estimate---so it neither vacuous-commits nor reliably out-ranks point-estimate
+selection; bands gate, they do not choose (Prop.~\ref{prop:m1anti}).
+
+\begin{proposition}[Anti-selectivity of $M1$ under heteroskedastic widths]
+\label{prop:m1anti}
+For a fixed $w$, suppose model $a$ has a wide lower-side band driven by a sparse subgroup
+(so $\min_j L_j(w)$ is small), and the point estimate prefers model $b$ with $\hat R_b<R_a$.
+Then $M1$ selects $a$ (the pessimistic pick) whenever the width
+$\Delta_a=U_a-L_a$ exceeds $\hat R_b-L_a$; committed regret becomes
+$R_b$-$R_a$ (positive) while cal-prior commits $b$ at regret $0$ (i.e.~M1 is strictly
+worse whenever the width of the pessimistic model exceeds the true gap).
+\end{proposition}
+\begin{proof}
+Follows directly from Prop.~\ref{prop:m1}: $M1$ picks $\arg\min_i U_i(w)$; on the event that
+$U_a(w)<U_b(w)$ while $\hat R_a>\hat R_b$, the rule selects the higher-error model, and the
+``regret'' it believes it controls is an artifact of the pessimistic band width, not a real
+comparison.
+\end{proof}
+
+Safety bands are \emph{certificates}, not arrows; we adopt the design they motivate.
+
+\section{Point-Estimate Selection with Certificate Gating (M2 / M2.5)}
+\label{sec:m2}
+\suppressfloats[t]
+
+\subsection{The verified policy}
+Selection is driven by the point estimate, never by the bands:
+\[
+  i^\star(w)\;=\;\arg\min_i \hat R_i(w)\;=\;\arg\min_i \textstyle\sum_g w_g \hat p_{i,g}.
+\]
+Bands serve \emph{only} as a gate for certificates and honest abstention. We commit
+$\langle i^\star(w),\ \mathrm{regret}\le\tau\rangle$ iff $\mathrm{UB}(i^\star,w)\le\tau$
+($\mathrm{P2}$) or $\mathrm{UB}_{\mathrm{cf}}(i^\star,w)\le\tau$ ($\mathrm{P3}$/Thm.~\ref{thm:m25}),
+and otherwise abstain---falling back to a robust mixture / domain choice rather than a hard
+pick. This paper does not fix or evaluate that fallback policy or its operator cost; an
+abstention therefore means only ``no certificate at tolerance $\tau$,'' not ``better
+deployment utility.''
+
+\begin{definition}[Cert-gated safe selection]
+\label{def:gated}
+Given tolerance $\tau$ and a sound regret upper bound $\mathrm{UB}$:
+\[
+  \mathrm{decision}(w)=\begin{cases}
+    \textbf{commit }\langle i^\star(w),\ \mathrm{regret}\le\tau\rangle &
+      \mathrm{UB}(i^\star,w)\le\tau,\\
+    \textbf{abstain} & \mathrm{UB}(i^\star,w)>\tau.
+  \end{cases}
+\]
+\end{definition}
+
+\subsection{Real-data verification (r1884 M2 + r1885 M2.5)}
+We verify on four public carriers (digits, Fashion-MNIST, MNIST via PCA-128 frozen features;
+20News via tf-idf$\to$PCA-128), classes as subgroups, four classifiers (LR-$C{\in}\{1,0.01\}$,
+LinearSVC, MLP), $\delta{=}0.1$, and a pre-registered $w$ grid (uniform, collected $u$, 20
+single-class skews, three interpolation peaks). Held-out estimated regret is settled on a test
+split by group reweighting; test is only ever read. Rates below are \emph{matched} on the
+same $5$ seeds $\{0,1,2,3,4\}$ (Sec.~\ref{sec:limits}).
+
+\FloatBarrier
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llcccl}
+\toprule
+Endpoint ($\tau{=}0.04$) & held-out pass frac. & commit rate &
+ comm.\ mean/max & abst.\ mean & forced \\
+\midrule
+M2 ($\mathrm{P2}$, absolute bands) &
+ \textbf{1.000} & $0.269$ &
+ $0.0001/0.0019$ & $0.0043$ & $0.0031$ \\
+M2.5 paired normal (asympt.) &
+ $1.000$ & $0.503$ &
+ $0.0009/0.0364$ & $0.0054$ & $0.0031$ \\
+\bottomrule
+\end{tabular}
+\caption{Main endpoints (\emph{matched} $5$-seed means, $\tau{=}0.04$). ``1.000'' means
+zero observed held-out estimated-regret violations among committed, dependent grid rows; it is
+not nominal coverage or a true-regret estimate. The M2 row is exact finite-sample; the
+paired-normal row is an asymptotic diagnostic. Abstained rows have higher observed forced-pick regret
+($0.0044$ vs.\ $0.00001$), but this does not price a fallback. Same seeds/splits/pool.}
+\label{tab:main}
+\end{table}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+Certificate & committed rate & held-out pass frac. & finite sample \\
+\midrule
+M2 absolute CP bands & $0.269$ & $1.000$ & exact \\
+M2.5 Hoeffding (paired) & $0.097$ & $1.000$ & exact \\
+\bfseries M2.5 Maurer--Pontil (paired) &
+ \bfseries $0.260$ & \bfseries $1.000$ & \bfseries exact \\
+M2.5 normal/CLT (paired) &
+ $0.503$ & $1.000$ & asymptotic \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Certificate-price frontier} (matched $5$-seed means). The first three rows
+are exact finite-sample certificates; their reported held-out violation fraction is $0$. The
+normal/CLT row is an \emph{asymptotic diagnostic}: its $0.503$ rate and held-out diagnostic
+cannot support a finite-sample claim. The exact paired Maurer--Pontil bound commits about as
+many mixtures as M2 ($0.260\approx0.269$).}
+\label{tab:frontier}
+\end{table}
+
+\subsubsection{Interpretation}
+\begin{enumerate}
+\item \textbf{Exact versus asymptotic evidence.} Across the full $\tau\in\{0.02,\dots,0.10\}$
+sweep, the exact M2 and paired exact variants have no observed held-out violations in this
+snapshot. The normal/CLT variant also has no observed violations, but it is asymptotic and is not used
+as finite-sample evidence.
+\item \textbf{Descriptive abstention pattern.} Abstained rows' forced hard-pick regret is
+higher than committed rows' (M2 matched: $0.0044$ vs.\ $0.00001$ mean). This descriptive
+contrast neither selects a fallback nor establishes its utility, latency, or cost.
+\item \textbf{Per-carrier.} Large-error carriers (digits/20News) stay conservative and
+honestly abstain; low-error carriers (Fashion/MNIST) commit narrowly-and-safely. Reported
+heterogeneity, not hidden.
+\item \textbf{Certificate-price, not rule change.} $\mathrm{UB}_{\mathrm{cf}}$ cancels the
+within-CAL shared error that inflates $\mathrm{UB}_{i^*}$ in Proposition~\ref{prop:p2}; the
+chosen $i^\star$ is identical, so the raise is honest safety-in-place.
+\end{enumerate}
+
+\section{Label Budget and Subgroup Allocation (M3)}
+\label{sec:m3}
+
+The certificates in Sec.~\ref{sec:m2} use every calibration point. A real deployment of a
+\emph{rank-question} may come with only a finite \emph{label budget} $R$: of the unlabeled
+calibration pool, one may reveal no more than $R$ group labels before having to commit or
+abstain. How do pre-specified, FIT-only allocations spread those labels across subgroups? We
+study this restricted question on the same problem and carriers.
+
+\subsection{Setup and allocation rules}
+Fix $R=\lfloor \pi \cdot N_{\rm cal}\rfloor$ with $\pi\in\{0.50,0.65,0.80,0.95\}$. All other
+choices are inherited from M2.5 (point-estimate selection, paired-MPB gate, $\delta{=}0.1$,
+3 seeds, four carriers). Three static rules map $(R,\{\text{per-group avail}\})$ to reveal counts
+$\{n_g:\sum n_g=R\}$:
+\begin{itemize}
+\item \textbf{uniform}: $n_g\propto 1$ (equal across groups).
+\item \textbf{neyman} / \textbf{widthgreedy}: $n_g\propto \hat\sigma_g$ (per-group std of the
+FIT errors across the model pool), i.e.\ the error-band-width proxy.
+\item \textbf{sens}: $n_g\propto w^{\rm worst}_g \cdot \hat\sigma_g$, where $w^{\rm worst}$ is
+the mixture vertex with maximal FIT-pool mean risk---sensitivity weighting.
+\end{itemize}
+All displayed rules are \emph{pre-specified}: reveal counts are fixed functions of FIT alone, so
+the static paired-MPB certificate of Thm.~\ref{thm:m25} remains valid. An earlier adaptive
+track and its claimed confidence-sequence result are omitted: this snapshot does not specify
+the observable subgroup information, filtration, sampling model, or low-count treatment needed
+to establish that theorem for the implemented process.
+
+\FloatBarrier
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccc}
+\toprule
+carrier & budget $\pi$ & uniform & neyman & sens \\
+\midrule
+MNIST & 0.50 & 0.778 & 0.400 & 0.578 \\
+MNIST & 0.95 & 1.000 & 1.000 & 1.000 \\
+Fashion & 0.50 & 0.000 & 0.067 & 0.067 \\
+Fashion & 0.95 & 0.133 & 0.111 & 0.133 \\
+digits & 0.50$\sim$0.95 & 0.000 & 0.000 & 0.000 \\
+news & 0.50$\sim$0.95 & 0.000 & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{M3 committed-rate at $\tau{=}0.04$, $\delta{=}0.1$, 3-seed means.}
+Entries aggregate dependent mixture-grid rows under constructed mixtures. The frozen summary
+records no held-out estimated-regret violation among the $3360$ static-policy cells, but this
+is a diagnostic, not nominal coverage or an independent uncertainty estimate. No directional
+allocation comparison is inferential here.}
+\label{tab:m3}
+\end{table}
+
+\subsection{Findings}
+\begin{enumerate}
+\item \textbf{Static-gate scope.} For FIT-pre-specified allocations, Thm.~\ref{thm:m25}
+applies under its stated assumptions. The snapshot's $0/3360$ held-out violation count is a
+dependent settlement diagnostic, not an estimate of nominal coverage.
+\item \textbf{Allocation contrasts are exploratory.} Uniform is $0.778$ versus $0.400$
+(neyman/widthgreedy) and $0.578$ (sens) on the MNIST $\pi{=}0.5$ summary; Fashion reverses
+the displayed ordering at low budget. Frozen M3 records contain only three-seed aggregate
+rows, not per-seed outcomes, so these comparisons are descriptive rather than supported
+directional conclusions.
+\item \textbf{Missing defer costs.} We record forced hard-pick and FIT-anchor regret
+diagnostics (up to $\sim0.055$ digits / $\sim0.048$ news), but neither is a precommitted
+fallback policy and their utility, latency, and monetary costs are unmeasured. Details and the
+honest missing-data/sensitivity protocol are in App.~\ref{app:m3}.
+\end{enumerate}
+
+\section{Fixed-Budget Certificate-Width Surrogate}
+\label{sec:m35}
+
+The M3 experiments (Sec.~\ref{sec:m3}) reported an empirical law---uniform spread
+out-commits variance-aware rules on the strongest carrier---but left its \emph{mechanism}
+implicit. This section studies a stylized \emph{certificate-width surrogate} to help interpret
+those results. It does \textbf{not} optimize the actual candidate-indexed paired regret UCB
+$\max_j\sum_g w_g\mathrm{UCB}_{i^*j,g}$, establish a safe allocation theorem, or turn a
+commit-rate comparison into a deployment allocation recommendation.
+
+\subsection{Problem and water-filling solution}
+Let the budget $R$ be split into per-group reveal counts $n_g$, $\sum_g n_g=R$. The actual
+paired certificate also contains candidate-specific empirical means, variances, bias terms,
+and a maximum over comparators. We deliberately discard all of these and retain only the
+stylized half-width $r_g(n)=\beta_g/\sqrt n$, where $\beta_g$ is a FIT-visible dispersion
+proxy. For each fixed mixture $w$ write $c_g(w)=w_g\beta_g$ and use the extended-value convention
+$c_g/\sqrt{0}=0$ when $c_g=0$ and $c_g/\sqrt{0}=+\infty$ when $c_g>0$. The resulting
+objective is a width diagnostic, not a bound on regret or on any actual certificate:
+\begin{equation*}
+  \min_{n_g\ge0,\ \sum_g n_g=R}\ \max_{w\in W}\sum_g w_g\,r_g(n_g).
+  \tag{WS}\label{eq:mm}
+\end{equation*}
+Equation~\eqref{eq:mm} is the \emph{multi-mixture} surrogate. The following closed form is
+only for its one-mixture subproblem $W=\{w\}$: with $A=\{g:c_g(w)>0\}$, the continuous
+relaxation puts $n_g^*=0$ for $g\notin A$ and, for $g\in A$, obeys equi-marginality:
+\begin{equation}
+  \forall g\in A:\ \tfrac12 n_g^{-3/2}c_g(w)=\lambda
+  \quad\Longrightarrow\quad
+  n_g^*=R\frac{c_g(w)^{2/3}}{\sum_{h\in A}c_h(w)^{2/3}},
+  \label{eq:water}
+\end{equation}
+where $\lambda$ is the budget multiplier. If $A=\varnothing$, the one-mixture surrogate
+objective is identically zero and every allocation is optimal.
+The $2/3$ exponent comes from the $\beta/\sqrt n$ scale (error-indicator concentration); it
+changes to $1/2$ or $1$ for $\log$ or $\beta/n$ costs. A bisection fill solves the budget
+equation in $O(G\log R)$.
+
+\begin{proposition}[Uniform optimality for one fixed width surrogate]
+\label{prop:uniform-opt}
+For a \emph{single fixed} mixture $W=\{w\}$ with at least one positive coefficient
+$c_g=w_g\beta_g$, the all-$G$-group uniform allocation $n_g=R/G$ is the unique minimizer of
+the width surrogate \eqref{eq:mm} iff $c_g=c>0$ for \emph{every} group $g$. If some $c_g=0$
+and some $c_h>0$, the minimizer is on the boundary ($n_g^*=0$ for zero-coefficient groups), so
+the all-$G$-group uniform allocation is strictly suboptimal. If every $c_g=0$, the objective is
+identically zero and uniform is merely one of many minimizers.
+\end{proposition}
+\begin{proof}[Sketch]
+When $A\ne\varnothing$, \eqref{eq:water} is the unique optimum on its positive support.
+It equals $R/G$ in every coordinate exactly when $A$ is all groups and all $c_g$ are the same
+strictly positive value. If $A$ is a strict subset, moving any budget from $g\notin A$ to a
+positive-coefficient group strictly lowers the objective. The $A=\varnothing$ case follows
+from the convention above.
+\end{proof}
+
+\paragraph{Multi-mixture surrogate calculation.} For a finite predeclared
+$W=\{w_1,\ldots,w_K\}$, the optimum is \emph{not} obtained by applying the preceding formula
+to an arbitrarily chosen binding mixture. Writing each predeclared mixture as an engine with
+coefficient $C_{kg}=w_{k,g}\beta_g$, the surrogate uses the diagnostic dual:
+\begin{equation}
+  \begin{aligned}
+  d^*=P^*&=\min_n\max_{\mu\in\Delta^K}\sum_{k,g}\mu_k C_{kg}n_g^{-1/2}\\
+         &=R^{-1/2}\big[\max_{\mu\in\Delta^K}\ S(\mu)\big]^{3/2},\qquad
+  S(\mu)=\sum_g\big(\textstyle\sum_k \mu_k C_{kg}\big)^{2/3},
+  \end{aligned}
+  \label{eq:duality}
+\end{equation}
+a convex diagnostic program (with $S$ concave on $\Delta^K$) solved by projected-gradient
+ascent. Complementarity identifies binding \emph{surrogate mixtures}, not actual candidate
+comparators: $6$--$25\%$ bind in these calculations, and the all-active heuristic changes the
+surrogate value by $1.17$--$4.19\times$ (App.~\ref{app:m35}). On digits/news the surrogate
+stays above $\tau$ at every $\pi\le0.95$; this is a width-wall diagnostic, not infeasibility of
+the actual certificate.
+
+\subsection{Deterministic asymmetric counterexample}
+For the one-mixture surrogate, a deterministic construction (App.~\ref{app:counter}) shows
+that uniform need not minimize stylized width: on an asymmetric non-spanning $W_0=\{e_0\}$,
+three coefficients are zero, so continuous water-filling puts the \emph{surrogate} budget on
+the queried group. This is a
+calculation about Eq.~\eqref{eq:mm}, not a statement that the resulting allocation lowers the
+actual paired regret UCB or commits safely.
+
+\subsection{Same-budget allocation comparison}
+We add a surrogate-water-fill allocation (with $\beta_g$ from FIT-only cross-model paired-diff
+std) as a descriptive same-budget comparator. The paired-MPB certificate is evaluated anew for
+every allocation; the surrogate itself neither upper-bounds it nor selects a safe allocation.
+Table~\ref{tab:m35} reports committed-rate at $\tau{=}0.04$, 3-seed means.
+\FloatBarrier
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccc}
+\toprule
+carrier & budget & uniform & neyman & width & sens & width-surrogate \\
+\midrule
+MNIST & 0.50 & \textbf{0.778} & 0.400 & 0.400 & 0.578 & 0.400 \\
+MNIST & 0.80 & \textbf{1.000} & 0.844 & 0.844 & 1.000 & 0.889 \\
+Fashion & 0.50 & 0.000 & 0.067 & 0.067 & 0.067 & 0.067 \\
+Fashion & 0.80 & 0.067 & 0.089 & 0.089 & 0.067 & 0.089 \\
+digits/news & all & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{M3.5 width-surrogate comparator, $\tau{=}0.04$, $\delta{=}0.1$, 3-seed means.}
+Same grid and paired certificate as M3; the frozen dependent held-out diagnostic has no
+committed estimated-regret violation. These are descriptive paired-certificate outcomes, not actual regret-UCB optimality: uniform leads on
+MNIST, the surrogate ties neyman/width on low-budget Fashion, and digits/news never commit.
+}
+\label{tab:m35}
+\end{table}
+
+\paragraph{Post-hoc diagnostic slices.} $\mathrm{CV}(\hat\beta)$ and spanning remain
+descriptive, not conditional allocation gates. The detailed $W'=\{e_{g_0}\}$ slice and the
+synthetic characteristic are retained only in the appendix because neither validates the actual
+regret-UCB objective nor creates a policy.
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Model selection under shift.} Group/DRO objectives \citep{sagawa2019distribution,
+duchi2019sparse} optimize a predictor objective rather than this paper's output---a
+candidate-pool choice or abstention with mixture-indexed regret certificate. Prior adjustment
+\citep{saerens2002adjusting} recalibrates a chosen classifier; it does not supply the present
+continuous-mixture candidate-ranking certificate. These are scope contrasts, not priority claims.
+
+\paragraph{Finite-sample certificates.} We apply Clopper--Pearson and simultaneous-confidence
+ideas \citep{vovk2005conformal, clopper1934inverse} to selected-model, mixture-indexed regret.
+The exact paired bound uses Maurer--Pontil empirical Bernstein \citep{maurer2009bernstein} and
+best-vs-rest paired comparisons \citep{dunnett1955multiple, hsu1984simultaneous}; our
+contribution is restricted to their instantiated decision object, assumptions, and certificate.
+
+\paragraph{Label budgeting (M3).} Unlike per-point audit or importance re-weighting for a
+fixed model, M3 allocates calibration reveals across subgroups while certifying
+mixture-indexed regret over candidates; it is not a per-point value estimator.
+
+\section{Limitations}
+\label{sec:limits}
+\begin{itemize}
+\item \textbf{Finite-sample vs.\ asymptotic.} The paired certificate is simultaneous over the
+continuous simplex; the off-grid scan has no observed held-out violations. Only Maurer--Pontil/Hoeffding
+are finite-sample; normal/CLT is asymptotic. The exact relative gate has only trivial
+status-quo commits, so strict operators should use the absolute gate.
+\item \textbf{$\tau$, dependence, and seeds.} We report a certificate-gate/commitment
+tradeoff, not an optimal-$\tau$ claim. M2/M2.5 use matched five seeds; M3/M3.5 use three-seed
+aggregate budget means without retained per-seed allocation records, so allocation directions are exploratory.
+\item \textbf{Turnover model.} Assumption~\ref{ass:turnover} (fixed class-conditional) does
+not cover covariate shift inside a group; a distinct failure mode we do not certify.
+\end{itemize}
+
+\section{Conclusion}
+\label{sec:concl}
+Under the stated turnover and calibration assumptions, exact CP and paired bounds certify
+point-estimate ranking through a regret gate; the paired construction is simultaneous over the
+continuous simplex and its frozen dependent held-out diagnostic has no committed violations.
+Normal/CLT is
+asymptotic only. The exact absolute Maurer--Pontil gate retains content ($0.260$ committed),
+whereas the exact relative gate admits only trivial status-quo commits; its informative
+switches are asymptotic diagnostics. The allocation analysis remains a width surrogate, not an
+actual regret-UCB policy, and natural time/geo shift plus fallback cost remain open.
+
+\bibliographystyle{iclr2027_conference}
+\bibliography{references}
+
+\clearpage
+\appendix
+
+\section{M1 diagnostic detail}
+\label{app:m1}
+On the flat mixture grid, minimax-upper-band ($M1$) is identical to point-estimate selection
+on $350/350$ rows (vacuity: homogeneous widths collapse $\arg\min_i U_i$ to the point-estimate
+argmin). On mixture-ball vertices that hedge over an uncertainty set it diverges on $165/352$
+rows but with no consistent direction on the diverged subset (mean regret diff $-0.0021$:
+$M1$ slightly \emph{better} on $93$ rows, worse on $62$), while over all $352$ vertices it is
+slightly worse overall ($+0.0019$). On a diagnostic unbounded grid it diverges in $15/880$
+rows; those rows are mostly tied ($11$ of $15$), the remaining $4$ strictly worse for $M1$
+($0.0024$ vs.\ $0.0$).
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lrcr}
+\toprule
+Setting & rows & diverge & regret diff \\
+\midrule
+Flat grid (uniform/skew/interp) & 350 & $0/350$ & $\equiv$ cal-prior \\
+Mixture-ball & 352 & $165/352$ & $-0.0021$ div.\ ($93$/$62$), $+0.0019$ all \\
+Diagnostic grid & 880 & $15/880$ & $0$ ($11$ tied; $4$ worse for $M1$, diff $+0.0024$) \\
+\bottomrule
+\end{tabular}
+\caption{Minimax-upper-band ($M1$) vs.\ point-estimate selection. ``diverge'' $=$ rows where
+$M1$'s choice differs from cal-prior; regret diff $=$ $M1$~regret minus cal-prior regret
+(positive $=$ worse).}
+\label{tab:m1}
+\end{table}
+
+\section{All-active width-surrogate ablation}
+\label{app:m35}
+For the multi-mixture width surrogate only, complementary slackness identifies a small fraction
+of binding engines. The dual value is not the actual candidate/mix regret UCB; the all-active
+column reports a ratio between two surrogate calculations.
+\begin{table}[h]
+\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+carrier & $|K|$ & active engines & $d^*_{\rm mm}/d^*_{\rm allactive}$ \\
+\midrule
+MNIST & 60 & 25\% & 1.30 \\
+Fashion & 60 & 25\% & 1.33 \\
+digits & 60 & 7\% & 4.19 \\
+news & 100 & 20\% & 1.17 \\
+\bottomrule
+\end{tabular}
+\caption{All-active heuristic ablation for the width surrogate (Eq.~\ref{eq:duality}), not
+for the actual paired-regret UCB.}
+\label{tab:m35ab}
+\end{table}
+
+\section{Deterministic asymmetric counterexample}
+\label{app:counter}
+Take $G{=}4$, $R{=}1200$, per-group paired-error std $\beta=(0.10,0.10,0.02,0.02)$, true
+per-group gaps $\delta=(0.02,0,0.02,0)$, and an \emph{asymmetric} (non-spanning) deployed set
+$W_0=\{e_0\}$ (only subgroup $0$ is ever queried):
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+rule & $n_g$ & reported paired UCB at $e_0$ & actual commit \\
+\midrule
+uniform & $(300,300,300,300)$ & $0.094$ & no \\
+width-surrogate & $(1197,1,1,1)$ & $0.029$ & \textbf{yes} \\
+\bottomrule
+\end{tabular}
+\end{center}
+Here $c=(0.10,0,0,0)$, so Prop.~\ref{prop:uniform-opt} gives the continuous surrogate optimum
+$(R,0,0,0)$; uniform is strictly suboptimal because it wastes labels on the three
+zero-coefficient groups. The displayed integer implementation enforces one label per inactive
+group and therefore uses $(1197,1,1,1)$, a near-boundary realization. Its reported paired UCB
+and ``actual commit'' are separate paired-certificate outputs, not numerical evaluations of
+Eq.~\eqref{eq:mm} and not an allocation guarantee for the actual UCB.
+
+\section{Defer costs in M3}
+\label{app:m3}
+The snapshot records forced point-estimate and FIT-anchor regret diagnostics, but neither
+fallback was precommitted as an operational policy and no latency, monetary, switch, or
+abstention penalty was measured. Thus the reported hard-pick regret (up to $\sim0.055$ digits /
+$\sim0.048$ news) is not a fallback-cost estimate. The planned real-shift protocol records
+these fields as missing or conducts an explicit sensitivity analysis; no utility conclusion is
+made here.
+
+\section{Gate operating characteristic}
+\label{app:gateoc}
+\begin{table}[h]
+\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+& & \multicolumn{2}{c}{signed area $=$ mean$_\tau$\,(rate$_{\rm surrogate}-$rate$_{\rm unif}$)} \\
+deployed set & $\mathrm{CV}(\hat\beta)$ & area & worst $\tau$ gap \\
+\midrule
+non-spanning $W'$ & low (sym.) & $+0.25$ & --- \\
+non-spanning $W'$ & high & $+0.25$ & --- \\
+spanning $W$ & low (sym.) & $+0.00$ & $0$ \\
+spanning $W$ & high & $-0.08$ & $-0.49$ at $\tau{=}0.12$ \\
+\bottomrule
+\end{tabular}
+\caption{Diagnostic operating characteristic: committed-rate difference width-surrogate $-$
+uniform vs.\ $\tau$ ($G{=}4$, $R{=}1200$, $20$ seeds, same paired-MPB certificate). This
+describes a synthetic comparison only; it is not a safe-allocation gate or an optimization
+result for the actual regret UCB. Evidence:
+\texttt{results/SUBGMIX\_GATE\_OC\_R1899.json}.}
+\label{tab:gateoc}
+\end{table}
+
+\section{Choosing or eliminating the tolerance $\tau$}
+\label{app:tau}
+The certificate band is $\tau$-agnostic: $\tau$ enters only the comparison
+$D(i^\star,w)\le\tau$, never its construction (Sec.~\ref{sec:theory}, Prop.~\ref{prop:p2}).
+We exploit this to close the ``$\tau$-selection protocol'' gap in two complementary ways
+($M6$, $M7$), with the same calibration fraction, delete budget, and paired normal band.
+$M7$ runs out-of-distribution from the main evidence on an unseen seed set
+$\{5,6,7,8\}$ (the main tables use seeds $\{0,\dots,4\}$); $M6$ runs on the same seeds
+$\{0,\dots,4\}$ as the main tables, and we additionally report its strictly-finite-sample
+band behavior below.
+
+\paragraph{$M6$: eliminate $\tau$ by shifting the control object.}
+Instead of certifying regret $\le\tau$ against an oracle-best model, certify the
+deployment decision against the \emph{status-quo model the operator would have used anyway}:
+$F_0 = $ point-estimate-optimal collected-mixture model (no certificate needed to run it).
+The gate proposes the certificate-selected $i^\star(w)$ only if a one-sided paired UCB
+shows it is not worse than $F_0$, else keeps $F_0$. This is a \emph{relative} certificate
+(``no worse than what I would otherwise run''), and $\tau$ never appears. Across all
+$350$ rows $\times$ $4$ carriers, the upgrade rate is $0.663$; the squared regret
+difference $R_{\mathrm{dec}}-R_{F_0}$ has mean $-0.0015$ and \emph{maximum} $0.0$, i.e.\
+no-worse-than-$F_0$ held-out diagnostic violation fraction $0$. On the $118$ rows where $M6$ abstains, running the
+naive always-commit rule instead would make $23$ ($19\%$) genuinely worse
+(max additive regret $+0.028$); $M6$'s max regret is $0$ there. This is a different,
+\emph{complementary} statement to the absolute regret $\le\tau$ certificate: an operator
+who needs an absolute bound uses the frozen $M2.5$; an operator who wants a safe upgrade
+over a fixed incumbent uses $M6$.
+
+\paragraph{$M7$: keep absolute $\tau$, select it from a finite menu on calibration only.}
+Take a finite menu $T=\{0.01,\dots,0.05\}$ and the prespecified rule
+$\hat\tau=\min\{\tau\in T:\mathrm{CR}_{cal}(\tau)\ge0.5\}$ (else the tightest menu entry),
+using only the calibration block's group errors --- never the outer/test block. Because the
+band holds simultaneously independent of $\tau$, the resulting $\hat\tau$ carries \emph{zero
+additional certificate multiplicity}: every committed point still satisfies
+$\mathrm{true\,regret}\le\hat\tau$ on the same $\ge1-\delta$ event. The price of selection
+is confined to the performance layer. On OUTER settlement, CAL-select yields committed rate
+$0.357$ with no observed held-out violation (mean committed regret $0.0003$, max $0.0053$), picking
+conservatively tight menu entries ($\hat\tau{=}0.01$ on $12$ of $16$ carrier$\times$seed
+blocks). A test-snooping variant that picks $\tau$ on OUTER and reports the same test
+inflates committed rate to $0.539$ ($+0.18$) with a $0.7\%$ held-out estimated-regret
+violation rate --- the
+precise price of the data-peeking the CAL-only rule avoids. Weak domains are reported
+unfiltered: digits commits $0/60$ rows (capacity wall) and news $4/100$ (budget wall).
+
+\paragraph{Strictly finite-sample bands in the relative gate (M6 continued).}
+The main $M6$/$M7$ findings use the \emph{asymptotic} paired normal band (tightest).
+Because the overall conclusion names a strictly finite-sample (non-asymptotic) tightened
+band as its only remaining item---already closed for the \emph{absolute} gate by the
+Hoeffding/Maurer--Pontil columns of Tab.~\ref{tab:frontier}---we close the same item for the
+\emph{relative} $M6$ gate by recomputing its one-sided paired difference band at the exact
+finite-sample Hoeffding and Maurer--Pontil widths (same splits, same Bonferroni split,
+same F0 and $i^\star$; base fields reproduce the frozen $M6$ FILE EXACTLY under the normal
+band). Under strict finite-sample rigor, committed rate drops modestly
+($0.663\to0.646$, matched $5$-seed) and the no-worse-than-$F_0$ held-out diagnostic still has
+zero violations. But the
+mechanism is a \emph{vacuity collapse}: all $226$ rows with $i^\star{=}F_0$ commit trivially
+(regret difference $0$), while the \emph{only} informative rows---the $6$ where a candidate
+$i^\star\ne F_0$ is proposed as an upgrade---are all \emph{rejected} by the exact bands
+(empirical paired difference $D\!\in\![-0.036,0.098]$, width $\sim0.25$); $D$ is never
+negative enough for the exact width to certify a switch, so no strictly-finite-sample commit
+ever differs from the status-quo. Equivalently: the relative gate's only non-trivial content
+is carried by the asymptotic normal band; strict finite-sample rigor makes it empty. This is
+a \emph{boundary characterization}, not a defect: if strict rigor is required, the operator
+should use the \emph{absolute} gate (M2.5), whose exact Maurer--Pontil band retains genuine
+content ($0.260$ committed, with zero held-out estimated-regret violations). The relative
+no-worse-than-$F_0$ statement is
+meaningful exactly because it is allowed the asymptotic band; narrowing the band removes the
+only reason to prefer it over the absolute certificate. This collapse is, however, \emph{cheap
+to reverse}: measuring the fixed empirical per-group paired differences under an effective
+calibration-sample multiplier $N$ (same realized stats, band width scaled as $n_g\!\to\!N n_g$),
+all $6$ switch proposals reopen under the exact Maurer--Pontil band at $N^\star\!\in\!\{2,\dots,
+10\}$ (median $5$) and under Hoeffding at $N^\star\!\in\!\{2,\dots,20\}$ (median $10$), with
+OUTER soundness intact at every opening point (oracle switch gain $0.034$--$0.130>0$); monotone
+in $N$, so no opening admits a regret-increasing switch. Thus strict finite-sample rigor on the
+\emph{relative} gate is not infeasible but \emph{budget-priced}: a modest effective
+$5$--$20\!\times$ larger calibration set restores the non-trivial content that the asymptotic
+band currently carries, and the frontier is per-mixture measurable at certificate time.
+
+\paragraph{$M9$/'$M10$' (audited): exact-band non-emptiness is a \emph{provable} function of the
+label budget, not merely observed.}
+On fresh seeds $\{10,\dots,14\}$, disjoint from both the frozen certificate seeds
+$\{0,\dots,4\}$ and the $M7$ calibration seeds $\{5,\dots,8\}$, we pre-fix a per-group
+calibration-label budget grid $b\!\in\!\{0.25,0.5,1.0\}$ and, at each schedule, \emph{actually}
+subsample each group's calibration block, re-select $F_0/i^\star$/misclassification, and recompute
+every band empirically. Writing the selector margin $\Delta(w)\!=\!\hat R_{F_0}(w)\!-\!\hat
+R_{i^\star}(w)\ge0$, any strictly finite-sample band satisfies $\mathrm{UCB}_g\ge\mu_g$, so
+admission $\sum_g w_g\mathrm{UCB}_g\le0$ forces $\sum_g w_g\,\mathrm{bw}_g(n_g)\le\Delta(w)$.
+Under proportional per-group budgets $n_g=b\,n_g^{\mathrm{full}}$ and the Hoeffding width
+$\mathrm{bw}_g=c/\sqrt{n_g}$, a \emph{necessary} budget is
+$b\ge b^\star(w)\!:=\!\big[c\,\sum_g w_g/\sqrt{n_g^{\mathrm{full}}}/\Delta(w)\big]^2$. When
+$b^\star>1$---as it does for \emph{all} $125$ real-switch rows ($i^\star\!\ne\!F_0$) at the full
+split across the fresh seed set (median $273$, min $3.7$; $\Delta$ median $0.014$)---no feasible
+budget $b\le1$ admits one, a data-specific \emph{provable} emptiness certificate over the whole
+feasible axis (the empirical contrast: exact Hoeffding/Maurer--Pontil bands admit $0$ real
+switches at every budget on every carrier). The derivation above isolates the \emph{proportional}
+allocation $n_g=b\,n_g^{\mathrm{full}}$; the whole-axis statement is not a free extrapolation.
+It closes over \emph{all} relaxations of the per-group labels as follows: any feasible allocation
+has $n_g\le n_g^{\mathrm{full}}$, and the Hoeffding width $c/\sqrt{n_g}$ is monotone-decreasing in
+$n_g$, so $\sum_g w_g\,\mathrm{bw}_g(n_g)\ge\sum_g w_g\,\mathrm{bw}_g(n_g^{\mathrm{full}})$---the
+admission-weighted bandwidth is minimized at the all-caps corner, i.e.\ the full proportional
+allocation itself. Since that corner already rejects (its MPB admission
+$\sum_g w_g\mathrm{bw}^{\mathrm{MPB}}_g(n_g^{\mathrm{full}})>0$ on all $125$ rows), reallocating
+labels toward any subgroup or pair of subgroups---including the M3 water-filling move applied to
+the \emph{relative} gate---can only \emph{raise} the weighted bandwidth and leave every row
+rejected. Emptiness is monotone in the allocation as well as in the budget, so the certificate
+holds over the full $\{$allocation ${}\times{}$ budget $\le1\}$ box, not just its proportional
+slice (verified against the frozen rows; the sparse MPB Bernstein bias $7L/(3(n{-}1))$ is
+non-monotone only below every realized per-group cap $\ge39$, so MPB also closes the real box). Strictly separating trivial submissions
+($i^\star{=}F_0$, regret difference $0$) from real switch proposals throughout,
+trivial rows never inflate any reported rate. The \emph{absolute} exact gate (M2.5) is the
+deployable safety rule and retains content on the same fresh seeds, monotonically in budget
+(fashion committed rate $0.49\!\to\!0.96\!\to\!1.0$ as $b$ grows, with zero held-out
+no-worse-than-$F_0$ violations; mnist commits at rate $1.0$ at every budget), so the operator
+rule is: deploy under the exact \emph{absolute}
+gate, treat the relative gate as an asymptotic/descriptive diagnostic only. Weak domains survive
+honest reporting---news is a \emph{budget} wall (committed rate $0.136$ at $b{=}1$, $0$ at $b{=}0.25$;
+its sole $b{=}0.5$ commit is not no-worse), digits a \emph{capacity} wall ($0.093$).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=1.0\columnwidth]{fig_m10_frontier.pdf}
+\caption{\textbf{Certificate-time emptiness is a provable function of the label budget.}
+(a) The $125$ real-switch rows ($i^\star\!\ne\!F_0$) at the full split across the fresh seeds
+$\{10,\dots,14\}$, in the \emph{selector-margin $\Delta(w)$ vs.\ required bandwidth-mass
+$B{=}\Delta\sqrt{b^\star(w)}$} quadrant (log-log; marker keyed by carrier). Admission under any
+strictly finite-sample band forces $\Delta(w)\ge B$ (the feasible half-plane below the dashed
+$\Delta{=}B$ line); every realized row lies strictly above it, i.e.\ its certified emptiness
+$b^\star(w)\!>\!1$ is \emph{provable} over the whole feasible axis, not merely observed.
+(b) The deployable \emph{absolute} exact gate (M2.5) instead retains content monotonically in
+the label budget $b$: committed rate grows with $b$ on fashion/digits while mnist commits at
+every budget, all with zero observed held-out no-worse-than-$F_0$ violations
+(Sec.~\ref{app:tau}). The relative
+gate (M6) is an asymptotic/descriptive diagnostic only.}
+\label{fig:m10frontier}
+\end{figure}
+
+\paragraph{$M12$ (fresh-seed audit of the $M3/M3.5$ budget totals).}
+The $M10$/$M11$ emptiness certificates fix a per-group \emph{label budget} $n_g=b\,n_g^{\mathrm{full}}$
+on fresh seeds $\{10,\dots,14\}$. Here we re-drive the same object at the $M3/M3.5$ \emph{total}
+budgets $R=\lfloor\pi\,N_{\rm cal}\rfloor$, $\pi\in\{0.5,0.65,0.8,0.95\}$, by \emph{real} without-
+replacement $FIT/CAL/OUTER$ sampling (same four carriers, same pool, same $\delta,d_{\rm cell}$,
+$w$-grid, paired bands), re-splitting $R$ among subgroups with the pre-specified $M3$ rules
+(uniform/neyman/sens/width-greedy) and the M3.5 width-surrogate water-fill, all reading $FIT$ only so
+the static paired-MPB certificate stays valid. Across all $100$ cells
+($4$ carriers $\times$ $4$ budgets $\times$ $5$ allocations $\times$ $5$ fresh seeds), the exact
+\emph{relative} band (Hoeffding or MPB) admits \textbf{$0$ genuine switches} ($i^\star\!\ne\!F_0$
+committed): every reported exact-relative ``commit'' is a trivial keep-status-quo row, so the $M10$/$
+M11$ whole-axis emptiness persists unchanged at the $M3$ totals by real sampling, not extrapolation.
+The exact \emph{absolute} gate ($M2.5$) has no held-out estimated-regret violation on the $37$ committing cells, with
+content monotone in the budget (MNIST uniform $0.773\!\to\!1.0$; Fashion $0\!\to\!0.20$ at $\pi{=}0.95$,
+switch gain mean $0.0131$/max $0.0753$, worst harm $-0.0012$), and the weak domains keep their walls
+(digits/news $0$ committed everywhere). Evidence:
+\texttt{subgroup\_mix\_ranking/results/SUBGMIX\_M12\_FRESH5\_BUDGET\_R1915.json}.
+
+\section{AI use statement}
+Large language models, including Codex, assisted with implementation support, proof and
+cross-reference auditing, bibliography and metadata checking, manuscript revision, and
+internal review workflow support. They did not generate experimental observations, choose
+unreported results, or replace author responsibility for scientific claims, experiment design,
+interpretation, or the final manuscript. This statement includes the present revision and
+audit cycle.
+
+\end{document}

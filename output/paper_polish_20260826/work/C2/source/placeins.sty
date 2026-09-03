@@ -1,0 +1,44 @@
+% placeins.sty v2.2 (2005-04-18), Donald Arseneau; public domain.
+% Vendored unchanged because the controlled Tectonic bundle lacks this package.
+\def\@fb@botlist{\@botlist}
+\def\@fb@topbarrier{\suppressfloats[t]}
+
+\catcode`\V=14
+
+\@ifundefined{DeclareOption}{}%
+{\DeclareOption{below}{\def\@fb@botlist{}}
+ \DeclareOption{above}{\def\@fb@topbarrier{}}
+ \DeclareOption{section}{\AtBeginDocument{%
+     \expandafter\renewcommand\expandafter\section\expandafter
+       {\expandafter\@fb@secFB\section}%
+     \newcommand\@fb@secFB{\FloatBarrier
+     \gdef\@fb@afterHHook{\@fb@topbarrier \gdef\@fb@afterHHook{}}}
+     \g@addto@macro\@afterheading{\@fb@afterHHook}
+     \gdef\@fb@afterHHook{}
+  }}
+ \DeclareOption{verbose}{\catcode`\V=9 }
+ \ProvidesPackage{placeins}[2005/04/18 \space v2.2]
+ \ProcessOptions
+}
+
+\def\FloatBarrier{\par\begingroup \let\@elt\relax
+V\edef\@tempa{\write\m@ne{Package placeins Info: Float barrier, from
+V  input line \the\inputlineno, processed on page \thepage, lands on
+V  page \noexpand\thepage. }}\@tempa
+ \edef\@tempa{\@fb@botlist\@deferlist\@dbldeferlist}%
+ \ifx\@tempa\@empty V\PackageInfo{placeins}{No floats held,}%
+ \else
+    \ifx\@fltovf\relax
+       \if@firstcolumn V\PackageWarning{placeins}{Some floats are stuck,}%
+         \clearpage
+       \else V\PackageInfo{placeins}{Eject a column and check again:}%
+         \null\newpage\FloatBarrier
+       \fi
+    \else V\PackageInfo{placeins}{Must dump some floats}%
+       \newpage \let\@fltovf\relax V\PackageInfo{placeins}{Check again:}%
+       \FloatBarrier
+ \fi\fi \endgroup
+ \@fb@topbarrier }
+
+\catcode`\V=11
+\endinput

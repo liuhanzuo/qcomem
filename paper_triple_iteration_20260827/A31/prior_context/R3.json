@@ -1,0 +1,135 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "090599d59e42d3dbe36d9cf724ddc469f317f9ea9065ab90a58b321bda30aa6d",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "五个测试 arm 的 min--max period estimator 均选出配置的 block length，且作者使用共享题目 bootstrap、非嵌套 probe、rank-sum 检查和负证据进行了多角度审计。但注册的“检测”规则主要由 sep>0 与 bootstrap 众数稳定性组成，并不是零假设校准的假阳性检验；附录 A.4 还显示原 within-block gate 对错误候选的触发率为 10/25=40%。修正的 margin permutation 在五个 arm 中只有四个低于 5%，L24 为 0.071，且没有形成全 family 校正。固定边界位置不在 bootstrap 中重采样，L48 仅一个边界位置，因此稳定性被高估。",
+    "presentation": "论文对“recorder-observable association”而非模型机制的范围约束、注册时间线、失败分支和复现实验做了罕见的详细披露，图表均清晰。另一方面，18 页包含多套 gate、legacy verdict、reachability、spectral/content 支线与大量审计表，使主假设与真正的确认性证据不够简洁；标题的强断言也没有反映 L24 校准未过关。",
+    "contribution": "证明 active-block recorder 的位置周期会随 block schedule 改变，是有价值的测量警示，但在该 recorder 定义下相当可预期。干预同时改变 block partition 和每块步数，且仅一个私有 checkpoint、一个任务，无法说明模型内部机制或分离具体原因。当前更像严谨的单床仪器审计，而不是充分普适的方法学贡献。"
+  },
+  "paper_summary": "本文在一个 LLaDA-8B-Instruct 规模模型的 GSM8K 床上，用 active-block recorder 记录每个位置的 identity-lock time。主设计固定 canvas=256、总 NFE=48，对比 L=16、32、64；另在 canvas=96 上测试 L=24、48。min--max separation estimator 在五个 arm 上均返回 P*=L，作者据此认为 recorder 可见周期跟随 block length，并谨慎否认模型机制归因。论文还给出 spectral residual、content association、registration chronology 和 selectivity gate 审计。核心观察在冻结床上存在，但检测校准、边界抽样与复合干预限制其确认性和推广性。",
+  "strongest_verified_contribution": "第 5--6 页图 2、表 3 与第 6 页表 5 共同显示：在固定 active-block recorder 的五个已测配置上，位置相邻差分的最大分离候选与配置 block length 一致；非极值的 rank-sum 检查也在五个 arm 上独立选出 L。该结果直接支持“当前记录窗口会把 schedule 周期写入测量”的有限结论。",
+  "strengths": [
+    "主处理 arm 固定模型、题集、canvas、总 NFE、温度与 remasking 规则，并用共享题目索引进行成对 bootstrap。",
+    "第 2--4 页清楚区分 a-priori 可达性与 from-events 符号，不把边界集合嵌套误当作效应方向。",
+    "第 7--9 页明确称 spectral 检查为探索性，并把 active-block recorder 观察与模型/采样器内部机制分开。",
+    "第 11、13 页完整披露注册后撤回的模型机制分支和原 gate 的 40% 错误候选触发率。",
+    "报告边界/内部位置基数、L48 单边界、L32 控制复用、私有 checkpoint 与释放限制等会削弱结论的信息。",
+    "逐页视觉核查显示 18 页均完整可读，图 1--2、公式与密集表格无裁切或乱码。"
+  ],
+  "questions": [
+    "“detected”为什么由 sep(P*)>0 加 bootstrap mode fraction≥0.95 定义，而不是由一个对无 schedule-locked 周期有有效 I 类错误控制的零假设检验定义？在无结构但保留位置自相关/边界异方差的模拟下，该规则的假阳性率是多少？",
+    "第 6 页表 5 的 p_margin 是否属于五 arm × 多候选的同一确认性 family？若是，为什么 L24=0.071 仍被标题中的 all-five period claim 覆盖？",
+    "L48 只有一个 boundary position。若平移 canvas 起点、改变 padding/截断或使用多个 boundary offsets，P*=48 的选择频率是否仍稳定？",
+    "能否做 2×2 或更多水平的 factorial 设计，分别改变 block partition 与 per-block step allocation，并同时记录 active-block 和 full-canvas trajectory，从而分离 schedule 与 recorder window？",
+    "L32 控制用于开发 estimator 且来自预存池；是否计划在未参与开发的新 300 题/新 session 上盲复验其最低的 firing probability 0.8805？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A31-I1",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 3--4 页 min--max period separation 与表 2；第 6 页表 5；第 13 页附录 A.4 表 11",
+      "claim_ids": ["Detected period follows block length", "All-five-arm selection"],
+      "evidence_ids": ["Table 2", "Table 5", "Table 11"],
+      "observed_evidence": "注册检测规则要求 sep(P*)>0 且 bootstrap 中 P* 众数比例≥0.95；bootstrap 只说明对题目重采样的选择稳定性，并非 null-calibrated false-positive test。作者后来发现原 within-block permutation gate 在错误候选上触发 10/25（40%）。修正 top-minus-second margin 的离散 p 值在 L16/L64/L48/L32 低于 0.05，但 L24 为 0.071；文中未给五 arm/候选的整体多重性决策。",
+      "why_it_matters": "稳定地选择一个候选不等于排除结构化零假设。已知旧 gate 严重反保守，而新 gate 又未覆盖全部 headline arms，因而“all five detected”比校准证据更强。",
+      "required_fix": "预先定义一个保持位置自相关、边界异方差和候选选择过程的有效零假设；对完整 P* 选择算法校准 family-wise I 类错误，并将 L24 明确列为未通过，直至独立重复达到门限。",
+      "verification_test": "在大量保留现实空间结构但无 schedule-locked 信号的模拟/置换床上，整套选择规则的 family-wise 假阳性率应≤0.05；在新数据上所有预定 arm 的校正 p 值均通过才可作 all-arm claim。",
+      "evidence_needed": "零假设生成器、完整选择流程的误报模拟、family 定义、校正决策和独立 L24 重复。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness"],
+      "location": "第 5 页表 3；第 7 页第 3.2 节；第 9 页 Boundary cardinality 限制",
+      "claim_ids": ["Selection stability", "Probe replication"],
+      "evidence_ids": ["Table 2", "Table 3"],
+      "observed_evidence": "bootstrap 仅对 300 个 decode 重采样，canvas boundary loci 固定。表 3 显示 L48 的 boundary set 只有 1 个位置、L24 只有 3 个；L32 稳定带还触及零。",
+      "why_it_matters": "对题目稳定不能代表对边界位置、canvas 对齐、padding 或 offset 的稳定。尤其 L48 的正分离是单一位置读数，无法估计边界层面的变异。",
+      "required_fix": "增加多个 canvas 长度、起点偏移与边界位置重复；在层级重采样/模型中同时把题目和 boundary locus 作为抽样维度，并预定最小边界数。",
+      "verification_test": "leave-one-boundary-out、随机 offset 和 boundary-level bootstrap 后仍选择同一 P*，且区间不依赖任何单一 locus。",
+      "evidence_needed": "逐题逐位置 d(r)、多个 offsets/canvases、边界层级方差与影响诊断。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I3",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "significance"],
+      "location": "第 1--4 页摘要、表 1 与 Matched intervention and scope；第 9 页 Composite intervention 限制",
+      "claim_ids": ["Recorder tracks schedule", "Partition effect"],
+      "evidence_ids": ["Figure 1", "Table 1", "Figure 2"],
+      "observed_evidence": "在固定总 NFE 下改变 L 必然同时改变 block partition 和 required per-block step allocation；active-block recorder 又只观察当前 block。论文承认这是 partition-plus-allocation 的复合处理，且没有 full-canvas/passive recorder 对照。",
+      "why_it_matters": "结果不能区分是边界几何、每块更新次数、active window 截断还是其交互造成周期。即使不作模型机制声称，测量层的因果解释仍不唯一，贡献接近 recorder 定义的直接后果。",
+      "required_fix": "采用 factorial intervention 分别操纵 partition 与 step allocation，并在相同 trajectory 上同时运行 active-block 和 full-canvas/passive recorder；比较同一模型状态下的读出。",
+      "verification_test": "在 allocation 固定时只改变 partition、以及 partition 固定时只改变 allocation，分别估计 period/幅度；dual-recorder 差分应定位 active window 的贡献。",
+      "evidence_needed": "factorial arm 配置、共享题目/种子输出、dual-recorder 事件与交互效应。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I4",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 2、7、9 页 L32 development control；第 11 页表 9",
+      "claim_ids": ["Development-control recovery", "Prospective matched intervention"],
+      "evidence_ids": ["Table 2", "Table 9"],
+      "observed_evidence": "L32 使用预存 contiguous decode_id [345,645) 子集；初始 signed-mean estimator 在该 development control 失败后被 min--max 规则替换，随后才运行 treatment arms。L32 的当前 firing probability 仅 0.8805，是五 arm 最弱且稳定带触零。",
+      "why_it_matters": "治疗 arm 对锁定规则可视为前瞻性，但 L32 本身参与了 estimator 选择，不能同时作为无偏确认性 control。弱稳定性提示选择可能贴合该预存样本。",
+      "required_fix": "在 estimator 与 gate 完全锁定后，用新题目、新 session/seed 对 L32 进行独立复验；将原 L32 明确标为 development-only。",
+      "verification_test": "盲运行的新 L32 数据应在预定 detection/null-calibration gate 上通过，并复现效应大小与 rank-sum 结果。",
+      "evidence_needed": "锁定时间戳、新样本清单、运行日志和未调参的完整结果。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I5",
+      "severity": "major",
+      "dimensions": ["reproducibility", "significance", "limitations_responsible_claims"],
+      "location": "第 2 页 Model bed；第 9 页 Bed and grid；第 16--17 页附录 B",
+      "claim_ids": ["Transferable measurement rule", "Reproducibility"],
+      "evidence_ids": ["Table 1", "Table 10", "Table 15"],
+      "observed_evidence": "所有实证来自一个模型家族/私有 checkpoint、GSM8K、temperature 0 和一组固定 grids。checkpoint 与公开 LLaDA-8B-Instruct 非逐字节相同，且释放需要授权；事件/脚本 supplement 也受 provenance approval 约束。",
+      "why_it_matters": "schedule artifact 可能依赖具体 decoder、recorder、任务长度与实现。没有跨模型/任务/采样规则重复且关键 checkpoint 不可自由获得，普适 reporting rule 的经验基础和复现路径均有限。",
+      "required_fix": "在可公开的至少两个模型实现、不同任务/长度分布和 recorder/decoding variants 上前瞻性重复，并发布足以端到端重建的事件与配置。",
+      "verification_test": "第三方在公开 checkpoint 上能重建 arm 并复现 period-selection pattern；跨床报告预定效应与异质性，而非只合并成功案例。",
+      "evidence_needed": "公开 checkpoint/替代床、完整 decode 配置与种子、原始事件、跨床结果。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "不涉及人类受试者或私密数据。主要责任风险是把 recorder-induced periodicity 误当作模型内部状态或机制；论文对此有明确警示。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "完整选择算法在保留空间结构的零假设下通过 family-wise I 类错误校准，且独立 L24/L32 重复通过锁定 gate。",
+    "多个 canvas offsets 与 boundary loci 的层级重采样证明结果不由单一边界位置驱动。",
+    "factorial partition × allocation 与 dual-recorder 实验分离出具体测量来源。",
+    "在公开 checkpoint、额外任务和不同解码/recorder 实现上前瞻性复现 schedule-following pattern。"
+  ],
+  "evidence_that_would_lower_score": [
+    "结构保留的 null 模拟显示当前 detection rule 的假阳性率显著高于 5%。",
+    "改变 canvas offset 或删除 L48 单一边界后 period 选择失效。",
+    "新 L32/L24 确认性运行未复现或需要再次调整 estimator/gate。",
+    "dual-recorder/factorial 实验表明现象完全是实现特定窗口截断，不能支持更广的测量建议。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的冻结 PDF；未访问代码、事件流、checkpoint、注册文件或匿名 supplement，不能复算表格或核验时间戳/哈希。",
+    "按隔离要求未联网，未核验外部引文、公开模型差异或文中资产可访问性。",
+    "已全文阅读并逐页视觉核查全部 18 页；所有页面、图表和公式完整可读，未见裁切或乱码。"
+  ]
+}

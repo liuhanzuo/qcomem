@@ -1,0 +1,123 @@
+{
+  "reviewer_id": "a11-r2-technical",
+  "round": 2,
+  "snapshot_sha256": "33c6a81aa1581f2b00e5c2f7cce8ff126d15749e57380103d0eb50ccac0ca39f",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "The central hypergeometric posterior construction, terminal-state bookkeeping, and tower-property result are coherent under the explicitly scoped count-exchangeable replay model. FIT/CAL separation also gives the intended route for evaluating a frozen rule with empirical Bernstein. However, Appendix E(g) contains an invalid general TV derivation, and its advertised state-subset repair is not specified as a stopping rule observable from a prefix. These are material unresolved technical defects in claims the paper presents as constructive/proven.",
+    "presentation": "The main endpoint, random-prefix assumption, and non-claims about gold correctness, online order, and operational cost are unusually explicit. The manuscript is readable and supplies locations for artifacts. The Appendix E(g) notation nevertheless hides a crucial implementability distinction: a family indexed by the latent full count K is called a state-subset rule without defining one shared prefix-to-action map.",
+    "contribution": "For the narrow binary pass-count replay endpoint, the posterior-flip formulation and exact adaptive analysis are useful and the FIT/CAL/TEST protocol is thoughtfully separated. Its practical scope is deliberately narrow. The additional robustness/repair contribution cannot receive full credit until it is established for a single implementable stopper rather than per-K profiles."
+  },
+  "paper_summary": "The paper studies early stopping for a binary pass-count majority in a count-exchangeable replay model. It estimates a count mixture from FIT, stops when a posterior full-N replay-flip probability is small, selects rules on CAL using empirical-Bernstein bounds with Bonferroni control, and reports exact-DP replay flip/count results on several count carriers. It explicitly does not claim ordered online validity, delivered-answer correctness, or actual cost savings.",
+  "strongest_verified_contribution": "Under the stated random-prefix replay model and a correctly specified mixture prior, Theorem 1's identity P(flip)=E[c_H(x_tau,tau)] (including the k=N endpoint) supports adaptive stopping without a union bound; for a FIT-frozen rule, the CAL empirical-Bernstein construction is a plausible population-level selection route provided tasks/splits are independent draws from the stated mixture.",
+  "strengths": [
+    "The main theorem is carefully scoped to binary pass-count replay, not textual-answer majority or deployment correctness (Sections 3--4; limitations).",
+    "The terminal convention is addressed rather than silently treating forced full-N evaluation as a certified early stop (Theorem 1 and Appendix A.2).",
+    "The paper separates FIT, CAL, and one TEST readout and uses exact dynamic programming for its reported replay endpoint (Section 5 and Appendix B).",
+    "The manuscript candidly labels synthetic order stress and TV calculations as non-deployment/non-population-transfer evidence where appropriate."
+  ],
+  "questions": [
+    "For the Appendix E(g) repair, what single online stopping map S(x,k), independent of the unobserved final count K, is actually deployed? Please provide it and recompute every g_S(K), mean-k, and tau-star claim for that common map.",
+    "How do you justify the displayed equality V(R)=base_S(c)+R(gmax(c)-base_S(c)) for all R in [0,1] in Proposition 2 despite the simplex and source/target capacity constraints in Proposition 1?",
+    "Please state directly in Theorem 2 and the protocol that CAL task counts are i.i.d. from the target replay mixture and that the FIT-derived certificate table is independent of CAL; which guarantees remain if the fixed dataset split is not viewed as a random task sample?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TS-01-oracle-dependent-subset-repair",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Appendix E(g), PDF pp. 16--19 (especially the construction beginning p. 16 line 862 and Proposition 2); artifacts/results/prefix_prop_r508.py lines 15--20 and artifacts/results/critical_cap_r503.py lines 80--100.",
+      "claim_ids": [],
+      "evidence_ids": [
+        "artifacts/results/statecap_repair_r498d_result.json",
+        "artifacts/results/prefix_prop_r508.py",
+        "artifacts/results/critical_cap_r503.py"
+      ],
+      "observed_evidence": "The manuscript says to construct the subset 'on each atom K'. The supplied Proposition-2 artifact makes this explicit: it defines the construction as 'per atom K' and evaluates subset_profile(K, cert, alpha, cap, n). The state-cap result also reports different keep/drop decisions by K (for example, in its RLVE m=187, alpha=0.05 cell, K=5 drops two flip states while K=4 drops none). At stopping time the final full-N count K is latent; the snapshot provides no common map from observed prefix (x,k) to stop/continue, nor a proof that the K-indexed choices agree on all prefix states shared by possible K values.",
+      "why_it_matters": "A collection of per-K counterfactual profiles is not by itself a deployable stopping rule. Therefore the stated pointwise domination, tau-star=1 repair, extra-vote cost, universal-cap law, and Proposition 2 are not established for an implementable policy. This affects a substantial constructive appendix claim, though not the main BAYES-H replay theorem.",
+      "required_fix": "Define one K-independent subset/stopping policy S(x,k) that can be frozen before a rollout. Recompute the exact DP profile for every K using that same policy, then redo the LP radii, cap sweep, costs, and Proposition 2 for the common policy. If no such policy retains the claimed results, reframe this material as an oracle per-atom sensitivity analysis rather than a repair.",
+      "verification_test": "Publish the finite table of S(x,k) for each fitted cell and mechanically assert that every DP transition uses exactly that same table for all K. Recompute g_S(K), base_S, gmax_S, tau-star, and mean k from that table; independently check that no decision branches on K.",
+      "evidence_needed": "A K-independent construction plus recomputed, hash-bound results; no additional online rollout data is required to test this replay-model issue.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-02-invalid-global-affine-tv-formula",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "Proposition 2 proof, Appendix E(g), PDF p. 19 lines 972--980; source/paper.tex in the proof of Proposition 2.",
+      "claim_ids": [
+        "C07"
+      ],
+      "evidence_ids": [
+        "artifacts/results/tv_robustness_r481_result.json",
+        "artifacts/results/prefix_prop_r508_result.json"
+      ],
+      "observed_evidence": "The proof asserts, for every R in [0,1], V(R)=base_S(c)+R(gmax(c)-base_S(c)). Proposition 1 itself describes a capacity-constrained two-sided greedy LP, whose value is generally piecewise linear, not this global chord. A direct counterexample under the proposition's own definitions is H=(1/2,1/2), g=(0,1), R=1/4: moving R mass gives V(R)=0.75, whereas the displayed formula gives 0.625. The supplied TV artifact likewise describes a greedy closed form/LP cross-check, not a general affine law.",
+      "why_it_matters": "This is an invalid proof step for a formal proposition that is used to interpret the full-radius crossing set and the claimed repair geometry. The endpoint implication at R=1 may be salvageable because the TV ball of radius 1 is the whole simplex, but that is not the proof written and does not validate any stronger intermediate-R reading.",
+      "required_fix": "Remove the false all-R equality. Prove the needed equivalence directly from B_1 being the full simplex: sup over R<=1 V(R)=max_K g_S(K). Then separately prove the crossing-prefix and driver statements, carefully distinguishing endpoint/full-radius claims from the generally piecewise-linear TV curve. Recheck every downstream claim that used the affine expression.",
+      "verification_test": "Include a symbolic proof or a finite-simplex lemma handling capacities, and add unit tests with at least the two-atom counterexample above plus heterogeneous three-or-more-atom cases; the tests must reject the old affine formula while confirming the corrected R=1 equivalence.",
+      "evidence_needed": "A corrected proof and rerun of any dependent deterministic analyses using the current frozen data.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-03-population-assumptions-not-formalized",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Theorem 2 and Section 5, PDF pp. 4 and 6; contrast artifacts/L4b_bound_r469.md, which explicitly assumes m i.i.d. CAL tasks and FIT/CAL independence.",
+      "claim_ids": [
+        "C01"
+      ],
+      "evidence_ids": [
+        "artifacts/L4b_bound_r469.md",
+        "artifacts/results/fit_cal_test_r469_result.json"
+      ],
+      "observed_evidence": "The manuscript says 'with probability 1-delta over the calibration sample' and reports a seeded split, but it does not state the i.i.d. task-sampling and FIT/CAL independence conditions required by the empirical-Bernstein invocation. The supporting L4b artifact does state those conditions.",
+      "why_it_matters": "Without these conditions, the population interpretation of the CAL UCB is not a theorem about an arbitrary fixed benchmark partition. The intended conditions appear available, so this is a formalization/claim-boundary defect rather than evidence that the bound is false.",
+      "required_fix": "Add the sampling and split-independence assumptions to the model, Theorem 2, and selection protocol; explicitly label the fixed benchmark TEST readout as descriptive conditional on the dataset when those assumptions are not invoked.",
+      "verification_test": "A theorem-assumption audit should find each empirical-Bernstein/Bonferroni population claim paired with i.i.d. task and FIT/CAL-independence conditions, and no claim should upgrade a fixed split to a population guarantee without them.",
+      "evidence_needed": "Clarified formal assumptions and claim wording; no new experiment is needed.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No separate ethics violation is evident from the supplied snapshot. The manuscript appropriately discloses AI assistance and repeatedly limits claims about real deployment; the principal concerns are technical validity and implementability.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the assigned frozen submission snapshot and its rubric.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A single prefix-observable, K-independent state-subset repair with exact recomputation showing which Appendix E(g) claims survive.",
+    "A corrected Proposition 2 proof that handles the capacity-constrained TV LP and independently verifies all downstream full-radius claims.",
+    "Explicit i.i.d.-task and FIT/CAL-independence assumptions for the population UCB result."
+  ],
+  "evidence_that_would_lower_score": [
+    "A demonstration that no common prefix policy realizes the reported per-K state-cap profiles, while the manuscript continues to present them as a deployable repair.",
+    "Any dependence of the main Theorem 1/DP calculations on the same invalid TV affine identity rather than only on the stated replay posterior model.",
+    "Evidence that FIT/CAL task dependence or rule selection differs from the frozen family assumed by the empirical-Bernstein calculation."
+  ],
+  "review_limitations": [
+    "I reviewed only the assigned frozen snapshot and did not inspect external literature, prior rounds, raw upstream carrier data, or author-side materials.",
+    "The quantitative artifacts were checked as supplied evidence; the snapshot itself documents that independent end-to-end replay from raw data/environment is unavailable."
+  ]
+}

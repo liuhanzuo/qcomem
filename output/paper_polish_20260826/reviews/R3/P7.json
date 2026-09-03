@@ -1,0 +1,181 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "9a9cd2f2f253ea8e671235b98dec83387d7c07db00fb6491580825254b7602a2",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文对探索性边界披露充分，但中心相关性只来自同一 checkpoint 内11–12个非独立 block，常规 Fisher/Bootstrap 区间均跨零，4B 上 predictor 与深度的 Spearman 相关为0.909且 partial 区间跨零。噪声包络只在固定已测 block 和 checkpoint 条件下扰动数值，不能替代模型级复制、层选择不确定性或深度去混杂。正文 masked 主分析与附录表3还混入一套未标注的旧数值，削弱可核查性。",
+    "presentation": "图1–3清楚，作者反复陈述不主张部署触发器；但正文被大量 C4–C12/F/E 标签、路径名和重复限定压缩，表2与附录表3的 masked/unmasked 数值版本未清楚分离，导致读者难以确认哪一组区间、LOO 和 Δz 是主结果。",
+    "contribution": "用量化前的激活尾部迁移预测单 block PTQ 损伤并强制与深度基线比较，是相关的问题设定；但只执行预注册8个 cell 中的2个，未运行 fallback gain，且一个 checkpoint 弱、另一个深度混杂，当前更像有用的失败模式记录而非可推广的触发信号或机制贡献。"
+  },
+  "paper_summary": "论文提出 activation-tail turnover：在全精度模型上比较64条模板叙事提示与64条模板算术提示时，每个 block 输入激活的 max/mean-absolute 比率发生的标准化变化。结果变量是只把该 block 的线性层量化为4-bit HQQ 后，部署提示上的相对 perplexity 增量。作者在 Qwen3-4B 的12个抽样 block 和 Qwen3-1.7B 的11个抽样 block 上计算 Spearman 相关；pad-masked 主读数分别为0.559与0.118。4B 的 turnover 与深度高度相关，partial 相关区间跨零；1.7B 不具信息性。三台物理主机上的结果逐位一致，但只是同一确定性 draw 的重放。论文只完成预注册8个 cell 中2个，AUROC 门槛分辨率不足且30% fallback gain 未测，因此把结果定位为探索性边界，而非部署触发证书。",
+  "strongest_verified_contribution": "最可信的贡献是识别并量化了候选信号的结构性混杂：第4–8页显示 Qwen3-4B 上 turnover 与 block 深度的秩相关达到0.909，深层过采样重加权后主相关从0.559降至0.401，且两个 masked partial 相关的区间都跨零。这支持“任何层级触发信号必须先对照简单深度基线”的实验设计教训。",
+  "strengths": [
+    "预测量完全在全精度模型上计算，结果量通过逐 block 单独量化获得，测量对象与候选部署信号的因果顺序定义清楚。",
+    "第3–8页公开了原始秩相关、Pearson、Fisher 区间、block bootstrap、置换、LOO、深度 partial、噪声包络与 prompt bootstrap，而非只展示最有利统计量。",
+    "作者明确承认 layer 不是独立样本、三主机只是确定性重放、只运行2/8 cells、深层过采样和单/双 dominant block 风险。",
+    "pad masking 修正改变了多个符号与标签，论文保留历史未 masked 行作为审计记录，并没有继续把旧结果当主结果。",
+    "没有把 AUROC=0.800 或未运行的 fallback gain 写成通过预注册安全门。"
+  ],
+  "questions": [
+    "附录表3中的 Fisher CI [+0.031,+0.871]、bootstrap [-0.085,+0.921]、LOO [+0.473,+0.709] 和 Δz=0.794 分别来自哪一种 label 版本？为何与表2 masked 主结果 [-0.060,+0.868]、[-0.118,+0.928]、[+0.427,+0.718] 和 Δz=0.513 不同而未标注为 superseded？",
+    "噪声包络 P(ρ>0)=0.998 的概率空间究竟是什么？它是否仅条件于已选的12个 block、同一 checkpoint 与经验噪声模型，因而不包含 layer 选择、checkpoint 或 domain 变异？",
+    "固定 probe 规则为何在研究假设冻结前选择四个最深 block？是否看过深度与 turnover/损伤的先验趋势？重加权 Spearman 的权重和秩处理如何定义，为什么它能纠正未观测 block 的选择偏差？",
+    "能否量化同一模型相邻 block 间的依赖，并说明把 block 当可交换 bootstrap 单位时区间具有何种有效解释？",
+    "主文称 masked partial 不能区分 turnover 与 depth；在完全测量全部28/36个 block、多个 checkpoint 后，作者将用什么预注册模型或分层统计量检验增量预测价值？",
+    "预注册8个 cell 的完整定义、冻结时间与未执行原因是什么？剩余量化器、shift cells 和 fallback forward 是否会作为同一确认性 family 完成，还是需要重新预注册？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P7-R3-01",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "第2–8页，§2.3–3.3，表1–2，限制C4、C9、C10、C12、E",
+      "claim_ids": [
+        "4B-positive-association"
+      ],
+      "evidence_ids": [
+        "R43_MASKED_LADDER",
+        "R42_NOISE_ENVELOPE",
+        "R44_TURNOVER_PROMPT_BOOTSTRAP"
+      ],
+      "observed_evidence": "每个模型只有一个 checkpoint，单位是同一网络中的11或12个相互依赖 block；规则只探测28/36个 block 中的一部分，并故意在最深 decile 过采样。三次主机重放 max |Δ|=0，因此跨运行有效样本仍为1。",
+      "why_it_matters": "block 不是独立、可交换的总体样本，常规 Fisher SE、block bootstrap、置换和 LOO 不能支持关于 checkpoint 或模型总体的推断。选样偏差还使已测层上的相关不能外推到未测层；对已测点重加权无法恢复未观测结果。",
+      "required_fix": "至少测量每个 checkpoint 的全部 block 或使用事前定义的均匀/随机层样本，并在多个独立 checkpoint、模型 family 和 prompt domain 上复制；把 checkpoint/domain 作为高层单位做分层或置换推断，block 只作为嵌套观测。",
+      "verification_test": "在预注册的多 checkpoint 分层分析中，turnover 的增量关联方向在 checkpoint 级重复，且层抽样方案不偏向深层；checkpoint 级置信区间或置换检验支持非零/有用效应，而非仅 block-resampling 区间。",
+      "evidence_needed": "全层结果、多个独立 checkpoint/domain 的原始逐层数据、事前层采样规则与分层统计分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R3-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "第3–8页，表1–2、§3.1–3.2、图2–3、限制C5/C12/E",
+      "claim_ids": [
+        "4B-positive-association",
+        "independent-value-beyond-depth-unresolved"
+      ],
+      "evidence_ids": [
+        "R34_PARTIAL_CI_BOOTSTRAP",
+        "R37_DEPTH_REWEIGHT_GATE3",
+        "R42_NOISE_ENVELOPE"
+      ],
+      "observed_evidence": "4B masked ρ=0.559，但 turnover-depth ρ=0.909；Fisher CI [-0.060,0.868] 和 percentile bootstrap [-0.118,0.928] 都跨零。masked partial 为0.266与0.006，附录区间分别[-0.49,0.66]与[-0.15,0.88]。深度重加权把主相关降到0.401。",
+      "why_it_matters": "当前数据既不能证明主相关超出抽样不确定性，也不能区分 turnover 与几乎共线的深度。P(ρ>0)≈0.998 的噪声扰动只检验在固定已测点周围加入指定噪声后符号是否稳定，不处理层选择、深度混杂或 checkpoint 总体不确定性，不能升级为确认性证据。",
+      "required_fix": "在深度覆盖均匀的全层/预注册样本和多个 checkpoint 上，把 turnover 与 depth、权重/激活幅度、Hessian/量化误差等竞争预测量纳入预先规定的增量模型；用 held-out layers/checkpoints 或嵌套交叉验证比较 rank 预测。",
+      "verification_test": "在 checkpoint 级 hold-out 上，加入 turnover 后相对仅深度基线的预注册 AUROC、rank correlation 或损失显著且稳定改善，并在删除 dominant block、不同 domain/quantizer 后保持方向。",
+      "evidence_needed": "独立 checkpoint 的全层竞争基线矩阵、预注册增量模型与外样本预测结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R3-03",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "第7页表2与第10–12页附录表3–4；§3.1及限制C5/C8/C11",
+      "claim_ids": [
+        "masked-primary-readout",
+        "cross-carrier-difference-observed"
+      ],
+      "evidence_ids": [
+        "R31_PAPER_NUMBERS",
+        "R43_MASKED_LADDER",
+        "R35_DELTA_Z_CI_FIX",
+        "R40_AUROC_GATE_MASKED"
+      ],
+      "observed_evidence": "主表2明确把 masked 4B Fisher CI、bootstrap、LOO 和 Δz 报为[-0.060,0.868]、[-0.118,0.928]、[0.427,0.718]、0.513；附录表3却给出[0.031,0.871]、[-0.085,0.921]、[0.473,0.709]、0.794，未将这些行标成 unmasked/superseded。正文限制C8又把 Δz=0.79 指向表2，和表2的0.513冲突。",
+      "why_it_matters": "这些不是舍入差，而是不同 label/分析版本。版本混杂改变是否排除零、LOO范围和跨载体差值，直接阻碍读者识别主分析，也使“所有 headline 数字均为 masked”无法从 PDF 内部核验。",
+      "required_fix": "建立单一数值来源，逐行标注 masked primary 与 unmasked historical；删除或更正所有 stale 数值和错误交叉引用，并增加一张从原始 payload SHA 到最终表格行的版本映射。",
+      "verification_test": "自动一致性检查断言摘要、表1、表2、附录表3–4、图注与结论中的每个主数值都由同一 masked JSON 生成；旧数值只能出现在明确的 superseded 栏并可追踪到不同 SHA。",
+      "evidence_needed": "单源生成脚本、完整 SHA、字段级 provenance map 和修订后 PDF 的数值一致性报告。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R3-04",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "reproducibility"
+      ],
+      "location": "第1、6、8、12页，摘要、限制C7/F/C12、附录表4",
+      "claim_ids": [
+        "pre-registered-trigger-gate"
+      ],
+      "evidence_ids": [
+        "R40_AUROC_GATE_MASKED",
+        "R41_GAIN_BOUND"
+      ],
+      "observed_evidence": "预注册规则覆盖2 carriers×2 quantizers×2 shifts 共8 cells，但只运行一个量化器和一个 shift 的2 cells。AUROC 的4B值0.800可因一次标签翻转跨越0.639–0.889，1.7B为0.567；要求≥30% damage gain 的 fallback forward 完全未运行，仅给出约14%的可行性上界。",
+      "why_it_matters": "注册的触发器证书既未完成 cell family，也未测其部署动作，因而无法回答候选是否通过或失败。选择性完成2/8 cells 还使相关阈值分类只能是探索性读数，不能作为预注册验证。",
+      "required_fix": "在不查看新增结果的前提下冻结修订版协议，完成全部 cells 或给出事前、与结果无关的停止规则；提高 layer/label 分辨率，并实际运行定义清楚的 fallback baseline 与 gain 测量。",
+      "verification_test": "所有预注册 cells 和两个门条件均有可审计输出，family-level 判定可在标签扰动和噪声界下稳定复现；未执行 cell 不再被投影值替代。",
+      "evidence_needed": "完整8-cell payload、fallback forward、预注册时间戳和稳定性/错误率分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R3-05",
+      "severity": "minor",
+      "dimensions": [
+        "limitations_responsible_claims",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "第2–3页§2.3及第8页限制C11",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "配置名 wikitext/gsm8k 实际各指64条单模板生成的叙事/算术句子，并非 WikiText-2/GSM8K；每族只有一种低多样性模板，真实流量复现未测。",
+      "why_it_matters": "虽然正文已披露，但名称容易造成数据集级覆盖的错觉；模板特征可能同时驱动激活尾部和 PPL 损伤，限制对真实 calibration-to-deployment shift 的解释。",
+      "required_fix": "在所有图表、配置说明和摘要中使用 templated-narrative/templated-arithmetic 名称，并加入多模板、真实语料与交叉 domain 的复验。",
+      "verification_test": "读者无需查限制即可准确识别数据来源；候选信号在预注册的多个真实/模板 domain 配对上报告独立结果。",
+      "evidence_needed": "完整提示生成器、去重统计、多 domain 原始结果。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "冻结 PDF 研究公开模型上的量化测量，未涉及人体参与者或个人数据；没有发现需要单独伦理升级的实验，但“安全触发”措辞必须继续维持当前非部署性边界。",
+  "llm_usage_disclosure": "本审稿由全新、隔离的 AI 子代理 R3 生成，仅用于内部投稿前质量控制；该子代理只读取指定的冻结 PDF、审稿协议、量表与 JSON schema，未与任何其他评审通信，也未接触作者计划、历史评审、目标分数或版本历史。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在多个独立 checkpoint、模型 family、量化器和真实 prompt shift 上完成全层或事前均匀层采样，并用 checkpoint 为高层单位复现 turnover 的增量预测价值。",
+    "相对仅深度及其他离线敏感度基线，turnover 在严格 held-out checkpoint/layer 上稳定改善预注册指标。",
+    "完成全部预注册 cells 和实际 fallback gain 测量，且 AUROC/gain 判定对标签噪声和单层变化稳定。",
+    "清理 masked/unmasked 数值版本，并由单源脚本自动证明摘要、表格、图和附录完全一致。"
+  ],
+  "evidence_that_would_lower_score": [
+    "全层或均匀层采样后4B相关消失，或 turnover 不优于深度基线。",
+    "在新增 checkpoint/domain 上关联方向不稳定，表明当前读数由单一 checkpoint 或模板特征驱动。",
+    "无法解释或复现表2与表3的数值版本差异，或 masked payload 与主文不匹配。",
+    "完成注册门后 AUROC 与 fallback gain 均稳定落入 KILL 区间。"
+  ],
+  "review_limitations": [
+    "按隔离要求只读取冻结 PDF，未打开论文所列 JSON、代码、匿名 manifest 或模型输出，因此无法重算 masked/unmasked 版本或确认三主机 payload 哈希。",
+    "按任务要求未联网，2025–2026文献、Qwen3/HQQ实现细节和引用支持未作外部核验；相关工作判断仅依据 PDF。",
+    "PDF 共12页，文本抽取完整且逐页视觉核查未发现影响内容读取的解析故障。"
+  ]
+}

@@ -1,0 +1,1303 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      R ECOVERY C OMPRESSION OF C ROSS -S UPPORT
+002   S PREAD
+003
+004   IN 2:4 LLM S PARSIFICATION :
+005
+006
+      A N A RCHIVED 0.118 PP O BSERVATION
+007
+008    Anonymous authors
+009    Paper under double-blind review
+010
+011
+012
+                                                  A BSTRACT
+013
+014            Exact 2:4 sparsity couples support decisions locally, while post-training recovery
+015            can obscure their downstream differences. We examine three registered fixed
+016            supports—ALPS, ELSA-4096, and ProxSparse—after the same 625M-token joint
+017            sparse-weight and rank-16 SLoRB recovery. Their cross-support AVG-9 point-
+018            estimate range contracts from 2.675 pp before recovery to 0.118 pp afterward. The
+019            latter is smaller than the harness’s 0.52 pp marginal binomial standard error for
+020            a single checkpoint, but that quantity is not a pairwise or joint resolution limit.
+021            Per-item predictions were not retained, so the joint uncertainty of the post-recovery
+022
+               range and residual support differences are unidentified. The result is therefore an
+               archived descriptive observation and a measurement caution: claims at this scale
+023
+               require paired per-item analysis. The curvature score, annealing schedule, and
+024
+               SLoRB branch remain pipeline background because they were not isolated under
+025            matched budgets. An archived 5B checkpoint provides supporting context only: it
+026            is evaluated with SLoRB active, has no folded exact-2:4 export or pre/post-export
+027            comparison, and its recovery-corpus manifest is unavailable.
+028
+029
+030   1   I NTRODUCTION
+031
+032
+      Semi-structured sparsity is one of the few compression regimes that combines substantial parameter
+      removal with native accelerator support. In particular, NVIDIA sparse Tensor Cores execute exact
+033
+      2:4 patterns, retaining two weights in every group of four (NVIDIA, 2020). The same constraint that
+034
+      makes deployment efficient also couples pruning decisions: each candidate competes locally, and a
+035   mistaken hard selection cannot be repaired without changing the support.
+036
+037   We ask a narrower empirical question: if several native supports undergo an identical token budget and
+038
+      recovery recipe, does their cross-support spread persist? The comparisons summarized in Section 2 do
+      not isolate this before/after quantity across multiple labelled supports. Our load-bearing contribution
+039
+      is the archived measurement of that quantity; the SparseForge pipeline below is background context,
+040
+      not a validated mechanism.
+041
+042   Calibration-only methods such as Wanda and SparseGPT (Sun et al., 2023; Frantar & Alistarh, 2023)
+043   are inexpensive, while retraining-based AST and CAST (Huang et al., 2024; 2025) recover more
+044
+      quality at larger token budgets. This leaves a practical question: can a recovery run spend its tokens
+      on improving the structured support itself, rather than merely adapting weights to an early hard mask?
+045
+046   As pipeline background, S PARSE F ORGE (Figure 1) maintains a continuous mask and alternates
+047   task/distillation updates of the sparse base weights and rank-16 SLoRB branch with periodic curvature-
+048   score mask updates. A soft-to-hard schedule then moves the mask toward an exact 2:4 pattern. This
+049   describes the archived training pipeline rather than an isolated causal mechanism: the reported
+050
+      checkpoint keeps the SLoRB branch live, and folding it into a deployable exact-2:4 export is a
+      registered future step (Appendix C), not an executed result. These three components have never been
+051
+      isolated under matched budgets; none of the reported gains can be attributed to any single mechanism.
+052
+053   The recovery-compression comparison in Table 5 is the central result. The three registered sup-
+      ports span 2.675 pp in AVG-9 before recovery and 0.118 pp after the same 625M-token recov-
+
+
+                                                        1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+      Figure 1: SparseForge pipeline background. The weight track updates sparse base weights W
+      and rank-16 SLoRB parameter B using task and distillation losses. A separate periodic mask track
+072
+      computes curvature-based importance, constructs a soft group gate, and anneals it toward an exact 2:4
+073
+      target. Quenching freezes the support; the dashed fold/re-projection step depicted as the export arrow
+074   is the planned branch fold and re-projection, which is shown for completeness and is not executed by
+075   the frozen finalizer—this paper reports only the branch-active training-state checkpoint upstream of
+076   that boundary. The regularizer Lmid affects the dedicated mask update, not the weight-loss autograd
+077   path. The diagram describes the pipeline and is not evidence that any component causes the reported
+078   result. The in-figure annotations are set below body-text size so that the weight track, the mask track,
+079   and quenching fit one column width; the key symbolic annotations (s, G, m, Yb ) follow the macro
+080   naming of Sec. 4.
+081
+082   ery. The latter is smaller than the harness’s 0.52 pp marginal single-checkpoint standard error,
+083
+      but that scale is not a threshold, detection floor, or equivalence margin. Without paired per-item
+      predictions, separability of the three supports remains untested. The archived 5B comparison
+084
+      in Table 1 and Figure 2 is supporting context rather than mechanism evidence. We contribute:
+085          • an archived observation that identical recovery compresses cross-support AVG-9 spread
+086            from 2.675 to 0.118 pp;
+087
+             • an explicit requirement for paired per-item analysis and joint bounds before comparing the
+088            recovered supports at this scale; and
+089
+             • a unified local evaluation that separates fixed-support recovery from an archived branch-
+090
+               active checkpoint and records its corpus and export boundaries.
+091
+092
+093   2    R ELATED W ORK
+094
+095   One-shot and calibration-scale pruning. Magnitude pruning and second-order criteria established
+096
+      the basic importance-estimation view (Han et al., 2015; LeCun et al., 1990; Hassibi & Stork, 1993).
+      For LLMs, SparseGPT uses approximate second-order information and Wanda combines weights
+097
+      with activation statistics (Frantar & Alistarh, 2023; Sun et al., 2023). ALPS performs layerwise
+098
+      constrained reconstruction (Meng et al., 2024); ELSA and ProxSparse optimize semi-structured
+099   supports or parameters at calibration scale (Lee et al., 2026; Liu et al., 2025). These approaches avoid
+100   a large recovery corpus, but their support decisions remain consequential under exact local structure.
+101
+102   Semi-structured sparse training. MaskLLM learns discrete N :M masks with a large corpus, so
+103   its mask is trained rather than frozen from a calibration decision (Fang et al., 2024). AST anneals
+104   dense weights toward 2:4 and uses SLoRB for recovery (Huang et al., 2024); CAST uses a continuous
+105   differentiable relaxation (Huang et al., 2025). These approaches motivate learned structure, but
+106   the comparisons available to this study do not fix and label several native supports, apply the same
+107   recovery recipe to each, and measure the resulting cross-support spread. Our contribution is that
+      archived measurement rather than a novel algorithmic advantage. Because the SparseForge mask
+
+
+                                                         2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      trajectory was not isolated under matched budgets, the paper makes no component-level mechanism
+109   claim.
+110
+111
+112
+      3     P IPELINE R ATIONALE (BACKGROUND )
+113
+114
+      In a group of four weights, one incorrect survivor necessarily excludes another candidate. A one-shot
+      score can therefore select a poor subspace before recovery begins. Keeping the mask soft allows
+115
+      repeated evidence to reverse early rankings, but a soft gate is not deployable. The central problem
+116
+      is consequently a constrained transition: preserve exploration early, inject exact group structure
+117   progressively, and minimize the final soft-to-hard projection gap.
+118
+119   Curvature gives a local survival signal. For a weight wi near a pretrained solution,
+120                                                   ∂L       1 ∂2L 2
+                                          ∆Li ≈ −        wi +          w .                                 (1)
+121                                                  ∂wi       2 ∂wi2 i
+122   When the first-order term is small, magnitude alone misses the loss curvature associated with deletion.
+123   Optimal Brain Damage motivates second-order importance via a diagonal Hessian proxy (LeCun
+124   et al., 1990), while Optimal Brain Surgeon and WoodFisher go beyond the diagonal precisely because
+125   cross-term and inverse-curvature effects matter under exact structure (Hassibi & Stork, 1993; Singh
+126   & Alistarh, 2020): for N :M groups the deleting mask couples coordinates within a group, so the
+127   diagonal term is only a first-order faithful ranking signal, not a certificate. S PARSE F ORGE therefore
+128   uses the diagonal curvature score to rank candidates within each structured group (the cheap sufficient
+129
+      signal for which column of a 2:4 group to drop) and makes no stronger approximation claim than
+      OBD; annealing, not the curvature proxy alone, is what introduces the final support gradually.
+130
+      Throughout this paper we use “match” in the sense of numerical equivalence within stated sampling
+131
+      error, not of verified behavioral equivalence between checkpoints; per-item agreement between
+132   SparseForge and AST has not been established in this workspace.
+133
+134
+135
+      4     T RAINING P IPELINE
+136
+      For reproducibility, we describe the archived training pipeline that produced the registered endpoints;
+137
+      the description is background and does not isolate component effects. Let a linear layer be Z = XW ⊤ ,
+138
+139
+      with W ∈ RD×C , and let m ∈ [0, 1]D×C be a soft mask. The effective sparse weight is W    f = m⊙W .
+      For a fixed projection P and learnable rank-16 SLoRB matrix B, the reported strong configuration
+140
+      computes
+141                                                   f ⊤ + P ⊤ B ⊤ ).
+                                             Yb = X(W                                                    (2)
+142
+143
+      4.1   R EPORTED W EIGHT AND M ASK T RACKS
+144
+145   The weight track minimizes next-token cross-entropy plus teacher-to-student KL divergence,
+146
+                                       LW,B = λtask Ltask + λKL LKL ,                                  (3)
+147
+148   updating both W and B. The mask is a non-autograd buffer with a dedicated periodic rule. This sepa-
+149
+      ration permits frequent weight adaptation while avoiding a noisy mask decision at every minibatch.
+      It also makes the method explicitly joint: the support, sparse base weights, and recovery branch all
+150
+      change during the strong run.
+151
+152
+      4.2   C URVATURE -S CORE BACKGROUND
+153
+154   For each layer, we estimate diagonal curvature with a Hutchinson-style probe (Hutchinson, 1990)
+155   and maintain an exponential moving average. The survival score is
+156                                                        
+157
+                                       s = max(H, 0) + ϵ ⊙ W 2 .                                  (4)
+158   where H is the Hutchinson-estimated diagonal and the element-wise clamp at zero prevents sign
+159   reversals from mis-estimated negative diagonal entries from re-ordering the within-group ranking.
+160   After layer-wise standardization, each non-overlapping group g of M entries forms a soft gate and a
+161   structured target,
+                               Gg = σ((e  sg − τg )/T ) ,   Ḡg = TopKN (esg ),                       (5)
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      where τg is the midpoint between the N th- and (N +1)th-largest standardized scores; the frozen
+163   implementation instead uses the N th-largest score itself, so the N th-ranked candidate sits exactly at
+164   threshold rather than strictly above it (Appendix C). T controls decisiveness without immediately
+165   committing to a binary support.
+166
+167   4.3     S OFT- TO -H ARD S CHEDULE AND D EPLOYMENT B OUNDARY
+168
+169   We progressively mix the exploratory gate with its feasible target,
+170
+                                                G ← (1 − β)G + β Ḡ,                                            (6)
+171
+172   while decreasing T and ramping a mild binary-target penalty Lmid = ∥m − Ḡ∥2F /(2|m|).          The
+173
+      dedicated mask update moves a clipped gate toward Ḡ and then applies an exponential moving
+      average. Near the end, an interpolation meff = xm + (1 − x)1[m > θ] moves from the soft mask to
+174
+      the binary mask. The scheduled construction would then fold the branch into the weights and re-apply
+175
+      exact 2:4 projection. This is a scheduled construction, not a theoretical convergence guarantee. In
+176   the frozen implementation the schedule stops at the branch-active checkpoint: the branch fold and
+177   exact 2:4 re-projection are specified but not executed (Appendix C), so every downstream number is
+178   a training-state measurement. All hyperparameters of the reported strong configuration are collected
+179   in Table 6 (Appendix C).
+180
+181   4.4     N OTATION
+182
+183   Throughout, SLoRB denotes the Sparse-Low-Rank Branch (Huang et al., 2024): a fixed projection P
+184   and learnable rank-16 matrix B whose product BP participates in every training-state evaluation;
+185   the algebraic fold of BP into the weights at quenching time is specified but not implemented by the
+186
+      frozen finalizer (Appendix C), and is registered as future export work.
+187
+188   5       E XPERIMENTS
+189
+190   5.1     S ETUP
+191
+192   The primary study uses LLaMA-2-7B (Touvron et al., 2023) at exact 2:4 sparsity. The main checkpoint
+193   performs 5B-token recovery; its training corpus provenance is unavailable (the archived manifest
+194
+      lives with the checkpoint on a host unreachable from this workspace; Appendix C), so the corpus is
+      not named in this paper. We evaluate zero-shot plain accuracy with lm-evaluation-harness (Biderman
+195
+      et al., 2024) on BoolQ, RTE, HellaSwag, WinoGrande, ARC-Easy, ARC-Challenge, OpenBookQA,
+196
+      RACE, and PIQA (Clark et al., 2019; Wang et al., 2019; Zellers et al., 2019; Sakaguchi et al.,
+197   2019; Clark et al., 2018; Mihaylov et al., 2018; Lai et al., 2017; Bisk et al., 2019). AVG-9 is the
+198   task-equally-weighted nine-task aggregate (unweighted mean of the nine per-task accuracies; each
+199   task contributes 1/9 regardless of its dev-set size). We also report WikiText-2 perplexity. Every
+200   reported evaluation, including the headline row, is of the branch-active training-state checkpoint
+201   (SLoRB branch live at inference); no folded or re-projected export exists, and export-equivalence is
+202   prospective (Appendix C).
+203   Table 1 separates native calibration/short-optimization checkpoints from fixed-support recovery. Each
+204   recovery row fixes the named support and jointly trains sparse base weights plus zero-initialized
+205   rank-16 SLoRB for 624,951,296 tokens (reported as 625M). The public AST export and the archived
+206   S PARSE F ORGE checkpoint are evaluated locally; the AST publication does not disclose its own
+207   recovery-token budget or recovery corpus, so the AST row is a quality anchor rather than a matched-
+208   budget control. The 5B comparison is a single-checkpoint point estimate; historical repeated runs
+209   are confined to Appendix E. For the pending matched-budget arm we tokenized a 1.366B-token
+210   Dolmino-mix-1124 recovery stream locally, and its validation split is an 8192-token prefix of that
+211
+      same training stream (val = train[:8192]); it serves only as an early-step sanity signal for
+      perplexity stability, not as an independent held-out set, so no generalization claim is drawn from it.
+212
+213       1
+           The 625M matched-budget arm is registered as a pending measurement.
+214       2
+           The recovery corpus of this archived 5B checkpoint is not named because its provenance is unverifiable in
+215   this workspace: the training manifest and checkpoint live on an unreachable archive host (Appendix C); the
+      pending matched-budget arm tokenizes a locally controlled Dolmino-mix-1124 stream instead.
+
+
+                                                            4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+217   Table 1: Unified LLaMA-2-7B evaluation at exact 2:4 sparsity. Task cells are local plain-accuracy
+218   percentages; PPL is WikiText-2. Wanda, SparseGPT, ALPS, and ELSA are three-seed means.
+219   Recovery rows are not native checkpoints. The 625M S PARSE F ORGE fixed-support matched-budget
+220   arm1 and the recovery token budget and corpus of the public AST checkpoint are registered gaps;
+221
+      the AST row is a quality anchor with under-reported recovery-budget provenance, not a matched-
+      budget control. This aggregate supports the archived AST comparison; Appendix F, Table 9 reports
+222
+      baseline dispersion. Task abbreviations: BQ = BoolQ, Hella. = HellaSwag, Wino. = WinoGrande,
+223
+      ARC-e/c = ARC-Easy/Challenge, OBQA = OpenBookQA. The S PARSE F ORGE row is a branch-
+224   active training-state checkpoint (SLoRB live at inference); a folded exact-2:4 export has never been
+225   produced or measured (Appendix C, EXT-M3). The S PARSE F ORGE row is additionally a 5B-token
+226   recovery checkpoint whose training-corpus provenance is unavailable (archived with the checkpoint;
+227   Appendix C); only the pending matched-budget arms use a locally tokenized Dolmino-mix-1124
+228   stream.
+229
+      (a) Per-task accuracy: BoolQ through ARC-Easy
+230   Method                                       BQ            RTE            Hella.      Wino.     ARC-e
+231   Dense reference                            79.45          62.82           57.10       69.61       75.55
+232   Wanda (3 seeds)                            68.08          53.07           41.45       61.64       61.73
+233   SparseGPT (3 seeds)                        70.72          55.96           45.03       64.98       63.23
+234   ALPS (3 seeds)                             67.65          54.87           46.36       65.30       64.60
+235   ELSA (4,096 steps; 3 seeds)                69.79          58.72           50.95       66.19       67.33
+236
+      ProxSparse (official)                      68.53          56.68           47.94       63.61       64.31
+237   ALPS mask + recovery (625M)                69.72          62.45           52.60       67.09       69.53
+238   ELSA mask + recovery (625M)                72.94          59.57           52.19       66.85       70.79
+      ProxSparse mask + recovery (625M)          71.96          61.73           52.12       66.61       70.37
+239
+240   AST official deployable                    74.50          65.34           54.71       68.19       73.36
+241   S PARSE F ORGE (archived corpus2 , 5B)     78.47          49.82           54.65       69.85       76.39
+242   (b) Per-task accuracy: ARC-Challenge through PIQA, with aggregate and PPL
+243
+      Method                                   ARC-c     OBQA           RACE        PIQA     AVG-9       PPL
+244
+245   Dense reference                           42.75        33.20      39.52       77.86     59.76    5.5637
+246   Wanda (3 seeds)                           29.78        23.47      35.95       70.37     49.50   12.3911
+247   SparseGPT (3 seeds)                       32.39        25.20      37.51       71.82     51.87   10.0569
+248
+      ALPS (3 seeds)                            32.14        26.13      38.50       73.56     52.12   10.3270
+      ELSA (4,096 steps; 3 seeds)               35.07        28.47      39.46       75.37     54.59    7.9832
+249   ProxSparse (official)                     33.53        25.00      35.79       71.87     51.92    9.2992
+250
+      ALPS mask + recovery (625M)               35.58        28.00      40.96       76.44     55.82    7.1006
+251
+      ELSA mask + recovery (625M)               36.52        28.60      39.81       76.17     55.94    7.1121
+252   ProxSparse mask + recovery (625M)         36.18        28.00      39.90       76.28     55.91    7.1284
+253
+      AST official deployable                   39.51        30.00      38.85       76.99     57.94    6.3430
+254
+      S PARSE F ORGE (archived corpus2 , 5B)    43.86        35.20      41.63       76.33     58.47    6.2179
+255
+256
+257   Under this harness, the per-checkpoint binomial-SE of AVG-9 is 0.52 pp (Appendix A.1); this is a
+258   single-checkpoint eval-sampling scale only, not a detection floor for pairwise or joint claims. The
+259   0.52 pp term is a pre-declared harness quantity: it is the binomial standard error computed from the
+260
+      standard lm-eval dev-set sizes nk listed with their tasks in Table 3 (derivation in Appendix A.1),
+      fixed by the harness protocol and independent of the archived spread endpoints, so the marginal-scale
+261
+      comparisons above are not derived from the measurements they bound.
+262
+263
+264   5.2   R ECOVERY C OMPRESSION AS THE L OAD -B EARING R ESULT
+265
+266   The three native supports in Table 1 span 2.675 pp in AVG-9. Applying the same 625M-token joint
+267   sparse-weight and SLoRB recovery to each support narrows that range to 0.118 pp (Table 5), far
+268   below the 0.52 pp per-checkpoint binomial-SE sampling-noise scale. This is an archived descriptive
+269   observation: the identical recovery improves every fixed-support endpoint, yet the residual cross-
+      support range cannot be tested against a pairwise or joint significance level from the registered
+
+
+                                                         5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+                                                                                                 +5.20
+271                                 5   +3.98                                            +4.35
+
+
+
+
+              − AST (pp)
+                                                                                 +3.03                   +2.78
+272                                                                 +1.66
+273                                 0
+                                                           -0.06                                                   -0.65
+274
+                                  −5
+
+
+                 SparseForge-5B
+275
+276
+277                               −10
+278
+279
+                                  −15            -15.52                                              Avg-9 delta = +0.53 pp
+280
+                                        BoolQ     RTE     HellaS.   WinoG.       ARC-E   ARC-C   OBQA    RACE      PIQA
+281
+282
+283   Figure 2: Per-task accuracy difference S PARSE F ORGE-5B minus the public AST deployable check-
+284   point under the same nine-task harness, computed from the harness CSV. The Avg-9 difference
+285   is +0.53 points (dashed line), but task-level behavior is strongly mixed: BoolQ, ARC-Easy, ARC-
+286   Challenge, OpenBookQA, and RACE contribute the gain, while RTE moves by −15.52 points. The
+287   aggregate advantage over the strongest 625M fixed-support recovery endpoint is +2.53 points.
+288
+      aggregate CSVs, because the per-item statistics needed for that test were not retained. It is therefore a
+289   historical endpoint fact, not a statistical negative result or equivalence claim.
+290
+291   Figure 2 retains the archived 5B comparison as supporting context. Its +0.53-point aggregate
+292
+      conceals strongly mixed task-level behavior: the gain is concentrated in BoolQ, ARC, OpenBookQA,
+      and RACE, while RTE moves by −15.52 points against S PARSE F ORGE. The aggregate remains
+293
+      within sampling noise and is too small to support broad superiority. It also does not establish a
+294
+      matched-budget S PARSE F ORGE advantage because no valid 625M-token S PARSE F ORGE endpoint
+295   exists in this protocol. Under validated provenance the per-task pattern could suggest a recovery-
+296   corpus composition effect, but that corpus is not verifiable in this workspace (Appendix C), so no
+297   corpus-composition attribution is claimed; the matched controls needed to separate these attributions
+298   remain pending (Sec. 7).
+299
+      Table 2 separates the earlier deviating RTE log from the registered value and its denominator checks.
+300
+      The anomaly is consistent with a single-digit corruption (for example, a leading 4 → 6 substitution),
+301   while denominator back-solving verifies every per-task harness cell against an integer example count.
+302   We therefore use the registered RTE value throughout. It does not drive the recovery-compression
+303   result: the majority-share Avg-9 margin remains close enough to zero that a small task-level change
+304   can reverse its sign.
+305
+306
+      Table 2: RTE provenance and denominator checks for the 5B checkpoint. The earlier 69.82 log is not
+307
+      representable as an integer correct count over 277 examples; the registered 49.82 = 138/277 is used
+308
+      throughout. The +0.528-point Avg-9 margin remains sensitive to a small task-level change.
+309
+         Check                                  Value                 Interpretation
+310
+311      Earlier logged RTE cell                69.82                 No integer numerator over n = 277 yields this percent-
+                                                                      age.
+312
+         Registered RTE cell                    49.82                 Exact at 138/277; used in Table 1 and Figure 2.
+313      RTE majority class                     52.71%                Exact at 146/277; neither RTE value is near this base-
+314                                                                   line, and the registered value is below chance.
+315      Same-row WinoGrande                    69.85                 Near-coincidence with the logged anomaly, consistent
+316                                                                   with a single-digit corruption.
+         Avg-9 margin                           +0.528 pp             A change of O(13) examples in one comparably
+317
+                                                                      weighted task can move it through zero.
+318
+319
+320   RTE diagnostic. The registered RTE result is 49.82%, below the 52.71% majority-class baseline;
+321   Table 2 carries the provenance checks and the exact integer counts behind both rates. Neither a
+322   label-order nor a prompt-template ablation has been re-run in this workspace, so we cannot separate
+323   a harness artifact from a recovery-side task regression, and the AST row of Table 1 stays above
+      chance on the same harness configuration. The cause therefore remains unresolved and registered: we
+
+
+                                                                             6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      report the measured cell without using it as evidence for or against the method, and its leave-one-out
+325   consequence is isolated separately (Appendix A, Table 3).
+326
+327
+      5.3   W HAT THE R ECOVERY BASELINES E STABLISH
+328
+329
+      The narrow post-recovery spread among ALPS-, ELSA-, and ProxSparse-supported endpoints shows
+330   that joint sparse-weight/SLoRB healing improves several fixed supports while leaving an observable
+331   range far below the harness’s per-checkpoint binomial-SE sampling-noise scale. It does not prove that
+332   one native support is universally best, nor that recovery makes the supports intrinsically equivalent.
+333   A longer-budget ELSA-support experiment failed under the tested QA-style recovery protocol after
+334   initially improving; this is evidence that the recipe requires redesign, not that ELSA generally fails at
+335   long budgets (Appendix B, Figure 3).
+336
+337   5.4   A RCHIVED B READTH AND D EPLOYMENT
+338
+339   Archived single-run evaluations cover eight model families and are summarized in Appendix D. They
+340   suggest broadly consistent but architecture-dependent transfer, so we keep the breadth claim out
+341   of the central result. Separately, archived H800 TensorRT-LLM measurements report 1.40–1.44×
+342   throughput and 0.58× weight memory for an export attributed to an earlier pipeline-generation
+343
+      checkpoint; these numbers do not correspond to any export of the checkpoint evaluated in this paper
+      (none exists), and their provenance—the identity of the exported checkpoint—is unverifiable in this
+344
+      workspace, so they are reporting-only historical records rather than a new systems benchmark.
+345
+346
+347   6     L IMITATIONS
+348
+349          • Endpoint and uncertainty scope. The recovery-compression result uses three archived
+350            endpoints rather than a contemporary multi-seed study. The 0.52 pp quantity is a marginal
+351            per-checkpoint binomial standard error, not pairwise or joint uncertainty or training-run
+352            variance; per-item predictions were not retained. Historical error bars use different legacy
+353            suites and do not transfer to the current harness (Appendix E).
+354          • Budget and mechanism scope. No valid 625M-token matched-budget S PARSE F ORGE
+355            endpoint exists, so the archived 5B comparison is not a token-normalized sample-efficiency
+356            result. The curvature score, annealing schedule, and SLoRB branch were not isolated
+357            under matched budgets, and no reported gain is attributable to one component. Curvature
+358            estimation and retraining also cost more than one-shot pruning.
+359          • Export and provenance scope. Every reported SparseForge number is a branch-active
+360            training-state measurement. The SLoRB fold, exact 2:4 reprojection, group-sum assertion,
+361            and pre/post-export quality remain unimplemented or unmeasured (Appendix C, EXT-M3).
+362            The archived weights and corpus manifest are unreachable, so neither export equivalence
+363
+               nor corpus attribution can be resolved within this study.
+364          • External validity. Cross-family results are archived single runs without recoverable per-seed
+365            or complete harness metadata. The long-budget ELSA-support recipe diverges and must be
+366            redesigned before supporting a method-level conclusion. Historical H800/TensorRT-LLM
+367
+               measurements come from an unverifiable earlier export, so they do not establish speed for
+               the checkpoint studied here or transfer across hardware and workloads.
+368
+369
+370   7     C ONCLUSION
+371
+372   Identical 625M-token recovery compresses the registered cross-support AVG-9 point-estimate range
+373   from 2.675 to 0.118 pp. Because paired per-item predictions were not retained, the joint uncertainty
+374   and residual distinguishability of those supports remain unidentified; the result is a descriptive
+375   endpoint observation, not an equivalence or mechanism claim. The archived branch-active 5B
+376   checkpoint is supporting context only: its corpus identity is unavailable, its component effects are not
+377   isolated, and its fold to a deployable exact-2:4 export is unmeasured. Stronger method or deployment
+      conclusions require matched-budget, multi-seed, paired, and export evidence.
+
+
+                                                         7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Ethical considerations. SparseForge uses an additional recovery corpus during post-training (5B
+379   tokens in the archived configuration; corpus provenance unavailable, Appendix C) and therefore
+380   exposes the compressed model to recovery data whose governance cannot be audited here. Compres-
+381   sion may reduce inference memory and time but consumes recovery compute and retains the base
+382   model’s bias, privacy, licensing, and misuse risks. The reported measurements are not a life-cycle
+383   carbon assessment.
+384
+385
+      R EFERENCES
+386
+387   Stella Biderman, Hailey Schoelkopf, Lintang Sutawika, Leo Gao, Jonathan Tow, Baber Abbasi,
+388     Alham Fikri Aji, Pawan Sasanka Ammanamanchi, Sid Black, Jordan Clive, Anthony DiPofi, Julen
+389     Etxaniz, Benjamin Fattori, Jessica Zosa Forde, Charles Foster, Mimansa Jaiswal, Wilson Y. Lee,
+390
+        Haonan Li, Charles Lovering, Niklas Muennighoff, Ellie Pavlick, Jason Phang, Aviya Skowron,
+        Samson Tan, Xiangru Tang, Kevin Wang, Genta Indra Winata, Franccois Yvon, and Andy Zou.
+391
+        Lessons from the trenches on reproducible evaluation of language models. ArXiv, abs/2405.14782,
+392
+        2024. URL https://api.semanticscholar.org/CorpusID:269982020.
+393
+394   Yonatan Bisk, Rowan Zellers, Ronan Le Bras, Jianfeng Gao, and Yejin Choi. Piqa: Reasoning about
+395     physical commonsense in natural language. In AAAI Conference on Artificial Intelligence, 2019.
+396     URL https://api.semanticscholar.org/CorpusID:208290939.
+397
+      Christopher Clark, Kenton Lee, Ming-Wei Chang, Tom Kwiatkowski, Michael Collins, and
+398     Kristina Toutanova. Boolq: Exploring the surprising difficulty of natural yes/no questions.
+399     ArXiv, abs/1905.10044, 2019. URL https://api.semanticscholar.org/CorpusID:
+400     165163607.
+401
+402   Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and
+403
+        Oyvind Tafjord. Think you have solved question answering? try arc, the ai2 reasoning challenge.
+        ArXiv, abs/1803.05457, 2018. URL https://api.semanticscholar.org/CorpusID:
+404
+        3922816.
+405
+406   Gongfan Fang, Hongxu Yin, Saurav Muralidharan, Greg Heinrich, Jeff Pool, Jan Kautz, Pavlo
+407     Molchanov, and Xinchao Wang. Maskllm: Learnable semi-structured sparsity for large language
+408     models. ArXiv, abs/2409.17481, 2024. URL https://api.semanticscholar.org/
+409     CorpusID:272910976.
+410
+      Elias Frantar and Dan Alistarh. Sparsegpt: Massive language models can be accurately pruned in
+411     one-shot. ArXiv, abs/2301.00774, 2023. URL https://api.semanticscholar.org/
+412     CorpusID:255372747.
+413
+414   Song Han, Jeff Pool, John Tran, and William J. Dally. Learning both weights and connections
+415     for efficient neural network. In Neural Information Processing Systems, 2015. URL https:
+416
+        //api.semanticscholar.org/CorpusID:2238772.
+417   Babak Hassibi and David G. Stork. Second order derivatives for network pruning: Optimal brain
+418     surgeon. In Advances in Neural Information Processing Systems, 1993.
+419
+420   Weiyu Huang, Guohao Jian, Yuezhou Hu, Jun Zhu, and Jianfei Chen. Pruning large language models
+421
+       with semi-structural adaptive sparse training. In AAAI Conference on Artificial Intelligence, 2024.
+       URL https://api.semanticscholar.org/CorpusID:271544038.
+422
+423   Weiyu Huang, Yuezhou Hu, Jun Zhu, and Jianfei Chen. Cast: Continuous and differentiable semi-
+424    structured sparsity-aware training for large language models. ArXiv, abs/2509.25996, 2025. URL
+425    https://api.semanticscholar.org/CorpusID:281682355.
+426
+      M.F. Hutchinson. A stochastic estimator of the trace of the influence matrix for laplacian smoothing
+427
+       splines. Communications in Statistics - Simulation and Computation, 19(2):433–450, 1990. doi: 10.
+428
+       1080/03610919008812866. URL https://doi.org/10.1080/03610919008812866.
+429
+430   Guokun Lai, Qizhe Xie, Hanxiao Liu, Yiming Yang, and Eduard H. Hovy. Race: Large-scale
+431     reading comprehension dataset from examinations. ArXiv, abs/1704.04683, 2017. URL https:
+       //api.semanticscholar.org/CorpusID:6826032.
+
+
+                                                       8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      Yann LeCun, John S. Denker, and Sara A. Solla. Optimal brain damage. In Advances in Neural
+433     Information Processing Systems, 1990.
+434
+435   Kwanhee Lee, Hyeondo Jang, Dongyeop Lee, Dan Alistarh, and Namhoon Lee. The unseen frontier:
+436    Pushing the limits of llm sparsity with surrogate-free admm. In International Conference on
+437    Learning Representations, 2026.
+438
+439   Hongyi Liu, Rajarshi Saha, Zhen Jia, Youngsuk Park, Jiaji Huang, Shoham Sabach, Yu-Xiang Wang,
+440     and George Karypis. Proxsparse: Regularized learning of semi-structured sparsity masks for
+441     pretrained llms. In Proceedings of the 42nd International Conference on Machine Learning, 2025.
+442
+443
+      Xiang Meng, Kayhan Behdin, Haoyue Wang, and Rahul Mazumder. Alps: Improved optimization
+        for highly sparse one-shot pruning for large language models. In Advances in Neural Information
+444
+        Processing Systems, 2024.
+445
+446
+      Todor Mihaylov, Peter Clark, Tushar Khot, and Ashish Sabharwal. Can a suit of armor conduct
+447     electricity? a new dataset for open book question answering. In Conference on Empirical Methods
+448     in Natural Language Processing, 2018. URL https://api.semanticscholar.org/
+449     CorpusID:52183757.
+450
+451   NVIDIA. Nvidia ampere architecture in-depth. https://developer.nvidia.com/blog/
+452    nvidia-ampere-architecture-in-depth/, 2020. Accessed: 2026-04-30.
+453
+454   Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi. Winogrande. Commu-
+455     nications of the ACM, 64:99 – 106, 2019. URL https://api.semanticscholar.org/
+456
+        CorpusID:198893658.
+457
+      Sidak Pal Singh and Dan Alistarh. Woodfisher: Efficient second-order approximations for model
+458
+        compression. ArXiv, abs/2004.14340, 2020. URL https://api.semanticscholar.org/
+459
+        CorpusID:216641895.
+460
+461   Mingjie Sun, Zhuang Liu, Anna Bair, and J. Zico Kolter. A simple and effective pruning ap-
+462    proach for large language models. ArXiv, abs/2306.11695, 2023. URL https://api.
+463    semanticscholar.org/CorpusID:259203115.
+464
+465   Hugo Touvron, Louis Martin, Kevin R. Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei,
+466     Niko lay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, Daniel M. Bikel, Lukas
+467     Blecher, Cristian Canton Ferrer, Moya Chen, Guillem Cucurull, David Esiobu, Jude Fernandes,
+468    Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami, Naman Goyal, Anthony S.
+469
+        Hartshorn, Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor Kerkez, Madian Khabsa,
+        Isabel M. Kloumann, Artem Korenev, Punit Singh Koura, Marie-Anne Lachaux, Thibaut Lavril,
+470
+       Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning Mao, Xavier Martinet, Todor Mihaylov, Pushkar
+471
+        Mishra, Igor Molybog, Yixin Nie, Andrew Poulton, Jeremy Reizenstein, Rashi Rungta, Kalyan
+472     Saladi, Alan Schelten, Ruan Silva, Eric Michael Smith, R. Subramanian, Xia Tan, Binh Tang, Ross
+473    Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zhengxu Yan, Iliyan Zarov, Yuchen Zhang,
+474    Angela Fan, Melissa Hall Melanie Kambadur, Sharan Narang, Aur’elien Rodriguez, Robert Stojnic,
+475     Sergey Edunov, and Thomas Scialom. Llama 2: Open foundation and fine-tuned chat models.
+476    ArXiv, abs/2307.09288, 2023. URL https://api.semanticscholar.org/CorpusID:
+477     259950998.
+478
+479   Alex Wang, Yada Pruksachatkun, Nikita Nangia, Amanpreet Singh, Julian Michael, Felix Hill, Omer
+480     Levy, and Samuel R. Bowman. Superglue: A stickier benchmark for general-purpose language un-
+481
+        derstanding systems. ArXiv, abs/1905.00537, 2019. URL https://api.semanticscholar.
+        org/CorpusID:143424870.
+482
+483
+      Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. Hellaswag: Can a machine
+484     really finish your sentence? In Annual Meeting of the Association for Computational Linguistics,
+485     2019. URL https://api.semanticscholar.org/CorpusID:159041722.
+
+
+                                                      9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      A     S TATISTICAL A PPENDIX : AVG -9 U NCERTAINTY AND R ECOVERY
+487
+488
+            C OMPRESSION
+489
+490   A.1   S AMPLING UNCERTAINTY OF THE ARCHIVED S PARSE F ORGE VS . AST MARGIN
+491
+492   We quantify the uncertainty of the archived comparison SparseForge − AST (Avg-9, Table 1)
+493
+      using only the registered same-harness per-task accuracies of cast9_dense_ast_current_
+      harness.csv and the standard lm-eval dev-set sizes nk of the nine tasks (BoolQ, RTE, HellaSwag,
+494
+      WinoGrande, ARC-E, ARC-C, OBQA, RACE, PIQA), which Table 3 lists task by task.
+495
+496
+497   Leave-one-out (LOO-9). The full nine-task margin is ∆Avg−9 = +0.528 pp. Table 3 reports,
+                                                                                          (k)
+498   for each of the nine tasks dropped one at a time, the remaining eight-task margin, ∆Avg−8 , and its
+499                     (k)
+      deviation δk = ∆Avg−8 − ∆Avg−9 from the full mean.
+500
+501
+      Table 3: Leave-one-task-out sensitivity of the Avg-9 margin. nk is the standard lm-eval dev-set
+502
+      size that enters the binomial standard errors. Dropping the smallest task (OpenBookQA, n=500)
+503
+      reverses the sign of the remaining eight-task margin to −0.056 pp; dropping ARC-Challenge or
+504   BoolQ collapses it to ≈0.05–0.10 pp; only dropping the AST-side RTE deficit (RTE = SparseForge
+505   49.82 vs. AST 65.34) inflates the margin to +2.535 pp (δ=+2.006). The archived +0.528 pp margin
+506   is not robust to single-task removal.
+507                     Dropped task         nk    k-drop Avg-8 margin (pp)   δk vs full (pp)
+508
+                        OpenBookQA          500              −0.056              −0.584
+509
+                        ARC-Challenge     1,172              +0.050              −0.478
+510                     BoolQ             3,270              +0.097              −0.431
+511                     ARC-Easy          2,376              +0.215              −0.313
+512                     RACE              1,045              +0.247              −0.281
+513                     WinoGrande        1,267              +0.387              −0.141
+                        HellaSwag        10,042              +0.602              +0.074
+514
+                        PIQA              1,838              +0.676              +0.148
+515                     RTE                 277              +2.535              +2.006
+516
+517
+518   Avg-9 sampling error. Treating each checkpoint as fixed and each P       task accuracy as binomial,
+519                                                                         √
+      the sampling SE of an unweighted nine-task mean is SE = (1/9)              k pk (1 − pk )/nk , giving
+520   SESF = 0.52 pp and SEAST = 0.51 pp per checkpoint. The resulting difference SE and the z and
+521   two-sided p of the archived margin are the aggregate row of Table 4: the observed margin lies inside
+522   sampling noise.
+523
+524
+      Per-task tests. McNemar omitted: per-item logs are not available in the registered artifacts.
+525
+      Exact per-example McNemar would require the discordant-pair counts b = #(SF right, AST wrong)
+526   and c = #(SF wrong, AST right) per task; these are provably unidentifiable from the registered
+527   aggregate CSV, which records only the marginal correct counts (SF_correct= a + b, AST_correct=
+528   a + c; only b − c is fixed, and infinitely many (a, b, c, d) decompositions meet both margins). Per-
+529   item predictions for these nine tasks are not available in the registered artifacts. The strongest test
+530   computable from the registered data is therefore the unpaired normal-approximation z-test on the
+531   difference of two independent binomial proportions (equal n in both arms). Table 4 collects every
+532   test statistic that the registered data support. At the uncorrected 5% level, four tasks are significant
+533   (BoolQ, RTE, ARC-Easy, ARC-Challenge); under Holm correction across nine tasks, only BoolQ
+534
+      and RTE remain significant.
+535
+536   Boundary. A per-example paired (McNemar) analysis would be the decisive tighter test, but
+537   it requires per-item predictions that are not in the registered set in the registered artifacts; it is
+538   gated on a future registered run producing per-item inference outputs, and is not computable
+539   from the aggregate CSV. This boundary is stated verbatim in the machine-readable delivery
+      (stat_delivery_v2.json).
+
+
+                                                        10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      Table 4: Significance tests computable from the registered aggregate CSV; ∆ is SparseForge − AST.
+541
+      All per-task rows use the same unpooled two-proportion z convention (equal n in both arms); SE
+542   is the sampling SE of the accuracy difference. No per-item logs exist, so none of these is a paired
+543   test. Under the uncorrected 5% convention four task-level pairs reach significance (BoolQ, RTE,
+544   ARC-Easy, ARC-Challenge); under Holm correction across the nine tasks only BoolQ and RTE
+545   do. The pooled count-level row and the Avg-9 row are reported as in the earlier revision. The final
+546   column reports uncorrected/Holm significance.
+547            Comparison (test)                       ∆     SE        z           p   pHolm Sig. raw/Holm
+548
+               BoolQ                               +3.97   1.05   +3.79 0.0002 0.0013            yes/yes
+549            RTE                                −15.52   4.20   −3.70 0.0002 0.0015            yes/yes
+550            HellaSwag                           −0.06   0.70   −0.08 0.932 1.0000              no/no
+551            WinoGrande                          +1.66   1.84   +0.90 0.367 1.0000              no/no
+552            ARC-Easy                            +3.03   1.26   +2.41 0.016 0.1118             yes/no
+               ARC-Challenge                       +4.35   2.04   +2.14 0.033 0.1948             yes/no
+553
+               OpenBookQA                          +5.20   2.97   +1.75 0.079 0.3948              no/no
+554            RACE                                +2.78   2.15   +1.29 0.196 0.7825              no/no
+555            PIQA                                −0.66   1.40   −0.47 0.640 1.0000              no/no
+556            Nine tasks (pooled count z)        +1.23 0.47 +2.63          0.008          –          –
+557            Nine tasks (6/9 wins, exact sign)     —    —     —           0.508          –          –
+558            AVG-9 margin (checkpoint z)       +0.528 0.73 +0.72           0.47          –          –
+559
+560   A.2    R ECOVERY COMPRESSES THE CROSS - SUPPORT SPREAD BELOW THE SAMPLING - NOISE
+561          SCALE
+562
+563
+      Table 5 reports native and identical 625M-token joint weight+SLoRB recovery results from
+      trainingfree_lowtraining_detailed_ast7.csv. The post-recovery range R(T ) =
+564
+      0.118 pp is far below the 0.52 pp per-checkpoint binomial-SE sampling-noise scale3 . Its joint uncer-
+565
+      tainty is unidentified from the registered aggregates, so we do not quote a compression ratio.
+566
+567   Table 5: Recovery compresses the cross-support range from 2.675 pp to 0.118 pp, far below the
+568   0.52 pp per-checkpoint binomial-SE sampling-noise scale (§A.1). This is a descriptive marginal-scale
+569   comparison; the aggregates do not identify paired or joint uncertainty. The weaker native supports
+570   gain most and the ALPS↔ProxSparse rank flips.
+571                    Support        native AVG-9 (0 tok)      recovered AVG-9 (625M)         gain
+572                    ALPS                   52.12                        55.82               +3.70
+573                    ELSA-4096              54.59                        55.94               +1.34
+574                    ProxSparse             51.92                        55.91               +3.99
+575                    range                  2.675                        0.118
+576
+577
+      Conjecture (C1): annealed-support signal survives compression only via an asymptotic intercept.
+578
+      The following is a conjectured regime statement, not a proved theorem: it is displayed because an
+579   external soundness review exhibited an explicit counterexample to the corresponding unconditioned
+580   claim (one can place the observed range R(T ) into the recovery-invariant subspace while keeping
+581   the transients active, so the “iff” fails at finite T ), andno stronger bounded-T claim is made in this
+582   revision. We state the conjectured repair so the reader sees our best current mechanism explanation
+583   and the assumptions that would have to hold for it to be adequate. Let As (0) and As (T ) be the
+584   AVG-9 of support s before and after T recovery tokens, and let ϕs = limT →∞ As (T ) be the
+585   recovery attractor; assume the   intercepts exist (conjectured regime, not established). Suppose
+586   As (T ) = ϕs + As (0) − ϕs gs (T ) with gs (T ) → 0 in a recovery-dominated regime (T large
+587   enough that the transient term is uniformly dominated). Then the cross-support range R(T ) =
+588
+      maxs As (T ) − mins As (T ) converges to limT →∞ R(T ) = maxs ϕs − mins ϕs . If the supports
+      share one attractor (ϕs = ϕs′ for all s, s′ ), then for any T with gs (T ) ≈ gs′ (T ) the native signal is
+589
+      erased: As (T ) − As′ (T ) ≈ 0 up to recovery noise, and rank orders that depend only on the transient
+590
+      As (0) − ϕs are not recoverable. Under the conjectured regime above (regime rate condition: the
+591
+592       3
+            The 0.52 pp term is the per-checkpoint AVG-9 binomial-SE; pairwise and joint (max-min) uncertainty
+593   involve covariance and selection effects not captured by a single marginal SE, and require per-item predictions
+      not contained in the registered aggregate CSVs
+
+
+                                                           11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      transient gs (T ) contribution is dominated by the intercept contribution to R(T )) we conjecture that
+595   a support/mask signal survives recovery-compression iff it is carried by an asymptotic intercept
+596   ϕs − ϕs′ ̸= 0 that (i) is monotone under the recovery-preserving transformation and (ii) is not
+597   absorbed into a shared fixed point, i.e. the advantage lies in the recovery-invariant subspace. The
+598   two-line calculation that R(T ) → maxs ϕs − mins ϕs is the only step we can justify in this revision.
+599   The existence and joint uncertainty of distinct intercepts relative to the 0.52 pp per-checkpoint
+600   binomial-SE sampling-noise scale, and the recovery-invariant-subspace statement, remain open.
+601
+602   Implication (descriptive). SparseForge’s +0.53 pp over AST uses 5B recovery tokens, an 8×
+603   larger budget than the 625M rows in Table 5, where the cross-support range is far below the 0.52 pp
+604   binomial-SE sampling-noise scale. Because the conjectured regime conditions and paired/joint
+605
+      uncertainty are unverified, we draw no conclusion beyond budget confounding. No registered
+      experiment measures SparseForge’s own support at 625M (the resolving row), so the +0.53 pp claim
+606
+      remains budget-confounded and is not yet attributable to the mask mechanism.
+607
+608
+609   B       ELSA F IXED -S UPPORT L ONG -B UDGET FAILURE M ODE
+610
+611   Figure 3 shows that the longer-budget ELSA-support curve improves, then destabilizes, then diverges;
+612   its caption carries the registered per-step values. This is the only on-disk experiment with complete
+613   per-run raw artifacts; its divergence (not a mechanism-level failure of ELSA as a method) is why
+614
+      Sec. 6 frames the failure as “the longer-budget recipe requires redesign, not that ELSA generally
+      fails.”
+615
+616                                                          Long-budget recovery with a fixed ELSA-derived 2:4 support
+617                                                      ELSA support + fixed-mask healing
+618                                                      post-finalization begins
+                                                         best measured PPL = 7.15
+619
+
+
+
+
+           WikiText-2 perplexity (log scale)
+620                                            103
+621
+622
+623
+624
+625                                            102
+626
+627
+                                                                  best: 7.15
+628                                                               (0.10B tokens)
+629
+630                                            101
+631
+632                                                  0                    1                 2               3           4   5
+633
+                                                                                   Nominal recovery tokens (billions)
+634
+      Figure 3: Registered recovery trajectory of the fixed ELSA support on the 5B-token S PARSE F ORGE
+635   recovery stream: PPL drops from 8.99 (step 0) to a minimum of 7.15 (step 100), destabilizes step
+636   300 → 500, and diverges past step 1000 (2930 at step 500, 4083 at step 4600). Raw per-step values
+637   are included in the anonymous artifact.
+638
+639
+640   C       I MPLEMENTATION D ETAILS AND A RTIFACT S TATEMENT
+641
+642   This appendix is the executable specification of the learned-mask path at the frozen code commit
+643
+      520170b9. It separates that algorithm from the archived fixed-support recovery launchers: the latter
+      set change_mask=False, so their mask, temperature, structural-mixing, and hardening schedules
+644
+      are inactive. Table 6 collects the operating constants of those reported recovery arms; the paragraphs
+645
+      after the table specify the active learned-mask algorithm and its export boundary.
+646
+647
+
+
+
+                                                                                              12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+      Table 6: Hyperparameters and protocol constants of the reported SparseForge recovery arms. “625M”
+649
+      rows are the three fixed-support recovery endpoints; “5B” is the single archived configuration used as
+650   supporting context. A dash marks a quantity not fixed by the archived run protocol. Unspanned rows
+651   give the two arms separately in the two value columns; a value spanning both columns applies to the
+652   625M recovery arm and the 5B strong configuration alike.
+653      Quantity                         625M recovery rows       5B strong configuration
+654
+         Optimizer                        custom AdamW            custom AdamW
+655
+         Adam betas                                                  β1 =0.9, β2 =0.95
+656      Fused optimizer kernel           no                      no
+657      Base random seed                 0                       0
+658      Sequence length                  2048                    4096
+659      Global batch size (seq)          256                     256
+         Micro batch size                 1                       8
+660
+         Total steps                      1192                    4768 (= 4053+715)
+661      Peak step size                   2 × 10−5                1 × 10−4
+                                                 −6
+662      Final step size                  2 × 10                  1 × 10−5
+663      Step-decay schedule              cosine                  cosine
+664      Warmup steps                     50                      477
+665
+         Step-weight decay                0                       0.1
+         λKL : λtask                                                   1:1 (CE + KL)
+666      KL teacher                                       the pre-finetune dense checkpoint itself
+667      Distillation temperature         2.0                     code default4
+668      Mask-temperature T (initial)     0.7 (launcher record) 1.0 (code default; manifest records no override5 )
+669      SLoRB rank / init                                              16 / zero-init
+670      Hardening start (step)           inactive                2861
+671
+         Hardening duration (steps)       inactive                1192
+         Mask-switch step                 477                     477
+672      Post-finalization finetune       disabled                715
+673      Transformers                                                     4.57.6
+674      lm-eval-harness                                                  ≥ 0.4.0
+675
+676
+677
+678   C.1    E XECUTABLE ALTERNATING WEIGHT / MASK ALGORITHM
+679
+680
+      For every sparse linear layer ℓ, let Wℓ , mℓ , Hℓ ∈ Rdout ×din , with din divisible by M = 4.
+      The code views each row as din /4 consecutive groups, hence grouped tensors have shape
+681
+      dout × (din /4) × 4, and retains N = 2 indices in the final hard mask. The SLoRB forward
+682
+      branch is Bℓ Pℓ , implemented as two linear maps after the masked base-weight map; Pℓ is fixed
+683   unless trainable_projection=True.
+684
+      Algorithm 1: alternating weight and mask tracks.
+685
+               Input: training batches; Wℓ ; continuous masks mℓ ∈ [0, 1]dout ×din ; SLoRB factors
+686            (Bℓ , Pℓ ); update period K; and schedules below.
+687
+                    1. For optimizer step t and each gradient-accumulation micro-step, compute each sparse-
+688                    linear output with meff,ℓ and the SLoRB add-on, then form Ltrain = λtask CE +
+689                    λKL KL (both coefficients are 1 in the reported distillation recipe).
+690                 2. On the last micro-step only, if enable_hutchinson=True, draw one independent
+691                    Rademacher tensor per Wℓ and update Hℓ by the double-backward rule in the next
+692                    subsection. The differentiated parameter list contains the sparse base weights Wℓ only,
+693
+                       not masks or SLoRB factors.
+694
+                    3. Back-propagate the accumulated loss and take one AdamW weight-track step on the
+                       trainable parameters. The mask is a non-autograd parameter and is not changed by
+695                    this optimizer step.
+696
+697      5
+            The portable 625M launcher pins a distillation temperature of 2.0. The archived 5B launch manifest does
+698
+      not record a temperature override, so the trainer’s code default applies. We report this distinction explicitly
+699   rather than silently substitute one default for the other. The frozen LLaMA path imports the repository-local
+700   legacy/adamw.py; it does not pass a fused flag or dispatch to PyTorch’s fused AdamW kernel.
+          5
+701         The archived 5B launch manifest records no mask-temperature override, so the trainer’s code default 1.0
+      applies on the 5B side; the 0.7 record in the portable 625M launcher is reported literally to its left.
+
+
+                                                              13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702   Algorithm 1 (continued): mask track and finalization.
+703              4. If t is before sparsity_warmup_steps, or t mod K ̸= 0, skip the mask track.
+704                 Otherwise, using the post-optimizer Wℓ , compute the standardized Hessian–OBD
+705
+                    scores, groupwise gate and exact top-2 target, structural mixture, 2:4 penalty pull, and
+                    mask EMA specified below. Update the stored hardening coefficient hx on this same
+706                 mask update.
+707              5. After the final step, construct the hard top-2 mask, apply the implemented state-dict
+708                 finalization, run the exact support assertion below (per-group sum = 2; specified as
+709                 the required export unit check but not wired into the frozen validator, Appendix C),
+710                 and save the checkpoint. The distinct SLoRB-fold/re-projection operation is not
+711
+                    implemented by this finalizer and is therefore a separate future export measurement,
+                    not an executed line of Algorithm 1.
+712
+713
+714
+      C.2   H UTCHINSON DIAGONAL ON THE TRAINING LOSS
+715
+716   On the last micro-step of every enabled optimizer update, the implementation passes the (gradient-
+717   accumulation-scaled) training loss to update_hessian_hutchinson. Terms depending only
+718   on the detached mask do not alter its derivatives with respect to W . For every sparse base weight and
+719   one fresh probe vℓ ∼ Rad({−1, +1})Wℓ , it computes
+720
+                                                X
+                   gℓ = ∇Wℓ Ltrain ,       u=       ⟨gℓ , vℓ ⟩,   Hb ℓ = max(0, ∇W u ⊙ vℓ ) .
+                                                                                     ℓ
+                                                                                                          (7)
+721
+                                                    ℓ
+722
+723
+      The first torch.autograd.grad uses create_graph=True; the second differentiates u
+      with respect to the same W -only list. Thus this is one Hutchinson sample per enabled update, not one
+724
+725
+      sample per mask update and not an average over accumulation micro-steps. In DDP, H     b ℓ is all-reduced
+726   and divided by the world size before the EMA Hℓ ← 0.99Hℓ + 0.01H        b ℓ ; 0.99 is cfg.beta. The
+727
+      frozen FSDP branch instead updates local shards without that DDP all-reduce, a distinction required
+      to reproduce the code exactly.
+728
+729
+730   C.3   S CORE , GATE , SCHEDULES , AND MASK RECURRENCE
+731
+      The hessian_obd metric forms Sℓraw = (Hℓ + 10−8 ) ⊙ Wℓ2 and standardizes it over the complete
+732
+      layer,
+733                                         S raw − µ(Sℓraw )
+734                                   Sℓ = ℓ raw              .                                 (8)
+                                           std(Sℓ ) + 10−6
+735
+736   After reshaping to dout × (din /4) × 4, let Ig be the two indices returned by torch.topk and
+737   let Ḡg be zeros with ones scattered at Ig . In the soft structured path, the implemented threshold
+738   is the second-largest score τg = Sg,(2) (not the midpoint of the second- and third-largest scores),
+739   and Gsoft
+             g   = σ((Sg − τg )/(T + 10−8 )). If structured_exact=True, the code bypasses this
+740   sigmoid and returns Ḡg directly.
+741
+      With K = mask_update_period = 10, the default temperature schedule is
+742                                                         
+743                         T (t) = max 0.05, 1.0 × 0.97⌊t/K⌋ ,                                                (9)
+744
+745
+      corresponding to temp_init=1.0, temp_min=0.05, and temp_decay=0.97. Mask updates
+      occur only when t ≥ sparsity_warmup_steps and t mod K = 0. For configured structural
+746
+      endpoints ts < te , set q = clip((t − ts )/(te − ts ), 0, 1) and β(t) = 3q 2 − 2q 3 ; then Gβ =
+747
+      (1 − β)Gsoft + β Ḡ. A disabled interval (te ≤ ts ) yields β = 0.
+748
+749   For mask_penalty_mode=nm_2_4, the code takes another per-group top-2 target Ḡm from the
+750   current gate ordering and applies the no-grad pull
+                            G′ = clip[0,1] Gβ − (pen_scale λmid )(m − Ḡm ) ,
+                                                                           
+751
+752                                                                                       (10)
+                             m ← (1 − a)m + aG′ ,        a = mask_lr = 0.10.
+753
+754   Here pen_scale is mask_penalty_lr, falling back to mask_lr when unset; in the non-block
+755   modes λmid ramps linearly from zero to its configured maximum over the first 500 optimizer steps
+      and then remains constant.
+
+
+                                                           14
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+756
+      For hardening start th and duration D, the stored coefficient is hx = 1 before th , hx = 1−(t−th )/D
+757   on the interval, and hx = 0 at and after th + D (clipped to [0, 1] and refreshed on mask-update steps).
+758   The forward pass uses
+759
+                                          meff = hx m + (1 − hx )Ḡm .                                  (11)
+760
+761   If CAST-style weight_scaling is enabled, its 2:4 target factor is M/N = 2 and the actually
+762   applied factor is c(hx ) = 1 + (1 − hx )(2 − 1); it therefore anneals from 1 to 2 with the same hx .
+763   The reported fixed-support launcher disables this option.
+764
+765   C.4   T IE RULE AND EXACT-2:4 VALIDATION
+766
+767   Every structured selection uses the indices returned by torch.topk(..., largest=True)
+768   and creates the binary target by scatter_. This guarantees two written ones per group for a returned
+769   index tuple, including the structured_exact path, but the frozen code adds no deterministic
+770   secondary key. PyTorch/CUDA does not expose a stable mathematical ordering for equal scores, so
+771   tied groups have an underspecified support: the kernel’s returned indices decide the survivors, and a
+772   unique cross-device tie rule is not guaranteed.
+773   The required export unit assertion is therefore the groupwise, not merely global, check
+774
+775   assert torch.all(hard.view(d_out,d_in//4,4).sum(-1) == 2)
+776
+777   At the frozen commit, legacy/check_sparsity.py:57-121,137-181 checks bi-
+778   nary/global mask sparsity and mask–weight zero overlap, but contains no group-sum-= 2 assertion.
+779   It cannot honestly be cited as that exact unit test until the assertion above is added to the export
+780
+      validator. During training, nm_2_4_tile_stats (legacy/utils.py:1029-1234) reports
+      top-2/bottom-2 mask means and soft–hard gaps; these are useful trajectory diagnostics but do not
+781
+      replace the exact export assertion.
+782
+783
+784   C.5   F INALIZATION , SL O RB FOLD BOUNDARY, AND EXT-M3
+785
+786
+      The algebraic fold needed to remove the inference branch would first form Wℓfold = Wℓ + Bℓ Pℓ
+787   and then re-project Wℓexport = Π2:4 (Wℓfold ). The frozen main_llama.py finalizer does less:
+788
+      it recomputes a hard mask from the soft mask, writes that mask to the state dict, replaces Wℓ by
+      Wℓ ⊙ Ḡℓ , and saves model.pt. It does not add Bℓ Pℓ into Wℓ in this path. Consequently, neither
+789
+      the fold-then-2:4 re-projection delta nor pre/post-export WikiText-2 PPL, AVG-9, or support-change
+790
+      has been measured. We register those four checks as future measurement EXT-M3; no deployment-
+791   equivalence claim is inferred from the training checkpoint.
+792
+793
+794   C.6   O PTIMIZER AND SOFTWARE ENVIRONMENT
+795
+      The frozen LLaMA path uses the repository-local AdamW implementation with β1 = 0.9, β2 = 0.95,
+796
+      weight decay 0.1 on matrix parameters and zero decay on lower-dimensional parameters. The
+797
+      archived launch manifest pins base seed 0; DDP adds the rank to that seed. This optimizer is
+798   Python/tensor AdamW rather than a fused optimizer kernel. The committed environment contract pins
+799   transformers==4.57.6 and requires lm_eval>=0.4.0; the latter is a lower bound rather
+800   than an exact version, so a bitwise reproduction must additionally record the resolved environment.
+801
+      Artifact statement. The training entry point is the repository’s legacy main_llama.py; fixed-
+802
+      support launchers are included in the anonymous artifact. Evaluation uses lm-evaluation-harness
+803
+      in the local wrapper eval_native_checkpoint_shard.py. The recovery corpus of the
+804   archived 5B checkpoint is not named in this paper: that corpus is recorded in a training manifest
+805   (args.json) archived with the checkpoint on an archive host unreachable from this workspace
+806   since 2026-08-16, so the identity of the archived recovery corpus cannot be verified from available
+807   materials. The modern matched-budget controls under preparation (Appendix A, Table 1 caption) use
+808   the locally tokenized Dolmino-mix-1124 stream instead. The identifying repository URL is replaced
+809   for double-blind review by the anonymized mirror https://anonymous.4open.science/
+      r/SparseForge-Anonymous/.
+
+
+                                                       15
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+810
+      C.7    A RCHIVED - CHECKPOINT UNREACHABILITY DISCLOSURE
+811
+812   The 5B headline checkpoint, its training manifest (args.json), and its recovery-corpus tokeniza-
+813   tion live on an archive host that is unreachable from this workspace; independent re-scans of local
+814   storage returned no copy. Consequently: (i) the archived recovery corpus is not named anywhere in
+815   this paper — earlier revisions’ conflicting attributions (a Dolmino-style mix in the setup paragraph;
+816   a QA-format SFT configuration in the artifact statement) cannot be disambiguated from available
+817   materials and have been withdrawn; (ii) fold/re-projection would require the archived branch param-
+818
+      eters and is registered as future measurement (EXT-M3); and (iii) every reported S PARSE F ORGE
+      number in this paper remains a branch-active training-state measurement whose corpus provenance
+819
+      and export correspondence are unresolved. We disclose, and the record does not allow us to resolve
+820
+      either dependency from the materials at hand.
+821
+822
+823   D     A RCHIVED C ROSS -FAMILY E VIDENCE
+824
+825
+      Table 7 preserves archived single-run block-16 results as model-family breadth evidence only.
+826   Table 7: Archived single-run block-16 mean accuracy. A registered-pack grep found no headline-
+827   value hits, so the unrecoverable seven-task suite is not named. All rows are English-only; the
+828   axis is model family, not language. Diff is sparse minus dense. Transfer is broadly consistent but
+829   architecture-dependent, with Qwen3-1.7B the largest degradation; these are breadth records, not a
+830   controlled cross-family claim.
+831                                Model                   Dense     Sparse          Diff
+832                                LLaMA-2-7B               59.70     59.02     −0.68
+833                                OPT-2.7B                 47.76     47.93     +0.17
+834                                GPT-2                    37.13     37.58     +0.45
+835                                GPT-2-Medium             41.01     39.45     −1.56
+                                   GPT-2-Large              42.65     41.87     −0.81
+836
+                                   GPT-2-XL                 45.49     45.14     −0.35
+837                                Qwen3-1.7B               56.47     53.49     −2.98
+838                                DeepSeek-MoE-16B         59.54     58.20     −1.34
+839
+840
+841   E     H ISTORICAL T RAINING -RUN VARIABILITY
+842
+843   Table 8 preserves author-confirmed three-run aggregates; missing run mappings and different legacy
+844   suites make the rows mutually and currently incomparable.
+845   Table 8: Historical three-run aggregates (mean ± sample SD). Corpus labels are unverified contem-
+846   poraneous records; because the rows use different legacy suites, neither is comparable with the other
+847   or the current harness.
+848                          Setting        Legacy suite          Accuracy           Wiki PPL
+849
+                             5B Dolmino     CAST-7           57.27 ± 0.09      6.22 ± 0.04
+850                          1.25B C4       AST-7            57.23 ± 0.13      6.38 ± 0.03
+851
+852
+853   F     BASELINE D ISPERSION
+854
+855   Table 9 reports sample SDs from three independent baseline seeds where available (accuracy to two
+856   decimals, PPL to four); Table 1 gives the means.
+857
+      Table 9: Three-seed sample SD under the unified harness. Aggregate SD appears only for paired
+858
+      per-seed aggregates; a dash means it is not inferred from marginal task statistics.
+859
+      Method               BQ RTE Hella. Wino. ARC-e ARC-c OBQA RACE PIQA AVG-9                                 PPL
+860
+861   Wanda                0.14   0.36   0.12   0.08       0.49     0.48      0.31      0.15    0.26   0.13   0.0525
+      SparseGPT            1.29   1.65   0.09   0.72       0.86     0.26      0.92      0.19    0.25   0.36   0.0103
+862
+      ALPS                 1.34   0.36   0.18   0.28       0.68     0.85      0.70      0.64    0.24      –   0.0896
+863   ELSA (4,096 steps)   1.06   2.54   0.06   0.83       0.56     0.53      0.64      1.23    0.17      –   0.0168
+
+
+                                                           16
+

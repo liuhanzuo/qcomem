@@ -1,0 +1,38 @@
+\begin{table}[t]
+\caption{Capacity--latency--quality trade-off from a separate execution on the
+eight-item Qasper/2WikiMQA slice (source indices 6--9 of each dataset): a subset
+of the 60-item cohort's \emph{items} but not of its protocol, since every arm is
+capped at 32 generated tokens, a quarter of the Qasper budget the 60-item panels
+use --- which is why this panel's F1 sits near 39 where theirs sits near 54.
+The two are never pooled.  All rows use Qwen3.5-35B-A3B revision
+\texttt{59d61f3}, PyTorch~2.11.0+cu129, Transformers~5.14.1, CUDA~12.9, one
+H20-3e per item, a 4,096-token cap, greedy decoding, and three timing repeats.}
+\label{tab:qcomem-tradeoff}
+\centering\scriptsize
+\setlength{\tabcolsep}{3.0pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\multicolumn{7}{@{}l}{\emph{Dataset: Qasper (4 items) + 2WikiMQA (4 items)}}\\
+Retained state & Store (MiB/doc) & Reduction & TTFT (s) & TPOT (ms) & tok/s & F1 (0--100) \\
+\midrule
+No-cache dense recompute & 0.00 & -- & 0.649 & 648.75 & 1.36 & 39.42 \\
+Full-prefix, native dtype & 140.34 & reference & 0.163 & 54.11 & 13.38 & 39.14 \\
+\qcomem{} split Q8 & 15.89 & 88.68\% & 0.673 & 55.44 & 7.15 & 39.14 \\
+\qcomem{} frozen Q4/Q4/Q8 & 10.01 & 92.87\% & 0.674 & 54.97 & 7.19 & 39.01 \\
+\qcomem{} calibrated per-layer & 9.74 & 93.06\% & 0.673 & 55.07 & 7.19 & 39.11 \\
+\qcomem{} split Q4 & 8.41 & 94.01\% & 0.674 & 55.02 & 7.19 & 36.09 \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+\parbox{0.97\textwidth}{\scriptsize Store, timing, and throughput are medians over the eight documents,
+whereas the 60-item panel reports means over a cohort with $3.8\%$ shorter
+documents, which is why its full-prefix figure is $136.235$ rather than $140.34$
+MiB.  Store is the deduplicated sum of the tensor-storage bytes one retained
+entry owns (Section~\ref{sec:denominators}).  The reference is the entry in
+native dtypes: $42.8\%$ of its $140.34$ MiB is FP32 GDN recurrent state, against
+$30.000$ MiB/document of \emph{excess} over BF16 on the 60-item cohort --- a
+total and an excess, not two readings of one quantity.  Every ``split'' arm
+retains a $j=7$ entry; the calibrated per-layer policy's mean-F1 delta here is
+$-0.022$ against the frozen point's $\approx-0.13$, the opposite order to the
+60-item panel (Section~\ref{sec:quality}).  Recall was measured in no cohort.}
+\end{table}

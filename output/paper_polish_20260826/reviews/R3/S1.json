@@ -1,0 +1,190 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "a70d0593930038db805ed9ae99c770ea52d4f7efec5155f1a4689d3b61482ac7",
+  "role": "experimental_rigor",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "0.118 pp 是三行聚合点估计的可复算算术范围，作者也正确承认缺少联合/配对不确定性；但中心的“同一三个固定 support 前后恢复压缩”叙事没有清楚对齐实验单位：native ALPS/ELSA 是三 seed 均值、ProxSparse 是官方单点，而 recovered 行看起来是单个 seed=0 端点。没有逐 support 的同一初始 checkpoint 映射、恢复重复或 per-item 输出，无法区分真实收敛、训练随机性、回归均值与评测噪声。",
+    "presentation": "论文在诚实披露历史记录缺口方面很强，但16页内容将一个非常有限的描述性范围，与未验证的5B checkpoint、未执行导出、未隔离算法、猜想、旧吞吐记录及大量代码细节混在一起。图1注释小于正文且难读，主贡献与 SparseForge 方法叙事明显失衡。",
+    "contribution": "当前唯一负载贡献是三个归档聚合端点的范围从2.675降到0.118 pp，但既无可辨识的不确定性，也无 matched multi-seed/paired 复验。SparseForge 本身没有有效625M matched endpoint、组件消融或可部署 exact-2:4 导出；5B checkpoint 与语料 manifest 又不可访问。因此尚无足够的新方法或可靠经验知识达到 ICLR 门槛。"
+  },
+  "paper_summary": "论文汇总 LLaMA-2-7B exact-2:4 稀疏化的归档结果。三个命名 support（ALPS、ELSA-4096、ProxSparse）在 native AVG-9 点估计上的范围为2.675个百分点，经过相同625M-token 的 sparse-weight+rank-16 SLoRB 恢复后，三个 recovered AVG-9 点估计范围为0.118个百分点。因为没有保留 per-item 预测、没有恢复训练的多 seed、也无法构造 joint max-minus-min 不确定性，作者把它定位为描述性归档观察而非等价性结论。论文另描述 SparseForge 的曲率/软硬 mask/SLoRB 流程，但这些组件未在匹配预算下隔离；5B checkpoint 保持 SLoRB 分支活跃、没有 fold/reprojection 导出，checkpoint 与恢复语料 manifest 均不可访问。与 AST 的+0.53 pp聚合差在采样噪声内且任务级高度混合，RTE 还存在历史日志冲突。",
+  "strongest_verified_contribution": "最可信的贡献不是算法优势，而是一个负面的测量审计：第5、10–11页明确说明0.52 pp只是单 checkpoint 的边际二项 SE，不能充当三 support 范围的联合分辨率；没有逐 item 配对输出就不能宣称 recovered supports 等价。这一限制陈述是正确且有用的。",
+  "strengths": [
+    "作者没有把0.118 pp小于0.52 pp误写成等价或统计阴性结果，并解释了 paired McNemar/joint range 所需的缺失数据。",
+    "第5–7页完整展示九任务数值与 RTE 异常，不以 AVG-9 掩盖 RTE 的-15.52 pp或早期69.82日志冲突。",
+    "第7、13–16页明确披露5B checkpoint/语料不可访问、SLoRB 分支仍活跃、fold/reprojection 未执行、exact group-sum validator 缺失和版本下界未完全固定。",
+    "附录提供了较详细的训练流程、mask 更新、Hutchinson 估计、tie rule 和环境边界，便于理解归档实现。",
+    "伦理段落主动指出不可核验恢复语料的治理、许可、隐私和计算成本风险。"
+  ],
+  "questions": [
+    "表5的 native ALPS=52.12 与 ELSA=54.59 是三 seed 均值，而 recovered 行是否来自其中某一个确切 support/checkpoint？请给出每个 recovered endpoint 对应的初始 mask SHA、native seed、恢复 seed 和逐一 before/after 数值。",
+    "三个625M recovered 行是否都只用 base seed 0？是否有调度、数据顺序、初始化或 SLoRB 随机性重复？如果没有，如何排除范围压缩只是单次训练噪声或回归均值？",
+    "SLoRB 分支在推理时活跃且 fold/reprojection 未测。三个 support 的差异是否可能主要被共同的稠密低秩分支吸收？去掉、冻结或匹配分支容量后范围如何变化？",
+    "既然5B checkpoint、args.json 和语料均不可访问，表1的 SparseForge 5B 数字和附录代码规范如何证明属于同一 frozen commit/配置，而不是不同历史代的记录？",
+    "RTE 的69.82与49.82冲突仅靠整数分母和与 WinoGrande 的近似推断为单数字损坏。是否存在原始 predictions、harness stdout、checkpoint digest 或 evaluator cache 可确认49.82确为目标 checkpoint？",
+    "为什么保留没有可验证 checkpoint 身份的旧 H800 吞吐与未命名七任务 cross-family 表，而不把论文压缩为可核验的三 support 测量？",
+    "要支持 exact-2:4 部署主张，作者能否完成 SLoRB fold、每组sum=2断言、reprojection 前后 support 变化、PPL/AVG-9 和实际 TensorRT 吞吐的一致 checkpoint 评测？"
+  ],
+  "issues": [
+    {
+      "issue_id": "S1-R3-01",
+      "severity": "critical",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第5页表1与§5.2；第11页表5；第13页表6",
+      "claim_ids": [
+        "cross-support-range-compression"
+      ],
+      "evidence_ids": [
+        "trainingfree_lowtraining_detailed_ast7.csv"
+      ],
+      "observed_evidence": "表1明确称 ALPS 与 ELSA native 行为三 seed 均值，ProxSparse 为 official 单点；表5却把这三个 native 聚合值与三个 recovered 端点并列为“fixed supports”的0-token/625M前后结果。表6只给625M arm 的 base seed 0，PDF 没有逐 recovered 行到某个确切 native mask/checkpoint/seed 的映射。",
+      "why_it_matters": "如果 before 是跨 seed 方法均值，而 after 是单个固定 mask 的恢复结果，那么2.675→0.118不是同一三个实验单位的配对前后变化，中心的“identical recovery compresses fixed-support spread”解释就不成立。即使数字抄录无误，也可能混合方法均值、support 选择和恢复随机性。",
+      "required_fix": "为每个 recovered 行提供同一初始模型、确切 mask/support SHA 和 seed 的 native before 值，再从该 checkpoint 用完全相同恢复协议得到 after；至少跨多个独立恢复 seeds 重复。若无法恢复映射，应删除配对压缩措辞，只报告两组不可配对的历史横截面范围。",
+      "verification_test": "匿名工件中每个 support 都有唯一 before checkpoint/mask digest、after digest、恢复配置和日志；脚本逐 pair 重算范围，且在预注册的多 seed 分层分析中恢复后的范围收缩稳定出现。",
+      "evidence_needed": "逐 support/seed 的 checkpoint 与 mask SHA、before/after per-task predictions、恢复日志和多 seed 重复。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R3-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "第1、5–7、10–11页，摘要、§5.2–5.3、附录A.1–A.2、表3–5",
+      "claim_ids": [
+        "cross-support-range-compression"
+      ],
+      "evidence_ids": [
+        "stat_delivery_v2.json"
+      ],
+      "observed_evidence": "中心结果只有三个 recovered 聚合点，无 per-item predictions、无训练重复、无 joint max-minus-min 区间。0.118 pp 被与单 checkpoint AVG-9 的0.52 pp边际二项 SE 比较；作者承认该 SE 不是 pairwise/joint 界，也拒绝给 compression ratio 或等价结论。",
+      "why_it_matters": "range 是经最大/最小选择后的联合统计量，受评测协方差、任务加权和训练方差共同影响；边际 SE 不能说明0.118是否可分辨或2.675→0.118是否超出随机变化。当前证据只支持算术记录，无法支持恢复使 supports 收敛的经验规律。",
+      "required_fix": "重新评测并保留逐 item 预测，对每个 support/seed 使用相同任务样本；以 seed 为高层单位，用 paired item bootstrap 或层次 bootstrap 估计每个差值和 max-minus-min 范围的联合区间，并预先定义等价/实质收缩标准。",
+      "verification_test": "预注册的多 seed paired 分析表明 after-range 相对 before-range 的收缩区间排除零或达到事前实质门槛，且结论对任务加权、leave-one-task-out 和 multiple comparisons 稳定。",
+      "evidence_needed": "逐 item correctness、逐 seed checkpoint、paired/joint bootstrap 和预设 equivalence/compression estimand。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R3-03",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第1、4–7、13–16页，图1、§4.3、§5.1、限制、附录C.4–C.7",
+      "claim_ids": [
+        "SparseForge-pipeline-context",
+        "exact-2:4-deployment"
+      ],
+      "evidence_ids": [
+        "EXT-M3"
+      ],
+      "observed_evidence": "所有 SparseForge 与625M recovery 数字都在 rank-16 SLoRB 分支活跃时评测；finalizer 不把 BP fold 入 W，也未做 fold 后2:4 reprojection、每组sum=2验证、pre/post quality 或对应 checkpoint 的吞吐。现有 validator 只检查全局稀疏度/重叠。",
+      "why_it_matters": "活跃低秩分支改变推理结构、容量、内存与速度，也可能吸收不同 support 的误差并人为压缩 cross-support spread。因而当前结果不是可部署 exact-2:4 模型的质量或系统结果，方法标题和大量 pipeline 讨论缺少执行终点。",
+      "required_fix": "对每个已研究 support 实现并冻结 BP fold→exact-2:4 reprojection→groupwise assertion 的导出；在同一导出上重跑 PPL、AVG-9、support-change、内存与吞吐，并加入禁用/等容量 SLoRB 控制。",
+      "verification_test": "每个导出逐组恰有2个非零，SLoRB 分支被移除；pre/post-export 的质量变化有配对区间，实际目标硬件吞吐来自同一 checkpoint digest；范围压缩在无活跃分支的导出上仍存在。",
+      "evidence_needed": "导出代码、groupwise 验证日志、同一 digest 的质量/系统结果及 SLoRB 消融。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R3-04",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "citation_integrity",
+        "limitations_responsible_claims"
+      ],
+      "location": "第4–7页表1–2、图2、§5.1–5.4；第15–16页附录C.6–C.7、D–E",
+      "claim_ids": [
+        "SparseForge-5B-context"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "5B headline checkpoint、args.json 和恢复语料均位于不可访问主机；早期材料对语料归属相互冲突并已撤回。RTE 曾有69.82与注册49.82两个日志值，当前选择49.82主要依据整数分母可表示与同一行 WinoGrande=69.85 的近似。旧吞吐和 cross-family suite 的 checkpoint/套件身份也不可核验。",
+      "why_it_matters": "这些历史点无法独立确认来自所述 checkpoint、代码或语料，RTE 冲突又显著改变任务行为和聚合。即使被称为背景，它们占据主要表图并影响对方法质量的印象，超出可审计证据。未知语料还带来数据治理与污染风险。",
+      "required_fix": "若不能恢复 checkpoint、manifest、原始 predictions、完整日志与 digest，应从证据性表图中删除5B/旧吞吐/cross-family 数字，只在历史局限中简述；若恢复，则按同一冻结 harness 重评并公开可审计 provenance。",
+      "verification_test": "独立审计可从 checkpoint digest、args、语料 manifest 和 evaluator outputs 重建每个单元；RTE 原始逐 item 输出唯一支持一个值，且所有系统数字绑定同一导出 digest。",
+      "evidence_needed": "可访问的 checkpoint、完整训练/语料 manifest、逐 item predictions、harness 日志和硬件 benchmark provenance。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R3-05",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "第1–4页§1、§3–4；第7页限制；第11页猜想C1",
+      "claim_ids": [
+        "SparseForge-mechanism"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "曲率分数、软硬退火、mask track 与 SLoRB 从未在匹配 token/数据/seed 预算下分别消融；没有有效的625M SparseForge endpoint。附录C1的 asymptotic-intercept 仅为未验证猜想，论文自己称唯一可证明步骤只是范围极限的恒等式。",
+      "why_it_matters": "无法把任何质量、范围压缩或系统性质归因于 SparseForge 的新机制；大量方法描述因此没有对应实验证据，当前工作也不能与 AST/CAST/固定支持恢复做公平方法比较。",
+      "required_fix": "在同一恢复数据、token、优化器、SLoRB 容量、初始 checkpoint 与多 seeds 下运行曲率/随机/幅度分数、无退火、固定 mask、无 SLoRB、AST/CAST 等消融；把猜想移至清晰标注的展望，除非有可证条件与实证轨迹支持。",
+      "verification_test": "预注册的 factorial/最小消融能对每个主组件给出配对增量与不确定性，并在 deployable export 上复现；未被支持的机制语言被删除。",
+      "evidence_needed": "匹配预算多 seed 消融、训练轨迹、组件交互分析和导出后结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R3-06",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "第2页图1及全文结构",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "图1图内标注明确小于正文且在单栏尺寸下难读；16页中核心结果只占表5附近少量内容，其余混合方法背景、历史不可验证结果、统计附录、代码规范与开放猜想。",
+      "why_it_matters": "过量背景降低了主张层级的可见性，并可能让读者误把未执行的 pipeline/export 与已验证贡献混为一谈。",
+      "required_fix": "把正文压缩为可审计的三 support 测量、统计边界与必要实现说明；将不可验证历史记录和代码级规范移至补充材料，重绘图1以正常印刷字号标注 executed versus planned。",
+      "verification_test": "正文每个主图表都直接支持一个已执行主张，图内最小字号与正文可读，planned/archived/unverified 状态一眼可区分。",
+      "evidence_needed": "重构后的稿件与印刷尺寸视觉检查。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": true,
+  "ethics_concerns": "5B 恢复语料及其 manifest 不可访问，早期材料对语料身份还相互冲突，因此无法审计许可、隐私、治理、污染或数据使用约束。论文已披露该风险，但在恢复语料 provenance 解决前，不应把该 checkpoint 作为可复现或可治理的方法证据。",
+  "llm_usage_disclosure": "本审稿由全新、隔离的 AI 子代理 R3 生成，仅用于内部投稿前质量控制；该子代理只读取指定的冻结 PDF、审稿协议、量表与 JSON schema，未与任何其他评审通信，也未接触作者计划、历史评审、目标分数或版本历史。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "以同一三个确切 support/checkpoint 为单位提供配对 before/after、多恢复 seeds 和逐 item predictions，并用联合层次分析证实范围实质收缩。",
+    "完成无活跃 SLoRB 分支的 fold+reprojection exact-2:4 导出，在同一 digest 上复现质量与真实硬件吞吐。",
+    "在匹配625M token、数据、优化器和 seeds 下完成 SparseForge 组件及强基线消融，显示可归因增量。",
+    "恢复并公开5B checkpoint/语料/评测 provenance，或完全删除不可验证历史点，形成只由可重放证据支撑的论文。"
+  ],
+  "evidence_that_would_lower_score": [
+    "确认 native 三 seed 均值与 recovered 单 seed 端点不是同一固定 support，且无法恢复逐一映射。",
+    "多 seed paired 重跑显示0.118范围压缩不稳定或处于训练/评测噪声内。",
+    "fold/reprojection 后质量显著下降、support 大幅改变，或实际吞吐不支持2:4部署叙事。",
+    "恢复的原始记录证明 RTE、语料身份或5B checkpoint 与表1叙述不一致。"
+  ],
+  "review_limitations": [
+    "按隔离要求仅审阅冻结 PDF，未读取匿名 artifact、CSV、checkpoint、代码或历史日志；因此无法验证表1/表5的 support 映射、RTE 原始输出或实现规范与归档 checkpoint 的一致性。",
+    "按任务要求未联网，ELSA/ProxSparse/CAST 等2025–2026引用及 NVIDIA/数据集元数据未做外部核验；citation 风险只按 PDF 内部 provenance 评估。",
+    "PDF 共16页，文本抽取完整且逐页视觉核查未发现内容解析故障；图1的小字号是稿件本身的可读性问题，而非解析失败。"
+  ]
+}

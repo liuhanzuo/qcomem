@@ -1,0 +1,194 @@
+{
+  "schema_version": "forkaudit-r28-preexecution-external-pin-payload-v1",
+  "created_at_local": "2026-08-24T18:14:57+08:00",
+  "last_amended_preexecution_at_local": "2026-08-24T18:56:26+08:00",
+  "preexecution_revision": 5,
+  "created_before_candidate_execution": true,
+  "candidate_outputs_observed_at_creation": false,
+  "experiment_id": "E-R28-FULL-DETECTOR-MATRIX",
+  "purpose": "Prospectively pin the non-code scope, inherited inputs, case geometry, detector definitions, and reporting boundary for a fresh M1--M9 target-gate-suppression comparison.",
+  "scope_supersession": {
+    "path": "paper_autonomous_multifork_iteration/evidence/r28_full_detector_matrix/scope-supersession.json",
+    "sha256": "963481bccf1f3788f9a05b354c618b845911b5010d275ff80f0d2494531831a7"
+  },
+  "inherited_rr2_authority": {
+    "original_rr2_run_id": "372384bd37cf7640ca210537a4360e1a",
+    "original_rr2_receipt_manifest_sha256": "528d0fdded778f042be1287e0ca2c96b76c547c864c26e21cd2eb6574456c78c",
+    "executed_source_ledger_sha256": "837f7a488d75cbedbc01e35a236a97f00b85259746e6a368b7aeec873045e94a",
+    "local_release_manifest_sha256": "51346e18c2d2685ea57712d1823e6056ea6bea11a5718da6d24f2fe1d1b65338",
+    "local_matched_pairs_sha256": "a36484cc5179832e447e241e5707e7ee34d85ec84a02131c97adeb7150e2012b",
+    "local_summary_sha256": "8700901ad7423d215e9e9e81a709e976f43963752e1b9f3d64441412b390d2bc",
+    "forkaudit_reference_lane": "The original RR2 W-run receipt is a separate all-gates-on execution. R28 does not pool it with target-suppressed cases into a rate."
+  },
+  "frozen_inputs": {
+    "model": "Qwen/Qwen3.5-35B-A3B",
+    "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "model_weight_ledger_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+    "model_artifact_ledger_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+    "pg19_data_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "pg19_manifest_sha256": "5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c",
+    "pg19_windows_sha256": "39bc36bb2eb04d51122e66caaebfa72367c02b43b073f072a2da240ed068c166",
+    "frozen_query_banks_sha256": "400921d147bc840e9802950dc542b002080f3f274661efbd5b4354ec364da7db"
+  },
+  "fixed_stack": {
+    "hardware": "8 distinct NVIDIA H20-3e devices, one original RR2 rank/book per device",
+    "torch": "2.11.0+cu129",
+    "cuda": "12.9",
+    "transformers": "5.14.1",
+    "vllm": "0.26",
+    "kv": "Q16/BF16 paged KV, page size 128",
+    "document_tokens": 4095,
+    "query_tokens": 32,
+    "resident_count": 2,
+    "kv_policy": "vllm-q16-shared-document-reuse",
+    "gdn_policy": "borrow-immutable-base-functional-rebind"
+  },
+  "case_design": {
+    "fresh_case_count": 18,
+    "clean_cases": 9,
+    "target_suppressed_mutant_cases": 9,
+    "case_order_per_fault": [
+      "fresh matched-clean with all gates enabled",
+      "separately rebuilt mutant with only the preregistered target gate suppressed"
+    ],
+    "rank_assignment": {
+      "0": [
+        "M1",
+        "M9"
+      ],
+      "1": [
+        "M2"
+      ],
+      "2": [
+        "M3"
+      ],
+      "3": [
+        "M4"
+      ],
+      "4": [
+        "M5"
+      ],
+      "5": [
+        "M6"
+      ],
+      "6": [
+        "M7"
+      ],
+      "7": [
+        "M8"
+      ]
+    },
+    "discarded_warmup_before_allocator_baseline": true,
+    "teacher_forced_continuation_fault_ids": [
+      "M3",
+      "M4",
+      "M5"
+    ],
+    "teacher_forced_continuation_rule": {
+      "token_source": "last token of the corresponding frozen 32-token query",
+      "coordinate_M3": "frozen_query_bank[rank][request=0][token=31]",
+      "coordinate_M4": "frozen_query_bank[rank][request=0][token=31]",
+      "coordinate_M5": "frozen_query_bank[rank][request=1][token=31]",
+      "argmax_feedback_forbidden": true
+    },
+    "sidecar_policy": {
+      "persist_each_completed_stage_before_advancing": true,
+      "completed_horizon_requires_all_preregistered_stage_sidecars": true,
+      "classified_abort_may_retain_only_completed_stage_sidecars": true,
+      "every_advertised_sidecar_requires_path_sha256_bytes_dtype_shape": true
+    },
+    "cleanup_policy": {
+      "each_case_uses_a_disposable_resident_request_group": true,
+      "mutation_target_restored": true,
+      "registered_attention_backends_removed": true,
+      "attention_implementation_restored": true,
+      "selective_gate_wrapper_identities_restored": true,
+      "traceback_references_cleared_before_allocator_check": true,
+      "gc_empty_cache_and_cuda_synchronize_before_allocator_check": true,
+      "allocated_and_reserved_bytes_must_equal_post_warmup_baseline": true
+    }
+  },
+  "detector_policy": {
+    "forkaudit_target_gate": "read only from the separately frozen RR2 W-run receipt",
+    "r28_detectors": [
+      "other ForkAudit gate after target suppression",
+      "allowlisted production assertion with stack provenance",
+      "fault-payload abort",
+      "token-only comparison when evaluated",
+      "full-logit exact comparison when evaluated"
+    ],
+    "classification_precedence": [
+      "operational_invalid",
+      "other ForkAudit gate after target suppression",
+      "allowlisted production assertion with exact stack provenance",
+      "fault-payload abort with exact preregistered message",
+      "completed semantics"
+    ],
+    "unallowlisted_exception_policy": "Any exception that is neither a non-target ForkAudit gate, the exact M8 fault-payload abort, nor an exact M7 or M9 production assertion is operational_invalid and cannot count as a detector catch.",
+    "missingness": "Every unavailable cell remains not_evaluated with null caught/value fields.",
+    "semantic_comparison": {
+      "evaluation_condition": "Evaluate only when both matched-clean and target-suppressed lanes complete the entire preregistered horizon.",
+      "token_caught": "true iff the ordered output-token lists differ",
+      "full_logit_exact_caught": "true iff any matched stage has a different SHA-256 over the contiguous raw FP32 logit bytes",
+      "argmax_equal": "true iff argmax indices are identical at every matched stage",
+      "max_abs": "maximum absolute elementwise FP32 logit difference over all matched stages",
+      "relative_l2": "sqrt(sum((mutant-clean)^2))/max(sqrt(sum(clean^2)),1e-30), accumulated over all matched stages",
+      "aborted_or_partial_horizon": "token and full-logit cells remain not_evaluated; partial sidecars are evidence, not a miss"
+    },
+    "production_assertion_allowlist": [
+      {
+        "allowlist_id": "PA-M7-CANONICAL-MASK-v1",
+        "fault_id": "M7",
+        "exception_type": "QComemPagedKernelError",
+        "message": "vLLM fused backend cannot replace this non-canonical attention mask",
+        "required_provenance": {
+          "module": "qcomem_vllm_paged_kernel",
+          "stack_file": "qcomem_vllm_paged_kernel.py",
+          "stack_function": "validate_canonical_tail_causal_mask"
+        }
+      },
+      {
+        "allowlist_id": "PA-M9-Q16-PAIRED-VIEWS-v1",
+        "fault_id": "M9",
+        "exception_type": "QComemPagedKernelError",
+        "message": "fused backend requires paired Q16 paged views",
+        "required_provenance": {
+          "module": "qcomem_vllm_paged_kernel",
+          "stack_file": "qcomem_vllm_paged_kernel.py",
+          "stack_function": "_paired_sequence"
+        }
+      }
+    ],
+    "fault_payload_abort": {
+      "fault_id": "M8",
+      "message": "matrix M8 sentinel executed",
+      "required_provenance": "the preregistered M8 replacement callable",
+      "never_classify_as_production_assertion": true
+    }
+  },
+  "validity_and_reporting": {
+    "valid_scientific_negative_is_retained": true,
+    "operational_invalidity_is_not_a_scientific_result": true,
+    "launcher_terminal_on_valid_execution": "COMPLETED_VALID_SCIENTIFIC_OUTCOME",
+    "forbidden": [
+      "convert not_evaluated into false or missed",
+      "count generic integration exceptions as production assertions",
+      "report designed-fault counts as a population detection rate",
+      "pool the RR2 all-gates-on lane with R28 target-suppressed lanes as one execution",
+      "claim unseen-fault coverage, independent capture, concurrency, overhead, or runtime generality"
+    ]
+  },
+  "resource_selection_snapshot": {
+    "queried_before_submission": true,
+    "queue_id": 436,
+    "queue_name": "Reasoning_Rollout",
+    "cloud_id": 6,
+    "cluster_id": 53,
+    "resource_package_id": 183,
+    "package": "8Gpu/170C/1800Gi",
+    "observed_h20_availability": 80,
+    "priority": 0,
+    "restart_num": 0
+  },
+  "code_freeze_rule": "The final preregistration must bind the exact policy, runner, builder, replay, test, launcher, QS config, this payload, and scope-supersession hashes before upload or execution."
+}

@@ -1,0 +1,30 @@
+% Efficiency, median-of-3, chunk 512. From draft §2.3 (verified).
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Length} & \textbf{Prefill speedup} & \textbf{Full mem} & \textbf{CoMem mem} \\
+ & (full/CoMem) & & \\
+\midrule
+8k & 0.97$\times$ & 20\,GB & 17.3\,GB \\
+16k & 1.59$\times$ & 25\,GB & 17.4\,GB \\
+32k & 2.48$\times$ & 34\,GB & 17.5\,GB \\
+64k & 4.36$\times$ & 52\,GB & 17.8\,GB \\
+128k & \textbf{7.83}$\times$ & 71.4\,GB & \textbf{18.3\,GB} \\
+\bottomrule
+\end{tabular}
+\caption{Efficiency (median-of-3, chunk 512)---the \emph{read/prefill-scoped}
+contrast (full attention vs CoMem), which changes both selection and
+representation; decode is not measured and no end-to-end claim is made.
+CoMem's read-time peak is $\approx$17--18\,GB through 128k; it is \emph{not}
+constant in context---the separate serving study measures $\approx$25.6\,GB at
+1M, $+44$\% versus 32k.  Full attention at 128k peaks at 71.4\,GB (an H20's
+97.8\,GB, so it does not OOM), $3.9\times$ CoMem's 128k peak.  This memory
+ratio is dominated by the full-context KV state, not by depth caching; the
+depth-quality estimand (matched $j{=}0$ vs $j{=}12$, retrieval fixed) is a
+separate contrast reported in Table~\ref{tab:readdepth-decisive}, and the two
+are not convertible.  Crossover $\approx$16k.  Serving figures follow the
+independently measured serving study (\S\ref{sec:serving-cost}).}
+\label{tab:eff}
+\end{table}

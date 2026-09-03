@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "a11-r3-novelty",
+  "round": 3,
+  "snapshot_sha256": "683d2d58f3eead73dba6344efefe02a17d9904f9170b77fb6364a6e1735dc6ee",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within the explicitly restricted count-exchangeable replay model, the posterior-flip identity, tower-property argument, and FIT/CAL selection layer are stated precisely and accompanied by a proof and artifact map. This does not establish the operational online endpoint, but the paper clearly excludes that endpoint rather than relying on it as support.",
+    "presentation": "The paper is unusually explicit about its replay endpoint, assumptions, and nonclaims, and the main formal argument is readable. However, its very broad technical appendix and the absence of a direct comparison to the nearest Bayesian sequential-decision formulations make it hard to identify which part is conceptually new rather than a specialized application of standard posterior conditioning.",
+    "contribution": "The count-mixture formulation and its careful FIT/CAL/TEST replay evaluation are a potentially useful, narrow contribution. The current record does not adequately locate the posterior-threshold/tower-property construction against Bayesian sequential decision, finite-population sequential inference, or related posterior-risk stopping work, and it labels an unformalized replay result as a risk-count frontier. Thus the distinct conceptual advance and its significance for ICLR remain uncertain."
+  },
+  "paper_summary": "The paper studies early stopping only for a count-exchangeable binary pass-count replay: after observing a random without-replacement prefix of a task's N binary outcomes, BAYES-H stops when a fitted-mixture posterior assigns at most alpha probability to disagreement with the full-N binary pass-count decision. A tower-property argument gives replay flip control under the fitted model; FIT/CAL empirical-Bernstein selection and count-replay experiments compare adaptive and fixed-budget rules on OMR, OpenR1, and RLVE. The paper explicitly disclaims ordered-online, delivered-answer correctness, and operational-cost guarantees.",
+  "strongest_verified_contribution": "For the stated count-exchangeable replay endpoint, the paper gives a concrete calibrated-mixture posterior stopping rule with an explicit conditional flip certificate, a proof that any prefix-measurable threshold rule inherits the alpha replay-flip bound, and supplied multi-carrier replay comparisons against fixed-budget and ESC-style baselines.",
+  "strengths": [
+    "The scope boundary is unusually clear: the abstract, model, experiments, and limitations repeatedly distinguish binary pass-count replay from ordered deployment, returned-answer correctness, and operational cost.",
+    "The paper identifies a plausible mechanism for its observed savings—heterogeneity concentrated on easily resolved count atoms—and compares the adaptive rule with both distribution-free and mixture-aware fixed-budget controls.",
+    "The supplied closest-work matrix correctly avoids claiming a universal online-stopping priority and differentiates the reported ESC-style instantiation from ESC generally."
+  ],
+  "questions": [
+    "Which prior Bayesian sequential-decision, posterior-risk stopping, and finite-population sequential-inference formulations are closest to thresholding P(MV(N) != MV(k) | x,k), and what theorem, assumption, or endpoint separates BAYES-H from each one?",
+    "What is the formal feasible-policy class and objective under which the OpenR1 result is said to attain a replay risk-count frontier? Does the statement mean Pareto optimality over all prefix-measurable rules, or only a comparison among the enumerated rules?",
+    "If the intended contribution is a method for LLM self-consistency rather than a replay-model analysis, what frozen naturally ordered evaluation with stopped-answer correctness and measured compute would test that connection?"
+  ],
+  "issues": [
+    {
+      "issue_id": "NOV-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "citation_integrity",
+        "clarity"
+      ],
+      "location": "manuscript/paper.pdf p. 2, Section 2 (Related work), especially the four related-work paragraphs; Appendix Feature comparison and appendix roadmap, Table 2; source/paper.tex lines 175-218 and 760-785.",
+      "claim_ids": [
+        "C01"
+      ],
+      "evidence_ids": [
+        "CIT-001",
+        "CIT-002",
+        "CIT-003",
+        "CIT-004",
+        "CIT-006",
+        "CIT-007",
+        "CIT-008",
+        "CIT-009"
+      ],
+      "observed_evidence": "The paper and closest-work matrix compare primarily with LLM self-consistency/early-stopping papers, conformal prediction, confidence sequences, design effects, and beta-binomial modeling. The central rule is nevertheless the posterior conditional risk P(MV(N) != MV(k) | x,k) thresholded at alpha, while Theorem 1 is an application of conditional expectation at a stopping time. No cited or tabulated work addresses the obvious neighboring families of Bayesian sequential decision/posterior-risk stopping or finite-population sequential inference. The supplied closest-work matrix itself says only that its listed nearest work supports a careful narrow novelty statement; it is not evidence that these omitted families lack the same construction.",
+      "why_it_matters": "Without an endpoint-and-assumption-level comparison to these neighbors, a reader cannot determine whether the paper's main conceptual novelty is a new certificate, a standard Bayesian posterior-risk rule specialized to a count-replay model, or the empirical calibration/LLM application. This uncertainty materially limits the contribution score even if the stated theorem is correct.",
+      "required_fix": "Add an auditable related-work subsection and comparison table for the nearest Bayesian sequential-decision/posterior-risk and finite-population sequential-inference approaches. For each, state the observation model, terminal target, stopping objective/guarantee, treatment of prior fitting, and exact difference from this work. Reframe the contribution and title/abstract language to the residual distinction that survives the comparison; do not imply priority unless direct evidence supports it.",
+      "verification_test": "For every newly cited closest neighbor, an independent reader can trace a source-backed row specifying whether it already thresholds a posterior terminal-decision loss under a sequential prefix. The revised introduction must state a falsifiable residual novelty claim that is consistent with every row and Table 2.",
+      "evidence_needed": "Primary-source literature evidence and an assumption/endpoint comparison; no new experiment is required merely to correct positioning.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "NOV-02",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "limitations_responsible_claims",
+        "experimental_rigor"
+      ],
+      "location": "manuscript/paper.pdf p. 1, Abstract sentences describing OpenR1; p. 2, Contribution 4; pp. 7-8, Section 6 paragraphs titled Second model-carrier pair and Third model-carrier pair; Appendix Cross-carrier evidence matrix and unified mechanism, pp. 17-18; source/paper.tex lines 54-59, 151-158, 551-641, and 1001-1057.",
+      "claim_ids": [],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-OMR-OTHER"
+      ],
+      "observed_evidence": "The manuscript says the OpenR1 certificate 'attains the replay risk-count frontier exactly when the mixture structure allows' and that cross-carrier results 'interpolate with the resolvable mixture structure.' The supplied evidence matrix reports outcomes for a small set of named rules and levels, but neither the manuscript nor the listed evidence defines a policy class, an optimization criterion, or a proof/enumeration establishing a frontier beyond the M=2 illustrative setting.",
+      "why_it_matters": "A frontier or mechanism law would be a stronger and more novel contribution than a successful comparison with selected baselines. As written, the claim risks converting an empirical pattern in a restricted replay harness into an optimality/general-mechanism claim that the evidence does not identify.",
+      "required_fix": "Either define the replay risk-count frontier precisely and prove or exhaustively compute the claimed optimality over a stated class of prefix-measurable policies, including how fitted-prior uncertainty enters, or replace 'frontier,' 'exactly,' and mechanism-generalization language with the narrower observation supported by the enumerated results. Distinguish the analytically enumerable M=2 case from the N=8 and N=32 comparisons.",
+      "verification_test": "A retained frontier claim must name its feasible policy class, loss/risk constraint, and comparator and provide a derivation or reproducible exhaustive enumeration that shows no feasible policy dominates BAYES-H. Otherwise, no text outside the explicitly enumerated M=2 calculation may call the results a frontier or optimality result.",
+      "evidence_needed": "A formal optimality proof or a complete reproducible policy-class enumeration is needed to retain the strong claim; claim narrowing can be completed with current evidence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "NOV-03",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "manuscript/paper.pdf p. 1, Abstract final sentence; p. 3, Section 3 definition of binary pass-count replay; pp. 6-9, Sections 6-8; source/paper.tex lines 69-74, 223-234, 484-641, and 694-734.",
+      "claim_ids": [
+        "C04"
+      ],
+      "evidence_ids": [
+        "EV-MISSING-ORDER",
+        "EV-MISSING-ENDPOINT",
+        "EV-MISSING-COST",
+        "EXP-ORDERED-CORRECTNESS-COST"
+      ],
+      "observed_evidence": "The experiment registry records ordered rollouts, gold stopped-answer correctness, and realized token/latency/cancellation endpoints as absent or only planned. The manuscript responsibly states this limitation, but its principal empirical contribution is therefore evidence for agreement with an unobserved full binary pass-count replay decision rather than for the operational self-consistency problem invoked in the introduction.",
+      "why_it_matters": "This is missing evidence, not evidence against the replay theorem. It nevertheless restricts the practical novelty and ICLR significance of the claimed early-stopping contribution: reduced replay draw count need not imply a correct stopped answer or actual savings in a sequential LLM system.",
+      "required_fix": "At minimum, move the replay-model qualification into the first sentence of the title/abstract contribution framing and consistently present the work as a formal replay analysis. To claim practical LLM early stopping beyond that scope, add a preregistered naturally ordered carrier with gold stopped-answer/full-budget correctness and generated-token, latency, cancellation, and post-cancellation telemetry.",
+      "verification_test": "For a practical claim, the new evaluation must preserve chronological rollout indices, run the frozen stopping policy online, report paired stopped-versus-full answer correctness and actual cost telemetry, and keep the replay flip endpoint secondary. For the narrow analysis claim, an audit of title, abstract, introduction, conclusion, and captions must find no operational-efficiency or delivered-answer implication.",
+      "evidence_needed": "New ordered, endpoint-aligned experiment evidence is needed to raise practical significance; current evidence can support a narrower replay-analysis framing.",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics violation is apparent in the supplied snapshot. The relevant responsible-research concern is scope: the paper should not let replay agreement or rollout-count reduction be read as delivered-answer quality or operational cost, a boundary it already states explicitly.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the frozen reviewer snapshot and its rubric; it is not an external peer review or an independent literature search.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "Primary-source positioning that demonstrates a precise residual distinction from Bayesian posterior-risk stopping and finite-population sequential-inference neighbors.",
+    "A formal proof or complete reproducible enumeration for any retained replay risk-count frontier/optimality claim.",
+    "A frozen naturally ordered evaluation with stopped-answer correctness and actual cost telemetry, if the paper seeks an operational LLM-stopping contribution rather than a replay-model analysis."
+  ],
+  "evidence_that_would_lower_score": [
+    "A closest prior work that already gives the same posterior terminal-decision threshold and stopping-time guarantee under materially matching assumptions without an unaddressed distinction.",
+    "A failure of the reported policy to remain prefix-measurable or of the replay observation model to match the stated count-exchangeable assumptions.",
+    "Evidence that the full-N binary pass-count replay endpoint systematically fails to track the practical claim while the manuscript continues to frame the result as operational early stopping."
+  ],
+  "review_limitations": [
+    "This was an isolated snapshot review; I did not inspect prior rounds, author responses, external repositories, or the network.",
+    "The cited closest-work materials support narrow source relationships but cannot by themselves establish exhaustive coverage of adjacent Bayesian sequential-inference literature.",
+    "The supplied numerical artifacts were read as evidence records and not independently rerun."
+  ]
+}

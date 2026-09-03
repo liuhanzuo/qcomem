@@ -1,0 +1,459 @@
+{
+  "schema": "forkaudit.r39.blind-fault-plan.v1",
+  "status": "immutable-designer-freeze",
+  "frozen_at_utc": "2026-08-26T11:04:56Z",
+  "designer_role": "isolated PDF-only fault-set designer",
+  "purpose": "Compare four fixed observers on fresh hybrid KV/GDN ownership, lifecycle, and dispatch faults without estimating a population detection rate.",
+  "blindness": {
+    "permitted_input": "/Users/liuhanzuo/MacLLM-Bench/paper_autonomous_multifork_iteration/output/pdf/ForkAudit_sol_polished_20260826.pdf",
+    "permitted_knowledge": "venue-generic systems and testing knowledge",
+    "forbidden_inputs": [
+      "repository source",
+      "evidence directories other than this newly authored freeze",
+      "prior reviews",
+      "prior fault files",
+      "implementation details",
+      "candidate outputs"
+    ],
+    "designer_attestation": "Only the frozen PDF, PDF-derived render/text, and newly authored freeze files were read for task content."
+  },
+  "source_pdf": {
+    "path": "/Users/liuhanzuo/MacLLM-Bench/paper_autonomous_multifork_iteration/output/pdf/ForkAudit_sol_polished_20260826.pdf",
+    "sha256": "f55c0c2dca7201904ff82897af75e6f7fc6a31cbf52a1ee76624280d4cdcb72c",
+    "pages": 27,
+    "bytes": 2645908
+  },
+  "frozen_geometry": {
+    "default_model_geometry": "The PDF's Qwen3.5-35B-A3B geometry with ten full-attention layers and thirty GDN layers.",
+    "default_fault_arm": "N=2, shared-document KV, borrowed GDN base, 4095-token document, 32-token query, eight argmax outputs, and seven feedback calls, unless a fault specifies another arm.",
+    "default_schedule": "batch-one sequential round-major calls on one CUDA stream",
+    "default_page_geometry": "BF16/Q16 KV with 128-token pages and a 127-token final document page",
+    "freshness": "Every clean and mutant is built in a fresh process from the same frozen inputs and post-priming state.",
+    "selection_rules": [
+      "Requests are ordered by frozen request identity; request A is first and request B is second.",
+      "Attention and GDN layers are ordered by global model-layer index.",
+      "Tensor coordinates are ordered by global layer index, then frozen role/family name, then coordinate index.",
+      "When equal geometry is required, choose the first eligible ordered tuple before mutation and record all rejected tuples and the eligibility reason.",
+      "When two documents are required, choose the two lowest distinct document identity hashes from the already frozen primary eight-book input set; call them document A and document B.",
+      "No selector may use tokens, logits, final state, detector verdicts, or allocator outcomes."
+    ]
+  },
+  "horizons": [
+    {"id": "H0", "event": "identity bind, model/data load, warmup, and synchronized post-priming allocator baseline"},
+    {"id": "H1", "event": "post-fork setup inventory before query execution"},
+    {"id": "H2", "event": "partial-tail detach/copy and first query-token append"},
+    {"id": "H3", "event": "first allocation/publication of a new request-private KV page after the detached tail fills"},
+    {"id": "H4", "event": "registered transition after all 32 query tokens and before feedback-token calls"},
+    {"id": "H5", "event": "seven ordered feedback-token calls, with per-call receipts"},
+    {"id": "H6", "event": "terminal capture after eight output tokens and before teardown"},
+    {"id": "H7", "event": "quiescent scrub, release, reclamation, and synchronized allocator restoration"},
+    {"id": "H8", "event": "special replacement, eviction, or compiled-dispatch confirmation named by a fault"}
+  ],
+  "observers": {
+    "output_equality": {
+      "decision": "Compare the mutant with its matched clean case at identical ordered call indices. Tokens are exact integer equality. Logits are exact equality of shape/dtype-bound contiguous CPU-FP32 bytes for the complete vocabulary.",
+      "outcomes": ["pass", "fail_tokens", "fail_logits_only", "fail_tokens_and_logits", "not_evaluable"],
+      "exclusions": "Terminal KV/GDN state is not part of this baseline. Different call cardinality is not_evaluable, never a pass."
+    },
+    "persistent_base_invariant": {
+      "decision": "Within each lane, compare setup digests with every later registered digest for all persistent document-KV and persistent GDN-base physical byte ranges, including padding/inactive capacity where the runtime exposes it.",
+      "outcomes": ["pass", "fail", "open"],
+      "exclusions": "It does not inspect request-private state or ownership provenance. A missing mandatory base snapshot is open, not pass."
+    },
+    "allocation_assertions": {
+      "decision": "After CUDA synchronization, compare current allocated bytes, reset peak allocated bytes, and post-cleanup restoration at every applicable horizon with the matched clean lane. Also retain any native allocator assertion. Exact byte equality is required for registered current/peak endpoints and exact return to the lane's H0 baseline at H7.",
+      "outcomes": ["pass", "fail_current", "fail_peak", "fail_restoration", "native_assertion", "not_evaluable"],
+      "exclusions": "No NVML/process-memory or capacity claim is made; storage provenance is not inferred from a matching total."
+    },
+    "forkaudit": {
+      "decision": "Capture all mandatory identity/lifecycle/execution/fault records and run unmodified offline replay with every existing predicate enabled. Report coverage separately from verdict and report the earliest failed predicate by frozen event order.",
+      "outcomes": ["complete_pass", "complete_fail", "partial", "open", "not_evaluated"],
+      "exclusions": "No new predicate may be added after seeing outcomes. In particular, per-call compiled-binary/autotuning coverage remains whatever the frozen implementation actually provides."
+    }
+  },
+  "execution_protocol": {
+    "pair_order": "For each opaque fault ID: matched clean first, then mutant, each in a fresh process. The aggregate is withheld until both terminal bundles are sealed.",
+    "hook_symmetry": "Clean and mutant traverse the same mutation hook. Clean records one eligible no-op; mutant records exactly one payload application unless the fault explicitly names multiple byte writes as one atomic payload.",
+    "observer_mode": "ForkAudit predicates are replayed after execution and do not short-circuit the comparison lane. Existing production assertions remain enabled. Selective gate suppression and post-failure continuation reruns are forbidden.",
+    "required_snapshots": ["H0", "H1", "H4", "H6", "H7 when teardown is in scope"],
+    "required_sidecars": ["complete token sequence", "full-vocabulary CPU-FP32 logits per comparable call", "persistent-base digests", "allocator current/peak/restoration", "ForkAudit trace and replay", "fault eligibility and injection receipt"],
+    "cleanup": "The process is disposed after its sealed terminal bundle. No object, allocator pool, or compiled-cache state may flow from one lane to another.",
+    "no_tuning": "Payload, selector, target object, horizon, expected consequence, and detector expectations may not be changed after any mutant output or verdict is visible.",
+    "comparison_unit": "One valid matched clean/mutant pair. Pairs and faults are never pooled into a detection-rate estimate."
+  },
+  "precedence": {
+    "chronology": "Choose the earliest horizon/event at which a registered observation differs or a mandatory record becomes invalid.",
+    "same_event_tie_break": [
+      "invalid eligibility/injection/operational condition",
+      "production exception or native assertion",
+      "ForkAudit mandatory-record, schema, or byte-binding failure",
+      "ForkAudit identity/lifecycle/storage/call predicate failure",
+      "persistent-base invariant failure",
+      "allocation assertion failure",
+      "full-logit equality failure",
+      "token equality failure"
+    ],
+    "later_observers": "All later observer outcomes are still reported if the expected horizon completes; precedence labels localization and does not erase data."
+  },
+  "global_clean_requirements": [
+    "The clean lane reaches the fault's expected horizon with no exception.",
+    "The clean lane has complete applicable ForkAudit coverage and no failed existing predicate; dispatch may retain the PDF-declared partial coverage but may not be upgraded.",
+    "The clean persistent document KV and GDN base remain byte-identical at all registered snapshots.",
+    "The clean allocator endpoints are internally consistent and restore exactly to H0 at H7 when cleanup is in scope.",
+    "A second clean replay, or a pre-existing independently sealed clean reference from the identical frozen protocol, has exact tokens and complete FP32 logits at equal call cardinality.",
+    "The clean hook emits exactly one eligibility/no-op receipt at the same conceptual locus used by the mutant."
+  ],
+  "global_mutant_validity": [
+    "All global clean requirements pass.",
+    "The mutant differs from clean only by the frozen payload and unavoidable payload consequences.",
+    "The selector resolves before mutation without consulting outputs or detector verdicts.",
+    "Exactly one authenticated injection receipt binds the selected objects, pre-state digests/ranges/versions, payload, and event index.",
+    "The fault-specific first-consequence witness is present and byte-bound; this witness validates injection but is not counted as one of the four compared observers.",
+    "The expected horizon completes. An exception, timeout, OOM, or missing mandatory sidecar before that horizon is invalid unless the fault explicitly declares that exact production stop as its horizon; none of the eleven faults does.",
+    "No selective rerun, gate suppression, payload adjustment, or target substitution is allowed."
+  ],
+  "faults": [
+    {
+      "id": "R39-BF01",
+      "title": "wrong-source private-tail copy",
+      "class": ["KV", "ownership", "copy-on-write", "content-lineage"],
+      "arm_and_schedule": "Default N=2 shared-document/borrowed-GDN arm and sequential schedule.",
+      "locus": "H2, after the correct private tail page has been allocated and bound but before any query-token write.",
+      "payload": "For request A at the lowest-index full-attention layer, copy both K and V for exactly 127 positions from positions 0..126 of that layer's immediately preceding full document page into the detached tail, instead of copying the actual 127-token document tail. Allocation, detach timing, owner, valid length, append position, and all other layers remain clean.",
+      "clean_requirements": [
+        "Exactly one 127-token detach occurs before the first append.",
+        "The clean destination pre-append digest equals the actual document-tail digest for K and V."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H2 before the first append write, the private-tail content digest differs from the persistent tail while storage ownership and copy ordering remain correct.",
+      "expected_detector_outcomes": {
+        "output_equality": "fail_logits; token divergence is not required",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "pass",
+        "forkaudit": "complete_fail, first eligible at copied-tail content/lineage if represented, otherwise terminal logical-KV or cross-arm semantics"
+      },
+      "fault_specific_validity": [
+        "The chosen preceding page and actual tail have different K or V digests before mutation.",
+        "The destination is private and disjoint before the wrong-source copy.",
+        "The persistent document page is never written."
+      ],
+      "mutant_success": "The exact wrong-source digest occupies all 127 pre-append positions and the lane reaches H6.",
+      "mutant_failure": "Wrong length, late detach, base write, extra mutation, or failure to reach H6.",
+      "distinct_from_pdf": "The PDF faults omit or delay COW. This fault performs timely, private COW with the wrong content source."
+    },
+    {
+      "id": "R39-BF02",
+      "title": "same-request cross-layer KV page collision",
+      "class": ["KV", "ownership", "allocator", "cross-layer"],
+      "arm_and_schedule": "Default arm; request A; first two full-attention layers by global index.",
+      "locus": "H3, when the first new private page after the filled detached tail is allocated and published.",
+      "payload": "Return and bind one identical backing byte range for the new request-private KV page roles of the first two full-attention layers of request A. Preserve request identity, sequence identity, page-table type, logical position, and all inter-request reservations. Both layers execute their normal writes into the shared cross-layer range.",
+      "clean_requirements": [
+        "The two selected layer-page roles have equal geometry and disjoint backing ranges in clean.",
+        "Both selected layers allocate and publish a new private page at H3."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H3 the two distinct layer roles of one request overlap in physical bytes; after the second layer write, at least one selected page digest differs from clean.",
+      "expected_detector_outcomes": {
+        "output_equality": "fail_logits; tokens unspecified",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "fail_current or fail_peak because one page allocation is missing",
+        "forkaudit": "complete_fail if all-role/cross-layer overlap is checked; otherwise fail later on logical-KV or semantics; a complete_pass would expose a predicate gap"
+      },
+      "fault_specific_validity": [
+        "A nonempty byte overlap is proven between only the two selected private layer roles.",
+        "No request-peer or document-base alias is introduced.",
+        "Both normal layer writes occur."
+      ],
+      "mutant_success": "Cross-layer overlap persists through at least one pair of layer writes and H6 completes.",
+      "mutant_failure": "Only metadata aliases, an inter-request alias, or an early runtime stop occurs.",
+      "distinct_from_pdf": "The disclosed reservation fault aliases requests. This fault collides different layers inside one otherwise correctly bound request."
+    },
+    {
+      "id": "R39-BF03",
+      "title": "torn final hybrid commit with KV rollback",
+      "class": ["hybrid", "KV", "GDN", "lifecycle", "atomic-commit"],
+      "arm_and_schedule": "Default arm and schedule.",
+      "locus": "The seventh and final feedback-token call in H5, after logits for output token eight are materialized but before the candidate KV/GDN states are published.",
+      "payload": "Publish the correct next GDN request state and return the already computed logits, but suppress publication of that call's KV append. Restore the written private-KV slot bytes, page valid count, logical length, and KV version to their pre-call values. Keep call cardinality exactly one and do not alter any persistent base.",
+      "clean_requirements": [
+        "The clean final feedback call advances both logical KV and request GDN exactly once.",
+        "The clean call emits the eighth token before terminal capture."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At the final commit event, KV remains at version t while GDN and the ordered call receipt advance to t+1; the already emitted logits are unchanged.",
+      "expected_detector_outcomes": {
+        "output_equality": "pass exact tokens and full logits",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "pass",
+        "forkaudit": "complete_fail on ordered append/cardinality, hybrid version coherence, or terminal logical-KV equality"
+      },
+      "fault_specific_validity": [
+        "The pre-call and candidate KV digests differ, proving a real append was available to suppress.",
+        "The GDN candidate digest is exactly the clean next-state digest.",
+        "Call cardinality and returned logits equal clean."
+      ],
+      "mutant_success": "Only the final KV state publication is rolled back and H6 seals exact output sidecars.",
+      "mutant_failure": "The whole call is skipped/duplicated, GDN is also rolled back, or outputs are changed by the hook.",
+      "distinct_from_pdf": "The PDF includes duplicate whole-call commit. This fault commits one hybrid subsystem once and rolls back the other after output production."
+    },
+    {
+      "id": "R39-BF04",
+      "title": "wrong-source GDN privatization",
+      "class": ["GDN", "ownership", "lifecycle", "content-lineage"],
+      "arm_and_schedule": "Default shared-document/borrowed-GDN arm.",
+      "locus": "H4, during the registered borrowed-to-private GDN transition.",
+      "payload": "For the first GDN tensor coordinate in frozen coordinate order, allocate a correct disjoint private tensor and advance its binding/lifecycle token correctly, but initialize its bytes from that coordinate's H1 persistent-base snapshot rather than the correct H4 transition-state source. All other coordinates privatize normally.",
+      "clean_requirements": [
+        "The selected clean H4 source digest differs from its H1 persistent-base digest.",
+        "Clean privatization creates a disjoint tensor with the correct advanced binding token."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H4, storage disjointness and binding-token advance pass, but the selected private-state content digest equals the stale H1 base snapshot rather than the clean H4 state.",
+      "expected_detector_outcomes": {
+        "output_equality": "fail_logits after H4; tokens unspecified",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "pass",
+        "forkaudit": "complete_fail on transition content binding, final GDN equality, or cross-arm semantics"
+      },
+      "fault_specific_validity": [
+        "The selected private range is disjoint from every base and peer range.",
+        "Its lifecycle token advances exactly as clean.",
+        "The stale-source and clean-source digests are unequal before injection."
+      ],
+      "mutant_success": "Exactly one coordinate uses the stale source and the run reaches H6.",
+      "mutant_failure": "Any alias is introduced, token advance is suppressed, or a recurrence operator is changed.",
+      "distinct_from_pdf": "The disclosed GDN faults create aliases, stale tokens, or wrong recurrences. This fault has correct ownership/token metadata but wrong copy provenance."
+    },
+    {
+      "id": "R39-BF05",
+      "title": "disjoint GDN role permutation",
+      "class": ["GDN", "ownership", "role-binding", "cross-layer"],
+      "arm_and_schedule": "Default arm; request A.",
+      "locus": "Immediately after correct H4 privatization and before the first feedback call.",
+      "payload": "Among request A's private GDN coordinates, choose the first pair with identical shape, dtype, device, stride, and tensor byte size and with distinct clean content digests. Swap the two role-to-tensor bindings without copying or aliasing storage. Leave owner, peer disjointness, binding tokens, and allocation totals unchanged.",
+      "clean_requirements": [
+        "An eligible equal-geometry pair exists and has distinct content digests.",
+        "The clean role map binds each coordinate to its own content digest."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H4 publication, every range remains private and disjoint but two role-bound content digests are transposed relative to the clean role map.",
+      "expected_detector_outcomes": {
+        "output_equality": "fail_logits; tokens unspecified",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "pass",
+        "forkaudit": "complete_fail on object-to-role/content binding or final GDN/cross-arm equality"
+      },
+      "fault_specific_validity": [
+        "The pair is selected solely by frozen geometry/order and pre-injection digest inequality.",
+        "All private ranges remain pairwise disjoint.",
+        "No tensor bytes are modified by the swap itself."
+      ],
+      "mutant_success": "Exactly two bindings are transposed and H6 completes.",
+      "mutant_failure": "The pair has unequal geometry, aliases storage, or is chosen using outputs.",
+      "distinct_from_pdf": "The disclosed GDN faults alias a base or peer. This fault misbinds two disjoint same-request coordinates."
+    },
+    {
+      "id": "R39-BF06",
+      "title": "cross-family KV/GDN arena collision in unused KV capacity",
+      "class": ["hybrid", "KV", "GDN", "ownership", "allocator"],
+      "arm_and_schedule": "Default arm; request A.",
+      "locus": "H4, when private GDN storage is materialized while request-private KV capacity already exists.",
+      "payload": "Choose the first private GDN tensor whose aligned byte interval fits wholly inside an unused suffix interval of request A's first private KV page through H6. Back the GDN tensor by that exact KV suffix range, initialize it with the correct clean GDN bytes, and execute normal GDN updates. Do not advance KV valid length into the overlapped suffix during the frozen horizon.",
+      "clean_requirements": [
+        "The selected GDN tensor has exclusive storage in clean.",
+        "The selected KV suffix is allocated but remains outside logical-KV valid bytes through H6.",
+        "The clean cross-family ranges are disjoint."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H4 one physical byte interval simultaneously carries a request-private KV-capacity role and a request-private GDN role, while both logical values remain clean for the frozen horizon.",
+      "expected_detector_outcomes": {
+        "output_equality": "pass expected; any difference is reported rather than invalidating the pair",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "fail_current and usually fail_peak by the omitted GDN allocation size",
+        "forkaudit": "complete_fail if cross-family all-role overlap is enforced; complete_pass would expose a contract gap despite clean semantics"
+      },
+      "fault_specific_validity": [
+        "The overlap is nonempty, aligned, contained, and wholly outside KV valid bytes at every call through H6.",
+        "The GDN initial bytes and terminal logical GDN digest equal clean unless normal computation itself exposes the collision.",
+        "No persistent storage is involved."
+      ],
+      "mutant_success": "The same physical interval has both roles from H4 through H6 and the horizon completes.",
+      "mutant_failure": "The overlap touches valid KV bytes, introduces base/peer aliasing, or cannot fit under the frozen selector.",
+      "distinct_from_pdf": "The PDF tests within-KV request reservations and GDN base/peer relations. This fault crosses the KV/GDN allocator-family boundary."
+    },
+    {
+      "id": "R39-BF07",
+      "title": "wrong-target teardown scrub of persistent GDN base",
+      "class": ["GDN", "lifecycle", "persistent-base", "scrub-target"],
+      "arm_and_schedule": "Default arm extended through quiescent teardown H7.",
+      "locus": "H7, after request-private GDN state has been correctly scrubbed but before release completes.",
+      "payload": "Issue one extra scrub using the stale persistent-base handle for the first GDN base coordinate containing a nonzero aligned slice. Zero exactly the lowest-offset nonzero aligned slice of length min(4096, tensor_nbytes). Do not change any request/base binding or allocator ownership metadata.",
+      "clean_requirements": [
+        "Clean teardown scrubs only request-private state and leaves every persistent base digest unchanged.",
+        "The selected base slice contains at least one nonzero byte before scrub."
+      ],
+      "expected_horizon": "H7",
+      "first_observable_consequence": "During H7, the selected persistent-base physical digest changes after all terminal outputs have already been sealed.",
+      "expected_detector_outcomes": {
+        "output_equality": "pass exact tokens and logits",
+        "persistent_base_invariant": "fail",
+        "allocation_assertions": "pass",
+        "forkaudit": "complete_fail on prefix/base immutability if H7 is registered; otherwise core coverage remains insufficient for this post-terminal event"
+      },
+      "fault_specific_validity": [
+        "Request-private scrub still completes correctly.",
+        "The extra write targets persistent GDN storage without any alias between private and base tensors.",
+        "The exact slice changes digest and H7 completes."
+      ],
+      "mutant_success": "Only the frozen persistent-base slice is zeroed after terminal output.",
+      "mutant_failure": "The mutation depends on a private/base alias, occurs before output sealing, or changes allocation metadata.",
+      "distinct_from_pdf": "The historical and designed PDF faults corrupt a base through aliasing/in-place update. This fault uses disjoint storage but dispatches cleanup to the wrong owner."
+    },
+    {
+      "id": "R39-BF08",
+      "title": "post-teardown private-GDN retention leak",
+      "class": ["GDN", "lifecycle", "reclamation", "allocation"],
+      "arm_and_schedule": "Default arm extended through H7.",
+      "locus": "H7, after correct zero-scrub and lifecycle completion but at storage release.",
+      "payload": "Retain exactly one otherwise releasable request-private GDN backing storage in the retired-request registry. Select the first exclusive backing storage in frozen coordinate order. Release all KV state and all other GDN storage normally; do not reuse the retained storage.",
+      "clean_requirements": [
+        "The selected clean backing storage is exclusive to the retiring request and is released at H7.",
+        "Clean allocated bytes return exactly to H0 after synchronized cleanup."
+      ],
+      "expected_horizon": "H7",
+      "first_observable_consequence": "At release completion, a zeroed storage with a retired request owner remains live and current allocated bytes exceed clean by its backing-storage size.",
+      "expected_detector_outcomes": {
+        "output_equality": "pass exact tokens and logits",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "fail_restoration and fail_current",
+        "forkaudit": "complete_fail if cleanup inventory/reclamation is registered; otherwise complete primary targets may pass and expose a lifecycle-scope gap"
+      },
+      "fault_specific_validity": [
+        "The retained storage is zeroed and not referenced by any live request or persistent document role.",
+        "Exactly one backing storage is retained.",
+        "The measured excess equals its allocator-accounted bytes."
+      ],
+      "mutant_success": "One retired private storage remains live through the synchronized H7 snapshot.",
+      "mutant_failure": "Content is unsanitized, storage is reused, more than one backing storage leaks, or H7 is not synchronized.",
+      "distinct_from_pdf": "The PDF lifecycle fault reclaims before zeroing. This fault zeroes correctly but fails to release afterward."
+    },
+    {
+      "id": "R39-BF09",
+      "title": "reassignment without last-use event fence",
+      "class": ["hybrid", "KV", "GDN", "lifecycle", "concurrency"],
+      "arm_and_schedule": "Use the PDF's bounded two-stream N=2 lifecycle geometry, add one replacement request, and keep two host threads on distinct CUDA streams.",
+      "locus": "H8 cancellation/replacement: after request A is logically cancelled but while its frozen last-use GPU event is incomplete.",
+      "payload": "Suppress only the wait on request A's last-use event. Perform correct zero-scrub, lease increment, owner reassignment, and initialization of the exact KV/GDN reservation bundle for replacement B, then release a prearranged event so A's already enqueued state-writing operation completes after B initialization and before B's first model call.",
+      "clean_requirements": [
+        "Clean waits for A's last-use event before scrub/reassignment.",
+        "The controlled event schedule proves positive overlap and deterministic order: A enqueued, B initialized, A late write, B first call.",
+        "Clean replacement B matches a serialized uninterrupted reference."
+      ],
+      "expected_horizon": "H8 after replacement B's first call and capture",
+      "first_observable_consequence": "At reassignment, ownership metadata, zero state, and lease epoch look correct, but the happens-before relation is false because A still has an outstanding writer; the late write then changes B-owned bytes.",
+      "expected_detector_outcomes": {
+        "output_equality": "fail_logits for replacement B; tokens unspecified",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "pass",
+        "forkaudit": "likely fail only through later state/semantic mismatch; if no per-kernel/event-lifetime predicate exists, the primary lifecycle relation itself may be missed"
+      },
+      "fault_specific_validity": [
+        "Zero-scrub, lease increment, request identity, and reservation reassignment all equal clean.",
+        "A's last-use event is demonstrably incomplete at reassignment and complete before B's first call.",
+        "The late operation changes at least one B-owned KV or GDN byte."
+      ],
+      "mutant_success": "Only the event wait is omitted and deterministic late-write evidence is sealed through H8.",
+      "mutant_failure": "The lease is stale/wrong, scrub is omitted, reuse occurs after quiescence, or ordering is nondeterministic.",
+      "distinct_from_pdf": "The disclosed scheduler faults use stale/wrong leases or reclaim before zero scrub; the two-stream clean cohort cancels only after synchronization. This fault keeps lease/scrub correct and violates the untested last-use fence."
+    },
+    {
+      "id": "R39-BF10",
+      "title": "hybrid document-component split brain",
+      "class": ["hybrid", "KV", "GDN", "identity", "dispatch"],
+      "arm_and_schedule": "One request for document A with documents A and B co-resident; shared-document KV and borrowed GDN setup; default query/output horizon.",
+      "locus": "H1 request assembly before the query call.",
+      "payload": "Bind request A to the immutable document-KV object of document A and the immutable persistent-GDN base of document B while preserving request identity A, query A, correct per-component storage ownership, and normal callable/position/mask contracts. Both document objects remain resident and immutable.",
+      "clean_requirements": [
+        "Clean request A binds both KV and GDN components to document A.",
+        "Documents A and B have distinct identity hashes and distinct persistent-GDN base digests.",
+        "Both bases are resident before allocator baseline comparison."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H1 the two valid immutable component bindings carry different document identities inside one logical fork.",
+      "expected_detector_outcomes": {
+        "output_equality": "fail_logits; tokens unspecified",
+        "persistent_base_invariant": "pass for both documents",
+        "allocation_assertions": "pass because both documents are pre-resident",
+        "forkaudit": "complete_fail on object-to-role/document identity binding before semantics"
+      },
+      "fault_specific_validity": [
+        "Neither component aliases request-private or peer state incorrectly.",
+        "No document bytes are modified.",
+        "Only the cross-component document association differs from clean."
+      ],
+      "mutant_success": "The mismatched hybrid bundle executes to H6 with both bases immutable.",
+      "mutant_failure": "A whole request/sequence is swapped, either component is mutated, or documents were not pre-resident.",
+      "distinct_from_pdf": "The PDF sequence fault swaps a KV sequence binding. This fault assembles one request from two internally valid but different document component identities."
+    },
+    {
+      "id": "R39-BF11",
+      "title": "unbound compiled-selection drift",
+      "class": ["dispatch", "compiled-artifact", "autotuning", "provenance"],
+      "arm_and_schedule": "Default arm; first feedback-token full-attention call of request A.",
+      "locus": "H5 after the correct Python callable and all query/mask/position/append/scale arguments have been recorded, at compiled artifact selection.",
+      "payload": "Select the lowest-SHA256 noncanonical, ABI-compatible compiled/autotuned artifact already available for the identical callable and call signature instead of the clean selected artifact. Do not change Python callable identity, argument bytes, schedule, or candidate source. The selector is based only on pre-call artifact metadata, never outputs.",
+      "clean_requirements": [
+        "The clean call's compiled artifact identity is externally captured for injection validation without upgrading ForkAudit coverage.",
+        "At least one distinct ABI-compatible artifact exists for the identical call signature.",
+        "Clean Python-level receipts match the frozen contract."
+      ],
+      "expected_horizon": "H6",
+      "first_observable_consequence": "At H5 the executed compiled artifact hash differs from clean while every PDF-described Python-level dispatch receipt is identical.",
+      "expected_detector_outcomes": {
+        "output_equality": "pass expected for a legal alternate autotune variant; any exact difference is reported and does not retroactively change selection",
+        "persistent_base_invariant": "pass",
+        "allocation_assertions": "pass expected; workspace/peak differences are reported if present",
+        "forkaudit": "partial, not complete_fail, unless the frozen implementation independently gained a preexisting per-call compiled-artifact predicate before this campaign"
+      },
+      "fault_specific_validity": [
+        "External injection evidence proves different executed artifact hashes for the same signature.",
+        "The alternate artifact is selected before and independently of semantic or allocator outcomes.",
+        "Python callable and all registered argument bytes remain exact."
+      ],
+      "mutant_success": "The noncanonical artifact executes at the designated call and H6 completes; dispatch coverage is reported honestly as partial if unbound.",
+      "mutant_failure": "The Python callable/arguments change, artifact selection uses outcome information, ABI incompatibility causes an early stop, or ForkAudit is post-hoc extended.",
+      "distinct_from_pdf": "The PDF mutates the Python callable. This fault keeps the callable and contracts fixed and changes only the explicitly unbound compiled/autotuning selection."
+    }
+  ],
+  "decision_rules": {
+    "valid_pair": "All global and fault-specific clean/mutant validity conditions hold and both sealed bundles bind to the same frozen plan hash.",
+    "fault_reached": "The authenticated payload receipt and frozen first-consequence witness both pass and the expected horizon completes.",
+    "observer_detected": "That observer emits its frozen failing outcome on a valid mutant while the matched clean passes. Open, partial, not_evaluable, and a production-only stop are not detections by that observer.",
+    "observer_false_positive": "The observer fails on a matched clean lane.",
+    "campaign_success": "Every fault is reported individually as valid-reached or invalid with a frozen reason; all four observers are reported without suppression; no clean false positive, payload tuning, selective rerun, or population-rate claim occurs.",
+    "campaign_failure": "Any result is accepted without a passing matched clean, any selector/payload changes after outputs, any mandatory outcome is omitted, dispatch partial coverage is upgraded without evidence, or faults are pooled into recall/accuracy claims.",
+    "interpretation": "A miss is an empirical boundary for this fixed predicate set, not proof that the fault is undetectable. A detection is one fixed positive-control outcome, not an unseen-fault rate."
+  },
+  "immutability": {
+    "allowed_amendment": "Only a pre-execution feasibility amendment may mark a fault ineligible when its frozen selector has no eligible object/artifact. It may not substitute a target or payload and must be hashed before any candidate run.",
+    "forbidden": [
+      "source-aware redesign",
+      "payload tuning",
+      "fault replacement",
+      "selective gate suppression",
+      "post-output target mapping",
+      "silent exception allowlisting",
+      "detector implementation changes after candidate output"
+    ]
+  },
+  "integrity": {
+    "source_pdf_sha256": "f55c0c2dca7201904ff82897af75e6f7fc6a31cbf52a1ee76624280d4cdcb72c",
+    "fault_set_sha256": "a919c53cda32a1e1089568b340725ff287c3d74ac590e25cf97d124779901ac2",
+    "protocol_core_sha256": "2aa9ca0cc5652591bbee5338abe97436657c14f6c4605bdc89cd73cf69c88b9e",
+    "plan_canonical_sha256": "cfb9f93f5b60377c1db9a3f7cca57d376c657b72e0e9449804166c75a84efe4c",
+    "fault_set_hash_rule": "SHA-256 of UTF-8 output from jq -S -c '.faults' plan.json, including its trailing LF.",
+    "protocol_core_hash_rule": "SHA-256 of PROTOCOL.md bytes emitted by sed '/^## Integrity block$/,$d', including emitted line endings.",
+    "plan_canonical_hash_rule": "SHA-256 of UTF-8 output from jq -S -c '.integrity.plan_canonical_sha256=null' plan.json, including its trailing LF."
+  }
+}

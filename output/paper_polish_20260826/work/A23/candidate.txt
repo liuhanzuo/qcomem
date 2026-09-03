@@ -1,0 +1,961 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      C ONSTRUCT C ONSISTENCY OF I N -D ECODING
+002   C ONFIDENCE R EADOUTS FOR R ISK -G ATED
+003
+004   D ECODING (S ELECTIVE P REDICTION )
+005
+006
+007    Anonymous authors
+008
+       Paper under double-blind review
+009
+010
+011                                             A BSTRACT
+012
+013           Generative (masked-diffusion) language decoding (LLaDA-style) produces a sin-
+014           gle decode per prompt, and the decoder’s internal conﬁdence is a candidate signal
+015           for risk-gated deployment (Chow 1970-style selective prediction: abstain on the
+016           highest-risk fraction to cover a target risk). We study whether, in block-wise de-
+017           noising decoding, revision-end conﬁdence (commit), ﬁrst-exposure conﬁdence
+018           (first), within-block mean (all), early versus late windows, and intra-block
+019
+              versus cross-block aggregation read the same stable construct or measurement ar-
+              tifacts of different sources. On one frozen LLaDA-8B-Instruct × GSM8K bed
+020
+              (n=974 distinct problems, one decode each, k=1 — no best-of-k candidate pool),
+021
+              zero-GPU reproducible analysis ﬁnds intra-block discrimination statistically mea-
+022           surable (AUROC gain +0.0144 exceeds its full-width MDE80), yet at this bed’s
+023           decision-readout power no intra-block risk-gated selection increment is resolv-
+024           able: every registered intra-block decision-readout anchor is POWER_LIMITED
+025           under the full-width MDE80 (H2). This is an underpowered non-detection, not
+026           a rejection: on this bed we cannot rule out an intra-block selection increment
+027           smaller than the decision-anchor MDE80, and we do not claim in-block selection
+028           is unusable elsewhere. (R3 is therefore a bounded power-bound negative, not the
+029           construct claim “measurable ̸= usable”.) Four further judgment-hygiene work-
+030
+              ing instances bound that result: at the registered cov= 0.2 anchor the three read-
+              outs agree in direction and are point-identical, while the c ≥ 0.55 low-selectivity
+031
+              band is power-limited rather than a measured agreement or null; commit and
+032
+              all are distinct constructs but their decision-validity gap is compatible with
+033           reliability/SNR; a desaturated readout reproduces the early/late effect; and that
+034           effect is high-selectivity-speciﬁc, power-limited under the bed’s stated full-
+035           width MDE80 (2.8016 SD) at every registered anchor, and fails family-level
+036           correction (holm3_survivors_commit=[], BORDERLINE_EQUIVOCAL,
+037           non-load-bearing). Thus reading “readout difference” as “information difference”
+038           is an overclaim: most aggregation-axis differences are explained by the measure-
+039           ment layer, while the early/late working instance retains a power and family-level
+040           boundary. We provide a reusable judgment-hygiene chain covering power-bound
+041
+              non-detection (measurable discrimination vs. decision-readout resolvability), de-
+              saturation falsiﬁcation, BORDERLINE–MDE co-reporting, and form d1/d2 grad-
+042
+              ing.
+043
+044
+045
+      1   I NTRODUCTION
+046
+047
+      In risk-gated deployment (selective prediction; Chow 1970), a decoder is asked to emit its best de-
+048   code together with a conﬁdence-derived score, and the system abstains on the highest-risk fraction
+049   to cover a target error — self-consistency and numerical conﬁdence calibration are standard ways
+050   to build such a score Wang et al. (2023); Guo et al. (2017). In masked-diffusion language decod-
+051   ing (LLaDA-style, block-wise parallel denoising), “which positions’ conﬁdence to aggregate into a
+052   score” is not unique: one may take a position’s last revision conﬁdence (commit), its ﬁrst-exposure
+053   conﬁdence (first), or the within-block mean (all); one may look only at early blocks (early
+      window) or late blocks (late window); and one may aggregate intra-block or cross-block. This paper
+
+
+                                                      1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+      asks whether these aggregation choices read one construct — a stable, decision-usable conﬁdence
+055   — or different sources of measurement artifact. (We do not study best-of-k candidate selection: this
+056   bed decodes once per prompt, so no candidate pool exists; see Estimand, §2.2.)
+057
+058   Terminology used in this paper.
+059
+060          • Construct: a stable interpretative unit read from a signal.
+061
+             • Power-bound non-detection (supersedes our earlier “measurable ̸= usable” phrasing): a
+062
+               readout may discriminate (AUROC / risk@coverage) statistically while, at this bed’s
+063            decision-readout power, no selection increment is resolvable (all registered decision an-
+064            chors POWER_LIMITED under the full-width MDE80). This is an underpowered non-
+065            detection on this bed, not a claim that in-block selection is unusable; it bounds only this
+066            bed and this decision anchor set.
+067
+             • f-rated readout family: the three aggregation readouts {commit, first, all}; judgment-
+068            hygiene levels d1 (direction-consistent, report interval) and d2 (direction-ﬂipping, with-
+069            draw claim) characterize how they agree.
+070
+             • BORDERLINE_EQUIVOCAL: a family-level verdict when a raw CI excludes 0 but Holm
+071
+               correction fails; always co-reported with MDE (non-degradable).
+072
+073          • load-bearing: a stable analytical anchor. R3 is the headline negative result; R1/R2/R4/R5
+074            are boundary instances. The R5 full-width MDE correction remains a load-bearing sound-
+075            ness correction even though R5 is not a headline ﬁnding.
+076
+      This paper studies whether these aggregation axes read one construct or different sources of mea-
+077
+      surement artifact (Estimand, §2). On a single frozen-decode bed we run zero-GPU reproducible
+078   analysis. The headline result, R3, is a power-bound non-detection: the intra-block AUROC gain
+079   is measurable (+0.0144, above the intra-block full-width MDE80), yet no intra-block selection in-
+080   crement is resolvable at this bed’s decision-readout power (risk@coverage CIs include 0 and every
+081   registered decision anchor is POWER_LIMITED under the same H2 full-width MDE rule). Because
+082   the decision-anchor MDE80 (not a single threshold) bounds what this bed can detect, this is honestly
+083   stated as an underpowered non-detection rather than as the stronger claim that in-block selection is
+084   unusable. Four boundary-strict judgment-hygiene working instances (§3) delimit that result:
+085
+086          • Direction-consistent at the registered anchor, magnitude-varying (R1): at cov= 0.2 all
+087
+               three readouts agree point-identically (δEL = − 0.076923=15/195 on the support grid); the
+               sign agreement is not claimed beyond that anchor — at c ≥ 0.55 the readouts diverge in
+088
+               sign and the band is power-limited, not a measured agreement or null.
+089
+090          • Not the same construct, yet decision-difference compatible with measurement (R2):
+091            commit and all are not the same latent variable, but their decision-validity gap is ex-
+092
+               plainable by the reliability gap/SNR.
+093          • Early/late-window difference is robust to a ﬁrst-exposure desaturating readout (R4):
+094            a desaturated readout reproduces the effect point-for-point.
+095          • High-selectivity-speciﬁc boundary (R5, non-load-bearing): every registered anchor is
+096            POWER_LIMITED under the full-width MDE80, and the family-level Holm(3) list has no
+097            survivor, so the raw cov= 0.2 effect remains BORDERLINE_EQUIVOCAL rather than a
+098            usable ﬁnding.
+099
+100   Contributions. (1) R3, a bounded power-bound negative: on this frozen bed, intra-block discrim-
+101   ination is measurable but no intra-block selection increment is resolvable at the decision-readout
+102   power (all registered anchors POWER_LIMITED under the full-width MDE80); this is an underpow-
+103   ered non-detection, deliberately not promoted to an “unusable” construct claim; (2) R1/R2/R4/R5
+104
+      as explicitly bounded judgment-hygiene working instances, not load-bearing headline claims; (3)
+      a reusable H1–H6 chain for judging “readout→selection” claims while separating the aggregated
+105
+      selection readout from internal-representation mechanisms.
+106
+107   Figure 1 summarizes the key design distinction: a statistically measurable readout difference is not
+      automatically a usable selection signal.
+
+
+                                                        2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123   Figure 1: Conceptual map of the measurement problem. The same frozen masked-diffusion event
+124   stream supports three alternative within-block conﬁdence readouts: the last revision (commit), ﬁrst
+125   exposure (first), or within-block mean (all). Window and scale choices then produce a decode-
+126   level score whose statistical discrimination must be tested separately from practical selection utility.
+127   Takeaway: measurement and selection utility are separate gates. The diagram is conceptual and
+128   contains no experimental quantities.
+129
+130
+131
+      2     M EASUREMENT C ONSTRUCT AND M ETHOD
+132
+      2.1     I DENTIFIABILITY OF THE READOUT CONSTRUCT
+133
+134   We study a concrete, measurable question in masked-diffusion language decoding: when conﬁdence
+135   readouts are aggregated into a decode-level score used to select likely-correct decodes, do different
+136   aggregation axes read one stable construct or different sources of measurement artifact? We compare
+137   three axes: aggregation score (commit = within-block last-step conﬁdence; first = within-block
+138   ﬁrst-step conﬁdence, desaturated; all = within-block mean), aggregation window (early = blocks
+139   0–3 vs late = blocks 4–7), and aggregation scale (intra-block vs cross-block). All analysis is on a
+140   single frozen-decode bed, zero GPU. We make no mechanism claim about the model’s internals; all
+141   claims are restricted to the “readout → decision score” measurement layer.
+142
+143   2.2     E STIMAND ( DECISION READOUT )
+144
+145
+      Estimand = pool-level selective abstention over 974 distinct problems, with one decode per prob-
+      lem (k=1) and no candidate pool: this bed has no best-of-k selection, so candidate selection (k>1,
+146
+      within-prompt candidate pools) is outside the measured estimand and is left to a separate recovery
+147
+      that would require new data (k≥4 decodes per prompt). The decision question is the selective-
+148   prediction one: can a decode-level conﬁdence readout be used to risk-gate (abstain on) a coverage-c
+149   fraction of decodes so as to reduce expected error. Formally, for coverage point c, readout r, and
+150   window W ∈ {E=blocks 0–3, L=blocks 4–7}:
+151
+152
+          riskW,r (c) = error rate of the top-(c · n) decodes by W -window r-readout decode-level mean,
+153   where the selected count is k = max(1, round(c · n)) retained decodes (the top-k by descend-
+154   ing score), i.e. banker’s rounding of c · n to an integer with a ﬂoor at 1 (at c=0.2, n=974:
+155   round(194.8)=195 decodes retained). Ties in score are resolved by stable (mergesort) index order,
+156   so the retained set is deterministic for a ﬁxed event order; the δEL values below are point-identical
+157   on the discrete support grid (e.g. −0.076923 = −15/195 at c=0.2). with base = full-pool error
+158   rate (this bed: 0.2947), and
+159        δEL,r (c) = riskE,r (c) − riskL,r (c),   (< 0 ⇔ early window is better at selecting decodes).
+160
+161   The early/late δEL is the window-comparison quantity used by R1, R4, and R5; it is not the R3 deci-
+      sion estimand. R3 is the intra-block between-arm selection increment: the change in risk@coverage
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      when the decode-level score is built from the commit readout versus the all readout, restricted to
+163   a single block (rank the n decodes by one block’s readout, take risk@coverage per block, average
+164   across the 8 blocks)
+165
+166                         ∆intra (c′ ) = riskintra−block
+                                               commit      (c′ ) − riskintra−block
+                                                                       all         (c′ ),                  (1)
+167
+      the quantity reported in the R3 row of Table 2 and gated in Table 4. The selection beneﬁt of a
+168   single readout against no selection, gain = base − risk (large, e.g. ≈ +8.7 pp at cov= 0.2), is a
+169   separate, resolvable statement about each individual readout’s usefulness; it is not the R3 increment
+170   and is kept distinct so that R3’s negative applies only to the between-arm increment. Inference uses
+171   a multiplicity-preserving cluster bootstrap over decodes and family-level Holm(3); Table 5 collects
+172   the exact registered settings. Here and throughout, the twin p of an estimate is the two-sided boot-
+                                                                                                       
+173   strap p-value against the paired null, computed as ptwin = 2 min Pr  c b [δ̂b > 0], Pr
+                                                                                          c b [δ̂b < 0] over
+174   the B=2000 cluster-bootstrap resamples δ̂b ; it measures direction stability of the estimate on the
+175   original (not shufﬂed) labels, with the independent statistical unit being the decode (n=974). The
+176   BORDERLINE third-state discipline requires co-reporting the full-width MDE80 (Method appendix
+177   H2). Under that budget all six registered commit/first anchors are POWER_LIMITED; conse-
+178   quently BORDERLINE is a separate family-level statement, never an above-MDE anchor claim.
+179   At the registered bootstrap setting, Holm(3) gives holm3_survivors_commit=[]: the raw
+180   lowest-coverage CI excludes 0, but no family member survives correction. Table 2 records the
+181   deterministic-order high-B seed audit and the resolved scan-order artifact, separating those compa-
+182
+      rable values from the method narrative.
+183   Efﬁciency / power footnote. The full-width minimum detectable effect is deﬁned at 80% power,
+184   two-sided α=0.05, MDE80 = (z1−α/2 + z1−β ) SD = 2.8016 SD, where SD denotes the observed
+185   cluster-bootstrap standard error of the relevant decision-anchor effect (per-anchor, Table 4 for R3
+186   and Table 3 for the early/late grid). Because this symbol carries one value per scale and cov, we
+                                       (AUROC)                                (risk,c)
+187   tag it where ambiguous: MDE80              for the AUROC scale, MDE80            for the decision-anchor
+                                                  (xblk)
+188   risk@coverage at coverage c, and MDE80             for the cross-block anchor (collectively, all values
+189   are registered per-anchor in Table 4 and Table 3). This is a post-hoc / observed power statement,
+190   not a design-power statement: because MDE80 /|∆| ≡ 2.8016/z it is a monotone rescaling of the
+191   z/p statistic and cannot by itself separate “underpowered study” from “small true effect.” We there-
+192   fore co-report an equivalence (TOST) complement at a pre-registered practical bound δ ∗ =1 pp
+193
+      (E0). Table 1 groups the three TOST intervals and the corresponding planned-power sample re-
+      quirements rather than stacking them in prose. Under the observed-power budget all registered
+194
+      commit/first×{0.2, 0.5, 0.8} anchors are POWER_LIMITED at the observed effect sizes. The
+195
+      c ≥ 0.55 band is likewise power-limited, not a measured null.
+196
+197
+198   Table 1: Equivalence complement and planned-power requirements at the decision anchor. Take-
+199   away: the lower-coverage TOST checks are inconclusive on the frozen bed; the current sample is
+200   below both planned-power targets.
+201   Check               Anchor         Numeric result                Decision
+202   TOST              cov= 0.2         90% CI [−0.018, +0.004]       Inconclusive at δ ∗ =1 pp
+203   TOST              cov= 0.5         90% CI [−0.012, −0.001]       Inconclusive at δ ∗ =1 pp
+204   TOST              cov= 0.8         90% CI [−0.005, +0.002]       Equivalent within ±1 pp
+205   Design power    MDE80 = 1.2 pp     n ≈ 1960                      More decodes than the current bed
+      Design power    MDE80 = 1.0 pp     n ≈ 2820                      More decodes than the current bed
+206
+      Current bed          —             n = 974                       Below both planned-power regimes
+207
+208
+209
+      2.3     U NIFIED MEASUREMENT NARRATIVE ( ALL “ CONSISTENT- WITH ”, NON - CAUSAL )
+210
+211   Symmetric-gate summary. The symmetric-gate rule (H2/H3) is applied to every result, includ-
+212   ing the load-bearing R3 headline: any readout whose decision-readout CI is below the registered
+213   full-width MDE80 at its anchors is labelled POWER_LIMITED, and a POWER_LIMITED result
+214   is reported as an underpowered non-detection, never promoted to a conﬁdent positive or negative
+215   conclusion. Applied uniformly, this makes R3 itself POWER_LIMITED at every registered decision
+      anchor: a conﬁdence readout can discriminate measurably (AUROC above its MDE80) while, at
+
+
+                                                          4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+      this bed’s power, no intra-block selection increment is resolvable. R1/R2/R4/R5 are bounded work-
+217   ing instances that diagnose direction, reliability/SNR, desaturation, and power/family boundaries;
+218   each is bound by the same rule (e.g. R5’s raw cov= 0.2 CI excludes 0, but every registered anchor is
+219   power-limited and Holm(3) has no survivor). Thus, under symmetric gating, no readout difference is
+220   promoted to an independent-information or mechanism claim, and R3 states only an underpowered
+221   non-detection on this bed — not that intra-block selection is unusable.
+222
+223
+224   3    R ESULTS
+225
+226   Machine-readable R1–R5 numbers, evidence paths, and boundaries accompany the source in the
+227   factsheet and claim–evidence map. Table 2 moves the comparable quantities out of prose and pairs
+228   each numeric anchor with its permitted interpretation.
+229   R1: Direction-consistent at the registered anchor (not noise ﬂip). At the registered cov= 0.2
+230   anchor, all three readouts agree on the sign of the early/late comparison and are point-identical
+231   (δEL = − 0.076923=15/195 on the support grid; Table 2). This is form d1 restricted to that anchor:
+232   the direction is stable at cov= 0.2 even though magnitude may vary by axis. The sign agreement
+233   is explicitly not claimed over the full coverage axis: the ﬁne-grid scan (r21, descriptive) shows
+234   the readouts diverge in sign toward c ≥ 0.55; Table 2 groups the three registered high-coverage
+235   estimates and their null-crossing CIs. That band is power-limited rather than a measured agreement
+236
+      or null.
+237   R2: Distinct construct, decision gap compatible with pure SNR. commit and all are
+238   not the same latent variable, but the observed decision-validity difference does not require
+239   an independent-information explanation beyond the reliability gap. Boundary: R2 con-
+240   cerns commit versus all as latent variables on this single frozen bed; the disattenuated
+241   reliability-correlation upper bound 0.979 < 1 rejects ρ=1 on this bed, but this rejection
+242
+      rests on the (positively estimated) residual-covariance correction covu : breakeven analysis
+      (results/r15_singlefactor_pointpred.json :: P1_cov_u_sensitivity) shows
+243
+      that a small over-estimate of covu erases the rejection; Table 2 reports the point and CI-upper break-
+244
+      even multipliers. The correction is not protected against noise-model misspeciﬁcation for covu ̸= 0
+245   on real data. The decision-validity gap is compatible with a pure SNR/structure explanation and
+246   does not require an independent-information mechanism. The claim is bounded to this bed and
+247   these readouts; it is not a cross-bed construct claim.
+248
+      R3: Measurable intra-block discrimination, no resolvable intra-block selection increment at
+249
+      this power (a power-bound non-detection). R3 estimand is the intra-block between-arm selection
+250
+      increment (1), ∆intra (c′ ) = riskintra−block
+                                        commit      (c′ ) − riskintra−block
+                                                                all         (c′ ), over decode-level cluster units
+251         intra−block
+      (risk             = per-block risk@coverage averaged across the 8 blocks). Table 4 gives the complete
+252
+      registered R3 decision-anchor grid, including the point, CI, MDE80, gate, and control arms. The
+253
+      early/late δEL used by R1/R4/R5 is tabulated separately in Table 3.
+254
+255   Controls and symmetric gate. The positive control is resolvable under the same full-width MDE80
+256   rule, whereas the shufﬂed-label negative control has null-crossing CIs; Table 4 reports their gains,
+257
+      intervals, and gates. Thus the rig can detect an effect, and R3 is a precision limit rather than a
+      dead-rig result. Cross-block aggregation grows the raw signal, but its registered anchor remains
+258
+      POWER_LIMITED under the same gate (Table 4), so it does not independently establish resolvabil-
+259
+      ity.
+260
+261   Headline comparison. The intra-block AUROC increment +0.0144 is above its AUROC-scale
+            (AUROC)
+262   MDE80          =0.0069. By contrast, every registered intra-block between-arm decision-anchor CI
+263   includes zero and its full-width MDE80 exceeds the observed effect (Table 4). The bed is there-
+264   fore POWER_LIMITED at the decision readout. The TOST complement in Table 1 shows that this
+265   is not an equivalence claim: the lower-coverage anchors are inconclusive, and only the highest-
+266
+      coverage anchor meets the registered equivalence bound. Table 2 also records the Holm threshold
+      check for the measurable AUROC half, so the family correction is applied symmetrically rather than
+267
+      one-directionally.
+268
+269   AUROC→ ∆risk derivation (to place the two scales on one axis, not to claim the bound is tight):
+      we report the ﬁrst-order mapping used to make “1.2 pp” reproducible, rather than a looser absolute-
+
+
+                                                           5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      AUC bound. Let ∆A= + 0.0144 be the AUROC gain over the random-ordering baseline, c=0.2 the
+271   coverage, and d the score-scale sensitivity (d=1.04 here, the derivative of risk@coverage w.r.t. the
+272   standardized score at cov= 0.2). The linear proxy is
+273
+274           ˆ = ∆A · (1 − c) · d ≈ 0.0144 × 0.8 × 1.04 ≈ 0.012 = 1.2 pp (upper proxy),
+           ∆risk
+275
+      which remains below the decision-anchor full-width MDE80 (Table 2); it is the same order of mag-
+276
+      nitude, not an order of magnitude smaller. This rests on four explicit assumptions (full derivation
+277   in docs/r106_c4_auroc_risk_derivation.md): (i) monotone score—selection by de-
+278   scending score so AUC is well deﬁned; (ii) ﬁrst-order increment—∆risk is a linear-in-∆A Taylor
+279   map, so the proxy is an upper bound, not an equality; (iii) i.i.d. units (cluster unit=decode, n=974);
+280   (iv) no calibration assumption (sorting separability only), so the proxy bounds ordering-layer, not
+281   decision-utility-layer, risk. Because of (ii)–(iv) the AUROC-implied bound is only a weak upper
+282   proxy for the decision-readout increment and cannot be separated from it at this bed’s power (“not
+283   resolvable”, not “dissociate”). The honest reading is a power-bound non-detection on this bed:
+284   we cannot resolve an intra-block selection increment at this decision-readout power (it is below the
+285
+      decision-anchor MDE80), and we do not promote the underpowered non-detection to the stronger
+      claim “measurable ̸= usable” as a general construct statement.
+286
+287   R4: Early/late difference survives desaturation. The desaturated first readout reproduces the
+288   effect point-for-point with complete coverage. The block-ﬁrst (decode,pos,block) construction is
+289   validated by the dedicated coverage audit: saturation is real variance compression, but it does not
+290   measurably degrade ranking quality.
+291   R5: High-selectivity-speciﬁc, power-limited, family-level BORDERLINE (no survivor). The
+292   effect is power-limited at every registered anchor under the full-width MDE80. At the registered
+293   family and bootstrap setting, Holm(3) gives holm3_survivors_commit=[]—no point sur-
+294   vives correction—so the verdict remains BORDERLINE_EQUIVOCAL and non-load-bearing. The
+295   raw lowest-coverage CI excludes 0 but the family-level claim does not survive. Table 2 reports
+296   the exact anchors, deterministic-order seed audit, and boundary; Figure 2 shows the coverage-local
+297
+      descriptive shape and uncertainty.
+298   Uniﬁed reading. R3 supplies the central negative answer—an honest power bound: measurable
+299   statistical discrimination (intra-block AUROC gain above its MDE80) does not by itself yield a
+300   usable decision increment (intra-block risk@coverage CI includes 0 and is POWER_LIMITED under
+301   the same H2 rule, Table 4); the AUROC-implied bound is only a comparable-order (about 0.71×
+302   MDE80) upper proxy, so the two scales do not separate at this bed’s power. R1/R2/R4/R5 diagnose
+303
+      boundaries in direction, reliability/SNR, desaturation, and power/multiplicity. None of these four
+      working instances establishes independent information content or a mechanism; in particular, R5 is
+304
+      power-limited at all registered anchors and has no Holm survivor. The decision landscape is ﬁxed
+305
+      ahead of the Setup details (Section 4, Table 5).
+306
+307
+308   4   E XPERIMENTAL S ETUP
+309
+310   Bed. We use one frozen LLaDA-8B-Instruct × GSM8K event set Cobbe et al. (2021), graded with
+311   free-form exact-match (a decode is correct iff the extracted ﬁnal answer matches the solution’s an-
+312   swer to 1e−6; base accuracy 0.7053, error rate 0.2947, k=1 single-decode on this branch). An
+313   earlier label of this bed as “MC 4-way” is withdrawn here as a documented misstatement: the reg-
+314
+      istered construct and ground truth are free-form exact-match, which is the construct this paper’s
+      decision readout quantiﬁes. Table 5 collects the registered bed, schedule, inference, and readout
+315
+      settings; artifact provenance is registered in evidence/experiment_registry.json. The
+316
+      three readouts share the same event cells and differ only in how within-block conﬁdence is summa-
+317   rized.
+318
+319   Inference and controls. Cluster bootstrap over decodes (B=2000, multiplicity-preserving, ﬁxed
+320
+      seed) + family-level Holm(3). Rig controls: A0 positive control (full-window readout selection-
+      beneﬁt lower bound > 0); A1 negative control (select beneﬁt ≈ 0 under shufﬂed labels).
+321
+322   Reproducibility and zero GPU. All analysis recomputed on the frozen event set by deterministic
+323   scripts (e.g. scripts/r17_window_desaturation.py, ﬁxed seed), zero GPU, no model
+      forward pass required.
+
+
+                                                        6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+325   Table 2: R1–R5 evidence digest. Numeric anchors are grouped here to separate statistical discrim-
+326   ination from the decision claim each result permits. Takeaway: only R3 is load-bearing, and its
+327   decision-readout conclusion is a power-bound non-detection.
+328    Key    Numeric evidence                                                 Boundary and takeaway
+329    R1     cov= 0.2: all n=974 decodes give δEL = − 0.076923                Direction-consistent d1;
+330           (point-identical; = −15/195 on the discrete grid); registered    magnitude may still vary by
+331           anchor (r16/r17/r19; cluster bootstrap B=2000, seed              axis.
+332           20260824) CI95 [−0.14359, −0.010256], twin p = 0.022
+              commit / 0.033 first / 0.031 all. At cov∈ {0.5, 0.8} the
+333
+              raw CI includes 0 and the sign is not claimed (cov= 0.8, r19:
+334           commit +0.0077/first +0.0013/all −0.0051, all CIs
+335           contain 0). The r21 ﬁne-grid scan (registered descriptive,
+336           multiplicity-uncontrolled) is not load-bearing: at the ﬁxed
+337           seed twin p=0.013 / CI upper −0.015256 vs −0.010256,
+              purely from B-resampler consumption order—point estimates
+338
+              match to the last digit, only single-point MC statistics drift
+339           (decode-resample seed held ﬁxed, scan order not).
+340    R2     Disattenuated reliability-correlation upper bound 0.979 < 1      Boundary: commit versus
+341           (rejects ρ=1 on this bed); reliability 0.755 vs 0.678;           all are latent variables on this
+342           validity-difference CI includes 0. Caveat: the rejection rests   single frozen bed; the
+              on the covu correction—breakeven multiplier 0.9038               0.979 < 1 upper bound and
+343
+              (6.5–10% over-estimate erases it), unprotected against           decision-validity gap are
+344           noise-model misspeciﬁcation.                                     compatible with pure
+345                                                                            SNR/structure, require no
+346                                                                            independent-information
+347                                                                            mechanism, and are not a
+                                                                               cross-bed construct claim.
+348
+       R3     Intra-block AUROC gain +0.0144 (CI95 [0.0096, 0.0193]            We observe no resolvable
+349           excludes 0, n=974 cluster units; AUROC-scale full-width          intra-block selection increment
+350           MDE80 = 0.0069 < 0.0144 ⇒ above-MDE; z ≈ 5.8, raw                (power-limited); measurable
+351           two-sided p ≪ 0.0017 = α/3). Intra-block between-arm             discrimination is not actionable
+352           increment (1) |∆| ≤ 0.7pp (full-pool base error 0.2947, but      in-block, and cross-block
+              R3 measures the commit-all increment, not selection gain;        aggregation, though growing
+353
+              Table 4): at cov= 0.2/0.5/0.8 paired ∆risk                       the raw signal, is itself
+354           = −0.0058/ − 0.0067/ − 0.0008, CI95                              power-limited at the decision
+355           [−0.018, 0.0058]/[−0.0131, 0.0008]/[−0.0058, 0.0022] (all        anchor.
+356           include 0), full-width MDE80 = 0.0170/0.0099/0.0057,
+357           MDE/|∆| = 2.933/1.483/7.147 ⇒ POWER_LIMITED.
+              TOST at δ ∗ =1pp: inconclusive at cov= 0.2/0.5, equivalent
+358
+              (within ±1pp) at cov= 0.8 (results/r153_e0_tost).
+359           AUROC-implied ∆risk ≲ 1.2pp at cov= 0.2 ≈ 0.71×
+360           MDE80 0.0170 (same order) ⇒ honest power bound, not a
+361           rejection. Cross-block cov= 0.2 increment −4.1pp (CI95
+362           [−0.077, −0.005] excludes 0,
+                     (xblk)
+363           MDE80 ≈0.051 ≈ 1.25 × |∆| ⇒ POWER_LIMITED
+              under H2; does not independently resolve).
+364
+       R4     Late-window SD: first ≈ 0.2 vs commit 0.055; first               Early/late difference is robust to
+365           reproduces δEL = − 0.0769 (raw twin p = 0.033 first vs           the first-exposure
+366           0.022 commit, B = 2000 cluster bootstrap ⇒ MC SE∼1               desaturating readout; saturation
+367           point of p), full 8-block coverage.                              alone does not explain it.
+368    R5     Negative gap concentrates descriptively at cov≈ 0.15–0.35 (δ     BORDERLINE_EQUIVOCAL;
+369
+              from −0.044 to −0.082, raw CI excludes 0). At cov= 0.2,          raw cov= 0.2 CI excludes 0
+              full-width MDE80 = 0.094388 ≥ |δ| = 0.076923 ⇒                   (seed-stable under
+370           POWER_LIMITED; all six commit/first×{0.2, 0.5, 0.8}              deterministic-order B=20,000,
+371           anchors power-limited (MDE/|δ|: commit 1.227/1.824/3.518,        10/10 seeds) but no family
+372           first 1.215/24.036/22.136). Holm(3):                             member survives;
+373           holm3_survivors_commit=[]. The c ≥ 0.55 band is                  high-selectivity-speciﬁc
+374
+              not a measured null (max |δ|/MDE80 = 0.442 ⇔                     boundary, non-load-bearing.
+              MDE80 /|δ| = 2.262; a measured null needs ≫ 1; the 0.442
+375           uses the coverage-local anchor |δ|=0.011986 at cov= 0.6
+376                       (risk,c=0.8)
+              over MDE80               =0.027095, not ﬁg. 2 cov= 0.2 anchor
+377           0.0944). Instrument null = r17 shufﬂed-label control (gain
+              ≤ 0.008 at all three cov points, each CI containing 0).
+
+
+                                                          7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+379
+380
+381   Table 3: Early/late decision-anchor grid (δEL ): the window-comparison estimand δEL,r (c) =
+382   riskE,r (c) − riskL,r (c) (early = blocks 0–3, late = blocks 4–7) used by R1, R4, and R5. Un-
+383   der the full-width MDE80 = 2.8016 SD rule (uniform, no exemptions; “MDE80 /| ˆ     ∆| ≥ 1 ⇒
+384   POWER_LIMITED”), “0 ∈                               ˆ
+                                  / CI” marks whether ∆’s 95% CI excludes 0. All values verbatim
+385   from r106_c2_anchor_mde_table (r106; zero-GPU recompute of the frozen r56 full-width
+386   MDE80 ﬁx; SD = cluster-bootstrap SE per anchor). A0/A1 controls use the same registered gate
+387   on gain rather than ∆risk. Takeaway: δEL is power-limited at every anchor (not a measured null);
+388   the raw cov= 0.2 CI happens to exclude 0 but is not a resolvable R3 increment. The R3 decision
+389   quantity is the between-arm increment in Table 4, not this grid.
+390   Anchor               ˆ
+                           ∆           CI95            MDE80    MDE80
+                                                                 |ˆ
+                                                                  ∆|
+                                                                           ∈CI Gate
+                                                                         0 /                                 Family
+391
+      commit · 0.2   −0.0769 [−0.144, −0.010] 0.0944             1.227     yes    PL     Early/late δEL (R1, R4, R5)
+392
+      commit · 0.5   −0.0267   [−0.058, 0.008] 0.0487            1.824      no    PL
+393   commit · 0.8   +0.0077   [−0.012, 0.026] 0.0271            3.518      no    PL
+394   first · 0.2    −0.0769 [−0.133, −0.005] 0.0934             1.215     yes    PL
+395   first · 0.5    −0.0021   [−0.035, 0.035] 0.0493           24.036      no    PL
+396   first · 0.8    +0.0013   [−0.021, 0.019] 0.0284           22.136      no    PL
+397   all · 0.2      −0.0769 [−0.138, −0.005] 0.0953             1.239     yes    PL
+398   all · 0.5      −0.0246   [−0.055, 0.014] 0.0499            2.025      no    PL
+399   all · 0.8      −0.0051   [−0.022, 0.018] 0.0284            5.539      no    PL
+400
+401
+402
+403
+404
+405   Table 4:       Complete registered R3 decision-anchor grid:               the intra-block between-
+406   arm selection increment deﬁned by (1) (risk@coverage per block, averaged over the
+407   8 blocks; cluster-bootstrap B=2000, seed 20260821).                      All values verbatim from
+408   r12b_withinblock_riskcoverage.json::partD, with the full-width MDE80 =
+409   2.8016 SD computed from each anchor’s cluster SE; the cross-block row uses the same between-
+410   arm quantity on block-merged scores (r106 r106_c2_anchor_mde_table). A0/A1 are rig
+411   controls on gain (single-readout selection beneﬁt) at the same coverage grid. Takeaway: the three
+412
+      intra-block R3 between-arm decision CIs at cov= 0.2/0.5/0.8 all include 0 and are at or below
+      their full-width MDE80 ⇒ POWER_LIMITED; the single cross-block row’s raw 95% CI excludes
+413
+      0 but its full-width MDE80 exceeds the observed effect, so it is likewise POWER_LIMITED (an
+414
+      underpowered non-detection, not a measured null). This is the auditable basis for “no resolvable
+415   intra-block selection increment”: every R3 between-arm decision anchor is POWER_LIMITED,
+416                                                                                            ∈CI exception
+      and in particular all three intra-block CIs include 0 (the cross-block row is the sole 0 /
+417   and is not promoted to a resolvable rejection).
+418
+      Anchor                       ˆ
+                                   ∆            CI95           MDE80     MDE80
+                                                                          |ˆ
+                                                                           ∆|
+                                                                                    ∈CI Gate
+                                                                                  0 /                        Family
+419
+420   commit-all · 0.2      −0.0058 [−0.018, 0.0058] 0.0170                2.93        no PL        Intra-block (R3)
+421   commit-all · 0.5      −0.0067 [−0.0131, 0.0008] 0.0099               1.48        no PL
+422   commit-all · 0.8      −0.0008 [−0.0058, 0.0022] 0.0057               7.15        no PL
+423   commit-all · 0.2K8 −0.0410 [−0.077, −0.005] 0.0513                   1.25        yes PL      Cross-block (R3)
+424
+       · 0.2                +0.2126           [0.125, 0.218] 0.0660       0.310        yes RES   A0 positive control
+425    · 0.5                +0.1407           [0.079, 0.147] 0.0484       0.344        yes RES
+426    · 0.8                +0.0649           [0.038, 0.098] 0.0431       0.665        yes RES
+427
+       · 0.2                +0.0038       [−0.064, 0.069] 0.0953         25.388        no ⊃ 0    A1 negative control
+428
+       · 0.5                +0.0073       [−0.036, 0.048] 0.0602          8.272        no ⊃ 0
+429    · 0.8                +0.0079       [−0.025, 0.039] 0.0459          5.786        no ⊃ 0
+430
+431
+
+
+
+                                                           8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+433                                                            δELhigh-selectivity
+                                                                     vs coverage,  band (covper   conf readout (frozen bed g3_main/A, n=974)
+                                                                                            0.15–0.35)
+
+
+434                                            0.05
+
+435
+436                                            0.00
+437
+
+
+
+
+          δEL(c) = risk(early) − risk(late)
+438                                           −0.05
+439
+440
+                                              −0.10
+441
+442
+                                              −0.15
+443
+444
+445                                           −0.20
+446
+                                                        c<0.2: descriptive;
+447                                           −0.25   multiplicity-uncontrolled
+                                                                                                              commit (last-conf)              first local −MDE80(c)
+448                                                                                                           commit local −MDE80(c)          all (block mean)
+449                                                                                                           first (first-exposure conf)     allro local −MDE80(c)
+                                              −0.30
+450                                                                          0.2             0.4                  0.6                       0.8
+451                                                                                  coverage c (fraction of decodes retained)
+452
+453
+454
+      Figure 2: δEL (c) = within-decode “risk@coverage of the early-window (blocks 0–3) minus the
+      late-window (blocks 4–7) mean conf”, for each of the three f -rated readouts (unit=decode; cluster-
+455
+      bootstrap 95% CIs shaded). Orange marks the registered high-selectivity band; the grey band is the
+456
+      lowest-coverage MDE anchor drawn across the axis for orientation, not the coverage-local MDE in
+457   the tail. Takeaway: the negative gap concentrates at high selectivity and appears to decay or reverse
+458   later, but the tail is power-limited rather than a measured null. Table 2 reports the coverage-local
+459   ratios, registered anchor gate, and family-level Holm status.
+460
+461
+462   Table 5: Frozen-bed and conﬁdence-readout registry. Numeric schedule and inference settings are
+463   grouped here rather than repeated in prose; readout rows hold the source (decode,pos,block) event
+464   cell ﬁxed. Takeaway: the readouts differ only in within-block aggregation on one frozen event
+465   stream.
+466                   Registry ﬁeld                                     Frozen setting
+467                   Bed                                               LLaDA-8B-Instruct × GSM8K, free-form exact-match (base acc 0.7053, err
+468                                                                     0.2947; not MC 4-way — an earlier label was withdrawn as a misstatement),
+469
+                                                                        g3_main / arm A
+                      Sample                                            n=974 frozen decodes
+470                   Schedule                                          8 blocks; block length 32; NFE 64; block b covers steps 8b..8b+7 (gap 8)
+471                   Inference                                         Cluster bootstrap B=2000 (multiplicity-preserving, ﬁxed seed 20260824); cover-
+472                                                                     age {0.2, 0.5, 0.8}; family-level Holm(3)
+473                   commit                                            last-step conf
+474
+                      first                                             ﬁrst-step conf (desaturated, full 8-block coverage)
+                      all                                               mean conf
+475
+476
+477
+478   5                                       L IMITATIONS
+479
+480                                            1. Single bed (explicit): all numbers are LLaDA-8B-Instruct × GSM8K g3_main/A on this
+481                                               single frozen bed, n=974; no generalization to other models/datasets/temperatures.
+482
+                                               2. Block-position confound: block index is strongly correlated with, but not a partition of,
+483                                               canvas position; we make no position/timing mechanism claim.
+484
+485                                            3. Single desaturation intervention: first is one desaturation of commit; conclusions
+                                                  hold only “up to desaturating to first”.
+
+
+                                                                                                   9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+            4. BORDERLINE non-load-bearing: for the registered family and bootstrap setting in Ta-
+487            ble 5, holm3_survivors_commit=[]. The raw cov= 0.2 CI excludes 0, but no fam-
+488            ily member survives correction; therefore R5 is a boundary instance rather than a conﬁrmed
+489            high-selectivity ﬁnding. The raw cov= 0.2 exclusion is seed-stable under the deterministic-
+490            order B=20,000 bootstrap (10/10 seeds, CI-endpoint MC-SE ≈ 3×10−17 ), so the “ex-
+491            cludes 0 but family-instable” reading is not an artifact of resampler seed; the family-level
+492            knife-edge (p= 0.01636 vs Holm α/3=0.01667) persists by design and is reported as such.
+493         5. Descriptive shape / power boundary: the ﬁne-grid R5 shape is descriptive and
+494            multiplicity-uncontrolled. All six registered anchors are POWER_LIMITED under the full-
+495            width MDE80, and the apparent decay/reversal at c ≥ 0.55 is not a measured null. The
+496            instrument-null check instead uses the r17 shufﬂed-label negative control.
+497
+            6. Readout scale: single readout conf=maxprob; content-vs-EOS-tail substructure is not sep-
+498            arated.
+499
+500         7. Efﬁciency: no efﬁciency claim; no wall-clock GPU-time comparison.
+501         8. Citation live-recheck gap (disclosed): 5 of the 12 bibliography en-
+502            tries have not yet been live-rechecked at release egress (citation lock:
+503            literature/citation_lock.json); metadata are pinned locally but a ﬁnal
+504            live arXiv recheck is deferred.
+505
+506
+      6    R ELATED W ORK
+507
+508
+      This work sits at the intersection of (i) generative masked-diffusion language decoding (LLaDA-
+509
+      style block-level parallel noise→token denoising with sequential block progress Nie et al. (2025);
+510
+      block-progress simplex diffusion decoding Han et al. (2023); completeness-based early halting of
+511   diffusion LM generation Lo Cicero Vaina et al. (2023); conﬁdence-thresholded parallel decoding
+512   (Fast-dLLM) Wu et al. (2025)), (ii) using conﬁdence/score readouts for risk-gated selection and
+513   self-assessment (calibration of modern NN conﬁdences Guo et al. (2017); semantic uncertainty in
+514   natural-language generation Kuhn et al. (2023); self-consistency Wang et al. (2023) is a candidate-
+515   pool practice — multiple decodes are scored and the best kept — which our k=1 bed does not instan-
+516   tiate), and (iii) measurement-artifact and calibration discipline (separating “readout difference” from
+517   “measurement-channel difference”). We do not claim masked diffusion’s internal representation
+518   mechanism; we treat the decode event stream as a controlled conﬁdence-readout channel and study
+519
+      the construct consistency of aggregation axes on it. Our methodological contribution is a reusable
+      discrimination chain (power-bound non-detection, desaturation-falsiﬁcation, BORDERLINE-MDE
+520
+      co-reporting, form d1/d2 grading) showing two gaps between “a readout discriminates” and “a read-
+521
+      out can be used for selection”—decision-readout and measurement-channel.
+522
+523   Our central negative ﬁnding—that intra-block conﬁdence aggregation is measurable, yet no intra-
+524   block selection increment is resolvable at this bed’s decision-readout power (an underpowered non-
+525
+      detection, not a rejection)—connects directly to selective prediction and risk–coverage: statistical
+      discrimination need not yield actionable selection utility at a user-set risk (Chow, 1970; Bartlett
+526
+      & Wegkamp, 2008; El-Yaniv & Wiener, 2010; Geifman & El-Yaniv, 2017). LLM uncertainty and
+527
+      selective-generation work (Kuhn et al., 2023; Lin et al., 2022), together with conﬁdence-based early
+528   halting in masked-diffusion language models (Lo Cicero Vaina et al., 2023), frames the correspond-
+529   ing decode-time utility question. Our judgment-hygiene chain is complementary: it proposes no new
+530   selective classiﬁer, but isolates decision-readout and measurement-channel gaps between “a readout
+531   discriminates” and “a readout can be used for selection.”
+532
+      Positioning against conﬁdence-gated in-decoding decoding. The closest prior art (Wu et al., 2025)
+533
+      treats in-decoding conﬁdence as an actionable, per-token signal (threshold-gated parallel unmask-
+534   ing order), whereas our R3 test uses the decode- level aggregation of that same conﬁdence as a
+535   risk-gating readout for selective prediction. The two are not in tension: a per-token unmasking de-
+536   cision can be usable while the decode-level mean over a window fails as a selection readout at this
+537   bed’s decision-readout power. Our contribution is the separation of these two granularities (and of
+538   “discrimination” from “risk-gated selection utility”), not a claim that in-decoding conﬁdence is gen-
+539   erally useless—indeed the conﬁdence-gated line reports it is useful per-token, which is compatible
+      with our bounded, bed-speciﬁc decode-level null.
+
+
+                                                        10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      7    C ONCLUSION
+541
+542
+      We study single-decode (k=1) masked-diffusion decoding under the selective-prediction question:
+543   can an in-decoding conﬁdence readout risk-gate (abstain on) a coverage-c fraction of decodes to
+544   reduce expected error? Best-of-k candidate selection is not in scope — this bed decodes once
+545   per prompt, so the question of picking among per-prompt candidate decodes never arises. Within
+546   that scope, the headline, R3, is a power-bound non-detection: on this frozen masked-diffusion bed,
+547   intra-block discrimination is measurable (AUROC gain +0.0144 above its full-width AUROC-scale
+            (AUROC)
+548   MDE80           =0.0069), yet at this bed’s decision-readout power no intra-block risk-gated selection
+549   increment is resolvable: each of the three intra-block R3 between-arm decision-anchor CIs includes
+550   0 and its full-width MDE exceeds the observed effect (Table 4). The single cross-block row in Ta-
+551                       ∈CI exception: its raw CI excludes 0 but is itself POWER_LIMITED under the
+      ble 4 is the sole 0 /
+552   same H2 full-width rule, so it is not promoted to a resolvable rejection. Because this is an underpow-
+553   ered non-detection (not a rejection), we do not conclude that in-block selection is unusable on this or
+554
+      any other bed; the claim is bounded to “intra-block risk-gated selection increments below the stated
+      decision-anchor MDE80 are not resolvable on this bed at this power.” R1/R2/R4/R5 are judgment-
+555
+      hygiene boundary instances, not headline ﬁndings. R5 is power-limited at every registered anchor
+556
+      and has no Holm(3) survivor, so its raw cov= 0.2 effect remains BORDERLINE_EQUIVOCAL and
+557   non-load-bearing. The H1–H6 chain keeps “readout→selection” claims separated at the decision-
+558   readout and measurement-channel layers; under symmetric gating it never turns a readout difference
+559   – nor an underpowered non-detection – into an information or mechanism claim.
+560
+561
+562
+      R EFERENCES
+563   Peter L. Bartlett and Marten H. Wegkamp. Classiﬁcation with a reject option using a hinge loss. In
+564     Proceedings of the Twenty-First Annual Conference on Learning Theory (COLT), pp. 9–16, 2008.
+565
+566   C. K. Chow. On optimum recognition error and reject tradeoff. IEEE Transactions on Information
+567
+        Theory, 16(1):41–46, 1970.
+568   Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+569     Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John
+570     Schulman. Training veriﬁers to solve math word problems. In arXiv:2110.14168, 2021.
+571
+572   Ran El-Yaniv and Yair Wiener. On the foundations of noise-free selective classiﬁcation. Journal of
+573     Machine Learning Research, 11:1605–1641, 2010.
+574
+      Yonatan Geifman and Ran El-Yaniv. Selective classiﬁcation for deep neural networks. In Advances
+575
+        in Neural Information Processing Systems (NeurIPS), volume 30, 2017.
+576
+577   Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. On calibration of modern neural
+578     networks. In Proceedings of the 34th International Conference on Machine Learning (ICML),
+579     2017.
+580
+      Xiaochuang Han, Sachin Kumar, and Yulia Tsvetkov. SSD-LM: Semi-autoregressive simplex-based
+581
+        diffusion language model for text generation and modular control. In Proceedings of the 61st
+582
+        Annual Meeting of the Association for Computational Linguistics (ACL), 2023.
+583
+584   Lorenz Kuhn, Yarin Gal, and Sebastian Farquhar. Semantic uncertainty: Linguistic invariances for
+585     uncertainty estimation in natural language generation. In International Conference on Learning
+586     Representations (ICLR), 2023.
+587
+588
+      Stephanie Lin, Jacob Hilton, and Owain Evans. Teaching models to express their uncertainty in
+        words. In Transactions on Machine Learning Research (TMLR), 2022.
+589
+590   Soﬁa Maria Lo Cicero Vaina, Nikita Balagansky, and Daniil Gavrilov. Diffusion language models
+591     generation can be halted early, 2023.
+592
+593   Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai Lin,
+        Ji-Rong Wen, and Chongxuan Li. Large language diffusion models, 2025.
+
+
+                                                        11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdh-
+595     ery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models.
+596     In International Conference on Learning Representations (ICLR), 2023.
+597
+598   Chengyue Wu, Hao Zhang, Shuchen Yang, Zhisheng Lu, Ziwei Liu, James T. Kwok, et al. Fast-
+599     dLLM: Training-free acceleration of diffusion LLM by enabling KV cache and parallel decoding,
+600
+        2025.
+601
+602
+      A     M ETHOD APPENDIX : REUSABLE JUDGMENT- HYGIENE LIST (H1–H6)
+603
+604
+      This checklist consolidates the decision rules used in the frozen analyses and provides one auditable
+605
+      interpretation path from conﬁdence readout to selection claim.
+606
+607    • H1 Symmetric power gate: test “readout discriminates ⇒ it can gate” directly at risk@coverage with
+608      the same H2/MDE80 rule used for every claim. R3 is POWER_LIMITED at every decision anchor and
+         therefore remains an underpowered non-detection, never a positive, negative, or “unusable” claim.
+609
+       • H2 BORDERLINE must co-report full-width MDE: Table 3 reports MDE80 = 2.8016 SD at every
+610
+         anchor; all six are POWER_LIMITED. The raw lowest-coverage CI excludes 0 but Holm(3) has no survivor,
+611      so the family verdict is BORDERLINE_EQUIVOCAL, never “above MDE.”
+612    • H3 Desaturation-falsiﬁcation: persistence under a within-bed desaturated readout rules out saturation
+613      as primary; disappearance supports it. Use block-ﬁrst (decode,pos,block), not global step 0, and audit
+614      coverage.
+615    • H4 Form d1/d2 grading: report intervals for direction-consistent d1 and withdraw one-sided claims for
+         direction-ﬂipping d2. The three-readout comparison is d1 only at the registered lowest-coverage anchor;
+616
+         the later sign-divergent band is power-limited.
+617    • H5 Cross-readout/cross-coverage check: report load-bearing differences across readouts and coverage
+618      bands, including the cross-layer span.
+619    • H6 Reproduction gate: ﬁne-grid recompute must reproduce discrete points; exact axis agreement may be
+620      robustness or a no-op, so audit the construction.
+621
+622   A.1    H- INSTRUMENT DIMENSIONS FOR δEL (D5) AND NULL ANCHOR
+623
+624   The load-bearing estimand is the within-decode early-minus-late risk@coverage difference. The
+625
+      registered instrument dimensions and null-anchor check are:
+626    • D1 native steps (steps_is_native=true): native block index 0..7 (NFE=64), not wall-clock or
+627      folded schedules.
+628    • D2 decode input (decode_input=conf_maxprob): per-position maxprob; Table 5 deﬁnes the last,
+629      ﬁrst, and mean readouts.
+630    • D3 owned time axis: early versus late blocks within each of the same frozen decodes; block index is
+         semantic, while intra-block/EOS-tail position is out of scope.
+631
+       • Instrument null (re-derived): the c ≥ 0.55 low-selectivity band is not a measured null—it is power-limited
+632      under the coverage-local anchor reported in Table 2. The shufﬂed-label negative control in Table 3 supplies
+633      the near-zero, null-crossing anchor; no pre-calibrated offset is subtracted.
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+
+
+
+                                                           12
+

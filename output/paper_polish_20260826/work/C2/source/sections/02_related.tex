@@ -1,0 +1,27 @@
+\section{Related Work and Contribution Boundary}
+\label{sec:related}
+
+Token-axis methods choose \emph{which} token states to
+retain~\citep{streamingllm,h2o,snapkv,pyramidkv,compresskv}, and
+retrieval-and-reuse serving systems keep full-layer KV for retrieved
+chunks~\citep{cacheblend,ragcache,promptcache}; both leave the layer axis
+untouched.  The three nearest neighbours act on that axis: Layer-Condensed KV
+shares one condensed KV computed at a shallow depth across the upper
+layers~\citep{lckv}, HCache restores evicted state from intermediate
+activations without document retrieval~\citep{hcache}, and KV-Direct replaces
+full-layer KV with a residual-stream read once all retained tokens are
+reconstructed~\citep{kvdirect}.  Each of them either lets the read grow with
+retained tokens or omits top-$k$ selection, and---decisively for this
+paper---none measures cache-\emph{depth} fidelity under a fixed retrieval, so
+the quality price of reading a cached mid-depth state has never been isolated
+from the retrieval that makes the read short.  CoMem's boundary is accordingly
+the \emph{combination} of a one-depth per-token store, external BM25 top-$k$
+selection, and full upper-band recomputation: we claim neither the individual
+ingredients, nor numerical exactness for relocated $j>0$ states, nor superiority
+over designs we do not implement, and the author's full-depth re-forward control
+is labeled as ours rather than as an implementation of any published method.
+Appendix~\ref{app:related} gives the per-family comparison, the
+mechanism-boundary table (Table~\ref{tab:method-boundary}), the position-remap
+and external-memory neighbours~\citep{infllm,yoco,landmark,longllama,retro,memorizingtransformers,unlimiformer},
+and the independence statement for the 2026
+preprints~\citep{kvdirect,kvcat,compresskv}.

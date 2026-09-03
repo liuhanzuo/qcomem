@@ -1,0 +1,98 @@
+{
+  "reviewer_id": "R7-CLR",
+  "round": 7,
+  "snapshot_sha256": "5327aacb5e1e3bb59e70814c4e633ac0d4b0f590336cbeb78a0c6f2ae713560a",
+  "role": "clarity_presentation",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The central claims are carefully bounded and internally consistent across the abstract, Sections 3–6, conclusion, claim map, and registered evidence. The selected attention and GDN oracles, ownership witnesses, matched fault controls, and negative runtime-transfer result support the stated narrow scope. Confidence is reduced by the explicitly disclosed separation between the primary GPU aggregate and later offline replay, and by the fact that the numerical oracles cover selected captured-input boundaries rather than end-to-end semantics.",
+    "presentation": "The paper has a clear title, a recognizable problem statement, a seven-target contract, orderly method/results sections, unusually explicit limitations, and no observed clipping, overlap, broken glyphs, or anonymization defects in the 19-page PDF. However, the abstract and evidence narrative are overloaded with cohort-specific details, the runtime-independent contract is not summarized as a compact implementable specification, and several figures and tables use text that is too small at final page size.",
+    "contribution": "The executable ownership-audit framing and heterogeneous KV/GDN evidence ledger are useful, carefully positioned integrations. The contribution remains narrow: it is not a new cache mechanism or scheduler, its positive validation is one model and primary runtime, and the distinct-runtime cohort is a valid negative rather than positive portability evidence."
+  },
+  "paper_summary": "ForkAudit is a correctness-first audit contract for multi-request ownership of heterogeneous LLM state. It distinguishes immutable document KV, private append storage, persistent GDN bases, and request-local recurrent state; defines seven audit targets; and applies them to a Qwen3.5-35B-A3B/vLLM case. The primary four-cell KV-by-GDN factorial reports exact recorded semantics, phase-aware storage disjointness, selected dense-FP32 attention and NumPy GDN checks, nine live fault detections, and separated memory denominators. Supporting cohorts test one cancellation/reclamation lifecycle and a same-model Transformers runtime, with the latter correctly reported as a negative portability result.",
+  "strongest_verified_contribution": "The strongest verified contribution is the phase-aware ownership witness in C-OWN-01, C-RR2-FACT-01, and C-RR2-GDN-01: E-RR2-OWNERSHIP-MUTANTS binds 96 factorial configurations to setup, first-transition, and final-phase storage records, including a non-vacuous N=1 request-to-base check, while recorded token, full-logit, logical-KV, and final-GDN trajectories remain bitwise equivalent across all four ownership cells.",
+  "strengths": [
+    "The paper identity is explicit in the Introduction, page 2: the primary contribution is an executable audit contract, while the frozen implementation and accounting reconstruction are validation artifacts rather than new caching mechanisms.",
+    "Section 3, pages 4–5, introduces the seven targets before the protocol uses them and distinguishes full, partial, and open witness status; Appendix Table 4, page 14, then reports the target-specific status and boundary.",
+    "The evidence hierarchy is unusually candid. Appendix Table 3, page 13, prevents pooling across the primary factorial, earlier capacity cohort, lifecycle transfer, GDN oracle, runtime-transfer negative, and debug-only rows.",
+    "The abstract, Results, Discussion, and Conclusion consistently avoid throughput, scheduler, production-capacity, end-to-end-oracle, and cross-runtime portability claims.",
+    "The negative Transformers DynamicCache result is presented as a boundary rather than converted into positive evidence, consistently across Section 5.3, Discussion, Conclusion, Appendix Table 11, C-R6-RUNTIME-NEG-01, and E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE.",
+    "The final PDF is structurally polished: page hierarchy, margins, equations, captions, references, and anonymity are intact, with no observed rendering failures."
+  ],
+  "questions": [
+    "For each of the four typed record classes in Section 3, which fields and predicates are normative for every adapter, and which are specific to the Qwen/vLLM instantiation?",
+    "Can the authors place the primary GPU aggregate and offline replay under one successfully closed run identifier, or is their separation permanent? If permanent, can this boundary be stated in Section 4.5 and Section 6 rather than only Appendix A?",
+    "Could a compact main-text table map every headline result to its cohort and evidence ID, replacing some of the cohort-by-cohort detail in the abstract?",
+    "Could Figure 3's center panel be replaced by a more informative phase-by-ownership witness or memory-phase visualization, while enlarging all figure and table text to final-size readability?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R7-CLR-01", "severity": "major", "dimensions": ["clarity", "reproducibility", "significance"],
+      "location": "Introduction, page 2, lines 84–107; Section 3, page 4, lines 194–205; Figure 2 and caption, page 5; Appendix E, page 14; Appendix Table 9, page 16; Appendix Table 11, page 17",
+      "claim_ids": ["C-OWN-01", "C-RR2-FACT-01", "C-RR2-GDN-01", "C-R6-RUNTIME-NEG-01"],
+      "evidence_ids": ["E-CODE-KERNEL", "E-CODE-MF", "E-CODE-GDN", "E-RR2-OWNERSHIP-MUTANTS", "E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE"],
+      "observed_evidence": "The paper calls the runtime-independent executable audit contract its primary contribution, but its normative interface is compressed into one dense paragraph listing four record classes. The appendix gives a precise schema only for the pointer-free storage witness, while identity, dispatch, semantic, lifecycle, and target-to-gate records are primarily understandable through the Qwen-specific artifact. Figure 2 explains the lifecycle visually but does not expose the record schema, predicate dependencies, or full/partial/open computation. The only different-runtime instantiation is a valid negative.",
+      "why_it_matters": "A reader can understand what the Qwen case checked, but it is harder to determine exactly what must be implemented to apply ForkAudit elsewhere. Because the contract rather than the case study is the claimed contribution, this ambiguity directly limits reproducibility, transferability, and perceived significance.",
+      "required_fix": "Add a compact normative specification in the main paper: list the four record types and mandatory fields, map them to the seven predicates, state the full/partial/open rules, identify adapter assumptions, and separate runtime-independent requirements from Qwen-specific fields. Include either concise pseudocode or one worked request trace from setup through first transition and final aggregation.",
+      "verification_test": "Give the revised main paper, without implementation source, to an independent systems reader. They should be able to enumerate all mandatory records, implement the pass/partial/open decision procedure for a toy second adapter, and identify which Qwen details are non-normative.",
+      "evidence_needed": "The specification can be clarified using current evidence. Raising the contribution beyond the present ceiling would additionally require a clean positive application to an independently implemented runtime or hybrid model.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-CLR-02", "severity": "minor", "dimensions": ["clarity", "reproducibility", "limitations_responsible_claims"],
+      "location": "Section 4.2, page 6, lines 272–280; Section 4.5, page 6, lines 318–323; Section 6 evidence limitations, page 9, lines 446–450; Appendix A Reproducibility Statement, page 12, lines 596–605",
+      "claim_ids": ["C-OWN-01", "C-RR2-FACT-01", "C-RR2-ORACLE-01"], "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "The main protocol says aggregation emits a result only after replaying every raw-byte binding, while Appendix A discloses that terminal recursive closure failed because generated bytecode appeared after the code ledger was frozen. It correctly states that the GPU aggregate and later offline replay are separately verified and are not bound by one successfully closed run identifier. This important boundary is absent from the main Discussion's evidence limitations.",
+      "why_it_matters": "ForkAudit's central identity is provenance-aware auditing. Burying the strongest provenance limitation in the appendix can cause a reasonable main-text reader to infer a tighter end-to-end evidence chain than was achieved, even though the appendix itself is candid.",
+      "required_fix": "State in Section 4.5 and the main limitations that the live GPU aggregate and offline replay are two separately verified objects without single-run terminal closure. Adjust the aggregation description to distinguish live detached-receipt validation from later offline replay.",
+      "verification_test": "A reader who stops at the end of page 9 should be able to state correctly that no single run identifier binds GPU execution, aggregation, cleanup, recursive code closure, and offline replay.",
+      "evidence_needed": "Current evidence is sufficient for the disclosure fix. A new successfully terminal-closed execution is needed only if the authors wish to claim a unified provenance chain.", "expected_impact": "medium", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-CLR-03", "severity": "minor", "dimensions": ["clarity", "limitations_responsible_claims"],
+      "location": "Abstract, page 1, lines 11–40; contribution list, page 2, lines 92–107; Section 5.3, page 8, lines 378–400; Appendix Table 3, page 13",
+      "claim_ids": ["C-RR2-FACT-01", "C-RR2-ORACLE-01", "C-RR2-MUT-01", "C-RR4-LIFECYCLE-01", "C-R6-GDN-ORACLE-01", "C-R6-RUNTIME-NEG-01", "C-MEM-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-LIFECYCLE-TRANSFER", "E-R6-FULLY-PREREGISTERED-GDN-ORACLE", "E-R6-TRANSFORMERS-RUNTIME-TRANSFER-NEGATIVE"],
+      "observed_evidence": "The abstract is a single dense paragraph that introduces the primary factorial, attention oracle, GDN oracle, nine-fault campaign, lifecycle cohort, runtime-transfer negative, memory result, and multiple exclusions before the reader has learned the evidence hierarchy. Appendix Table 3 eventually separates these cohorts clearly, but that clarification arrives after the main paper.",
+      "why_it_matters": "The volume of precise detail demonstrates care but obscures the paper's simple identity: a contract plus one primary validation, with supporting boundary checks. Readers must retain many numbers and cohort qualifiers to determine which evidence supports which claim.",
+      "required_fix": "Rewrite the abstract around four elements: problem, contract, primary validation, and scope. Retain only one or two primary headline results; summarize the other cohorts as supporting boundary checks. Move a condensed cohort-to-claim map from Appendix Table 3 into the main protocol or results section.",
+      "verification_test": "For every number retained in the abstract, a reader should be able to identify its cohort and authorized claim from a main-text table. In a short blind summary, readers should identify the contract—not the Qwen memory delta or runtime negative—as the primary contribution.",
+      "evidence_needed": "No new evidence is needed.", "expected_impact": "medium", "confidence": "high"
+    },
+    {
+      "issue_id": "R7-CLR-04", "severity": "minor", "dimensions": ["clarity"],
+      "location": "Figure 1, page 2; Figure 2, page 5; Figure 3, page 7; Table 1, page 8; Figure 4, page 12; Tables 3–4, pages 13–14; Tables 8–9, page 16; Table 13, page 19",
+      "claim_ids": ["C-OWN-01", "C-RR2-FACT-01", "C-RR2-ORACLE-01", "C-RR2-MUT-01", "C-MEM-01", "C-DENOM-01"], "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-MF-SUMMARY", "E-MF-SHARDS"],
+      "observed_evidence": "The PDF has no clipping or overlap, but several in-figure labels and central tables are substantially smaller than body text at final letter-page size. Figures 1–2 contain labels that require zooming, Table 1 carries the main memory result in a very small font, Figure 3's center panel uses valuable space to repeat four 'bitwise match' cells, and Appendix Tables 8–9 and 13 are particularly compressed.",
+      "why_it_matters": "The paper asks readers to distinguish ownership phases, cohort boundaries, and memory denominators. Small labels and dense tables make the most important distinctions harder to verify and weaken the explanatory value of otherwise polished visuals.",
+      "required_fix": "Increase minimum label and table font sizes, remove nonessential decorative labels, enlarge Table 1, and replace Figure 3's redundant center boxes with a phase-aware ownership or memory visualization. Split dense appendix tables across pages where necessary.",
+      "verification_test": "Render the revised PDF at final page size and inspect it at 100% zoom or a 110-dpi raster. Every figure label, table header, number, and artifact path must be legible without magnification, with no new overflow or clipping.",
+      "evidence_needed": "No new scientific evidence is needed.", "expected_impact": "medium", "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern was identified. The paper uses PG-19 training text and studies systems behavior; its page-12 ethics statement appropriately notes that safety, bias, privacy, and downstream deployment quality are not evaluated.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It reviewed only the frozen round-07 submission snapshot and the supplied review protocol, rubric, calibration document, and schema; it did not communicate with other reviewers.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean, independently implemented second-runtime or second-hybrid-model application that executes the same normative contract and passes its semantic gates.",
+    "A successfully terminal-closed run binding live GPU execution, aggregation, cleanup, recursive code closure, and offline replay under one immutable run identity.",
+    "A compact runtime-independent specification plus evidence that an unaffiliated implementer can apply it without relying on Qwen-specific source internals.",
+    "Broader geometry or lifecycle validation sufficient to show that the audit obligations are not tailored to the two current prefix lengths and one sequential schedule."
+  ],
+  "evidence_that_would_lower_score": [
+    "A mismatch between the main-paper numbers and E-RR2-OWNERSHIP-MUTANTS, E-RR4-LIFECYCLE-TRANSFER, or E-R6-FULLY-PREREGISTERED-GDN-ORACLE.",
+    "Evidence that the separately verified GPU aggregate and offline replay cannot be traced to the same frozen inputs or executed source.",
+    "A common-mode defect demonstrating that the selected captured-input oracles and relational checks allow a central ownership claim to pass incorrectly.",
+    "Reintroduction of speed, scheduler, service-capacity, end-to-end correctness, or positive portability claims unsupported by the registered evidence."
+  ],
+  "review_limitations": [
+    "External literature was not independently browsed; novelty was assessed from the frozen paper, bibliography, and supplied calibration document.",
+    "No live GPU experiment was rerun.",
+    "The large replay commands were not executed because the assignment required strict read-only review; assessment used the manifest-bound artifacts, claim map, registry, audit summaries, and the snapshot provenance validator.",
+    "Visual assessment covered every rendered page of manuscript/main.pdf at final letter-page geometry."
+  ]
+}

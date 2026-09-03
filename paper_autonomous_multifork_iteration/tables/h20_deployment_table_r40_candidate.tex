@@ -1,0 +1,32 @@
+\begin{table}[!ht]
+\caption{Illustrative same-checkpoint H20 retained Store and mean-F1 point
+estimates on an eight-item Qasper/2WikiMQA slice.  All rows use
+Qwen3.5-35B-A3B, one H20-3e per item, a 4,096-token cap, greedy decoding, and
+at most 32 generated tokens.  The Transformers (three repeats/item) and
+HYPIC~\citep{liu2026hypic} blocks are unpooled; HYPIC timing/F1 and Store use
+separate 24- and 16-cell TP=1 cohorts.  Timing is compared only within blocks;
+no robust-quality, capacity, or ForkAudit-ownership claim is made.}
+\label{tab:h20-deployment}
+\centering\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+Method & Persistent state & Store (MiB) & TTFT (s) & TPOT (ms) & tok/s & F1 \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Transformers 5.14.1 in-process deployment cohort}}\\
+No-cache dense recompute & -- & -- & 0.649 & 648.75 & 1.36 & 39.42 \\
+Full-prefix KV cache & Q16 & 140.34 & 0.163 & 54.11 & 13.38 & 39.14 \\
+\qcomem{} state & Q8 & \textbf{15.89} & 0.673 & 55.44 & 7.15 & 39.14 \\
+\qcomem{} mixed state & Q4/Q4/Q8 & 10.01 & 0.674 & 54.97 & 7.19 & 39.01 \\
+\qcomem{} per-layer mixed & mixed & \textbf{9.74} & 0.673 & 55.07 & 7.19 & 39.11 \\
+\qcomem{} state & Q4 & 8.41 & 0.674 & 55.02 & 7.19 & 36.09 \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{HYPIC commit 98147c0 timing/F1; receipt-instrumented Store; SGLang 0.5.14, TP=1}}\\
+Official HYPIC code: full recompute & -- & -- & 0.217 & 49.21 & 14.77 & 39.14 \\
+Official HYPIC code: prefix cache & Radix prefix & 139.53 & 0.072 & 50.15 & 19.07 & 39.14 \\
+HYPIC (transition + seam 8) & segment transition & 324.09 & 0.101 & 52.13 & 17.67 & 39.63 \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+\parbox{0.97\textwidth}{\scriptsize Bold marks the two illustrative Store--F1 points; these are not a headline validation result.  Relative to full-prefix Q16, Q8/per-layer mixed reduce Store $88.68\%$/$93.06\%$; unrounded mean-F1 deltas are $0.000$/$-0.022$ ($39.115$ vs. $39.137$ for mixed).  ``--'' means no retained entry; Q16 is the unpacked reference, BF16 for the residual and attention KV and the stack's native FP32 for GDN recurrent state.  Full-prefix Q16 is \qcomem{}'s matched semantic comparator; the archived rows show no-cache recompute sharing the same document/query boundary but emitting different greedy token sequences on a few items.  Q4/Q4/Q8 gives residual/attention/linear bits.  The per-layer policy (Q4 residual, layer bits $[8,8,4,4,8,8,8]$) was selected on a separate, disjoint four-item calibration set and frozen before this eight-item validation.  Store is median retained-document tensor payload and excludes metadata, pools, process deltas, and capacity.  Published HYPIC panels use TP=2; this adaptation uses TP=1.}
+\end{table}

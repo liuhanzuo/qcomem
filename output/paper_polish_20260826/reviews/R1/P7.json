@@ -1,0 +1,171 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "9a9cd2f2f253ea8e671235b98dec83387d7c07db00fb6491580825254b7602a2",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文对 corrected pad-masked 标签、层依赖、深度共线、两种区间、噪声包络和 deterministic replay 的边界披露较充分。但 4B 只有 12 个刻意深层过采样的非独立层点，1.7B 只有 11 个，partial CI 跨零，预注册 8 cells 仅运行 2 个；更严重的是主分析与附录混入 masked/unmasked 的不一致 Δz 与区间版本。当前可相信的是两个 checkpoint 上的描述性散点，不是独立预测价值或 population inference。",
+    "presentation": "Figure 1-3 视觉上清晰且无裁切，但正文被 C4-C12/F/E 等审计编号和密集表格主导。第 3、7、11 页关于 masked/unmasked 区间与跨 carrier Δz 的文字和数值不一致，使读者难以确定唯一的 canonical result。",
+    "contribution": "用全精度激活域移统计预测单 block PTQ damage 的问题设定有潜在实用性，且要求候选信号击败 block depth 是有价值的设计教训。然而 turnover 在 4B 上与 depth ρ≈0.91、独立 partial 未解析，1.7B 读数弱，未测 fallback policy，AUROC gate 未通过且标签脆弱。现有贡献仍是探索性边界而非新可靠能力。"
+  },
+  "paper_summary": "论文提出 activation-tail turnover：在全精度 Qwen3 模型上比较 calibration 与 deployment prompt family 时，各 block 输入激活 max/mean-absolute 比率的标准化变化，并将其与逐 block 单独做 HQQ 4-bit weight-only 量化所造成的 deployment perplexity 相对增量做 Spearman 相关。在 corrected pad-masked 结果中，Qwen3-4B 的 12 个 probed block 给出 ρ=+0.559，Qwen3-1.7B 的 11 个 block 给出 ρ=+0.118。4B turnover 与 block depth 高度共线（ρ=+0.909），partial correlations 的区间宽且跨零；两模型结果来自单一确定性 draw，三台主机重放 bit-identical 但有效独立 run 数仍为 1。只完成预注册 8 cells 中 2 个，AUROC/damage-gain gate 未通过或未完成，因此论文自定位为 two-checkpoint exploratory boundary study。",
+  "strongest_verified_contribution": "最强的已验证贡献是一个具体、可审计的候选信号压力测试框架：predictor 完全在未量化模型上计算，outcome 由逐 block 单独量化直接测量；该框架在 4B 上发现正向但深度混杂的关系、在 1.7B 上发现弱而不确定的关系，并明确展示任何 layer-wise runtime signal 都必须与 block index 这一零成本结构基线比较。",
+  "strengths": [
+    "第 2-3 页公式 (1)-(3) 清楚分离未量化 predictor 与真正的 single-block quantization outcome，并报告具体 probe rule、HQQ 配置和 prompt 数。",
+    "第 4-8 页主动披露 layer 非独立、深度过采样、dominant block、两种 CI、leave-one-block-out、outcome-noise envelope、prompt bootstrap 以及仅运行 2/8 cells。",
+    "第 5 页 §3.3 正确区分跨三台主机 bit-identical determinism 与 independent replication，明确 neff=1。",
+    "第 9 页 Related Work 覆盖 runtime fallback、calibration-free quantization、per-layer sensitivity、activation outliers，并承认若要主张部署信号必须超过 depth baseline。",
+    "Figure 2 与 Figure 3 直接显示 dominant layer 和 depth 结构，避免只用相关系数隐藏数据形态。"
+  ],
+  "questions": [
+    "请给出一个唯一 canonical 的 masked result ledger：为何 §3.1/Table 2 使用 Δz≈0.513，而 Limitation C8 和 Appendix Table 3 又使用 Δz≈0.79/0.794？这些分别对应哪些标签版本与 bootstrap 对象？",
+    "第 3 页称 Fisher 与 bootstrap interval 在 4B 上对零排除结论不同，但第 7 页 masked Table 2 的两者都包含零；这里是否混入了第 11 页历史 unmasked 数值？",
+    "为何不在同样的 probed blocks 上比较 turnover 与其他低成本全精度 predictor，例如 activation mean/variance/kurtosis、静态 tail mass、FP loss gradient 或直接 depth？没有这些对照，如何证明 turnover 这一特定构造而非任意 activation shift 有增量？",
+    "能否量化所有 28/36 层，或至少使用预先固定的 depth-stratified 均匀抽样，以消除 deep-decile 过采样和 range restriction？",
+    "若目标是 runtime trigger，实际 fallback action、latency/measurement cost 和 damage reduction 如何定义？当前 predictor 仍需收集 64 deployment prompts 的 full-precision hidden states，这一成本是否符合部署场景？",
+    "第二个真实 prompt domain、不同 quantizer/bit width 或独立 checkpoint 是否会保持 4B 的方向，还是当前关系仅由一个模板 shift 与一个 dominant block 驱动？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P7-R1-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "PDF 第 4 页 Table 1/§3.2、第 6 页 Figure 3、第 9 页 §5 Related Work",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "在 4B 上 turnover-depth 相关为 +0.909，turnover-damage raw 相关为 +0.559；masked partial ρ(turnover,damage|depth)=+0.266 且 bootstrap CI [-0.49,+0.66]。论文只与 depth 做数值比较，没有在实验中比较其他简单 activation-shift 指标或文中列出的 Hessian/weight-based per-layer sensitivity score。",
+      "why_it_matters": "在不能证明独立于 depth 的预测价值、也不能优于合理候选统计量时，activation-tail turnover 作为新信号的增量未建立；观察可能只是深层 block 与一个 dominant damage point 的共同排序。",
+      "required_fix": "在预先固定的完整或 depth-balanced layer set 上加入一组低成本 predictor baselines，并用 nested/held-out ranking 或跨 checkpoint 验证 turnover 的增量，而不只在同一 12 点样本上做 partial correlation。",
+      "verification_test": "turnover 在未用于选择统计量或阈值的 checkpoint/domain 上，相对 depth 与至少两类合理 activation/offline sensitivity baseline 改善预先指定的 rank/AUROC 指标，并给出 paired uncertainty。",
+      "evidence_needed": "新 baseline 计算、独立 checkpoint/domain 或严格 held-out layer evaluation。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R1-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF 第 3 页 §2.3-2.4、第 5-8 页 Limitations C4/C10/C12/E，以及第 12 页 Table 4",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "每个 carrier 仅有一个 checkpoint，分析单位是 11-12 个相互依赖且非交换的层；probe rule 刻意使最深四层过采样，4B 超过一半层的 |damage| 在一个 noise width 内。预注册 2 carriers×2 quantizers×2 shifts 共 8 cells，只执行 HQQ4 单一 shift 的 2 cells。",
+      "why_it_matters": "对非随机、依赖层做普通 layer bootstrap/Fisher inference 不能支持模型总体或部署总体的结论；选择性 probe 又使深度关系部分由设计制造。未完成的注册网格意味着候选信号最基本的稳健性尚未测试。",
+      "required_fix": "至少完成 depth-uniform/full-layer outcome，并增加独立 checkpoint、第二域移和另一量化设置；将当前 layer-resampling 区间降为描述性敏感性，主要推断改用 checkpoint/domain 级复现。",
+      "verification_test": "结论在完整层集与多个独立 checkpoint/domain 上方向一致，且预先规定的 gate 在足够标签分辨率下可判定；若不新增证据，删除任何 inferential/power 语言。",
+      "evidence_needed": "未探测层的 single-block PTQ 结果、剩余注册 cells 或新的独立复现。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R1-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "PDF 第 1 页 Abstract、第 3 页 §2.4、第 4 页 §3.1、第 7 页 Table 2/C8 与第 11 页 Appendix Table 3",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "masked Table 2 报 4B ρ=0.559、Fisher CI [-0.060,0.868]、bootstrap CI [-0.118,0.928]，两者都含零；但 §2.4/摘要称 interval conventions 对零排除结论不同。跨 carrier masked Fisher-z 差由 Table 1 可得约 0.513，§3.1 与 Table 2 也报 0.513；C8 却写 Δz=+0.79，Appendix Table 3 报 0.794 及另一组区间，且未清楚标注为 superseded unmasked。",
+      "why_it_matters": "这些不是舍入差，而是不同标签/分析版本混入同一稿件。读者无法确定 canonical effect、CI 或 cross-carrier 结论，审计性主张因此受损。",
+      "required_fix": "从一个 canonical masked JSON 自动生成所有主文、表格、图注和附录数值；把历史 unmasked 结果放入明确标为 superseded 的单独表，逐项标注版本，删除旧 Δz/CI 文句。",
+      "verification_test": "对 PDF 全文抽取 ρ、Δz、CI 和 p 后，每个 estimand 只有一个 canonical masked 值；由 Table 1 的 ρ 可机械复算 Table 2/正文 Δz，且摘要关于零排除的陈述与两类 CI 一致。",
+      "evidence_needed": "canonical masked analysis artifact、生成脚本和全文数值一致性检查。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R1-04",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF 第 2-3 页 §2.3、第 8 页 C11/Scope 与第 9 页结论",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "所谓 wikitext/gsm8k 实为每类 64 条单模板 narrative/arithmetic prompts，不是对应真实语料；只测试一个 prompt-family shift、一个 HQQ 4-bit weight-only quantizer、一个 perplexity outcome 和同一家族两个 checkpoint。",
+      "why_it_matters": "低多样模板 shift 可能产生特定的 activation-tail 结构，无法代表真实 traffic drift；这也使 runtime relevance 和跨任务普适性未建立。",
+      "required_fix": "改用真实、去重、多样的 calibration/deployment corpora，至少增加第二种 domain shift，并在一个独立模型家族或量化器上复现；配置键也应避免使用真实 benchmark 名称指代模板代理。",
+      "verification_test": "在冻结的真实语料 split 上重算 predictor 和 damage，报告跨 prompt bootstrap 与跨 checkpoint 结果，且模板与真实域结论明确区分。",
+      "evidence_needed": "真实 prompt-domain 实验与至少一个正交模型/quantizer 复现。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R1-05",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF 第 6 页 Limitations C7/F 与第 12 页 Table 4",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "masked AUROC 为 0.800/0.567，4B 单个标签翻转可跨越 KILL/MERGE/PASS；注册 gate 还要求 ≥30% damage reduction，但没有运行 fallback-baseline forward，现有可行性界仅约 14%/13.5%。",
+      "why_it_matters": "论文动机是 runtime trigger，但既没有稳定的分类端点，也没有测量触发后的实际策略、损失改善或成本。因而 deployment value 仍完全假设化。",
+      "required_fix": "冻结并执行实际 fallback policy，包括阈值、可用精度层、额外计算/延迟和 damage endpoint；在标签分辨率足够的独立 cells 上结算完整 gate，而不是只报 AUROC 半边。",
+      "verification_test": "完整 gate 在未参与调参的 cells 上同时达到预先规定的 ranking 与 damage-gain 条件，并相对 depth/static fallback 给出配对改善和成本。",
+      "evidence_needed": "fallback forward、系统成本和独立 gate settlement。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P7-R1-06",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "PDF 第 5-8 页 Limitations 与第 7、11 页 Tables 2-3",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "C4-C12、F、E 等大量编号限制与多层 provenance 字段挤入主文；页面渲染显示第 6-8 页文字和表格密度显著高于其余部分。",
+      "why_it_matters": "重要边界虽完整，却掩盖了核心因果链，且增加版本不一致不易被发现的风险。",
+      "required_fix": "主文只保留决定分数的三项限制（非独立层、深度混杂、仅 2 cells），其余审计字段移至结构化附录，并增加一张 canonical result table。",
+      "verification_test": "读者可仅凭摘要、Figure 1、一个主结果表和三段限制准确复述唯一主张与失败门槛。",
+      "evidence_needed": "无需新实验，仅需结构重写。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究使用公开模型与程序模板 prompt，未涉及人体参与者或个人数据；当前主要风险是部署可靠性主张不足，论文已避免把候选信号描述为安全证书。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；该子代理未与任何其他评审通信，也未接触作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "完整或 depth-balanced 层集上，turnover 相对 depth 和其他合理 activation/sensitivity baselines 具有稳定增量。",
+    "多个独立 checkpoint、真实 domain shift 和至少另一量化设置复现 4B 方向，并以 checkpoint/domain 为复现单位。",
+    "统一 canonical masked ledger 消除所有 Δz/CI 版本冲突。",
+    "实际 fallback policy 在盲结算中同时达到稳定 ranking、显著 damage reduction 和可接受系统成本。"
+  ],
+  "evidence_that_would_lower_score": [
+    "全层或均匀深度采样后 4B 相关消失，或简单 depth/activation baseline 始终相当或更好。",
+    "真实 prompt domains 或其他 checkpoint 上方向频繁翻转。",
+    "canonical artifact 证实主文混用了不可比较的 masked/unmasked outcome，且无法重建 headline。",
+    "实际 fallback 的成本或 damage gain 无法超过静态策略。"
+  ],
+  "review_limitations": [
+    "按任务约束未联网核验量化与 activation-outlier 文献；新颖性仅相对于 PDF 的 Related Work 判断。",
+    "仅审阅冻结 PDF，未运行 Qwen/HQQ 实验，也未读取代码、JSON、匿名 manifest 或 per-layer artifact，因此无法独立验证重放与 SHA 记录。"
+  ]
+}

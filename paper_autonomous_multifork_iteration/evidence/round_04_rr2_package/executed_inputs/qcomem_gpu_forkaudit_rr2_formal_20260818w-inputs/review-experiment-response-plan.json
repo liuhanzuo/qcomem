@@ -1,0 +1,225 @@
+{
+  "schema_version": "1.0.0",
+  "source_round": 2,
+  "status": "in_progress",
+  "items": [
+    {
+      "experiment_id": "RR2-EXP-OWNERSHIP-MUTANTS",
+      "issue_ids": [
+        "A-006",
+        "A-007",
+        "EXP-02",
+        "EXP-03",
+        "R02-CLR-02",
+        "R02-RP-02",
+        "R02-SND-02",
+        "R02-SND-03",
+        "R02-SND-05"
+      ],
+      "claim_ids": ["C-OWN-01", "C-EXACT-01", "C-ISOLATE-01", "C-CALL-01", "C-MUT-01"],
+      "disposition": "experiment_required",
+      "hypothesis": "The clean ForkAudit runtime satisfies replayable, phase-aware KV and GDN ownership contracts; all four cells of a KV materialized/shared by GDN materialized-base/borrowed-immutable-base factorial are semantically exact; the fused full-attention path agrees with an independently implemented FP32 dense-attention oracle on a held-out subset; and every preregistered live ownership or dispatch mutant is rejected at its intended gate.",
+      "refutation_condition": "Any clean false positive; any post-transition request-local GDN interval overlapping another request or the persistent base; any persistent-base value or binding mutation; any cross-cell token, full-logit, logical-KV, or final-GDN divergence; any held-out dense-oracle relative-L2 above 0.005; or any preregistered mutant escaping its intended detector refutes only the corresponding ownership, semantic, or fault-sensitivity claim. A classified mutant escape remains a valid negative experimental result and must not be converted into an infrastructure failure.",
+      "primary_endpoint": {
+        "name": "preregistered runtime-mutant detection with clean semantic and ownership gates",
+        "definition": "All clean shards pass; borrowed-base requests show exact immutable-base aliases only before their first transition, while every post-transition mutable GDN range is disjoint from the base and peers; the materialized-base cells are disjoint already at setup; all four ownership-factorial cells are bitwise exact in tokens, full logits, logical KV, and final GDN values; all held-out full-attention rows are finite with FP32-dense relative-L2 <= 0.005; and each live mutant has a complete classified outcome.",
+        "aggregation": "Report exact counts and per-target outcomes across eight held-out PG-19 train books. Do not compute confidence intervals for deterministic gates or average away an escaped mutant."
+      },
+      "oracle": "Independent PyTorch FP32 dense attention over logically gathered Q16 K/V with the same post-RoPE query, scale, position values, and mask; same-kernel fresh/reuse equality remains a separate relational gate.",
+      "baselines": [
+        "unmodified request-local functional GDN with shared-document paged KV",
+        "unmodified full-copy document control with the same unified_attention callable",
+        "the 2 x 2 ownership factorial: KV full-copy/shared-paged by GDN materialized-request-base/borrowed-immutable-base",
+        "prior fair-v2 exploratory FP32 diagnostic used only as a frozen contextual safety-margin check for the independently pre-fixed 0.005 engineering tolerance; it does not tune or select that threshold"
+      ],
+      "controls": [
+        "private-reservation alias",
+        "wrong live request-sequence binding inside the shared arena",
+        "omitted partial-tail copy-on-write",
+        "request-persistent-base GDN alias",
+        "request-request GDN alias",
+        "position-value perturbation",
+        "materialized-mask contract violation",
+        "unified_attention callable swap after ledger construction",
+        "dense-fallback or full-KV-materialization path"
+      ],
+      "execution": {
+        "dataset_split": "PG-19 train only; eight deterministic held-out windows distinct from the prior capacity run; no LongBench or test-v2 access",
+        "configuration": {
+          "model": "Qwen/Qwen3.5-35B-A3B at full public revision 59d61f3ce65a6d9863b86d2e96597125219dc754; formal preflight must additionally match the existing 14-shard weight ledger",
+          "full_attention_layers": 10,
+          "gdn_layers": 30,
+          "kv_dtype": "BF16 (Q16, KVQuantMode.NONE)",
+          "page_size": 128,
+          "document_tokens": 4095,
+          "query_tokens": 32,
+          "semantic_steps": 8,
+          "ownership_factorial_resident_counts": [1, 8, 32],
+          "mutant_resident_count": 2,
+          "mutant_steps": 2,
+          "mutants": 9,
+          "mutant_rank_assignment": {
+            "0": [
+              "M1",
+              "M9"
+            ],
+            "1": [
+              "M2"
+            ],
+            "2": [
+              "M3"
+            ],
+            "3": [
+              "M4"
+            ],
+            "4": [
+              "M5"
+            ],
+            "5": [
+              "M6"
+            ],
+            "6": [
+              "M7"
+            ],
+            "7": [
+              "M8"
+            ]
+          },
+          "mutant_case_isolation": "Every mutant has a separately rebuilt, no-mutation matched control that runs the identical detector exercise and must produce no false positive, followed by a second freshly rebuilt disposable cache/model-state view for the mutation. Every control and mutant cache is discarded before the next case; hook restoration alone is not treated as state restoration after a faulting append or transition.",
+          "gdn_setup_contract": "borrowed policy permits exact immutable-base alias before first transition; materialized policy is request-local at setup; both policies require all 60 completed-request tensors to rebind onto storage disjoint from setup, base, and peers, while incomplete requests retain their setup bindings",
+          "measurement_cell_separation": "Ownership-witness cells retain setup tensors by design and are forbidden as memory endpoints. Allocator/capacity endpoints come from separately rebuilt clean measurement cells with no request-binding guard or witness-held setup storage.",
+          "memory_instrumentation_contract": "Primary allocator cells disable strict position-value checks, append observers, call observers, tensor hashing, and host-side exactness copies until each allocator endpoint is synchronized and frozen. Every cell is then explicitly destroyed and must return to the frozen model/query allocator baseline before the next cell.",
+          "allocator_endpoint_contract": "Each allocator snapshot records current and production-peak allocated/reserved bytes with reserved >= allocated for both windows. Setup-plus-generation uses the maximum of the separately reset setup and generation peaks relative to the post-pack baseline; generation-only uses the post-setup current baseline. These are PyTorch allocator endpoints, not NVML or total process memory.",
+          "raw_artifact_binding": "Every witness, oracle row, mutation receipt, and shard is externally SHA-256 bound from raw bytes before aggregation; internal rows_sha256 is described only as a self-consistency check.",
+          "query_bank_binding": "Before any candidate output, the path-independent protocol manifest freezes 32 pairwise-distinct query-token SHA-256 rows for each rank. For every N, request i must equal frozen bank row i, and the full N=1 -> N=8 -> N=32 semantic/query prefixes must be exact.",
+          "factor_isolation_contract": "After removing per-cell opaque IDs, fixed-KV cells must have identical normalized KV ownership/copy/storage schedules across the two GDN policies, and fixed-GDN cells must have identical normalized GDN content/transition relations across the two KV policies. The aggregate replays the complete group audit and ten-layer storage ledger rather than trusting a policy label or digest alone.",
+          "oracle_sample_binding": "Every oracle row is frozen to the unique N=1 shared-paged-KV plus borrowed-immutable-GDN ownership-witness arm and records a deterministic cell selector, rank, PG-19 book/window, document start, layer, step, Q/candidate/position/mask digests, effective live-kernel scale, and the preregistration hash before any candidate output. The static identity also binds the byte SHA of the 80-row prior FP32 diagnostic manifest, verifies that the pre-fixed 0.005 tolerance is at least twice the prior maximum relative-L2, and proves the new 4095-token oracle coordinate is absent from the prior 1025-token coordinate set without claiming that prior data selected the tolerance.",
+          "oracle_input_replay": "For the selected full-attention layer, binary sidecars contain the exact BF16 physical document K/V pool (including padding), int32 document table, every ordered pre-write append event through the selected round, and the candidate active table. Blind replay reconstructs logical document K/V from the physical table, concatenates all append events, binds every event to its corresponding live ledger call, and recomputes the IEEE-FP32 oracle under the fixed 0.005 threshold."
+        },
+        "repeats_or_seeds": "Eight distinct PG-19 train books/windows; deterministic inference. Each mutant is a targeted positive control, not a stochastic replicate.",
+        "hardware": "one formal 8 x H20-141G job, one independent rank per book and assigned mutant",
+        "software": "the frozen torch 2.11 / Transformers 5.14.1 / vLLM 0.26 / Triton 3.6 environment used by the prior formal run",
+        "resource_estimate": "one 8-GPU job; load the model once per rank, run the clean N={1,8,32} 2x2 ownership factorial and semantic oracle, then execute one assigned live mutant per rank plus the N-dependent contamination control",
+        "stopping_rule": "Fail closed on the first clean-gate failure. Record, but do not hide, every mutant escape; do not retry a scientifically negative result under the same run ID."
+      },
+      "gates": {
+        "preflight": [
+          "frozen code/model/data/protocol digests",
+          "real Transformers 5.14 position test with zero skips",
+          "CPU unit and JSON-tamper tests",
+          "CUDA remains uninitialized during static validation"
+        ],
+        "smoke": [
+        "CPU storage-range normalization and overlap mutants",
+          "single-rank fake-model semantic/mutant harness",
+          "aggregate replay rejects a changed detector or raw witness",
+          "mutant escape is serialized as a negative scientific outcome rather than crashing or disappearing",
+          "injector apply/restore exceptions cannot masquerade as detector hits, each case includes a target-specific pre/post/restore mutation receipt, and every mutant's identical no-mutation exercise passes in its own fresh matched-control cache"
+        ],
+        "formal": [
+          "8/8 clean semantic shards",
+          "8/8 replayable GDN lifecycle witnesses",
+          "ownership-witness cells are separate from clean allocator measurement cells and cannot contribute memory endpoints",
+          "each measurement and witness cell is rebuilt independently and returns to its frozen allocator baseline before the next cell",
+          "each rank/N request-query prefix is exact against the pre-output frozen PG-19 query-bank manifest",
+          "four ownership-factorial cells at N={1,8,32} with factor-specific storage changes and cross-cell semantic equality",
+          "fixed-axis normalized KV and GDN receipts prove that each factorial axis changes only its preregistered ownership factor",
+          "the preregistered oracle arm binds every append event and selected kernel call to replayed physical-document sidecars and an IEEE-FP32 result",
+          "all nine preregistered mutants executed once and classified",
+          "independent raw-to-summary recomputation"
+        ],
+        "fail_closed": [
+          "no summary pass if a clean row fails",
+          "no positive fault-sensitivity claim if an expected mutant is absent or escapes; the aggregate must still preserve and report the negative outcome",
+          "no manuscript exactness or ownership upgrade before independent change verification"
+        ]
+      },
+      "outcome_policy": {
+        "positive": "Add bounded evidence that ForkAudit detects the executed fault classes, directly witnesses post-update GDN ownership, and passes a held-out FP32 attention subset; retain one-model and one-runtime limits.",
+        "null": "If a detector is inconclusive or an oracle row exceeds the threshold without a diagnosed implementation fault, report the blind spot and keep the affected claim at self-consistency only.",
+        "negative": "If a clean ownership or semantic gate fails, remove or narrow the affected headline claim and center the paper on the discovered failure and repaired audit boundary only after a separately identified rerun."
+      },
+      "status": "in_progress",
+      "attempts": [],
+      "verification_status": "not_started"
+    },
+    {
+      "experiment_id": "RR2-REP-CLEAN-RERUN",
+      "issue_ids": ["A-013", "EXP-05", "R02-RP-01", "R02-RP-03", "R02-RP-04", "R02-SND-04"],
+      "claim_ids": ["C-EXACT-01", "C-FAIR-01", "C-CALL-01"],
+      "disposition": "analysis_required",
+      "hypothesis": "A path-independent package can reconstruct the public inputs and frozen identities, execute a smoke subset, and independently replay every newly reported primary endpoint.",
+      "refutation_condition": "The package depends on an author-only absolute path, omits a required ledger/input identity, cannot run headlessly, or cannot regenerate and compare the smoke artifacts.",
+      "primary_endpoint": {
+        "name": "clean package closure and smoke rerun",
+        "definition": "A fresh documented environment validates all normalized ledgers, reconstructs the frozen query banks, runs the smoke configuration, and reproduces its registered semantic, ownership, and mutant outputs.",
+        "aggregation": "All required files and commands must pass; package closure is binary and path-independent."
+      },
+      "oracle": "Independent package-closure validator plus byte/digest comparison of reconstructed inputs and regenerated smoke artifacts.",
+      "baselines": ["current anonymous offline replay package"],
+      "controls": ["forbidden private path scan", "missing-ledger negative", "mutated query-bank negative", "headless clean-environment run"],
+      "execution": {
+        "dataset_split": "The same frozen PG-19 train subset with public acquisition/reconstruction instructions",
+        "configuration": {"smoke_ranks": 1, "resident_count": 2, "semantic_steps": 1},
+        "repeats_or_seeds": "one independent clean smoke rerun plus deterministic offline replay",
+        "hardware": "CPU for acquisition/static replay and one available compatible GPU for the smoke path; the formal 8-GPU run remains separately registered",
+        "software": "pinned lock/container identity and one-command headless scripts",
+        "resource_estimate": "package and CPU work plus the smoke subset piggybacked on the formal review-response run",
+        "stopping_rule": "Do not label the package clean-rerunnable until a fresh process executes the documented command without hidden files."
+      },
+      "gates": {
+        "preflight": ["normalized 135-entry executed-ledger reconciliation", "public input identifiers", "environment lock"],
+        "smoke": ["fresh process", "headless execution", "query-bank byte identity"],
+        "formal": ["new run artifacts and summary are package-relative and registered"],
+        "fail_closed": ["missing external weights/data are called prerequisites, not bundled evidence", "no hash-only replay is described as tensor recomputation"]
+      },
+      "outcome_policy": {
+        "positive": "Upgrade reproducibility language only to the exact rerun surface independently demonstrated.",
+        "null": "Keep offline-replay-only wording and document the remaining external prerequisite.",
+        "negative": "Remove clean-rerun claims and preserve the failure log as a registered artifact."
+      },
+      "status": "planned",
+      "attempts": [],
+      "verification_status": "not_started"
+    },
+    {
+      "experiment_id": "RR2-SCOPE-GENERALITY",
+      "issue_ids": ["A-008", "EXP-04", "R02-NP-01"],
+      "claim_ids": ["C-UNSUPPORTED-GENERAL"],
+      "disposition": "claim_narrowing_required",
+      "hypothesis": "The current experiment does not establish scheduler, aligned-prefix, multi-model, multi-runtime, or service-level generality.",
+      "refutation_condition": "Not applicable: this item preserves a scope boundary until separately preregistered transfer experiments exist.",
+      "primary_endpoint": {
+        "name": "scope-boundary consistency",
+        "definition": "No headline, figure, or conclusion generalizes beyond the executed model/runtime/geometry/fault classes.",
+        "aggregation": "Zero unsupported transfer claims in the manuscript and claim-evidence map."
+      },
+      "oracle": "Claim-evidence and manuscript audits.",
+      "baselines": [],
+      "controls": ["forbidden-claim phrase scan"],
+      "execution": {
+        "dataset_split": "not applicable",
+        "configuration": {},
+        "repeats_or_seeds": "not applicable",
+        "hardware": "none",
+        "software": "manuscript validators",
+        "resource_estimate": "low",
+        "stopping_rule": "Retain the limitation until new transfer evidence is frozen."
+      },
+      "gates": {
+        "preflight": [],
+        "smoke": [],
+        "formal": ["claim map and manuscript agree"],
+        "fail_closed": ["a new generality claim requires a separate registered experiment"]
+      },
+      "outcome_policy": {
+        "positive": "Keep the bounded claim.",
+        "null": "Keep the bounded claim.",
+        "negative": "Remove any unsupported generalization."
+      },
+      "status": "completed",
+      "attempts": [],
+      "verification_status": "resolved"
+    }
+  ]
+}

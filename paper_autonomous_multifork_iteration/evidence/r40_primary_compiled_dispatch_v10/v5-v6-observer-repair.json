@@ -1,0 +1,43 @@
+{
+  "schema_version": "forkaudit-r39-primary-v5-v6-observer-repair-v1",
+  "v5_package": "r39-primary-compiled-dispatch-20260827e",
+  "v6_package": "r39-primary-compiled-dispatch-20260827f",
+  "v5_failure_class": "instrumentation observer assumption failure",
+  "v5_formal_scientific_result_eligible": false,
+  "observed_fail_closed_exception": "PrimaryDispatchError: GDN chunk dispatch count drift",
+  "root_cause": {
+    "frozen_runtime": "Transformers 5.14.1 Qwen3.5-MoE eager fallback",
+    "source_sha256": "688d9a8f2830d6729cd2945563f38b710100c086565b97c27c94c96bd9716b9f",
+    "v5_observed": [
+      "torch_chunk_gated_delta_rule",
+      "qcomem functional update_conv_state",
+      "qcomem functional update_recurrent_state"
+    ],
+    "v5_omitted": [
+      "torch_recurrent_gated_delta_rule",
+      "torch_causal_conv1d_update"
+    ],
+    "why_omission_matters": "cached sequence-length-1 calls select the omitted recurrent and in-place conv routes instead of chunk and functional conv"
+  },
+  "minimal_repair": {
+    "multi_token_expected_counts": [1, 0, 1, 0, 1],
+    "cached_single_token_expected_counts": [0, 1, 0, 1, 1],
+    "count_order": [
+      "chunk_rule",
+      "recurrent_rule",
+      "functional_conv_rebind",
+      "inplace_conv_update",
+      "functional_recurrent_rebind"
+    ],
+    "cross_route_missing_or_duplicate_events_fail_closed": true,
+    "static_frozen_runtime_route_preflight_added": true
+  },
+  "scientific_invariants": {
+    "runner_sha256": "9da619fc037e2c670b146d778fd9f4d5344212b7e525f3d3f26a077f79d67775",
+    "launcher_sha256": "077a876b9849661135044c50cfdea272d302a48af0bb4e21ec640eca2ca85460",
+    "v5_v6_rank_entrypoint_byte_identical": true,
+    "runner_inputs_model_revision_generation_steps_factor_order_thresholds_and_scientific_outputs_changed": false
+  },
+  "remote_actions_during_v6_package_preparation": 0,
+  "formal_execution_status": "not-run"
+}

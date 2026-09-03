@@ -1,0 +1,2182 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      T HE M EASURED C OST OF C ACHED -D EPTH R EAD -
+002   O UT:
+003
+004   A M ATCHED , P RE - REGISTERED N EGATIVE R ESULT
+005
+006
+      FOR H IDDEN -S TATE C ACHE IN L ONG -C ONTEXT I N -
+007   FERENCE
+008
+009
+010    Anonymous authors
+011    Paper under double-blind review
+012
+013
+014                                               A BSTRACT
+015
+016            Long-context systems commonly retain or reconstruct key–value state at every
+017            layer. We study a training-free alternative on a frozen backbone: cache one acti-
+018            vation tensor per chunk at depth j, retrieve a fixed number of chunks, and recom-
+019            pute only the upper layers. CoMem implements this write–retrieve–read pipeline.
+020            With fixed top-k, model read length is independent of document length and the
+021
+               measured GPU read-time working set remains approximately flat through 128k
+               tokens. The external activation store, raw text, and BM25 index still grow with
+022
+               the document, so this is not a constant-memory system.
+023
+               Matched measurements on Qwen3-8B separate the retrieval operating point from
+024
+               the depth-cache trade-off. A fixed-k short read provides the working-set benefit.
+025
+               At the same 6.7k-token read in a 128k memory check, moving from j=0 to j=12
+026            saves about 0.3 GB, a read-length-scoped quantity rather than a general memory
+027            benefit. The matched j=12 read is less accurate than re-forwarding the same
+028            retrieved chunks from j=0. In a five-arm decomposition, the contrast remains
+029            significant when selection, decoding, chunk-independent encoding, and position
+030            relocation are held fixed; a residual lower-band context-set difference prevents
+031            interpreting it as a fully deconfounded causal effect. The relocation contrast is
+032            null at the scored endpoint but not at the raw-generation level.
+033            The preregistered depth sweep has the same direction: pointwise and without mul-
+034            tiplicity correction, every tested j≥2 read loses to matched j=0 on the same sam-
+035
+               ples, and no deeper point recovers it. The load-bearing j=12 comparison remains
+               significant under Bonferroni correction, although the curve is not strictly mono-
+036
+               tone. Because the headline 4k magnitude was selected and depends on the regis-
+037
+               tered reader convention, the reusable conclusion is the direction, not a convention-
+038            independent effect size. The result bounds what this frozen, training-free back-
+039            bone gives up; it does not bound recovery after training for cache compressibility
+040            or establish superiority over unimplemented prior systems.
+041
+042
+043   1   I NTRODUCTION
+044
+045   Long-context inference has two different scaling problems: the model’s active working set grows
+046
+      with the sequence it rereads, and persistent state grows as more text is retained. KV eviction bounds
+      the former by discarding tokens (Xiao et al., 2024b; Zhang et al., 2023; Li et al., 2024) and re-
+047
+      trieval bounds it by selecting a short pack, but both usually retain raw tokens or full-layer KV. We
+048
+      ask whether the depth axis provides another operating point: can a system retain one intermediate
+049   activation tensor per chunk and reconstruct only the layers above it when that chunk is retrieved?
+050
+051   CoMem answers this question with a deliberately simple, training-free pipeline on a frozen back-
+052
+      bone (Figure 1). A write pass chunks a document, runs each chunk through layers [0, j) with chunk-
+      local positions, and stores the c × d residual activation hj together with a raw-text BM25 index.
+053                                                     (1)         (k)
+      A read selects fixed top-k chunks, forms [sink; hj , . . . , hj ; hqj ] with fresh contiguous positions,
+
+
+                                                         1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+      Figure 1: CoMem write–retrieve–read path. Each 512-token document chunk is written through
+      layers [0, j) and stored as a per-token layer-j activation with its text-index entry. BM25 selects fixed
+067
+      top-k chunks; their activations and the query activation form a freshly positioned pack read by layers
+068
+      [j, L) with full cross-pack attention. The external store grows as O(context); the fixed-k read pack
+069   does not (its measured read-time peak stays approximately flat through 128k but is not constant).
+070
+071
+072   and recomputes layers [j, L) with full cross-pack attention. This is neither a fixed-size memory nor
+073   an exact transformation of the deployed input: the persistent hidden/text store is O(context), and
+074   relocating chunk-local j > 0 states changes the computation. The narrow benefit is that, for fixed
+075   k, model read length is independent of document length; the measured GPU read-time peak stays
+076
+      approximately flat through 128k (see Limitations).
+077   The central experimental question is consequently not whether retrieval helps, but what the depth
+078   cache contributes given the same retrieval. We isolate it by comparing j = 12 with j = 0 while
+079   holding the selected chunks, query, scorer, and decoder fixed; the j = 0 arm re-forwards the same
+080   retrieved raw tokens through all layers and is the matched reference. That comparison exposes a
+081   directional read-out cost rather than a free compression: at the preregistered BABILong qa1 deci-
+082
+      sion cell the matched j=12 read is worse than j=0 under both the frozen reader and a sensitivity
+      reader that removes model-generated option enumerations, with the magnitude reported as an in-
+083
+      terval rather than a point value (Table 2). We therefore treat depth caching as a quality–systems
+084
+      trade-off, not evidence that a mid-layer state is a sufficient statistic for general “understanding.”
+085   A five-arm decomposition then freezes chunk-independent encoding and position relocation sepa-
+086   rately and together: the depth-varying arm remains worse than j = 0, whereas relocation is null
+087   at the scored endpoint. This isolates depth with respect to those named factors, while a residual
+088   lower-band context-set difference prevents a fully deconfounded causal interpretation (Section 5.2).
+089
+090   Closest work and the gap we fill. The closest prior designs are Layer-Condensed KV (Wu &
+091   Tu, 2024), which also caches a single shallow state on the layer axis but lacks top-k retrieval, and
+092   HCache (Gao et al., 2025) and KV-Direct (Qasim et al., 2026), which restore or replace state from
+093   intermediate activations without document retrieval (Section 2, Appendix A). What this comparison
+094   set does not provide is a matched, preregistered measurement that holds retrieval, selector, scorer,
+095
+      and decoder fixed while changing cache depth and reports the resulting quality cost. We provide
+      that measurement: an overall downward trend with a consistent directional loss at the registered
+096
+      comparisons. CoMem is the vehicle on which the protocol runs rather than the contribution by
+097
+      itself. Our empirical positioning is internal—full context, matched j=0, cached j=12, and the
+098   author re-forward controls; a same-bed comparison to a prior system is not run and remains future
+099   work.
+100
+101   Contributions.
+102
+103          • a controlled measurement protocol factorizing depth from retrieval, selection, and de-
+104            coding on a frozen, training-free stack, so the depth cache is evaluated as a quality–systems
+105            trade-off, not a free compression;
+106          • a depth-cost curve showing a downward trend under fixed retrieval (no tested deeper point
+107            recovers j=0), with matched paired CIs and pointwise tests;
+
+
+
+                                                         2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+               • a measured resource account separating the O(context) external store and index from the
+109              fixed-k model read, including a 128k H20 serving comparison and explicit quality losses;
+110
+               • CoMem, the depth-partitioned write–retrieve–read mechanism that instantiates the protocol
+111
+                 and whose layer-axis store and upper-band recomputation are the design we measure.
+112
+113
+114   2   R ELATED W ORK AND C ONTRIBUTION B OUNDARY
+115
+116   Token-axis methods choose which token states to retain (Xiao et al., 2024b; Zhang et al., 2023;
+117   Li et al., 2024; Cai et al., 2024; Lin et al., 2026), and retrieval-and-reuse serving systems keep
+118   full-layer KV for retrieved chunks (Yao et al., 2024; Jin et al., 2024; Gim et al., 2024); both leave
+119
+      the layer axis untouched. The three nearest neighbours act on that axis: Layer-Condensed KV
+      shares one condensed KV computed at a shallow depth across the upper layers (Wu & Tu, 2024),
+120
+      HCache restores evicted state from intermediate activations without document retrieval (Gao et al.,
+121
+      2025), and KV-Direct replaces full-layer KV with a residual-stream read once all retained tokens
+122   are reconstructed (Qasim et al., 2026). Each of them either lets the read grow with retained tokens
+123   or omits top-k selection, and—decisively for this paper—none measures cache-depth fidelity under
+124   a fixed retrieval, so the quality price of reading a cached mid-depth state has never been isolated
+125   from the retrieval that makes the read short. CoMem’s boundary is accordingly the combination
+126   of a one-depth per-token store, external BM25 top-k selection, and full upper-band recomputation:
+127   we claim neither the individual ingredients, nor numerical exactness for relocated j > 0 states,
+128   nor superiority over designs we do not implement, and the author’s full-depth re-forward control is
+129   labeled as ours rather than as an implementation of any published method. Appendix A gives the
+130
+      per-family comparison, the mechanism-boundary table (Table 4), the position-remap and external-
+      memory neighbours (Xiao et al., 2024a; Sun et al., 2024; Mohtashami & Jaggi, 2023; Tworkowski
+131
+      et al., 2023; Borgeaud et al., 2022; Wu et al., 2022; Bertsch et al., 2023), and the independence
+132
+      statement for the 2026 preprints (Qasim et al., 2026; Gelberg et al., 2026; Lin et al., 2026).
+133
+134
+135   3   C O M EM
+136
+137   Let a decoder-only transformer contain L layers of width d. We use half-open layer ranges: F[0,j)
+138   contains the bottom j layers and F[j,L) the remaining layers. Documents are divided into M disjoint
+139
+      chunks xm of c = 512 tokens. The mechanism is training-free: no parameter of the frozen backbone
+      is updated at any point.
+140
+141
+      Write.     For every chunk, CoMem computes
+142
+                                  (m)                                         (m)
+143                              hj     = F[0,j) (xm ; 0:c − 1),            hj      ∈ Rc×d ,            (1)
+144
+145   using chunk-local positions, and writes one layer’s per-token residual tensor per chunk to an ex-
+146
+      ternal store. It also retains the raw text needed to build a CPU BM25 index. The hidden store
+      therefore grows as O(M cd) and the text index as O(|x|): the layer axis buys a persistent-storage
+147
+      rate reduction, not a constant-size memory (Appendix B).
+148
+149
+      Retrieve and read. Given query q, BM25 (Robertson & Zaragoza, 2009) ranks raw-text chunks
+150
+      and returns Sk (q), the fixed top-k indices. CoMem sorts those indices back into original docu-
+151   ment order, computes the query activation hqj , gathers the paired stored activations, assigns fresh
+152   contiguous positions, and forms
+153
+                                                           (m)
+154                                   Pj (q) = [hsink
+                                                 j    ; , hj       : m ∈ Sk (q); , hqj ].               (2)
+155
+      Layers F[j,L) then process the entire pack with full causal cross-pack attention. Its length is 1 +
+156
+      kc + |q| and is independent of M when k and c are fixed. Thus model read FLOPs and GPU read-
+157   time KV working set are bounded with respect to document length; write time, persistent storage,
+158   BM25 index size, and generally retrieval work are not. The sink and query construction, the selector
+159   settings and variants, the block-diagonal ablation, and the per-decoded-token upper-band rebuild
+160   that keeps the recorded 0.68 s a read/prefill rather than an end-to-end quantity are in Appendix B.
+161
+
+
+
+                                                               3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      What is and is not exact. On one contiguous sequence with unchanged positions,
+163   F[j,L) (F[0,j) (x)) = F (x) up to implementation precision; this is an algebraic split/rejoin check.
+164   The deployed j > 0 path is different: chunks are encoded independently, selected, relocated, and
+165   jointly read with a query. There is no exactness guarantee for that transformation, so we measure its
+166   fidelity against the same-retrieval j = 0 arm, where selected raw tokens are re-forwarded through
+167   the whole model; at j = L no model layers remain to condition the stored representation on the
+168   query, so intermediate j is a quality–compute knob. Two factors are confounded at every j > 0:
+169   (i) chunk-independent encoding (each chunk is written with chunk-local positions, without cross-
+170   chunk attention during the write), and (ii) position relocation (retrieved chunks are reassigned fresh
+171
+      contiguous positions at read). An identical-position split/rejoin is lossless by design and so isolates
+      neither factor; disentangling (i) from (ii) requires the registered dual-step ablation of Section 5.2,
+172
+      reported separately from the headline depth curve.
+173
+174
+175   4   E XPERIMENTAL P ROTOCOL AND C LAIM M AP
+176
+177   Everything in this paper is measured on a frozen, training-free stack: the 36-layer Qwen3-8B back-
+178   bone (Yang et al., 2025) with chunk size c = 512 and CoMem split j = 12, in bfloat16, with no
+179   parameter update anywhere in the pipeline. The qa1 and RULER depth studies use a fixed k = 12;
+180
+      the LongEval study uses the per-task BM25 settings of Appendix Table 12 (k ∈ {4, 6}), so its qual-
+      ity gap is not a k=12 operating-point claim. The surviving artifacts document no clean validation
+181
+      split for the earlier best-k sweeps, so rather than select k on the test set we exclude those values
+182
+      from headline claims: our result is a single fixed-configuration test, not a claim that k = 12 is opti-
+183   mal. How the depth cost changes with k is unknown, and a matched k-sweep at the 4k decision cell
+184   remains future work.
+185
+186
+      Table 1 is the map a reviewer should read first: each headline claim, its estimand, the control that
+      identifies that estimand, the scope in which we assert it, and where its evidence lives. We report
+187
+      three estimands and never merge them: the read-depth direction (Section 5.1), the depth attribution
+188
+      (Section 5.2), and the serving account (Section 5.3). The remaining protocol detail — the RULER,
+189   LongEval and read-out-invariance studies, the depth-sweep protocol, the reader taxonomy, the five-
+190   arm cross-trial audit, and the reproducibility record — is in Appendices C and H.
+191
+192   Matched read-depth study (direction estimand). To isolate depth from retrieval, the decisive
+193   BABILong qa1 study (Kuratov et al., 2024) uses an oracle selector, k = 12, and the same selected
+194   chunks, query, greedy decoder, and Qwen3-8B checkpoint for j = 12 and j = 0; each regis-
+195   tered context bucket contains positionally paired examples under the sample counts and generation
+196   caps of Appendix Table 12. Paired differences use the two-sided exact McNemar test (McNemar,
+197   1947), with b the j=12-correct/j=0-wrong pairs and c the reverse; the frozen primary reader ex-
+198   tracts the first task label and the sensitivity reader first strips a leading model-generated option enu-
+199
+      meration (full reader taxonomy in Appendix C). Pairing is verified by content hash: the registered
+      sample id is the 16-hex sha256 prefix of the full formatted model input, and re-running the
+200
+      preregistered content-level join on it makes every decisive cell a complete 100/100 overlap with
+201
+      no orphaned, duplicated, or question-mismatched context, reproducing every published cell exactly
+202   (Appendix D); a separately stored 64-hex document digest was never retained and is not claimed.
+203
+204   Five-arm mechanism decomposition (attribution estimand). At fixed j = 12, length, selec-
+205   tor, and decoder, we compare: A, the matched j = 0 full re-forward; D, deployed chunk-local
+206   write plus fresh-contiguous read; R, chunk-local write with original document positions at read;
+207   C, contiguous cross-chunk write with fresh-contiguous read; and E, contiguous cross-chunk write
+208   with original document positions. Thus E freezes both chunk-independent encoding and relocation
+209   when compared with A; the remaining lower-band context-set difference is stated with the attribu-
+210   tion result rather than treated as eliminated. Each 4k/16k arm has n = 100 and uses the official
+211
+      babilong.metrics.compare answers qa1 scorer, Wilson intervals, and two-sided exact
+      McNemar contrasts on the same content-hash key sample id. Driver pins, the one-line argument
+212
+      repair, and the cross-trial audit of that deck are in Appendices C and H. No other experimental arm
+213
+      is introduced.
+214
+215
+
+
+
+                                                         4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+       ID     Headline claim as stated here       Estimand        Identifying control          Supported scope                  Evidence
+217
+       C1     one layer-j activation per chunk;   mechanism       identical-position           training-free, frozen            §3, Eq. (1)–(2);
+218           only F[j,L) re-forwards a           (no             split/rejoin algebra         Qwen3-8B, c=512; store is        App. B
+219           fixed-k pack of length              estimand)                                    O(ctx)
+              1+kc+|q|
+220    C2     cached depth is an axis whose       framing only    the matched design of the    no empirical claim attaches to   §1, §4
+221           price must be measured, not                         rows below                   this row
+              assumed
+222    C3     the fixed-k short read keeps        accuracy at a   shared backbone/scorer vs.   niah single serving              App. Tab. 7;
+223           needle-style recall near-perfect    fixed read      full context                 sweep, n=50/cell; not every      App. Fig. 3,
+                                                                                               matched RULER cell               Tab. 11
+224    C4     multi-hop composition (qa2) is      registered      floor gate and negative      no length-robust qa2 claim       App. Tab. 9
+225           not evaluable under the             non-result      controls                     anywhere
+              registered adjudicator
+226    C5     a self-distilled read adapter is    none            —                            configuration only; no       App. Tab. 14
+227           archived, not evaluated                                                          accuracy claim here
+       C6     at fixed k the read length and      serving         matched read length;         one H20 through 128k; nearly App. Tab. 7;
+228
+              GPU read-time working set are       working set     median-of-3 CUDA peaks       flat, not constant           App. Fig. 3
+229           bounded while the store grows
+230    C7     depth buys 0.3 GB at a              serving, Q⋆     same read length and         read/prefill only; no            App. Tab. 7;
+              6,657-token read; read/prefill                      hardware; decode excluded    end-to-end latency claim         §5.3
+231           break-even near 26
+232           reads/document
+       C8     cached j=12 reads are less          read-depth      oracle selector, same        qa1 single-fact, n=100/cell,     Tab. 2;
+233           accurate than re-forwarding the     direction       chunks, query and decoder;   two caps; magnitude              App. Tab. 5;
+234           same chunks from j=0                                paired exact McNemar on a    convention-dependent             App. Fig. 2
+                                                                  content-hash-verified
+235                                                               subset
+236    C8-D   the loss remains when the named depth               five-arm A/D/R/C/E at        decomposition on different       Tab. 3; §5.2
+              encoding factors are frozen     attribution         fixed j=12; E–A varies       samples from C8; not a
+237                                                               cache depth with an          replacement magnitude
+238                                                               acknowledged lower-band
+                                                                  context-set boundary
+239
+240
+      Table 1: Headline claims, estimands, identifying controls, scope, and evidence. C2 and C5 are
+241   listed precisely because they carry no quantitative claim and C4 records a registered non-result, so
+242   a reader can check that nothing in the paper silently upgrades them. The three estimands (C6/C7
+243   serving, C8 direction, C8-D attribution) come from different registered runs and are never pooled.
+244
+245
+246   Serving study (serving estimand). The systems measurements use the same Qwen3-8B back-
+247   bone on one H20 with 97.8 GB available memory, and all GPU peaks and prefill measurements are
+248
+      median-of-three. We distinguish (i) full-context rereading, (ii) retrieved raw-token recomputation
+      at j = 0, and (iii) CoMem at j = 12. The registered record reports write, per-query read, GPU
+249
+      peak, and RULER/LongEval quality, but no end-to-end latency including decode, so the recorded
+250
+      read/prefill endpoints are tabulated as endpoints and never interpolated. We therefore make the fram-
+251   ing explicit: the system’s benefit is a retrieval benefit (a fixed-k short read instead of a full-context
+252   read)—an operating point a matched j=0 short read also delivers without any depth cache—and
+253   depth caching is measured as a quality cost, not a saving. The matched j = 0 versus j = 12
+254   direction remains the load-bearing intervention; the depth curve locates j=12 within an overall
+255   downward trend (no tested deeper working point recovers accuracy), without asserting a strictly
+256   monotone curve.
+257
+258   5     R ESULTS
+259
+260   The results are organised by the three estimands of Table 1 and are never pooled across them:
+261   the read-depth direction (Section 5.1), the depth attribution (Section 5.2), and the serving account
+262   (Section 5.3).
+263
+264   5.1     D IRECTION ESTIMAND : THE CACHED READ - OUT IS NOT EXACT
+265
+266   Under the same retrieved chunks, reading from cached j=12 states is less accurate than re-
+267   forwarding those chunks from j=0. This qa1 intervention is the direct depth test, and Table 2
+268   is its single canonical view: the mnt160 context sweep, the second registered cap (mnt512), and
+269   the pairing-free floor for the decision cell in one table. The load-bearing result is the direction
+      j=0>j=12 at both registered caps, and the two cap-specific estimates are not a single interval. Ev-
+
+
+                                                                           5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+               root / cell           reader     j=12 j=0 re-fwd. ∆j0−j12 exact p (b/c)
+271
+272            mnt160, 0k control    pinned     96%   98%    98%    +2 pp    0.50 (0/2)
+               mnt160, 1k            pinned     76%   84%    84%    +8 pp    0.115 (6/14)
+273
+               mnt160, 2k            pinned     62%   77%    81%    +15 pp   5.9 × 10−3 (6/21)
+274            mnt160, 4k (decision) pinned     48%   75%    73%    +27 pp   4.6 × 10−7 (2/29)
+275            mnt160, 4k            stripped   40%   75%    73%    +35 pp   7.9 × 10−8 (5/40)
+276            mnt160, 8k            pinned     57%   75%    79%    +18 pp   5.3 × 10−4 (4/22)
+277
+               mnt512, 4k (decision) pinned 52% 76%          —      +24 pp 8.4 × 10−6 (3/27)
+278            mnt512, 4k            stripped 57% 80%        —      +23 pp 1.17 × 10−4 (6/29)
+279
+               Same decision cell with no pairing assumption (two independent binomial arms)
+280
+               mnt160, 4k (decision) pinned 48% 75%             —      +27 pp 8.7 × 10−5 (z=3.92)
+281
+282
+      Table 2: Canonical matched read-depth gap: one view of the decisive cells. qa1, oracle se-
+283   lector, k=12, frozen Qwen3-8B, n=100 per cell/arm; 0 k is a no-distractor empty-context control.
+284   All cells are computed on the sample id content-hash-verified pairing subset (100/100 contexts
+285   shared per cell, no mismatched or orphaned context; Appendix D), and every recomputed value
+286   matches the published one. Exact McNemar p is a deterministic function of (b, c), so the printed
+287   p and b/c are mutually consistent. The two decision rows are load-bearing; their exact condi-
+288   tional paired 95% CIs are [+17.7, +30.5] pp (mnt160) and [+14.1, +28.7] pp (mnt512), both ex-
+289   cluding zero (Appendix J.1). The last row re-estimates that cell with no pairing assumption (pooled
+290   z=3.924; square-and-add interval at zero pairing correlation [+13.6, +39.1] pp): the paired test is
+291
+      the efficient estimator, the unpaired result the assumption-free bound, and both exclude zero. re-fwd.
+      is the authors’ full-depth re-forward without retrieval, not an implementation of the published KV-
+292
+      Direct method (Qasim et al., 2026); mnt160 and mnt512 reuse the same 100 samples at caps 160
+293
+      and 512 and are not independent replications. Blank cells, the convention matrix and the answer-
+294   anchored null are in Appendix G.
+295
+296
+297   ery cell is computed on the content-hash-verified paired subset — the two arms share all 100 contexts
+298   with no orphaned, duplicated, or question-mismatched context (Appendix D) — and the recompute
+299   reproduces each published value exactly. The direction holds in every displayed convention cell and
+300   across the overlapping half-split audit, which is resampling stability, not independent replication;
+301
+      the full six-cell convention matrix, with the missing-excluded rows and the answer-anchored null
+      cell, is preserved in Appendix Table 8.
+302
+303   Three caveats bound how much of this may be reused, and all three are kept rather than resolved.
+304   First, generation-cap truncation does not explain the direction — the better readout is cut more
+305   often, so truncation would compress rather than create the gap — but the effect size is convention-
+306   dependent, both endpoints of the conditional range use the stripped reader, and a wider independent
+307
+      strip rule can reverse the sign, so no convention-independent magnitude is load-bearing. Second, the
+      +27.0 pp 4k value is a selected magnitude rather than a pre-specified effect size: the preregistered
+308
+      anchor moved from 1k to 4k before the decision cell was inspected, and 4k is the largest significant
+309
+      gap among the valid displayed 2k/4k/8k cells. Third, the gap is not monotone in context length
+310   (Appendix Figure 4), and the answer-anchored sensitivity preserves the sign on the same samples
+311   while remaining underpowered at the longer cap. The supporting diagnostics (Appendix Tables 10
+312   and 13) sharpen but do not change the pinned direction and pair.
+313
+314   Depth-partition curve. A preregistered depth sweep provides a complete curve of cached depth
+315   versus accuracy under the pinned reader (Appendix Table 5, Appendix Figure 2). Accuracy follows
+316   an overall downward trend in cached depth, and, pointwise without multiplicity correction, every
+317   tested point from j=2 onward is a significant paired loss against j=0 on the same samples (we
+318   claim no strictly monotone curve and run no ordered-trend test). The 16k dense and full-depth
+319   re-forward (no retrieval) baselines show no significant difference from j=0 at n=100;
+320
+      this does not establish equivalence but is consistent with a depth-carried read-out cost within fixed
+      retrieval. The system benefit is the fixed-k short read, not depth: the same runs produce the quality
+321
+      and the wall-clock numbers on matched operation points, and that run-level wall clock does not
+322
+      support a time saving from depth. Per-depth memory peaks were not recorded (Appendix J); the
+323
+
+
+
+                                                        6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      ctx      A: j0        D: deployed     R: reloc. only           C:           E: depth-      E−A    exact p
+325                                                              chunk-indep.      varying
+326
+      4k    .59 [.49,.68]   .16 [.10,.24]    .16 [.10,.24]       .31 [.23,.41]   .31 [.23,.41]   −.28   3 × 10−5
+327
+      16k   .52 [.42,.62]   .14 [.09,.22]    .14 [.09,.22]       .16 [.10,.24]   .16 [.10,.24]   −.36   < 10−16
+328
+329
+      Table 3: E2 five-arm depth-attribution decomposition at fixed j = 12.                            Accu-
+330
+      racy with 95% Wilson intervals, n = 100 per length/arm, scored by the official
+331   babilong.metrics.compare answers; arms A/D/R/C/E are defined in Section 4. Per arm
+332   the five-stage graph WRITE→SELECT→RELOC→FORWARD→SCORE uses cache depth j (stored
+333   h12 residual versus raw re-forward) as its registered change object relative to A, with selector index,
+334   relocation rule, scorer, and paired inputs frozen (Appendix D). The uncontrolled lower-band context
+335   set remains a stated attribution boundary rather than an eliminated factor. The primary E–A test is
+336   paired exact McNemar. For D–R and C–E, b=0, c=0 and hence discordant=0 at both lengths — an
+337   endpoint result, not an identity of the forward computations (E–C raw generations differ on 66/100
+338   and 59/100 items). D–C is p = 2.7 × 10−4 at 4k and p = 0.77441 at 16k; code snapshots and
+339
+      cross-trial provenance are in Appendix H. The 16k E–A test serialized as 0.0 at double precision
+      and is reported as < 10−16 : a finite-precision output, not a mathematical zero.
+340
+341
+342   separate E1 check measures a 0.3 GB read-length-scoped depth difference at 128k but yields neither
+343   a memory curve nor an end-to-end saving.
+344
+345   5.2   ATTRIBUTION ESTIMAND : FIVE - ARM DEPTH DECOMPOSITION
+346
+347   Table 3 freezes both write-position factors while varying depth. Its primary contrast has a single
+348   change object: between arm E and matched arm A we hold the selector index (the same BM25
+349   chunks in the same order), the relocation rule, the scorer, and the scored items — the content-hash-
+350
+      verified paired subset — fixed, and vary only the cache depth at which the read pack is materialized,
+      j=0 raw re-forward versus j=12 stored-residual re-forward. Chunk-local write independence and
+351
+      position relocation are inherited from the deployed arms and held constant, so they are not the
+352
+      change object. E is lower than A by 0.28 at 4k (p = 3 × 10−5 ) and 0.36 at 16k: depth itself costs a
+353   significant increment even when both encoding factors are frozen.
+354
+355   The secondary controls localize that result, and one of them is a bounded null rather than a zero.
+356
+      Relocation shows no discordant observations on the qa1 endpoint: the paired D–R and C–E con-
+      trasts are both 0/100 discordant, giving an exact one-sided 95% upper bound of 2.95% (n=100)
+357
+      on the endpoint discordance rate, so an endpoint effect up to roughly 3pp is not excluded. This is
+358
+      a bounded endpoint null at n=100, not a measured zero effect and not a computational identity: at
+359   the generation layer E and C are distinguishable — their raw outputs differ on 66/100 items at 4k
+360   and 59/100 at 16k (D vs R: 65/100 and 72/100) — and the 0/100 agreement appears only after the
+361   scorer collapses those differences onto a label. The null we claim is exactly this resolver-resolution
+362   statement, not that the ablation does nothing. A is best at both lengths and the depth-varying arm
+363   captures most of the fidelity loss, but the depth loss is an arithmetic mirror of the A-vs-C contrast
+364   (same discordant cells, signs reversed) that the endpoint null forces: arm E serves identification, not
+365   a fresh effect estimate. These runs use different samples and configuration from the pinned +27 pp
+366   cell, so their magnitudes are a mechanism decomposition, not replacements for that result.
+367
+368   The residual factor we do not control. Freezing encoding and relocation still leaves one dif-
+369
+      ference between A and E that the deck cannot remove: the two arms differ in what their lower
+      band attended to. A’s bottom layers see only the selected pack, whereas E’s stored h12 was written
+370
+      over the contiguous document region, so the lower-band context set is a third residual factor. E–
+371
+      A therefore varies depth in the registered computation graph but is not a fully deconfounded causal
+372   contrast. The registered bound on that class of retrieval-side difference is the 16k dense/re-forward
+373   controls, within 6 pp of j=0 (Appendix Table 5) and well below the 28 pp E–A effect at 4k, so a
+374   residual context-set effect of that size cannot account for the attribution. A confound-free arm that
+375   rewrites A’s lower band over the same region is a forward pass we have not run.
+376
+377
+
+
+
+                                                             7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      5.3   S ERVING ESTIMAND : WHAT THE FIXED READ COSTS AND BUYS
+379
+380   Across the separate niah single serving sweep, fixed-read CoMem retains perfect accuracy,
+381   whereas the full-context baseline’s longest point was run outside this Qwen3 checkpoint’s enabled
+382   positional regime; that point is greyed and annotated in Appendix Figure 3 rather than treated as
+383   a comparison, so its 128k cliff is a positional-regime artifact, not evidence of systems-level full-
+384   attention collapse. At the longest context CoMem uses 3.9× less GPU memory and its registered
+385   per-query read remains approximately length-invariant, while full attention stays feasible below the
+386
+      card’s 97.8 GB capacity rather than failing out of memory. This memory contrast is read/prefill-only
+      — decode rebuilds the upper pack at each token, so it is not an end-to-end win, and a matched j=0
+387
+      short read (Section 5.2) delivers the same operating point. The recorded read/prefill endpoints are
+388
+      tabulated in Appendix Table 7 rather than plotted, because three endpoints are not a sweep; that
+389   table also prevents this comparison from being misread as a depth-cache ablation, since full context
+390   versus CoMem changes both selection and representation. Retrieval keeps the read in-window; it is
+391   a whole-system retrieval comparison, not a depth saving.
+392
+      The matched E1 check instead holds the selected 6.7k-token read fixed: its median-of-three peaks
+393
+      are 18.2 GB at j = 0 and 17.9 GB at j = 12, reproduced in two trials (six of six measurements). The
+394
+      resulting 0.3 GB saving has 0.1 GB print granularity (range 0.2–0.4 GB) and matches the analytic
+395   read-time band (j/L)BKV read len with j/L = 12/36. We call this a read-length-scoped analytic
+396   null: weights and the 128k write transient dominate the 18.2 GB peak, so it is not general evidence
+397   that depth caching is memory-free. E1 is a memory endpoint and the direction estimand’s primary
+398   endpoint is qa1 accuracy, so neither predicts the other.
+399
+      For one generation stream, that table’s registered write/read times imply a balanced break-even of
+400
+      approximately 26 repeated reads per written document (Q⋆ = W/(tj0 −tj12 ) = 6.65/0.26 = 25.58
+401   on the rounded serving endpoints). The quotient is sensitive to that rounding: the 0.26 s numerator
+402   is a difference of two median-of-three endpoints at 0.01 s print granularity, so a ±0.01 s perturbation
+403   moves Q⋆ across roughly 25–27 reads/document, and we quote it as “about 26” rather than a two-
+404   decimal constant. Decode is excluded and the implementation recomputes the upper band at each
+405   generated token, so Q⋆ is read/prefill-only, has no established end-to-end analogue, and would shift
+406   under an accounting convention including decode. We claim no end-to-end time saving from depth;
+407   the serving-time calculation and the E1 memory check remain different protocols, and neither turns
+408   the selected 4k quality loss into a universal Pareto frontier.
+409
+410
+      Composition boundary. The multi-hop qa2 probe is not load-bearing and the archived self-
+      distilled read adapter is not evaluated here, so neither carries a quantitative claim; both records,
+411
+      with the registered generation-cap sensitivity runs, are in Appendix F.
+412
+413
+414   6     L IMITATIONS
+415
+416   The system is not constant-memory. The fixed-k pack is bounded, but GPU peak is not constant:
+417   it stays nearly flat through 128k and rises materially at the separate one-million-token serving point
+418   (Appendix H). The activation/text/index stores grow as O(context); index size and BM25 latency
+419
+      remain unmeasured.
+420
+421
+      Depth caching loses information needed by the deployed read. The same-retrieval j = 12
+      arm is worse than j = 0 on qa1 and the registered RULER/LongEval aggregates, and no tested
+422
+      deeper point recovers j=0 accuracy (Appendix Table 5); identical-position split/rejoin does not
+423
+      validate relocated chunks. The answer-anchored 512-cap result is underpowered and the directional
+424   diagnostics are post-hoc, leaving a clean magnitude open. The quality cost is also task-dependent:
+425   the fixed read retains near-perfect recall on needle-style single-supporting-fact probes, so that claim
+426   does not extend to multi-hop composition, which is not evaluable under the registered adjudicator
+427   (Appendix G). The 16k dense/re-forward controls are a non-rejection, not an equivalence test, so a
+428   retrieval-side deficit of a few pp is not excluded, though it remains far below the depth effect.
+429
+430   The result is training-free and therefore bounded. Every number here comes from a frozen
+431   backbone with no parameter update, so the measured depth cost is what a training-free deployment
+      pays. It is not a statement about what is achievable in principle: representations can be trained to be
+
+
+                                                        8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      more cache-compressible (Gelberg et al., 2026), and a backbone or adapter optimized for reading
+433   relocated mid-depth states could recover part of the gap we measure. We ran no such training, so
+434   we neither claim nor exclude that recovery.
+435
+436   Selection, uncertainty, and scorer resolution. The archived best-k sweeps lack a validation/test
+437   separation, so we report fixed k = 12; primary RULER and qa1 cells have n = 50 and n = 100
+438   under one checkpoint and seed, and overlapping half-splits diagnose resampling stability, not inde-
+439   pendent replication. The pairing join is over the formatted model input rather than an independently
+440   stored 64-hex document digest, which was never retained, so the load-bearing cell also carries the
+441   pairing-free two-proportion floor. The official scorer collapses roughly six in ten raw-generation
+442   differences onto one label, so the 0/100 endpoint agreement between arms (e.g. E and C) is indis-
+443
+      tinguishability at label resolution, not identity or inertness of a deleted factor (Appendix F).
+444
+445
+      Mechanism-attribution boundary of the closest prior. NOT MEASURED: the attributed-
+      mechanism support of the closest prior citation(s) is not verified item-by-item by a human reader;
+446
+      the claim of mechanism attribution to those loci (Layer-Condensed KV, HCache, KV-Direct) is
+447
+      therefore bounded and not asserted as human-verified.
+448
+449   Serving and data governance. Full attention at 128k uses 71.4 GB and remains feasible on the
+450   H20, CoMem recomputes the upper band per decoded token so 0.68 s is read/prefill rather than
+451   end-to-end latency, and the 0.3 GB E1 difference establishes no general depth-memory or end-to-
+452   end benefit. Raw text and activations require encrypted storage, access control, and source-bound
+453   deletion.
+454
+455
+      7   C ONCLUSION
+456
+457
+      CoMem provides a factorized measurement of retrieval and cached depth. On the tested Qwen3-8B
+458   configurations, fixed top-k retrieval keeps the model read short as document length grows, while the
+459   external activation/text store grows linearly. At the measured 6.7k-token read, moving from j=0 to
+460   j=12 saves only 0.3 GB and reduces qa1 read-out fidelity under the registered comparisons. The
+461   five-arm study retains this loss after freezing the named encoding and relocation factors, subject
+462   to the stated lower-band context-set boundary. The reusable output is the matched protocol and
+463   its negative depth-cost curve; end-to-end value including decode, and recovery after cache-aware
+464   training, remain unmeasured.
+465
+466   R EFERENCES
+467
+468   Amanda Bertsch, Uri Alon, Graham Neubig, and Matthew R. Gormley. Unlimiformer: Long-range
+469
+       transformers with unlimited length input. In Advances in Neural Information Processing Systems,
+       2023.
+470
+471   Sebastian Borgeaud, Arthur Mensch, Jordan Hoffmann, Trevor Cai, Eliza Rutherford, Katie Milli-
+472     can, George Bm van den Driessche, Jean-Baptiste Lespiau, Bogdan Damoc, Aidan Clark, Diego
+473     De Las Casas, Aurelia Guy, Jacob Menick, Roman Ring, Tom Hennigan, Saffron Huang, Loren
+474     Maggiore, Chris Jones, Albin Cassirer, Andy Brock, Michela Paganini, Geoffrey Irving, Oriol
+475     Vinyals, Simon Osindero, Karen Simonyan, Jack Rae, Erich Elsen, and Laurent Sifre. Improving
+476     language models by retrieving from trillions of tokens. In International Conference on Machine
+477
+        Learning, pp. 2206–2240. PMLR, 2022.
+478   Zefan Cai, Yichi Zhang, Bofei Gao, Yuliang Liu, Tianyu Liu, Keming Lu, Wayne Xiong, Yue Dong,
+479     Baobao Chang, Junjie Hu, and Wen Xiao. PyramidKV: Dynamic KV cache compression based
+480     on pyramidal information funneling. arXiv preprint arXiv:2406.02069, 2024.
+481
+482
+      C. J. Clopper and E. S. Pearson. The use of confidence or fiducial limits illustrated in the case of the
+        binomial. Biometrika, 26(4):404–413, 1934. doi: 10.1093/biomet/26.4.404.
+483
+484   Shiwei Gao, Youmin Chen, and Jiwu Shu. Fast state restoration in LLM serving with HCache. In
+485     EuroSys, 2025.
+
+
+                                                         9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Yoav Gelberg, Yam Eitan, Michael Bronstein, Yarin Gal, and Haggai Maron. Training transformers
+487     for KV cache compressibility. arXiv preprint arXiv:2605.05971, 2026.
+488
+489   In Gim, Guojun Chen, Seung-seob Lee, Nikhil Sarda, Anurag Khandelwal, and Lin Zhong. Prompt
+490      cache: Modular attention reuse for low-latency inference. In Proceedings of Machine Learning
+491      and Systems, volume 6, 2024.
+492   Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, Shantanu Acharya, Dima Rekesh, Fei Jia, Yang
+493     Zhang, and Boris Ginsburg. RULER: What’s the real context size of your long-context language
+494     models? arXiv preprint arXiv:2404.06654, 2024.
+495
+496   Chao Jin, Zili Zhang, Xuanlin Jiang, Fangyue Liu, Xin Liu, Xuanzhe Liu, and Xin Jin.
+497
+        RAGCache: Efficient knowledge caching for retrieval-augmented generation. arXiv preprint
+        arXiv:2404.12457, 2024.
+498
+499   Yuri Kuratov, Aydar Bulatov, Petr Anokhin, Ivan Rodkin, Dmitry Sorokin, Artyom Sorokin, and
+500     Mikhail Burtsev. BABILong: Testing the limits of LLMs with long context reasoning-in-a-
+501     haystack. In NeurIPS Datasets and Benchmarks, 2024.
+502
+      Dacheng Li, Rulin Shao, Anze Xie, Ying Sheng, Lianmin Zheng, Joseph E. Gonzalez, Ion Stoica,
+503
+        Xuezhe Ma, and Hao Zhang. How long can context length of open-source LLMs truly promise?
+504
+        In NeurIPS Workshop on Instruction Tuning and Instruction Following, 2023. URL https:
+505     //openreview.net/forum?id=LywifFNXV5.
+506
+507   Yuhong Li, Yingbing Huang, Bowen Yang, Bharat Venkitesh, Acyr Locatelli, Hanchen Ye, Tianle
+508     Cai, Patrick Lewis, and Deming Chen. SnapKV: LLM knows what you are looking for before
+509     generation. arXiv preprint arXiv:2404.14469, 2024.
+510   Xiaolin Lin, Jingcun Wang, Olga Kondrateva, Yiyu Shi, Bing Li, and Grace Li Zhang. CompressKV:
+511     Semantic-retrieval-guided KV-cache compression for resource-efficient long-context LLM infer-
+512     ence. arXiv preprint arXiv:2606.24467, 2026.
+513
+514   Quinn McNemar. Note on the sampling error of the difference between correlated proportions or
+515
+        percentages. Psychometrika, 12(2):153–157, 1947. doi: 10.1007/BF02295996.
+516   Amirkeivan Mohtashami and Martin Jaggi. Landmark attention: Random-access infinite context
+517    length for transformers. arXiv preprint arXiv:2305.16300, 2023.
+518
+519   Robert G. Newcombe. Interval estimation for the difference between independent proportions: com-
+520
+        parison of eleven methods. Statistics in Medicine, 17(8):873–890, 1998. doi: 10.1002/(SICI)
+        1097-0258(19980430)17:8⟨873::AID-SIM779⟩3.0.CO;2-I.
+521
+522   Kaleem Ullah Qasim, Jiashu Zhang, Muhammad Kafeel Shaheen, Razan Alharith, and Heying
+523     Zhang. The residual stream is all you need: On the redundancy of the KV cache in transformer
+524     inference. arXiv preprint arXiv:2603.19664, 2026.
+525
+      Stephen Robertson and Hugo Zaragoza. The probabilistic relevance framework: BM25 and beyond.
+526
+        Foundations and Trends in Information Retrieval, 3(4):333–389, 2009. doi: 10.1561/1500000019.
+527
+528   Yutao Sun, Li Dong, Yi Zhu, Shaohan Huang, Wenhui Wang, Shuming Ma, Quanlu Zhang, Jianyong
+529     Wang, and Furu Wei. You only cache once: Decoder-decoder architectures for language models.
+530     arXiv preprint arXiv:2405.05254, 2024.
+531
+      Szymon Tworkowski, Konrad Staniszewski, Mikołaj Pacek, Yuhuai Wu, Henryk Michalewski, and
+532
+        Piotr Miłoś. Focused transformer: Contrastive training for context scaling. arXiv preprint
+533     arXiv:2307.03170, 2023.
+534
+535   Edwin B. Wilson. Probable inference, the law of succession, and statistical inference. Journal
+536     of the American Statistical Association, 22(158):209–212, 1927. doi: 10.1080/01621459.1927.
+537     10502953.
+538   Haoyi Wu and Kewei Tu. Layer-condensed KV cache for efficient inference of large language
+539     models. arXiv preprint arXiv:2405.10637, 2024.
+
+
+                                                    10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      Yuhuai Wu, Markus Norman Rabe, DeLesley Hutchins, and Christian Szegedy. Memorizing
+541     transformers. In International Conference on Learning Representations, 2022. URL https:
+542     //openreview.net/forum?id=TrjbxzRcnf-.
+543
+544   Chaojun Xiao, Pengle Zhang, Xu Han, Guangxuan Xiao, Yankai Lin, Zhengyan Zhang, Zhiyuan
+545     Liu, and Maosong Sun. InfLLM: Training-free long-context extrapolation with an efficient con-
+546
+        text memory. arXiv preprint arXiv:2402.04617, 2024a.
+547   Guangxuan Xiao, Yuandong Tian, Beidi Chen, Song Han, and Mike Lewis. Efficient streaming
+548     language models with attention sinks. In ICLR, 2024b.
+549
+550   An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang
+551
+        Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu,
+        Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin
+552
+        Yang, Jiaxi Yang, Jing Zhou, Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang,
+553
+        Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui
+554     Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang
+555     Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yinger
+556     Zhang, Yu Wan, Yuqiong Liu, Zekun Wang, Zeyu Cui, Zhenru Zhang, Zhipeng Zhou, and Zihan
+557     Qiu. Qwen3 technical report. arXiv preprint arXiv:2505.09388, 2025.
+558
+559
+      Jiayi Yao, Hanchen Li, Yuhan Liu, Siddhant Ray, Yihua Cheng, Qizheng Zhang, Kuntai Du, Shan
+         Lu, and Junchen Jiang. CacheBlend: Fast large language model serving for RAG with cached
+560
+         knowledge fusion. arXiv preprint arXiv:2405.16444, 2024.
+561
+562   Zhenyu Zhang, Ying Sheng, Tianyi Zhou, Tianlong Chen, Lianmin Zheng, Ruisi Cai, Zhao Song,
+563     Yuandong Tian, Christopher Ré, Clark Barrett, Zhangyang Wang, and Beidi Chen. H2O: Heavy-
+564     hitter oracle for efficient generative inference of large language models. In NeurIPS, 2023.
+565
+566
+567
+568
+569
+570
+571
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+
+
+
+                                                    11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      A    E XTENDED R ELATED W ORK AND C ONTRIBUTION B OUNDARY
+595
+596
+      Token-axis KV reduction. StreamingLLM keeps recent tokens and attention sinks (Xiao et al.,
+597   2024b); H2O keeps heavy hitters (Zhang et al., 2023); SnapKV predicts important positions from
+598   an observation window (Li et al., 2024); and PyramidKV varies the token budget across layers (Cai
+599   et al., 2024). These methods choose which token states to retain. CoMem instead retains every
+600   token of a selected chunk at only one depth, so its storage reduction is on the layer axis and does not
+601   imply that the external store is fixed-size. Layer-Condensed KV compresses the cache on the same
+602   layer axis, sharing one condensed KV computed at a shallow depth across the upper layers (Wu &
+603   Tu, 2024), but it keeps a state for every token and performs no top-k retrieval, so its read still grows
+604   with retained tokens. CoMem likewise stores at a single depth but only for selected chunks and
+605
+      recomputes the upper band with full cross-pack attention, bounding the read at fixed k, c. YOCO
+      shares one global cache across a decoder–decoder architecture rather than storing retrieved per-
+606
+      chunk residual tensors (Sun et al., 2024). These layer-axis designs motivate the comparison but are
+607
+      not implemented in our harness; the paper’s empirical claims are therefore internal matched controls,
+608   not a performance ranking over prior systems.
+609
+610   Retrieval and cached blocks. Landmark Attention and Focused Transformer learn mechanisms
+611   for selecting distant content (Mohtashami & Jaggi, 2023; Tworkowski et al., 2023). Serving systems
+612   such as CacheBlend and RAGCache reuse KV for retrieved chunks and selectively repair cross-
+613   chunk interactions (Yao et al., 2024; Jin et al., 2024). CoMem shares their retrieval-first view but
+614   stores a layer-j activation rather than full-layer KV, then recomputes the complete upper band with
+615   full cross-pack attention. BM25 is an external, non-differentiable selector rather than a learned
+616   contribution. InfLLM keeps distant content in memory blocks that use unit/separate positions and
+617   anchors the relevant blocks into the current segment, selecting blocks by attention (Xiao et al.,
+618
+      2024a). CoMem shares the position-remap idea (fresh contiguous positions for retrieved layer-j
+      activations) but selects chunks by external BM25 rather than attention, stores a single-layer acti-
+619
+      vation instead of a unit-positioned block summary, and recomputes the complete upper band with
+620
+      full cross-pack attention rather than attending to compressed anchors. RETRO injects retrieved
+621   neighbors through deep cross-attention (Borgeaud et al., 2022); Memorizing Transformers query an
+622   external kNN memory from a single layer (Wu et al., 2022); Prompt Cache reuses modular prompt
+623   segments through a position-remapping schema (Gim et al., 2024); and Unlimiformer scales re-
+624   trieval into encoder–decoder cross-attention (Bertsch et al., 2023). These are closest on retrieval
+625   or reusable state, but none couples a one-depth per-token store with fixed top-k selection and full
+626   upper-band recomputation.
+627
+628   Intermediate-state restoration. HCache restores evicted model state from intermediate activa-
+629   tions, primarily as a serving mechanism without document retrieval (Gao et al., 2025). KV-Direct
+630
+      shows that a residual stream determines keys and values and can replace full-layer KV when all
+      retained tokens are reconstructed (Qasim et al., 2026). CoMem combines partial-depth recompu-
+631
+      tation with top-k retrieval; unlike KV-Direct, it does not retain all tokens in the active read, and
+632
+      unlike HCache it explicitly selects chunks. This combination is the contribution boundary. We do
+633   not claim the individual ingredients, numerical exactness for relocated j > 0 states, or a system-
+634   level constant-memory store. Training representations for KV compressibility (Gelberg et al., 2026)
+635   and CompressKV’s semantic-retrieval-head-guided token eviction (Lin et al., 2026) are comple-
+636   mentary token/representation-axis approaches. We treat Qasim et al.’s KV-Direct, Gelberg et al.’s
+637   representation-training study, and Lin et al.’s CompressKV as 2026 arXiv preprints (Qasim et al.,
+638   2026; Gelberg et al., 2026; Lin et al., 2026); CoMem was developed independently, and its contri-
+639   bution boundary does not rely on any one of them.
+640
+641   Direct answers to the nearest-neighbor questions. Which proposal is nearest? Layer-
+642   Condensed KV (Wu & Tu, 2024) shares the core idea of caching at a single shallow depth;
+643
+      HCache (Gao et al., 2025) and KV-Direct (Qasim et al., 2026) share the restoration-by-intermediate-
+      state idea. What does it lack? All three either let the read grow with retained tokens (Layer-
+644
+      Condensed KV, and reconstruction-based KV-Direct when all tokens are retained) or omit top-k
+645
+      selection (HCache), and none measures cache-depth fidelity under a fixed retrieval. Which falsi-
+646   fiable gap do we fill? A matched, preregistered measurement that fixes retrieval and varies only
+647   cached depth, exposing that the depth cache—not retrieval—carries the read-out quality loss. This
+
+
+                                                        12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+           Method               Persistent object     Selection    Model read as         Recomputation
+649                                                                context grows
+650
+           KV-Direct            residual per          none         grows with retained   full-depth
+651
+           (Qasim et al.,       retained token                     tokens                reconstruction
+652        2026)
+653        HCache               intermediate          none         grows with restored   upper-state
+654        (Gao et al., 2025)   activation                         chunks                restoration
+655        YOCO                 one global decoder    none         grows with retained   shared
+           (Sun et al., 2024)   cache                              tokens                cross-decoder
+656
+                                                                                         cache
+657        CacheBlend           full KV for           retrieval    fixed at fixed        selective repair
+658        (Yao et al., 2024)   retrieved chunks                   retrieval budget
+659        Layer-Condensed      single condensed      none         grows with retained   relax upper
+660        KV                   KV at shallow                      tokens                layers
+           (Wu & Tu, 2024)      depth
+661
+           InfLLM               memory blocks         attention    anchors selected      attend to
+662        (Xiao et al.,        (unit/separate                     blocks                compressed
+663        2024a)               positions)                                               anchors
+664        CoMem                one layer’s c×d       BM25 top-k   fixed at fixed k, c   full upper band
+665                             residual tensor per
+                                chunk plus text
+666
+                                index
+667
+668   Table 4: Mechanism boundary. CoMem’s distinctive combination is top-k retrieval plus upper-
+669   band recomputation from a one-layer activation store; it does not subsume the individual retrieval,
+670   residual-caching, or restoration ideas.
+671
+672
+673   is a measurement/negative-result contribution; we do not claim to outperform these designs on abso-
+674   lute benchmark scores, and in the body the author’s full-depth re-forward control is labeled as such,
+675
+      not as an implementation of any of them.
+676
+677   B    M ETHOD D ETAILS
+678
+679   Autoregressive generation boundary. The recorded 0.68 s quantity ends after read/prefill. Dur-
+680   ing generation the current reference path rebuilds the upper-band pack at each decoded token; it
+681   does not reuse an upper-layer KV cache across decode steps. Generated tokens are appended after
+682   the query at fresh contiguous positions and pass through the same F[j,L) band. We therefore do not
+683   convert the recorded prefill endpoint into an end-to-end decode or throughput claim.
+684
+685   Sink and query construction in the read pack. In Eq. (2) the sink is one BOS state computed
+686
+      independently through F[0,j) and reused within the read; its lower-layer context is only that BOS
+      token. The query is separately computed through F[0,j) with query-local positions and occupies the
+687
+      final fresh pack positions after the retrieved chunks.
+688
+689
+      Selectors and cross-chunk interaction. The primary selector is one-pass BM25 with k1 = 1.5
+690
+      and b = 0.75. An exploratory iter bm25 variant performs CPU-only chain following: round one
+691   uses the query, and later rounds re-query with raw tokens from the previous round’s newly selected
+692   chunks. It performs no model read between hops. Full cross-pack attention is part of the CoMem
+693   read; a block-diagonal upper-band recompute is an ablation, not the default.
+694
+695   Storage accounting. The hidden store scales as O(M cd) and the text index as O(|x|); both grow
+696   with context. Under Qwen3-8B’s grouped-query attention, one per-token activation stores one eigh-
+697   teenth of the elements of the full layer-wise key–value cache. This is a persistent-storage rate reduc-
+698   tion, not a constant-size memory. Table 7’s GPU peaks compare fixed read with full-context prefill,
+699   not depth alone; no end-to-end persistent-storage baseline arm is run.
+700
+701
+
+
+
+                                                             13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+      C    F ULL E XPERIMENTAL P ROTOCOL
+703
+704
+      RULER fixed-k study. We evaluate the RULER niah single serving sweep (Hsieh et al.,
+705   2024) at 8k–128k with the official string match all metric. CoMem and the full-context ref-
+706   erence share the backbone and scorer; their read primitives differ. We report Wilson 95% binomial
+707   intervals (Wilson, 1927); the sample count and seed are in Table 12. These cells quantify a complete
+708   short read versus a full-context read, so they reflect the combined effect of retrieval and working-
+709   set reduction, not the independent contribution of depth caching. Figure 3’s 100% statement is
+710   restricted to this niah single fixed-read sweep; it is a different subtask and sample set from
+711   Table 11’s niah single 3, not a claim about every matched RULER cell.
+712
+713   Matched RULER study. The depth-only RULER audit holds an oracle/retrieval-fixed selector
+714   constant and compares the same items under j = 0 and j = 12 across the registered family–
+715
+      length cells. Table 12 records the shards, pooled sample count, seed, and generation cap. Per-item
+      string match all is fractional recall; strict correctness requires all references. Table 11 reports
+716
+      the cells, the separately registered pooled full-match audit and its descriptive exact test, and the
+717
+      serving-sweep exception, while Table 7 carries only the cell-level macro row. Fractional cell means
+718   are not used to reconstruct binary identities or the pooled tally.
+719
+720   Read-out invariance check. A separately preregistered higher-cap qa1 check tests read-out in-
+721   variance. The legacy terminal-punctuation control is absorbing and therefore does not support a
+722   load-bearing truncation diagnosis. The effective at-cap proxy cuts the better arm more often, so
+723   truncation cannot explain the direction. Table 10 preserves the cap, sample, reader, and discordant-
+724   cell details and labels the post-hoc diagnostics.
+725
+726   LongEval protocol. We use the released LongEval lines-retrieval benchmark (Li et al., 2023)
+727   over the registered context range. BM25 selects top-k raw-text chunks under the per-task settings
+728   in Table 12 (k ∈ {4, 6}, not the k=12 used at qa1/RULER); the metric is exact recovery of the
+729
+      first valid line identifier in the full output. Samples were generated separately for the j = 0 and
+      j = 12 arms and are not in one-to-one correspondence, so the pooled LongEval column is not a
+730
+      same-retrieval depth isolation. We therefore use an unpaired two-proportion test, not McNemar;
+731
+      Table 7 reports the pooled estimate and test and is labeled accordingly.
+732
+733
+      Depth-partition sweep protocol. The preregistered depth sweep uses the same byte-pinned
+734   reader, oracle selector, and n=100/bucket/arm as the decisive study (Table 5, Figure 2). At both
+735   tested context lengths, accuracy shows an overall downward trend in cached depth and, pointwise
+736   without multiplicity correction, every tested point from j=2 onward is a significant paired loss
+737   against j=0 on the same samples (the observed curve is not strictly monotone—one 1 pp adjacent
+738   reversal at j=8 → 10 at 4k is within sampling noise at n=100; we run no ordered-trend test). The 16k
+739   dense (stock full-context, no CoMem) and full-depth re-forward (no retrieval)
+740   baselines show no significant difference from j=0 at n=100 (p=0.43/0.50); this does not prove
+741   equivalence, but the observed ≤6 pp deficit is far below the observed depth-associated ≥29 pp ef-
+742
+      fect. The per-depth values and the same-run wall-clock are merged into Table 5; per-depth sweep
+      memory peaks were not recorded (Appendix J), and the separate matched 128k memory check is
+743
+      reported in Table 7. Optional LoRA and MoE diagnostics with incomplete configurations remain in
+744
+      Appendix G and do not support the main claim.
+745
+746
+      Terminology used in the protocol and result tables. The primary reader extracts the first task
+747   label; the stripped sensitivity first removes a model-generated option list, and the answer-anchored
+748   sensitivity searches only after the last answer cue. A byte-pinned reader is the frozen reader im-
+749   plementation identified by its file hash; split choices echo is its single forward scan that re-
+750   moves only a leading model-generated option enumeration, with no fallback. A cap is the maximum
+751   generated-token budget. All reported p-values identify the reader they were computed under and are
+752   shown in mathematical notation. Appendix Table 12 records each primary run’s data root, genera-
+753   tion cap, reader, sample count, and seed, with the caps listed as separate runs rather than merged into
+754   a decision cell. The oracle selector holds retrieved evidence fixed across arms. At-cap is a truncation
+755
+      proxy, while floor-gated marks a cell too weak to support the registered claim. The conditional con-
+
+
+
+                                                        14
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+756
+757
+758
+759
+760
+761
+762
+763
+764
+765
+766
+767
+768
+769
+770
+      Figure 2: Complete depth-partition curve (preregistered sweep; pinned reader, oracle selector,
+771   n=100/bucket/arm). Accuracy trends downward with cached depth j at both 4k (circles) and 16k
+772   (squares), and every tested point from j=2 onward is a significant paired loss against j=0; the trend
+773   is not asserted to be strictly monotone (the 1 pp reversal at j=8 → 10 is within noise at n=100). The
+774   shaded band is the 16k dense and full-depth re-forward (no retrieval) baselines,
+775   which have no cached depth and therefore no abscissa here; neither differs significantly from j=0
+776   at n=100. All tests are pointwise and uncorrected; the family-wise reading is in Table 5.
+777
+778
+      vention range is the min–max over the six displayed reader/cap cells; the readout-identity envelope
+779
+      instead assigns unresolved answers adversarially. Neither is an unconditional confidence interval.
+780
+781
+      Five-arm       cross-trial   pairing     audit. Pairing      for   the    five-arm     decomposi-
+782
+      tion is by input content, not by row or question string:                           sample id =
+783   sha256(context+prompt+question)[:16].                      This is the five-arm decomposition
+784   pairing (arms A/D/R/C/E), distinct from the decisive single-supporting-fact three-arm pairing
+785   reported under Appendix D (which cross-checks the pinned j=0/j=12/re-forward qa1 cells). At
+786   each length, A/D/R/C (Trial 1895844) and the E-only repair (Trial 1896955) emit the same ordered
+787   sequence of 100 unique IDs; qa1 has only four question strings and six targets, so those strings
+788   are not pairing keys. The failed first E attempt stopped in argument parsing before creating an E
+789   directory or any scorable output, so the repair run was not selected after seeing an E result. An
+790   independent cross-trial audit of same-arm, same-code executions finds only 3 endpoint flips in 500
+791
+      pairs (0.6%; one-sided 95% Clopper–Pearson upper bound 1.54% (Clopper & Pearson, 1934), with
+      |∆acc| ≤ 0.01 per unit). By contrast, overturning the E–A exact test requires 8 directed flips at 4k
+792
+      and 11 at 16k, 5–7× that worst-case noise bound. Raw strings change on 51–69% of cross-trial
+793
+      rows and therefore have no discriminating power; inference uses only the official-ruler endpoint
+794   and its paired b/c counts.1
+795
+796   Reproducibility statement. Appendix H records the frozen Qwen3-8B/bfloat16 software stack,
+797   checkpoint and tokenizer hash prefixes, readers, selectors, seeds, generation caps, hardware identi-
+798   ties, and the limits of pairing verification. The ethics and generative-figure disclosure follows the
+799   reproducibility record.
+800
+801
+802
+803
+804
+805
+806
+807
+808      1
+           The pairing, endpoint-noise, and tipping-point figures were independently recomputed from
+809   the frozen trial trees in the third-party audit records r82 pairing and crosstrial.txt,
+      r82 ENDPOINT CROSSTRIAL NOISE.txt, and r82 noise vs margin tipping.txt.
+
+
+                                                       15
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+810
+                       ctx                j=0 deeper read j=12          ∆j0−j       exact p
+811
+812                    4k                 75.0      j=2        65.0    +10.0 pp    2.1 × 10−2
+813
+                       4k                 75.0      j=4        62.0    +13.0 pp    9.8 × 10−4
+                       4k                 75.0      j=6        57.0    +18.0 pp    1.2 × 10−4
+814
+                       4k                 75.0      j=8        55.0    +20.0 pp    1.1 × 10−5
+815                    4k                 75.0     j=10        56.0    +19.0 pp    6.6 × 10−5
+816                    4k                 75.0     j=12        48.0    +27.0 pp    4.6 × 10−7
+817                    4k                 75.0     j=14        46.0    +29.0 pp    1.1 × 10−6
+818                    4k                 75.0     j=16        42.0    +33.0 pp    1.0 × 10−7
+819                    16k                77.0     j=12        48.0    +29.0 pp 1.3 × 10−7
+820                    16k                77.0     j=24        24.0    +53.0 pp 2.3 × 10−14
+821
+                       16k dense †         –         –         71.0       –           0.43
+822
+                       16k re-forward †    –         –         72.0       –           0.50
+823
+824              Same-run wall clock (s, n=100), recorded arms only
+825              arm         4k j=12 4k j=16 16k j=12 16k j=24 16k dense 16k re-forward
+826              seconds      504.3   501.7      511.6         606.1       734.3             750.6
+827
+828   Table 5: Complete depth-partition curve (9+3 points, preregistered sweep) with the same-run
+829   wall clock. Accuracy (%) under the pinned first-mention reader (n=100/bucket/arm, oracle se-
+830   lector); paired exact McNemar against the j=0 arm of the same length, which shares the selected
+831   raw chunks (retrieval fixed) and the content-hash-verified paired subset (Appendix D). Every tested
+832   point from j=2 onward is a significant paired loss against j=0 on the same samples; the trend in j is
+833   downward overall but we claim no strict monotonicity (the single 1 pp reversal at j=8 → 10 at 4k is
+834
+      within noise at n=100, and each p compares a depth to j=0, not to its predecessor). The p values are
+      pointwise: under Bonferroni over the eight 4k comparisons the shallowest j=2 cell (p=2.1 × 10−2 )
+835
+      does not survive 0.05/8=6.25 × 10−3 , so “every point from j=2” is pointwise, not family-wise.
+836
+      The load-bearing j=12 point is +27.0 pp at 4k; at 16k the j=12/j=24 losses are +29.0/+53.0 pp.
+837   †
+        dense is stock full-context generation (no CoMem) and re-forward the authors’ full-depth
+838   re-forward without retrieval (not an implementation of the published KV-Direct method): at 16k
+839   neither differs significantly from j=0 at n=100 (p=0.43/0.50) — a non-rejection, not equivalence
+840   — and their ≤ 6 pp deficit is the registered bound on retrieval-side differences. The lower block is
+841   the wall clock of the same runs, so quality and cost are matched operation points: the matched j=0
+842   references are 465.6 s at 4k and 528.5 s at 16k, and seconds were not retained for the intermediate
+843   4k depths j=2–10. Per-depth peak memory was not recorded (Appendix J); data roots are in the
+844   protocol matrix (Appendix Table 12).
+845
+846
+      D    PAIRING P ROVENANCE ON THE C ONTENT-H ASH -V ERIFIED S UBSET
+847
+848
+      The preregistered sweep CSVs never emitted a separate context sha256 column (see the CSV
+849   column disclosure in Appendix H). They do emit sample id, which the harness defines as the
+850   16-hex prefix of sha256 over the full formatted model input, i.e. over the concatenation of context,
+851   prompt, and question (eval/babilong.py line 242). That column is therefore itself a content
+852   hash, and we re-ran the preregistered content-level join on it for every decisive read-depth cell rather
+853   than leaving the field unverified.
+854
+      Table 6 reports the outcome. In all 16 recomputed cells each arm contributes 100 rows carrying 100
+855   distinct content hashes, the two arms share all 100 hashes (no arm-only and no duplicated hash),
+856   and the stored question string agrees on every shared hash. Recomputing each published cell on that
+857   verified subset reproduces the printed accuracies, gaps, discordant b/c counts, and exact McNemar
+858   p values exactly: every comparison in the recompute record is a match, so no number in this paper
+859   changes. What changes is the provenance status — the decisive j=0 versus j=12 cells are now
+860   certified to sit on a content-hash-verified paired subset rather than on stored row order alone. One
+861   limitation remains and is not repaired by this recompute: the full 64-hex digest of the raw document
+862   text was never retained as an independent artifact, so the join is over the formatted model input, not
+863
+      over a separately stored document digest.
+
+
+
+                                                          16
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+864
+               cell group                       cells rows hashes shared arm-only q-mism.
+865
+866            mnt160 read-depth sweep           5    100     100      100        0         0
+               (0k–8k)
+867
+               mnt512 decisive cell              1    100     100      100        0         0
+868            depth sweep (4k j=2–16; 16k       10   100     100      100        0         0
+869            j=12, 24)
+870
+871   Table 6: Content-hash join for every decisive read-depth cell. The join key is the harness
+872   sample id, a 16-hex sha256 prefix over the full formatted model input. rows and hashes are
+873   per arm (rows contributed and distinct content hashes); arm-only counts hashes present in one arm
+874   and absent in the other; q-mism. counts shared hashes whose stored question string disagrees be-
+875
+      tween arms. No hash is duplicated within an arm in any cell. Every cell is a complete 100/100
+      overlap, so all read-depth values in Tables 5 and 2 are computed on the verified paired subset, and
+876
+      the recomputed values match the published ones cell by cell.
+877
+878
+879   Pairing-free floor for the load-bearing cell. Because a reviewer cannot audit the retired raw con-
+880   texts directly, we also report the estimate that survives with no pairing assumption at all. Treating
+881   the 4k pinned cell as two independent binomial arms (75/100 versus 48/100) gives a +27.0 pp dif-
+882   ference with pooled z = 3.924 and two-sided p = 8.7 × 10−5 , and a Newcombe square-and-add
+883   interval of [+13.6, +39.1] pp computed with the pairing correlation set to zero. That interval is de-
+884   liberately wider than the paired constructions in Table 16, which use the observed discordance: the
+885
+      paired test is the efficient estimator, and the unpaired two-proportion result is the assumption-free
+      bound. Both exclude zero, so the direction does not depend on the pairing evidence. The same con-
+886
+      struction applied to the mnt512 decisive cell gives [+10.7, +36.1] pp (pinned) and [+10.2, +34.8] pp
+887
+      (stripped), again wider than and consistent with the paired intervals.
+888
+889
+890   E    R ELOCATED S ERVING R ECORD AND F IGURES
+891
+892   Table 7 is the complete measured-quantity record for the serving estimand, and Figures 3 and 4 are
+893   the serving overview and the read-depth length profile. All three are supporting views of Section 5.3
+894
+      and Section 5.1; the load-bearing read-depth estimates remain in Table 2.
+895
+896
+897
+898
+899
+900
+901
+902
+903
+904
+905
+906
+907
+908
+909   Figure 3: Fixed-k preserves the short-read operating point while full-context cost grows. Panel
+910   (a) is the separate niah single serving sweep (n=50/cell), not Table 11’s niah single 3.
+911   The 128k full-context point is greyed and annotated outside enabled positional regime: it lies
+912   outside this checkpoint’s enabled positional range and is disowned as a positional artifact, not a
+913
+      full-attention-collapse finding. Panel (b) adds the 97.8 GB serving-card capacity line, below which
+      full attention remains feasible at 128k (71.4 GB). The former read-time panel is now the recorded
+914
+      read/prefill rows of Table 7, because three endpoints are not a sweep. The depth-axis quality cost is
+915
+      plotted in Figure 2 and Table 5 instead; these protocols are not one paired Pareto sweep.
+916
+917
+
+
+
+                                                       17
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+918
+919
+920
+921
+922
+923
+924
+925
+926
+927
+928
+929     Block           Arm / estimand             Protocol                     Recorded result
+930     128k serving    Full context               all raw tokens; all layers   72.7 s read; 71.4 GB
+931                     Full context at 8k         shortest recorded            1.28 s read
+932                                                full-context read
+                        Matched j = 0 timing       selected raw tokens; same    0.94 s read
+933
+                                                   k
+934                     CoMem j = 12               selected h12 ; same k        0.68 s read; 18.29 GB
+935                     Balanced break-even        W = 6.65 s, G = 1;           Q⋆ = 25.58 reads/document
+936                                                decode excluded              (≈ 26)
+937     E1 matched      j=0                        read length 6,657; median 18.2 GB
+938     memory                                     of 3
+939                     j = 12                     same read/hardware;       17.9 GB
+940                                                median of 3
+                        Depth-attributed saving    (12/36)BKV read len       0.3 GB (0.2–0.4 GB)
+941
+942     Separate        RULER macro, estimand      unweighted mean over 15 99.19 → 96.07; gap 3.12 pp
+        quality         mixture                    cells: 3 fractional
+943
+                                                   string match all
+944                                                recall, 12 strict-binary
+945                     RULER strict-binary        1,500 item pairs,         82/1500 = 5.47 pp
+946                     pooled drop                (c − b)/n
+947                     RULER niah single          serving sweep, n=50/cell, 100% at every in-regime
+                        fixed read                 8k–128k                   length
+948
+                        LongEval                   unpaired, n = 500 per     97.2 → 69.0; 28.2 pp
+949                                                arm; k ∈ {4, 6}           [23.9,32.5]; z = 11.9
+950
+951   Table 7: Measured quantities split by operating point. The serving block is a whole-system
+952   retrieval comparison of recorded read/prefill endpoints; E1 is the matched memory-only depth iso-
+953   lation, scoped to read len=6,657, and establishes no end-to-end or general memory benefit. The
+954   RULER macro row is explicitly an estimand mixture: an unweighted mean over 15 (task, length)
+955   cells of which three report fractional string match all recall and the rest strict-binary correct-
+956   ness, so it is not a single-estimand accuracy. The comparable strict-binary quantity is the pooled
+957   5.47 pp drop; the item-level pooled exact test over 1,500 clustered pairs is descriptive only and
+958
+      appears with its per-cell breakdown in Appendix Table 11. The 100% row is the niah single
+      serving sweep, a different subtask and sample set from that appendix table. LongEval is unpaired
+959
+      with a different selector budget, so it is not a same-retrieval depth isolation and its 95% Wald inter-
+960
+      val assumes independent binomial arms. Timing dispersion was not retained; serving timings are
+961   medians of three.
+962
+963
+964
+965
+966
+967
+968
+969
+970
+971
+
+
+
+                                                        18
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+972
+973
+974
+975
+976
+977
+978
+979
+980
+981
+982
+983
+984
+985
+986
+987
+       Figure 4: Primary-reader j=0 − j=12 qa1 gaps over context length (n=100/bucket/arm, oracle
+988    selector). The square is the enumeration-stripped sensitivity at the 4k decision cell. The curve is not
+989    monotone; the load-bearing result is the pinned direction and the +27.0/+24.0 pp point pair on the
+990    same samples at the two caps. The conditional convention range is in Table 8; neither is a claim of
+991    length-robust growth. Symbols encode pointwise exact McNemar tests: ∗ p < 0.05, ∗∗ p < 0.01,
+992    ∗ ∗ ∗ p < 0.001, and “ns” p ≥ 0.05; no multiplicity correction is applied in this panel.
+993
+994
+995
+       F    E XTENDED L IMITATIONS
+996
+997
+       Selection and uncertainty. The archived best-k sweeps lack a validation/test separation, so we
+       report fixed k = 12. Primary RULER and qa1 cells have n = 50 and n = 100 under one checkpoint
+998
+       and deterministic data seed. The qa1 oracle selector isolates depth but leaves its interaction with
+999
+       deployment BM25 unmeasured. Overlapping half-splits diagnose resampling stability, not indepen-
+1000   dent replication; our intervals do not cover checkpoint, model-family, or implementation variability.
+1001   No column literally named context sha256 was emitted, so the recomputed join uses the emit-
+1002   ted sample id content hash and is therefore over the formatted model input rather than over an
+1003   independently stored 64-hex document digest, which was never retained (Appendix D); for the load-
+1004   bearing cell we additionally report the pairing-free two-proportion floor.
+1005
+1006   Scorer resolution of the five-arm deck. The official scorer collapses roughly six in ten raw-
+1007   generation differences onto a single label, so the 0/100 endpoint agreement between arms (e.g.
+1008   E and C) is indistinguishability at label resolution, not identity or inertness of a deleted factor in
+1009   the forward pass. We therefore report the generation-layer distinguishability counts alongside the
+1010
+       endpoint discordance; the null is a scorer-resolution statement only.
+1011
+1012
+       Composition boundary and the archived read adapter. The qa2 probe is not load-bearing: one
+       cell is parser-invariant and non-floor; the rest are negative-control, format-artifact, or floor-gated
+1013
+       cells. Appendix Table 9 reports them, together with the registered generation-cap sensitivity runs
+1014
+       whose constant direction is consistent with the gap not being created by generation budget alone; no
+1015   length-robust claim follows, and other format effects are not ruled out. A self-distilled read adapter
+1016   appears in this workspace only as an archived configuration (Appendix Table 14): it is not evaluated
+1017   here and carries no accuracy claim in this paper.
+1018
+1019
+1020
+       G    S ECONDARY AND S ENSITIVITY R ESULTS
+1021
+       Full read-depth convention matrix. Table 8 preserves all six displayed reader/cap cells of the
+1022
+       decisive qa1 arm, including the two missing-excluded rows with their independent n = 59/80 and
+1023   the conditional convention range. The canonical main-text view (Table 2) promotes only the two
+1024   pinned decision rows, so this table remains the complete record of the convention sensitivity.
+1025
+
+
+
+                                                         19
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1026
+       Reading the blank cells of the canonical read-depth table. The re-fwd. column of Table 2 is
+1027   the authors’ full-depth re-forward without retrieval control arm — CoMem with j=0 and no depth
+1028   cache — and not an implementation of the published KV-Direct method (Qasim et al. (2026)). A
+1029   full-context arm was run only at 16k (Table 5) and is format-incompatible at the 4k decision cell
+1030   (Table 9), so it is not a comparison cell there. At 4k the re-forward control is 73% versus j=0 75%;
+1031   no paired test was run at 4k, so we report no “coincides” claim, and the 16k control comparison
+1032   is the depth-curve table’s re-forward row. The mnt512 rows carry no re-fwd. cell because that
+1033   control was not executed at the 512 cap; the dash records an absent run, not a null result.
+1034
+1035      data root missing-answer convention      j=12       j=0      n   ∆j0−j12      exact p     b/c
+1036                                                                                           −7
+          mnt160     pinned first-mention         48.00%     75.00%   100 +27.0 pp 4.6 × 10         2/29
+1037      mnt160     stripped, missing wrong      40.00%     75.00%   100 +35.0 pp† 7.9 × 10−8      5/40
+1038      mnt160     stripped, missing excluded   64.41%     86.44%    59 +22.0 pp 4.4 × 10−3       3/16
+1039      mnt512     pinned first-mention         52.00%     76.00%   100 +24.0 pp 8.4 × 10−6       3/27
+1040      mnt512     stripped, missing wrong      57.00%     80.00%   100 +23.0 pp 1.17 × 10−4      6/29
+1041
+          mnt512     stripped, missing excluded   70.00%     86.25%    80 +16.2 pp 1.1 × 10−2       5/18
+1042
+1043
+       Table 8: The matched read-depth direction survives both generation caps and all three read-
+       out conventions. The mnt160/mnt512 roots reuse the same 100 samples at caps 160/512, not in-
+1044
+       dependent datasets; for missing-excluded rows accuracy is over the retained pairs answered under
+1045
+       both protocols (independent n = 59/80). The zero-free-parameter pinned rows are the primary
+1046   magnitude and are the two rows promoted to the canonical main-text view (Table 2): their ex-
+1047   act paired 95% CIs on the risk difference are [+17.7, +30.5] pp (mnt160) and [+14.1, +28.7] pp
+1048   (mnt512), both excluding zero. The [16.2, 35.0] pp range is only the conditional min/max over
+1049   the six cells; both endpoints use the stripped reader, so a wider strip rule can reverse the sign,
+1050   and the pinned rows do not inherit it. A separate answer-anchored mnt512 reader gives a null cell
+1051   (p=0.0649, conditional CI crossing zero) and is not folded into this six-cell range. Stripped dig-
+1052   its use canonical split choices echo, not an independent rescoring. All six cells sit on the
+1053   content-hash-verified paired subset (Appendix D). The interval construction and its cross-checks are
+1054
+       in Appendix J.1; Table 10 reports headroom and parser diagnostics.
+1055
+1056   Composition probe. Table 9 reports every registered qa2 cell and classifies its evidentiary role.
+1057   Only the parser-invariant, non-floor cell is descriptive; the remaining rows are a negative control, a
+1058   format artifact, or floor-gated.
+1059
+1060
+1061
+1062
+1063
+1064
+1065
+1066
+1067
+1068
+1069
+1070
+1071
+1072
+1073
+1074
+1075
+1076
+1077
+1078
+1079
+
+
+
+                                                        20
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1080
+                   (a) Context composition at the 160-token cap (registered scoring reader)
+1081
+1082               ctx   j = 12 j = 0 re-forward       ∆        exact p   interpretation
+1083               0k      56     57         57      +1      1.00         negative control
+1084               1k      52     54         55      +2     0.839         negative control
+1085
+                   2k      32     43         53      +11 1.9 × 10−2       descriptive
+                   4k      30     44         49      +14 4.3 × 10−3       not-evaluable
+1086
+                   8k      23     38         53      +15 8.1 × 10−3       floor-gated
+1087
+1088               (b) Registered generation-cap sensitivity at 4k
+1089               cap j = 12 j = 0 re-forward         ∆        exact p   interpretation
+1090               20      12     28         —       +16           —      budget sensitivity
+1091               64      11     27         —       +16           —      budget sensitivity
+1092               160     11     27         —       +16        0.00154   budget sensitivity
+1093
+1094   Table 9: BABILong qa2 composition and cap-sensitivity probes. Panel (a) is scored with the
+1095   same registered parser family as the qa1 decisive table (reader and data root are consolidated in the
+1096
+       protocol matrix, Table 12). The registered overall verdict here is not evaluable: both 4k and 8k
+       separate, but the floor gate fails in a load bucket (j=12 at 8k is 23<k ∗ =24). The probe therefore
+1097
+       does not support a length-robust read-depth claim and is not load-bearing. The re-forward column is
+1098
+       the authors’ full-depth j=0 control without retrieval, not an implementation of a published method;
+1099   no full-context arm was run on qa2. Panel (b) keeps the three registered legacy cap runs separate.
+1100   At cap 160 the exact paired result is p = 0.00154, with disjoint 95% arm intervals [6.3, 18.6]% and
+1101   [19.3, 36.4]%.
+1102
+1103
+1104   The fixed-read quality cost is task-dependent. The j=0−j=12 gap is not length-uniform and
+1105   the fixed top-k read is task-dependent: on the matching-style RULER probes (Table 11) the fixed
+1106   read retains 90–100% recall, and on the single-supporting-fact qa1 sweep (Table 5) deeper reads
+1107
+       degrade with cached depth. The multi-hop qa2 composition probe (Table 9) is not load-bearing:
+       under the registered adjudicator its overall verdict is not evaluable (the j=12 load arm falls below
+1108
+       the ≥ k ∗ =24 floor at 8k), so no clean “j=0 loses X pp” quantification is registered for compo-
+1109
+       sition. Consistent with the qa2 panel’s negative-control and floor-gated cells and with the author
+1110   re-forward versus dense disclosure above, we do not claim that a fixed read preserves accuracy on
+1111   compositional or multi-hop queries; the main-text quality claim is scoped to single-supporting-fact,
+1112   needle-style tasks.
+1113
+1114   Exploratory difficulty partition. Using the pinned reader and the registered ‘split-choices-echo‘
+1115   rule (its definition and exact tokenization are consolidated in the protocol matrix, Table 12), we
+1116   partitioned questions by shallow-read success without new model execution. In the hard stratum
+1117   (under the pinned readout), the j = 0 re-forward recovers roughly 55–56% from near-zero j = 12
+1118   accuracy; the already-correct partition has no positive gap. The direction survives all three missing-
+1119   answer conventions. This post-hoc, small-stratum diagnostic is not a new scorer or a load-bearing
+1120
+       magnitude: it is kept separate from both the convention band and the readout-identity envelope
+       carried in Table 8, and is disclosed only in the appendix.
+1121
+1122
+       Read-out invariance diagnostics. Table 10 preserves the complete numerical checks summarized
+1123
+       in Section 5.1. They constrain interpretation but do not overturn the two-root directional result in
+1124   Table 8.
+1125
+1126
+1127
+1128
+1129
+1130
+1131
+1132
+1133
+
+
+
+                                                           21
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1134
+         check                 registered observation                                  interpretation
+1135
+1136     Effective at-cap      At both caps, outputs exactly at the maximum             The better arm is cut
+         proxy                 whitespace-token length are 1% (j = 12) versus 18%       more, so truncation
+1137
+                               (j = 0).                                                 would compress rather
+1138                                                                                    than create j0 > j12.
+1139     Legacy punctuation    Outputs lacking terminal punctuation: 89% (j=12),        Absorbing style proxy;
+1140     control               90% (j=0), and 100% (full context).                      not used as the
+1141                                                                                    truncation gate or as
+                                                                                        load-bearing evidence.
+1142
+         Prefix-pinned         At cap 160, the j=0/j=12 arm ranges are                  Both envelopes exclude
+1143     envelope              [75, 79]/[48, 62] pp; at cap 512 they are                zero; this preserves
+1144                           [76, 79]/[52, 59] pp. Adversarial endpoint pairing gives sign, not a point
+1145                           gap envelopes [+13, +31] and [+17, +27] pp,              magnitude.
+1146                           respectively.
+         Stripped reader and   At mnt512, un-stripped j=12=52% versus j=0=76% Direction survives;
+1147
+         headroom              (+24.0 pp) becomes, under the stripped reader,           magnitude is not clean.
+1148                           j=12=57% versus j=0=80% (+23 pp, b=6/c=29,
+1149                           exact p=1.17 × 10−4 ); the strip rule is
+1150                           split choices echo: the model’s self-generated
+1151                           option list is removed by a single forward scan before
+                               answering, with no fallback, applied identically to both
+1152
+                               arms. Only 6 of the original c=27 discordant rows can
+1153                           reverse with unlimited generation, leaving at least
+1154                           +18 pp. The second-root stripped result is in Table 8.
+1155     Answer-anchored       mnt160: 33% versus 51%, +18.0 pp, b=19/c=37,             Answer-anchored sign
+1156     reader                exact p=0.0222. At mnt512: 43% versus 57%                agrees on the same
+                               (n=100), +14.0 pp, b=18/c=32, exact p=0.0649;            samples at both caps;
+1157
+                               exact conditional 95% CI [−0.81, +27.08] pp (Wald        the 512-cap result is
+1158                           [+0.1, +27.9], paired-McNemar [+0.4, +27.6]), 46% underpowered and not
+1159                           power at n=100 and n≈210 for 80% power.                  confirmation.
+1160     Full-context parser   Anchored accuracy is 11% versus the 16.7% chance         Format incompatibility,
+1161                           floor (p=0.078), and 3.0% on the second root             not an effect estimate.
+                               (p=1.8 × 10−5 ); only 13% of outputs contain an
+1162
+                               answer-adjacent label, versus pinned readouts of
+1163                           74.0%/73.0%.
+1164
+1165   Table 10: At-cap and answer-anchored checks preserve direction but not a point magni-
+1166   tude. The answer-anchored reader scans forward at most 120 characters from the last answer cue
+1167   with no fallback; the exact implementation of anchored label (split choices echo and
+1168   anchored label both) and their pinned hashes are consolidated in the protocol matrix (Ap-
+1169   pendix Table 12). These sensitivity checks retain the direction of the primary result but do not
+1170   establish readout invariance or a clean effect magnitude.
+1171
+1172   G.1   T RUNCATION ENVELOPE DERIVATION
+1173
+1174   Table 10 collects the prefix-pinned arm ranges and the resulting two-cap envelopes. To bound read-
+1175   out identity without treating it as known, the registered worst-case construction assigns each unre-
+1176   solved missing-answer row adversarially per arm: a lower endpoint pairs the smallest j=0 reading
+1177   with the largest j=12 reading, and the upper endpoint uses the reverse extremes. Neither envelope
+1178   contains zero, so this construction preserves the sign of the pinned result. Both envelopes use only
+1179
+       the qa1 decisive samples and reader; they are not point estimates and do not replace the retained
+       convention band in Table 8.
+1180
+1181   Table 10’s at-least-+18 pp headroom result is a different estimand from the envelope above: rather
+1182
+       than assigning the unresolved rows adversarially, it conditions on a particular recovery rule (the post-
+       hoc stripped reader at cap 512) and reports the smallest headroom consistent with that rule, leaving
+1183
+       at least +18 pp. The per-row discordant counts and the resulting bound are given in Table 10. The
+1184
+       two constructions therefore have different scopes, but both agree in sign with the pinned direction.
+1185
+1186   Secondary diagnostic boundary. Archived cross-pack, iterative-retrieval, and 80-layer MoE di-
+1187   agnostics are not used for the headline. Their code paths survive, but the bundle does not pin a
+
+
+                                                          22
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1188
+       common validation protocol or every run-specific training field; we avoid a second, incomparable
+1189   number grid.
+1190
+1191
+                   cell                     arm j=0     arm j=12     ∆ (pp)    j=0 err.   j=12 err.
+1192
+                   niah single 3/8k          100.0        100.0      0.0       0          0
+1193
+                   niah single 3/16kM         97.0         91.0      6.0       3          9
+1194
+                   niah single 3/32k          97.0         97.0      0.0       3          3
+1195               niah single 3/64k          99.0         98.0      1.0       1          2
+1196               niah single 3/128k         98.0         98.0      0.0       2          2
+1197               niah multikey 1/8k        100.0         94.0      6.0       0          6
+1198               niah multikey 1/16k       100.0         91.0      9.0       0          9
+                   niah multikey 1/32k       100.0         99.0      1.0       0          1
+1199
+                   niah multikey 1/64k        97.0         90.0      7.0       3          10
+1200               niah multikey 1/128k      100.0         93.0      7.0       0          7
+1201               variable tracking/8k       99.8         96.2      3.6       –          –
+1202               variable tracking/16k     100.0         98.0      2.0       –          –
+1203               variable tracking/32k     100.0         98.2      1.8       –          –
+                   variable tracking/64k     100.0         98.6      1.4       –          –
+1204
+                   variable tracking/128k    100.0         99.0      1.0       –          –
+1205
+1206   Table 11: Matched RULER losses are concentrated in a few cells. Arm j = 0 is the full-
+1207   depth re-forward and j = 12 the cached read, n = 100/cell. NIAH rows are strict-binary. The
+1208   variable tracking rows instead show fractional string match all recall and therefore
+1209   carry no per-cell integer error counts. For the pooled audit they are binarized only by int(recall
+1210   >= 1.0); exact McNemar operates on these paired full-match labels and is excluded from any per-
+1211   cell identity lacking integer errors. The macro partial-credit drop is 3.12 pp; the strict-binary pooled
+1212   drop is (c−b)/n = 82/1500 = 5.47 pp, i.e. 13 strict-binary errors at j=0 against 95 at j=12 over the
+1213   pooled 1,500 item pairs (the variable tracking contribution enters only through the binarized
+1214
+       labels, which is why the listed per-cell integer columns sum to fewer errors). Because the 1,500 items
+       are clustered in 15 (task,length) cells, the pooled McNemar p≈8.8×10−24 over 84 discordances is
+1215
+       reported only as descriptive. No cell-clustered inferential test is reported, so the pooled test does not
+1216
+       carry a family-wise significance claim. Under the paper’s convention b=1/c=83: b counts j = 12-
+1217   correct/j = 0-wrong and c the reverse. Superscript M marks a matched study cell, not Figure 3’s
+1218   separate niah single serving-sweep sample set.
+1219
+1220
+1221
+1222
+1223
+1224
+1225
+1226
+1227
+1228
+1229
+1230
+1231
+1232
+1233
+1234
+1235
+1236
+1237
+1238
+1239
+1240
+1241
+
+
+
+                                                          23
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1242
+       H     R EPRODUCIBILITY AND P ROVENANCE
+1243
+1244
+1245   (a) Run identity and sample accounting
+1246   run                    data root          cap n                                                    seed
+1247
+       qa1 decisive           mnt160             160   100/bucket/arm at 0, 1, 2, 4, 8k                   preregistered
+1248   qa1 invariance         mnt512             512   same 100 samples/arm at 4k                         preregistered
+1249   qa2 budget             budget root         20   100/arm at 4k                                      preregistered
+1250   qa2 budget             budget root         64   100/arm at 4k                                      preregistered
+1251   qa2 budget             budget root        160   100/arm at 4k                                      preregistered
+       RULER serving          released           512   50 per cell/arm                                    42
+1252
+                              RULER
+1253   RULER matched          15 cells           512   2 × 50 = 100 per cell/arm                          42
+1254   LongEval               released lines     512   50 per length, task, arm                           1234
+1255   H20 serving            serving record      –    median of 3                                        42
+1256   E1 matched             two 128k trial      –    2 trials ×3 repeats/arm                            fixed
+       memory                 roots
+1257
+       E2 five-arm            merged trial       160 100 per length/arm at 4k, 16k                        fixed
+1258                          roots
+1259
+1260   (b) Reader, metric, and selector definitions
+1261   run                    reader / metric                                         selector
+1262
+       qa1 decisive           pinned / stripped / anchored                            oracle, k = 12
+1263
+       qa1 invariance         pinned / stripped / anchored                            oracle, k = 12
+1264   qa2 budget             first mention                                           oracle, k = 12
+1265   RULER serving          string-match recall                                     fixed read
+1266   RULER matched          recall / strict full match                              oracle / retrieval-fixed
+1267   LongEval               exact line identifier                                   BM25 k ∈ {4, 6}
+       H20 serving            CUDA peak / prefill time                                matched endpoints
+1268
+       E1 matched             CUDA peak at read len=6,657                             fixed k = 12
+1269   memory
+1270   E2 five-arm            official compare answers qa1 endpoint                   oracle, k = 12
+1271
+1272   (c) Artifact and pin identifiers (stable hashes)
+1273   artifact                                 identifier
+1274
+       Depth-partition sweep data               depth sweep full v2 20260823 201948
+1275   qa1 five-bucket readout                  readdepth budget 20260821 083604
+1276   qa2 amend3 verdict                       readdepth budget 20260821 053103
+1277   Pinned paired-CI input                   qa1 4k pinned paired CIs
+1278   qa1 decision / readout prereg            SHA-256 pins 2e18f293 / 87fef65b
+       Reader-label implementation              anchored label / split choices echo (pinned SHA in code
+1279
+                                                snapshot)
+1280   E1 memory evidence                       matched j0 peak 20260824 {210326,212122}
+1281   E2 merged scores                         e2 FULL 5arm e2 dual step 20260825 001307; Code
+1282                                            snapshots: A/D/R/C under 572907d7; E under 7f4aa8aa (the
+1283                                            choices-only depth only repair; the cross-trial harness provenance
+                                                paragraph in this appendix carries the side-effect certificate)
+1284
+       Independent E2 audit                     r82 pairing and crosstrial;
+1285                                            r82 ENDPOINT CROSSTRIAL NOISE;
+1286                                            r82 noise vs margin tipping
+1287
+1288   Table 12: Protocol matrix keeps generation caps and estimands separate. Panel (a) records run
+1289   identity and sample accounting; panel (b) separates reader/metric definitions from selectors; panel
+1290   (c) consolidates the stable artifact and hash identifiers (the registered data roots, decision verdicts,
+1291   CI input, preregistration pins, and reader-label implementations), which are referenced by name
+1292   elsewhere instead of as mutable local paths. The mnt160 and mnt512 rows reuse the same qa1
+1293
+       samples at two caps, whereas the three qa2 cap rows are distinct executions. RULER fractional
+       recall and strict full-match labels are likewise not merged into one decision cell.
+1294
+1295
+
+
+
+                                                              24
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1296
+       Code, data, and artifact availability. Write/read, selection, and RULER evaluation live in the
+1297   modules comem.model, comem.selectors, and eval.ruler; all three quantitative figures
+1298   are produced by deterministic scripts in the manuscript build tree, and the exact running inputs are
+1299   enumerated in the protocol matrix (Table 12). An anonymized artifact accompanies review rather
+1300   than waiting for acceptance: it contains the write, read, selector, scorer, and evaluation drivers, the
+1301   frozen readers, the preregistration documents, the per-arm scored CSVs behind every table in this
+1302   paper, and the figure scripts, with all account-bound path identifiers removed. Hash convention:
+1303   every identifier printed in this paper is a truncated SHA-256 prefix, and the artifact manifest lists
+1304   the full 64-hex digest for each file it ships, so a reviewer can extend any prefix below to a complete
+1305
+       digest. Two identifiers cannot be extended and we do not pad them: the tokenizer artifact survives
+       in the run log only at six hex characters (5a7303), and the pre-repair 572907d7 driver blob is not
+1306
+       recoverable from history, so its difference against the repaired driver is archived as a diff rather than
+1307
+       reproduced.
+1308
+1309
+       Cross-trial harness provenance (E2 five-arm deck). The five-arm decomposition merges
+1310   two trials: A/D/R/C come from Trial 1895844 and the depth-only arm E from the re-
+1311   pair trial 1896955 (different harness snapshots: eval/babilong.py 572907d7 and
+1312   7f4aa8aa respectively). comem/model.py is bit-identical across both (0e7ef9e6); the
+1313   only babilong.py difference is the R243 fix adding depth only to the --ablation
+1314   option choices list (archived as docs/C2 R243 babilong depth only diff.txt). This is a driver
+1315   CLI-whitelist edit: args.ablation is consumed at a single point (babilong.py:231)
+1316   and the choices are bare string literals with no reflection, so arms A/D/R/C (which already
+1317   accept none/relocation only/chunk indep only) have no reachable behavioral differ-
+1318
+       ence across the two snapshots, and the sample id (=sha256(input+prompt+question)[:16]) se-
+       quences are bit-identical between the two trials (n=100 each length). The reported scorer
+1319
+       (babilong.metrics.compare answers, pinned f77c1398) operates downstream of gen-
+1320
+       eration and does not control this gap; the static whitelist argument above is the side-effect certificate.
+1321   A caveat is that the original 572907d7 blob is not recoverable from git, so the diff is archived, not
+1322   reproduced from history.
+1323
+1324   Pairing-identity verification. For the historical decisive qa1 cells, a column literally named
+1325   context sha256 was never emitted, and earlier versions of this work therefore rested pairing
+1326   on the registered per-arm sample id sequences and the deterministic oracle selector alone. That
+1327   gap is now closed one level further: sample id is itself the 16-hex sha256 prefix of the full for-
+1328   matted model input, so the preregistered content-level join was recomputed on it for every decisive
+1329   cell, with a complete 100/100 overlap and no orphaned, duplicated, or question-mismatched con-
+1330   text (Appendix D). Pairing therefore no longer rests on row order, and it never rested on the repeated
+1331
+       question string (which is not unique). What we still do not claim is a join against a separately stored
+       64-hex digest of the raw document text, which was not retained. This historical three-arm check is
+1332
+       distinct from, and complemented by, the five-arm decomposition pairing described in Appendix C.
+1333
+       E2 is different by construction: its key is sha256(context+prompt+question)[:16], and
+1334   the independently checked A/D/R/C/E files carry the same ordered 100 unique keys at each length.
+1335   No paired claim is made across 4k and 16k, which are different length cells.
+1336
+1337   Frozen stack and preregistration. All primary model reads use Qwen3-8B in bfloat16 with 36
+1338   transformer layers, PyTorch 2.11.0+cu129, Transformers 5.14.1, Accelerate 1.14.0, and Datasets
+1339   5.0.1. The checkpoint config and tokenizer artifacts are pinned by SHA-256 prefixes bc058b40
+1340   and 5a7303, respectively. The qa1 reader and decision rules, the 512-cap readout-invariance gate,
+1341   and their SHA-256 pins are consolidated in the protocol matrix (Appendix Table 12). Both preregis-
+1342   trations went through documented revisions: the qa1 decision rules went through three documented
+1343
+       revisions (Table 13), each frozen before the qa1@4k decision cell was inspected. The pack uses one
+       BOS sink, selected chunks in original-document order, fresh contiguous positions, and the query
+1344
+       last. Post-hoc selection note: among the valid (non-artifact) pinned magnitude cells {2k, 4k, 8k},
+1345
+       the 4k decision cell carries the largest significant gap (+27 pp; Table 2). The preregistered anchor
+1346   was documented to move 1k → 4k; the headline is therefore best read as a selected-magnitude nega-
+1347   tive result rather than a pre-specified effect size. We do not report a selection-adjusted statistic. The
+1348   full revision timeline (what data was seen before each REVISION) is disclosed in the prereg assets;
+1349   the pointwise per-cell p values are in Table 2.
+
+
+                                                          25
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1350
+        Revision       Change
+1351
+1352    #1             initial qa1 decision rules
+        #2             anchor moved 1k → 4k; Branch-B third conjunct and decision criterion updated
+1353
+        #3             repaired three adjudicator code defects: sampling-error units; integrity adjudication of target
+1354                   mismatch; acceptance coupling
+1355
+1356   Table 13: qa1 preregistration revision timeline. Each decision rule set was frozen before the
+1357   qa1@4k decision cell was inspected; what data was seen before each revision is disclosed in the
+1358   prereg assets.
+1359
+1360
+1361
+       One-million-token serving point. The recorded 1M context measurement is approximately
+       25.6 GB, +44% versus 32k, and is indexed (with the other serving claims) in the protocol ma-
+1362
+       trix (Table 12). It is a separate serving measurement, not an interpolation of Figure 3 and unrelated
+1363
+       to the read/prefill break-even Q⋆ =25.58 reads/document reported in Section 5 (the coincident digits
+1364   denote different quantities).
+1365
+1366   Matched-memory scope and preregistered scale check. At 128k and fixed k = 12, E1 records
+1367   read len=6,657 and median-of-three peaks of 18.2 GB for j = 0 and 17.9 GB for j = 12 in each
+1368   of two trials (six of six repeats agree at 0.1 GB print precision). The measured 0.3 GB difference is
+1369   the read-length-scoped analytic quantity (12/36)BKV read len, not evidence that depth caching is
+1370   generally free. We preregister a k = 48 matched check: because the analytic band scales linearly
+1371   with read length, it predicts approximately 1.2 GB of depth-attributed saving. That check has not
+1372   been run and is not a result of this paper.
+1373
+1374   Self-distillation boundary. The archived report pins the settings in Table 14. Implementation
+1375   defaults are not substituted for missing run evidence, and the adapter result is not primary evidence.
+1376
+1377       Setting                                  Value / status
+1378       Corpus                                   PG19
+1379       Cached depth j                           32
+1380       LoRA rank                                32
+           LoRA scale                               64
+1381
+           Target layers                            upper layers
+1382       Steps                                    4000
+1383       Learning rate, effective batch/tokens,   not pinned
+1384       corpus split, checkpoint selection,
+1385       seed
+           Stopping criterion                       step count only
+1386
+1387
+       Table 14: Self-distillation configuration archived by the report. The pins and the explicitly
+1388
+       unpinned settings are listed so no implementation default is silently substituted for missing run
+1389   evidence.
+1390
+1391
+1392
+       Algebraic check. The self-test compares a contiguous forward with split/rejoin on identical tokens
+       and positions. It validates layer composition only, not chunk-local writes, selection, relocation, or
+1393
+       the empirical j > 0 read measured in Section 5.1.
+1394
+1395
+1396   I     E THICS AND AI-A SSISTED F IGURE D ISCLOSURE
+1397
+1398   No human-subject data were collected. Source text and activations carry the privacy and deletion
+1399   obligations in Section 6. A generative image tool produced the initial architecture raster; its retrieval
+1400   arrows, position labels, store growth, and fixed-read boundary were iteratively checked and cor-
+1401
+       rected. Both quantitative figures come only from deterministic scripts and registered measurements;
+       generative tools did not create or alter experimental data.
+1402
+1403
+
+
+
+                                                               26
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1404
+       J     D EPTH -S WEEP C OST AND DATA D ISCLOSURE
+1405
+1406
+       The same-run wall clock for the depth-partition sweep is merged into Table 5 so that the eight
+1407   sweep arms are tabulated once instead of twice. All rows are n = 100 at the stated context length,
+1408   scored under the byte-pinned reader; every arm shares the same selected raw chunks (retrieval fixed),
+1409   so quality and cost are measured on the same operation point for each arm—these points are not
+1410   drawn from different operation points. Per-depth peak memory (peak memory gb qmem) was
+1411   not recorded for the sweep, so no depth–memory curve exists; the separate E1 0.3 GB point is in
+1412   Table 7, and the two cards are distinguished in Table 15. Wall-clock seconds were retained only for
+1413   the arms listed in Table 5 (the intermediate 4k depths j=2–10 have no retained seconds), and the
+1414   run-level wall clock does not support a time saving from depth.
+1415
+1416   CSV column disclosure. The preregistered sweep (data root in Table 12) asked each arm CSV
+1417
+       to carry sample id, context sha256, and robust correct. The emitted columns are
+       only target, output, question, and sample id for all 14 arms; a column literally named
+1418
+       context sha256 is absent. The emitted sample id is nevertheless a content hash of the full
+1419
+       formatted model input, so the preregistered content-level join was recomputed on it and every de-
+1420   cisive cell is a complete 100/100 overlap (Appendix D); what remains unavailable is a separately
+1421   stored 64-hex digest of the raw document text, and that gap is disclosed rather than reconstructed.
+1422
+1423   Hardware identity. Two different NVIDIA H20 cards were used (Table 15). A GPU working-
+1424   set claim must not be read as if a single card produced both; in particular, the serving-study’s
+1425   18.29 GB/3.9×/qmem claims do not rely on the depth-sweep card.
+1426
+1427   Card                  Memory                   Used by
+1428   NVIDIA H20-3e         143771 MiB               depth-partition sweep (recorded in the sweep data root’s
+1429                                                  gpu.txt)
+1430   H20 (separate)        97.8 GB                  fixed-k serving study (Section 4) and factorized account
+1431                                                  (Table 7)
+1432
+1433   Table 15: Hardware identity for memory claims. The two cards are distinct; a GPU working-set
+1434   figure must not be attributed to both.
+1435
+1436   J.1    I NTERVAL CONSTRUCTIONS FOR THE DECISION CELLS
+1437
+1438   The pinned rows of Tables 2 and 8 carry the primary magnitude. Their paired risk difference is
+1439   (c − b)/n; the exact conditional interval applies Clopper–Pearson to c/(b + c) and rescales it as
+1440   (2p − 1) s/n, where s = b + c and p = c/s (registered inputs are in Table 12). It conditions on
+1441   the observed discordant pair count and remains the primary interval; Table 16 also reports the wider
+1442
+       Newcombe Method 11 cross-check, which corrects the square-and-add construction by the observed
+       pairing correlation. Earlier versions of this appendix omitted the pairing-free construction on the
+1443
+       grounds that it discards the paired structure; we now report it deliberately as the assumption-free
+1444
+       floor, because the raw contexts of these historical cells cannot be re-audited by a reviewer. Setting
+1445   the pairing correlation to zero in the same square-and-add formula gives an interval that uses only the
+1446   two marginals, so it holds whatever the pairing is, and the accompanying unpaired two-proportion
+1447   test gives z = 3.924, p = 8.7 × 10−5 at the mnt160 decision cell. The ordering of the three rows
+1448   in Table 16 is the expected one: conditioning on discordance is tightest, the correlation-corrected
+1449   interval is intermediate, and the pairing-free interval is widest.
+1450
+1451
+1452
+1453
+1454
+1455
+1456
+1457
+
+
+
+                                                         27
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1458
+            Construction                                                    mnt160 (pp)      mnt512 (pp)
+1459
+1460        Exact conditional (Clopper–Pearson; primary)                   [+17.7, +30.5]   [+14.1, +28.7]
+            Newcombe Method 11 (Newcombe, 1998)                            [+17.1, +36.0]   [+14.1, +33.2]
+1461
+            Square-and-add at zero pairing correlation (assumption-free)   [+13.6, +39.1]   [+10.7, +36.1]
+1462
+1463   Table 16: 95% interval constructions for the pinned decision rows of Tables 2 and 8. All three
+1464   constructions exclude zero at both roots. The first two use the paired discordance; the third discards
+1465   it and is therefore the assumption-free bound quoted in Table 2. The corresponding McNemar odds
+1466   ratios are 14.5 (mnt160) and 9.0 (mnt512). Applying the pairing-free construction to the stripped
+1467   mnt512 row gives [+10.2, +34.8] pp, again excluding zero.
+1468
+1469
+1470
+1471
+1472
+1473
+1474
+1475
+1476
+1477
+1478
+1479
+1480
+1481
+1482
+1483
+1484
+1485
+1486
+1487
+1488
+1489
+1490
+1491
+1492
+1493
+1494
+1495
+1496
+1497
+1498
+1499
+1500
+1501
+1502
+1503
+1504
+1505
+1506
+1507
+1508
+1509
+1510
+1511
+
+
+
+                                                           28
+

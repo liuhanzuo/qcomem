@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "experiments": [
+    {
+      "experiment_id": "EXP1",
+      "name": "Q16 multifork resident reuse vs fresh same-kernel",
+      "run": {
+        "job_id": 237580,
+        "trial_id": 1840837,
+        "launcher": "gpu/launch_qcomem_qwen35_vllm_paged_multifork_resident_8gpu.sh",
+        "runner": "gpu/run_qcomem_qwen35_vllm_paged_multifork_resident.py",
+        "protocol": "gpu/MULTIFORK_RESIDENT_PROTOCOL_ZH.md"
+      },
+      "config": {
+        "N_values": [1, 2, 4, 8, 16, 32],
+        "batch": 1,
+        "precision": "Q16",
+        "query_tokens": 32,
+        "gen_tokens": 8,
+        "doc_tokens": 4095,
+        "query_source": "PG-19 train windows"
+      },
+      "evidence": {
+        "summary_sha": "cbb5d86112e0242b50369c68ede25978a4a5ce51d0517c69d7925fcf671c0401",
+        "scientific_ledger_sha": "14fd1c0cf7a670d8d62daf1af227255973a4d7e42c39fd331ab2188e44faf363",
+        "static_sha": "cacd703cf670931e8525e4a122e10618af7d865c7284cd77c7292992f99184b2",
+        "report_path": "RESULTS_GPU_QWEN35_VLLM_PAGED_MULTIFORK_RESIDENT_2026-08-14_ZH.md"
+      },
+      "evidence_items": ["E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11"]
+    }
+  ],
+  "evidence_definitions": {
+    "E1": "same-kernel full-vocab/token exact = 1.0",
+    "E2": "logical KV exact across 8 rank and all N",
+    "E3": "GDN state exact and unchanged for persistent state",
+    "E4": "cross-N prefix isolation exact",
+    "E5": "descriptor/attention call一致，dense fallback=0/full concat=0",
+    "E6": "fresh/reuse pool formula fit: fresh=80+90N MiB, reuse=80+5N MiB",
+    "E7": "table curve values at N=1,2,4,8,16,32",
+    "E8": "R²=1 for fit across 6 points",
+    "E9": "fresh/reuse full-attention pool at N=32: 2960/240 MiB",
+    "E10": "allocated peak absolute at N=32: 74,623,183,360 vs 71,765,915,136 B",
+    "E11": "timing and scheduler scope explicitly limited; no throughput/TTFT claim"
+  }
+}

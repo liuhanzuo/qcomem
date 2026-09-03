@@ -1,0 +1,117 @@
+{
+  "reviewer_id": "R5-CLR",
+  "round": 5,
+  "snapshot_sha256": "90c20e84de6080c96e38e7bd0f95323159f71e6607a951504b9b938bbe89b60f",
+  "role": "clarity_presentation",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The central bounded claims are unusually careful: ownership is checked with phase-aware storage witnesses, semantic equality covers tokens, full logits, logical KV, and GDN state, and selected attention/GDN operators receive independent numerical checks. The paper consistently distinguishes these results from end-to-end correctness, completeness, performance, and transfer. Remaining concerns primarily affect how the central audit contract is operationalized and reported rather than showing that the frozen case-study results are wrong.",
+    "presentation": "The paper has a clear identity, logical section order, polished typography, readable figures, explicit denominator definitions, and unusually disciplined limitation language. However, the abstract and results are dense with artifact-specific terminology and several cohorts, while the central full/partial/open audit outcome is never explicitly tabulated. These issues increase cognitive load but do not prevent evaluation.",
+    "contribution": "The phase-aware ownership audit, mutation-tested evidence package, and denominator separation are useful and carefully integrated. The contribution is nevertheless narrow: it is a combination and validation artifact rather than a new caching mechanism, and current evidence covers one model, one adapter/runtime, one hardware family, and tightly fixed schedules and geometries. The paper itself appropriately acknowledges this boundary."
+  },
+  "paper_summary": "ForkAudit is an executable audit contract for forked hybrid-LLM state, where token-indexed attention KV and recurrent GDN state have different ownership lifetimes. The paper applies the contract to a Qwen3.5-35B-A3B case, crossing full-copy versus shared-document KV with materialized versus borrowed GDN bases. It reports bitwise semantic equivalence over 96 configurations, phase-aware ownership witnesses, selected independent attention and recurrent-transition oracles, nine targeted live faults, one cancellation/reclamation lifecycle, and explicitly separated memory denominators. It makes no speedup, scheduler, production-capacity, completeness, or cross-runtime claim.",
+  "strongest_verified_contribution": "The strongest contribution is the artifact-bound demonstration that borrowed recurrent bases may alias only before a request's first transition and that all 60 mutable GDN tensors become request-private afterward, combined with exact token, full-logit, logical-KV, and final-GDN equivalence across the four ownership cells.",
+  "strengths": [
+    "The paper states its contribution type and non-contributions early and consistently.",
+    "Figures 1 and 2 provide a coherent visual account of heterogeneous state ownership and lifecycle transitions.",
+    "Memory reporting carefully separates page geometry, allocator endpoints, phase-bounded peaks, and unmeasured process or service capacity.",
+    "The results distinguish relational checks, selected numerical oracles, targeted positive controls, and lifecycle evidence instead of presenting them as interchangeable proofs.",
+    "The limitations and cohort-to-claim authorization are unusually explicit.",
+    "The PDF is visually clean, with consistent typography, unclipped content, readable tables, and a clear section hierarchy."
+  ],
+  "questions": [
+    "What is the final full/partial/open status of each of the seven audit targets under the decision rule in Section 3?",
+    "What exact portable field schema and validation algorithm must a second runtime implement for the non-storage records: dispatch provenance, semantic trajectories, allocator snapshots, and the target-to-gate map?",
+    "Can the authors add a compact cohort legend in the main text that maps the primary factorial, earlier capacity cohort, lifecycle transfer, GDN oracle, and M8/M9 debug to their authorized claims?",
+    "Can the claim-evidence map be regenerated so every manuscript location points to the current section, appendix, and table numbering?",
+    "What precisely failed in the reported terminal recursive-closure check, and what reviewer-relevant guarantee is lost because of that failure?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R5-CLR-01",
+      "severity": "major",
+      "dimensions": ["clarity", "reproducibility", "technical_soundness", "significance"],
+      "location": "Section 3, especially the runtime-independent decision rule on PDF p. 4; Appendix E on PDF p. 14; Appendix Table 4 on PDF p. 14",
+      "claim_ids": ["C-OWN-01", "C-RR2-GDN-01", "C-RR2-MUT-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "Section 3 defines full, partial, and open outcomes and says an audit must not upgrade a partial witness into proof. Table 4 then lists only Target, Recorded witness, and Boundary, without assigning any target one of those statuses or reporting a final status vector. Moreover, Appendix E gives a precise pointer-free schema and algorithm only for storage witnesses, while the other required record classes are described at prose level or left in the Qwen-specific artifact.",
+      "why_it_matters": "The primary claimed contribution is an executable, runtime-independent audit contract. A reader can understand the case study, but cannot unambiguously determine the contract's declared outcome or implement the entire portable interface from the paper. This weakens both the evaluability and reusable significance of the central contribution.",
+      "required_fix": "Add a normative contract table or schema covering all four record classes, mandatory fields, failure semantics, and target-to-gate bindings. For each of the seven targets, report exactly one full/partial/open status, the decisive predicate, missing records or scope restrictions, and the resulting overall audit outcome.",
+      "verification_test": "A reader using only the paper and named schema should be able to construct a minimal conforming adapter, determine whether every mandatory field is present, recompute each target predicate, and recover exactly the same seven-target status vector reported by the authors.",
+      "evidence_needed": "A complete portable schema or pseudocode, a target-status table for the frozen case, and a replay-produced status artifact consistent with that table.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-CLR-02",
+      "severity": "minor",
+      "dimensions": ["clarity"],
+      "location": "Abstract on PDF p. 1; Sections 4.1-5.4 on PDF pp. 5-8; cohort-to-claim Table 3 on PDF p. 13",
+      "claim_ids": ["C-RR2-FACT-01", "C-RR4-LIFECYCLE-01", "C-RR4-GDN-ORACLE-01", "C-RR4-DETECTOR-LOCAL-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-LIFECYCLE-TRANSFER", "E-RR4-INDEPENDENT-GDN-ORACLE", "E-RR4-DETECTOR-TWO-FAULT-DEBUG-D"],
+      "observed_evidence": "The abstract front-loads four ownership cells, 60 tensors, two oracle tolerance pairs, nine faults, a separate lifecycle cohort, and allocator deltas before several terms are defined. Section 5.3 combines the GDN oracle, mutation campaign, M8/M9 debug boundary, and lifecycle transfer in one subsection. The clearest map separating these evidence objects appears only in Appendix Table 3.",
+      "why_it_matters": "The scientific boundaries are present, but readers must repeatedly reconstruct which cohort supports which number. This obscures the otherwise strong distinction between primary, supporting, contextual, and nonformal evidence.",
+      "required_fix": "Shorten the abstract to the contract, strongest ownership result, one independent-check result, and the main scope boundary. Add a compact main-text cohort legend and split Section 5.3 into separately titled result units.",
+      "verification_test": "A reader should be able to map every headline number in the abstract and main results to one named cohort and one authorized claim without consulting the appendix.",
+      "evidence_needed": "No new experiment is required; this is an organization and terminology revision.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-CLR-03",
+      "severity": "minor",
+      "dimensions": ["clarity", "reproducibility"],
+      "location": "evidence/claim_evidence_map.tsv, particularly C-POOL-01, C-MEM-01, C-DENOM-01, C-FAIR-01, and C-BACKEND-NEG-01; compare manuscript Section 5.4 and Appendices F and I",
+      "claim_ids": ["C-POOL-01", "C-MEM-01", "C-DENOM-01", "C-FAIR-01", "C-BACKEND-NEG-01"],
+      "evidence_ids": [],
+      "observed_evidence": "Several location fields refer to superseded numbering. For example, the memory rows point to Section 5.5, Appendix C, and Table 6, while the current manuscript places the primary memory discussion in Section 5.4 and the complete capacity ledger in Appendix F, Table 5. The fair-control and cross-backend rows point to Appendix F, while those paragraphs are in Appendix I.",
+      "why_it_matters": "The package presents claim-to-evidence navigation as an audit feature. Stale manuscript anchors create avoidable ambiguity and reduce confidence in the maintenance of that map, even though the underlying numerical evidence appears present.",
+      "required_fix": "Regenerate all manuscript-location fields from the frozen source and add an automated check that every referenced section, appendix, table, figure, and claim identifier exists in the compiled manuscript.",
+      "verification_test": "Resolve every manuscript_locations entry against the final PDF and require zero missing or mismatched anchors.",
+      "evidence_needed": "A corrected claim-evidence map and a passing anchor-validation report.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-CLR-04",
+      "severity": "minor",
+      "dimensions": ["clarity", "reproducibility"],
+      "location": "Reproducibility Statement, PDF p. 12, lines 594-603",
+      "claim_ids": [],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "The statement says that terminal recursive closure failed on generated bytecode and therefore the offline replay is not a single-run closure claim, but neither terminal recursive closure nor the failed check is defined elsewhere in the manuscript.",
+      "why_it_matters": "This is presented as an important reproducibility boundary, yet a reader cannot determine whether it concerns scientific outputs, code provenance, cleanup, generated files, or only packaging governance.",
+      "required_fix": "Define the check, state the exact failed predicate and affected artifact class, and explain in one sentence which guarantees remain valid and which guarantee is unavailable. If it does not affect scientific reproducibility, move the implementation detail to the artifact documentation.",
+      "verification_test": "A reader should be able to state the failed condition, reproduce or inspect its receipt, and distinguish it from the successful GPU aggregate and offline replay.",
+      "evidence_needed": "The closure-check definition, failure receipt, and an explicit consequence statement.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific ethics concern is apparent. The paper uses an existing language-model checkpoint and PG-19 text for systems-behavior evaluation, makes no downstream safety or quality claim, and includes a proportionate ethics statement.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A complete portable contract implementation plus successful replay on an independently implemented second runtime or hybrid model.",
+    "A second-model or second-runtime transfer showing that the audit detects a meaningful ownership defect or validates a nontrivial implementation beyond the current adapter.",
+    "An independently exercised end-to-end semantic oracle or backend that reduces the acknowledged common-mode boundary.",
+    "A clearer demonstration that the audit contract yields reusable knowledge or tooling beyond the deterministic consequences of the current allocation policy."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of the manifest-first replay to reconstruct the reported factorial, oracle, storage, mutation, or allocator results.",
+    "Evidence that any completed request retains overlapping mutable GDN storage with the persistent base or a peer.",
+    "A mismatch between the claimed common callable and the actual dispatch path used by different ownership arms.",
+    "Evidence that the mutation assignments, oracle tolerances, or selected rows were changed after candidate outcomes were inspected.",
+    "Prior work showing an equivalent heterogeneous-state ownership audit contract with the same operational coverage, which would further reduce the contribution."
+  ],
+  "review_limitations": [
+    "The assessment is restricted to the frozen submission snapshot and its reviewer-safe artifacts; no prior reviews, author plans, or external repository history were inspected.",
+    "The live GPU execution was not independently regenerated.",
+    "Literature positioning was assessed from the frozen bibliography and citation lock rather than a new external literature search."
+  ]
+}

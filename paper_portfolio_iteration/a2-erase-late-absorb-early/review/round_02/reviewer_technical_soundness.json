@@ -1,0 +1,98 @@
+{
+  "reviewer_id": "erase-r2-technical",
+  "round": 2,
+  "snapshot_sha256": "65acc8505a02b1a4002de506890647928ee23c80b1ea14f35696a82b0cd1b56f",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "At the printed scope, the three derivations are sound: T1 correctly diagonalizes a fixed SPD quadratic and bounds the log remainder; T2 obtains a segment-average Hessian from the pointwise Loewner bounds and uses induced-norm submultiplicativity; and T3 follows by conditional then total expectation. The paper appropriately does not transfer these statements to nonlinear SGD or comparator paths. However, these are isolated standard calculations and the evidence package supplies no theorem-level antecedent analysis establishing a technically new result.",
+    "presentation": "The assumptions, exclusions, and proof scopes are unusually explicit for a short note. The scope table and limitations make the non-transfer claims easy to audit. The related-work section is readable but cannot let a technical reader determine whether any theorem is distinct from direct optimization or stochastic-recursion antecedents, because it explicitly offers only contextual sources.",
+    "contribution": "The strongest verified content is a careful self-contained exposition of three conditional contraction/product facts. The manuscript itself (Related Work, p. 3; Limitations, p. 4) disclaims novelty, a unifying theorem, and empirical evidence, while closest_work_matrix.md confirms that no direct theorem-level distinction is verified. Thus the current submission does not establish decision-relevant new knowledge for ICLR."
+  },
+  "paper_summary": "This theory-only manuscript states and proves: an exact fixed-quadratic gradient-descent matrix product with a finite-step log-product remainder (T1); full-norm gradient-descent contraction under pointwise Hessian bounds along each actual minimizer-to-iterate segment, plus a conditional directional refinement (T2); and an affine scalar conditional-mean product identity (T3). It explicitly provides neither a comparator-path/unlearning result nor empirical evidence or a novelty claim.",
+  "strongest_verified_contribution": "The proofs of T1--T3 correctly and transparently delimit what follows from their stated assumptions, especially T2's full ambient Hessian condition and T3's conditional-zero-mean affine recursion.",
+  "strengths": [
+    "T2's pointwise ambient Hessian premise in Eq. (3) is sufficient for the segment-average bound used in the proof; the scope audit and the printed proof agree on this point.",
+    "The directional statement in Eq. (5) explicitly adds common invariant-subspace and eigenvalue assumptions, avoiding an unjustified Rayleigh-quotient inference.",
+    "The paper does not treat removed historical experiments, a planned protocol, or remote-only material as evidence for its active claims."
+  ],
+  "questions": [
+    "What specific, source-verified theorem-level distinction from standard fixed-quadratic products, strongly-convex gradient-descent contraction, and affine stochastic-recursion identities makes any of T1--T3 a research contribution rather than exposition?",
+    "If the intended contribution is their combination, can the authors prove a nontrivial theorem connecting the three regimes, with assumptions and a consequence not obtainable by stating the three results separately?",
+    "Can the snapshot producer provide a canonical manifest-generation command that unambiguously specifies the sorting key used for snapshot_sha256?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TECH-R2-001",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "technical_soundness"
+      ],
+      "location": "Introduction, p. 1 (T1--T3 are deliberately separate); Related Work, p. 3; Limitations, p. 4, especially the stated contribution ceiling.",
+      "claim_ids": [
+        "C-DOC-001",
+        "C-THEORY-001",
+        "C-THEORY-002",
+        "C-THEORY-003"
+      ],
+      "evidence_ids": [
+        "REV02-TEX",
+        "M-BASE-T1",
+        "M-BASE-T2",
+        "M-BASE-T3"
+      ],
+      "observed_evidence": "The active text says that no theorem connects the three regimes, makes no novelty claim, and lacks a verified theorem-level antecedent comparison. literature/closest_work_matrix.md repeats that its sources are contextual and that the novelty ceiling remains absent a direct distinction, common theorem, or new evidence.",
+      "why_it_matters": "Correctness of elementary conditional identities is not by itself an ICLR contribution. With no verified difference from direct antecedents and no theorem or experiment tying the identities to a new problem, the technical package cannot support a research-advance claim and its practical relevance is unestablished.",
+      "required_fix": "Provide a source-verified direct antecedent comparison and establish a precise nontrivial difference, or add a formally stated unifying result whose consequence does not reduce to the three isolated calculations. If neither is possible, honestly present this as pedagogical exposition rather than a research-paper contribution.",
+      "verification_test": "For each active theorem, map its assumptions and conclusion to direct optimization/stochastic-recursion antecedents and verify citations locally; for any asserted joint contribution, check a formal statement and proof that uses more than the disjoint T1--T3 premises.",
+      "evidence_needed": "Primary-source theorem statements/proofs supporting the antecedent comparison, or a new self-contained unifying theorem and proof; empirical evidence would be needed only for any practical-transfer claim.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TECH-R2-002",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility"
+      ],
+      "location": "MANIFEST.json, hash_algorithm and snapshot_sha256 fields.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "All listed per-file SHA-256 values match the snapshot bytes, and the declared snapshot value equals 65acc8505a02b1a4002de506890647928ee23c80b1ea14f35696a82b0cd1b56f. However, lexicographically sorting the specified '<file-sha256><two spaces><snapshot-path><LF>' lines produces 5e33bf5363061fdfca418b90e95531f45488489ed14fc9a912b7999726ca1ce7; the declared value is reproduced by the manifest's listed path order. The stated algorithm does not name its sorting key.",
+      "why_it_matters": "The snapshot is still file-integrity checkable, but a third party following the literal sorted-lines description cannot deterministically reproduce the aggregate identifier without guessing the intended ordering.",
+      "required_fix": "Specify a canonical ordering explicitly (for example, sort by UTF-8 snapshot_path before rendering lines) and include the exact manifest-generation command or a verifier.",
+      "verification_test": "Run the supplied verifier in a clean directory and confirm that it recomputes the declared aggregate digest and checks every listed file hash.",
+      "evidence_needed": "A canonical generator/verifier and its successful output for this frozen snapshot.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No active human-subject, dataset, deployment, or intervention result is claimed. The manuscript appropriately states that future empirical work must check data permissions and avoid protected/test/oracle labels at decision time.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A source-verified theorem-level comparison showing a material distinction from direct antecedents for at least one result.",
+    "A nontrivial common theorem that links the separate regimes and has a consequence beyond their independent product identities.",
+    "If practical relevance is claimed, a version-linked, preregistered empirical evaluation that tests that claim without extending the formal theorems beyond their assumptions."
+  ],
+  "evidence_that_would_lower_score": [
+    "A valid counterexample satisfying any printed theorem's full assumptions but violating its conclusion.",
+    "Direct antecedent evidence showing the presentation inaccurately omits an already-known identical result while retaining an implied research contribution.",
+    "A demonstrated mismatch between the compiled PDF and the active theorem source or a failed per-file snapshot integrity check."
+  ],
+  "review_limitations": [
+    "This isolated review used only the frozen submission snapshot and did not inspect prior rounds, author plans, target scores, or repository history.",
+    "I did not perform external literature browsing; the novelty assessment is limited to the supplied citations and explicitly documented positioning gap."
+  ]
+}

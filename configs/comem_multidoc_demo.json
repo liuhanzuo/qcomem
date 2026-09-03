@@ -1,0 +1,79 @@
+{
+  "name": "q-comem-multidoc-demo-v1",
+  "documents": [
+    {
+      "id": "unified-memory",
+      "title": "Apple unified memory",
+      "text": "Apple silicon places CPU and GPU memory in one unified address space. MLX arrays can therefore be consumed by GPU operations without a traditional discrete-GPU host-to-device copy, although synchronization and memory pressure still matter."
+    },
+    {
+      "id": "mlx-streams",
+      "title": "MLX streams and lazy evaluation",
+      "text": "MLX builds computations lazily. mx.eval materializes pending arrays, while mx.synchronize waits for a stream. A with mx.stream(gpu_stream) block assigns operations to that stream; it does not itself force computation to finish."
+    },
+    {
+      "id": "comem-split",
+      "title": "CoMem split Write and Read",
+      "text": "CoMem writes a document through the lower transformer layers once and stores the intermediate residual at a split depth. Later queries reuse selected document residuals and execute only the upper suffix layers during Read."
+    },
+    {
+      "id": "mixed-bits",
+      "title": "Depth-aware residual quantization",
+      "text": "The Q-CoMem prototype calibrates a different storage bit width at each candidate split depth. It selects the smallest packed representation satisfying residual error, logit KL divergence, and prediction agreement constraints."
+    },
+    {
+      "id": "kv-cache",
+      "title": "Autoregressive KV cache",
+      "text": "A decoder KV cache stores keys and values from previous tokens so generation does not recompute all earlier attention states. KV cache memory grows with sequence length, layer count, key-value heads, and head dimension."
+    },
+    {
+      "id": "power-protocol",
+      "title": "Laptop experiment power protocol",
+      "text": "Comparable laptop benchmarks should use AC power, disable low power mode, record thermal state and background load, warm up the model, and reject runs with thermal warnings or substantial swap growth."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q-unified-copy",
+      "query": "Why can an MLX GPU operation consume an array without a conventional host-to-device copy?",
+      "relevant_document_ids": ["unified-memory"],
+      "selected_document_ids": ["unified-memory", "mlx-streams"],
+      "expected_answer": "Because the CPU and GPU share Apple silicon's unified memory address space."
+    },
+    {
+      "id": "q-stream-eval",
+      "query": "Does entering an MLX stream context immediately finish the queued GPU work?",
+      "relevant_document_ids": ["mlx-streams"],
+      "selected_document_ids": ["mlx-streams", "unified-memory"],
+      "expected_answer": "No. It assigns operations to the stream; evaluation or synchronization is still required."
+    },
+    {
+      "id": "q-write-read",
+      "query": "What computation is reused between CoMem Write and later Read requests?",
+      "relevant_document_ids": ["comem-split"],
+      "selected_document_ids": ["comem-split", "mixed-bits"],
+      "expected_answer": "The document's lower-layer intermediate residual is written once and reused by the upper suffix layers."
+    },
+    {
+      "id": "q-bit-policy",
+      "query": "How does Q-CoMem choose a bit width for each split depth?",
+      "relevant_document_ids": ["mixed-bits"],
+      "selected_document_ids": ["mixed-bits", "comem-split"],
+      "expected_answer": "It chooses the smallest packed bit width that satisfies calibrated residual and logit quality constraints."
+    },
+    {
+      "id": "q-kv-growth",
+      "query": "Which dimensions make the autoregressive KV cache grow?",
+      "relevant_document_ids": ["kv-cache"],
+      "selected_document_ids": ["kv-cache", "comem-split"],
+      "expected_answer": "Sequence length, layer count, key-value head count, and head dimension determine its growth."
+    },
+    {
+      "id": "q-valid-run",
+      "query": "Which machine conditions should invalidate a formal laptop benchmark run?",
+      "relevant_document_ids": ["power-protocol"],
+      "selected_document_ids": ["power-protocol", "unified-memory"],
+      "expected_answer": "Low power or battery operation, thermal warnings, heavy background load, or substantial swap growth should invalidate it."
+    }
+  ]
+}

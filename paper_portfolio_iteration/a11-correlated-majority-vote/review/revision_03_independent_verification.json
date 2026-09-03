@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "audit_kind": "independent_read_only_round_03_verification",
+  "audit_date": "2026-08-22",
+  "auditor_scope": {
+    "active_source": "manuscript/paper.tex",
+    "active_pdf": "manuscript/paper.pdf",
+    "supporting_inputs": [
+      "manuscript/appendix_proofs.tex",
+      "manuscript/appendix_dp.tex",
+      "manuscript/claim_audit.py",
+      "manuscript/audit_monotonicity_boundary.py",
+      "manuscript/claim_audit_manifest.json",
+      "evidence/",
+      "build/",
+      "review/revision_03_appendix_scope_audit.md",
+      "review/round_02/meta_review.json",
+      "review/round_02/adjudication/appendix_repair.json",
+      "review/issue_ledger.json"
+    ],
+    "write_scope": "This JSON only. No manuscript, evidence, build, or frozen-review file was modified.",
+    "fresh_compilation_note": "No new LaTeX build was launched because the requested read-only scope permits no build-artifact writes. The two existing controlled build outputs, their logs, their byte equality, and their binding to the current source/PDF were independently checked."
+  },
+  "snapshot_identity": {
+    "paper_tex_sha256": "5dc79e9e32e5a4761fbd055a3bbbb75cf1c8c0dd0ef5943a206f32b8c5f40b5d",
+    "paper_pdf_sha256": "a954f7afaaef58f5134e5a34725b9c991ea84629521b003cc94384f31a0e0aec",
+    "appendix_proofs_tex_sha256": "159111d46d4b47940dc6f043177535dd625153d047e86e2ae2661dc264ec7e50",
+    "claim_audit_manifest_sha256": "0f7f82b6a52b5ec4f3a74c5f96b272ed1210eb19090c77b4b51c83f3d996a24e",
+    "page_count": 18,
+    "page_size": "letter, 612 x 792 pt"
+  },
+  "overall_verdict": "partially_resolved",
+  "overall_rationale": "All seven substantive Round-3 claim-scope, theorem, TV-geometry, protocol, and PDF checks pass for the compiled manuscript. The sole remaining reviewer-facing hygiene issue is that manuscript/paper.tex retains a 228-line \\iffalse historical block containing the withdrawn, invalid policy and affine-TV claims. It cannot affect the PDF, and the active source explicitly withdraws it, but it can mislead a source-reading reviewer or a non-conditional-aware text scan. The immutable Round-2 snapshot and adjudication already preserve the needed history, so the block should be removed before the next source freeze.",
+  "checks": [
+    {
+      "id": "A11-R3-V01-oracle-policy-withdrawal",
+      "status": "resolved",
+      "question": "Does the compiled manuscript withdraw the per-K oracle profile as an executable/deployable/policy repair, a Theorem-1 instance, and a source of extra-vote/cost/70-of-72/universal-budget conclusions?",
+      "evidence": [
+        "PDF pp.16-17, Appendix E(g), calls the object an 'oracle K-wise profile-capping sensitivity calculation' and says it is not the profile of one rule.",
+        "PDF p.17 states that final K is unobserved at every nonterminal prefix; there is neither a common S(x,k) nor agreement of K-indexed memberships on shared reachable states.",
+        "The same paragraph explicitly says 'not a stopping policy', 'not prefix-observable', and 'not an instance of Theorem 1'; it rejects executable/deployable repair, policy-level count/cost, extra-vote, universal-budget, 70-of-72, domination, edge-law, crossing-set, and full-simplex claims.",
+        "Active source manuscript/paper.tex:1167-1183 matches the PDF. Its required future condition is one K-independent prefix-observable S(x,k), a measurability check, and recomputed profiles plus capacity-aware TV LP.",
+        "The Round-2 adjudication found the K-indexed repair allegation valid while finding Theorem 1 independent of it; the active wording conforms to that ruling."
+      ],
+      "qualification": "Other active whole-simplex/TV statements concern a genuinely fixed prefix-measurable rule, not the withdrawn K-wise construction; they are not counterexamples to this withdrawal.",
+      "minimal_remaining_action": "None for the compiled claim boundary; remove the historical source block as specified in V06."
+    },
+    {
+      "id": "A11-R3-V02-k-unobservability-and-oracle-only-scope",
+      "status": "resolved",
+      "question": "Is K unobservability explicit and is the residual calculation only oracle sensitivity?",
+      "evidence": [
+        "manuscript/paper.tex:1168-1179 states that selection is separately conditioned on final K, K is unobserved at every nonterminal prefix, and the result is only oracle K-wise sensitivity.",
+        "The main-text limitations synopsis at manuscript/paper.tex:720-724 repeats that the diagnostic is neither a common prefix-state rule nor a Theorem-1 instance and supports no stopping-policy, cost, or robustness-repair claim.",
+        "The compiled Appendix E(g) on PDF pp.16-17 renders all of these boundaries legibly."
+      ],
+      "minimal_remaining_action": "None."
+    },
+    {
+      "id": "A11-R3-V03-tv-geometry-and-former-proposition-2",
+      "status": "resolved",
+      "question": "Has the false global affine-TV identity been removed, and are the B_1 endpoint and general capacity-constrained piecewise-linear statements correct?",
+      "evidence": [
+        "Active Proposition at manuscript/paper.tex:342-363 says the frozen-rule objective is a capacity-constrained LP, uses a capped two-sided greedy, is nondecreasing and piecewise linear in R, and is not generally globally affine because capacities create breakpoints.",
+        "The active-source audit passed 'tv-capacity-geometry' and 'oracle-policy-claims-withdrawn'; it strips only the marked historical conditional and confirms no active former prop:prefix label or base-affine formula.",
+        "Mathematical endpoint check: for probability vectors q and H-hat, ||q-H-hat||_1 is at most 2. Thus B_1 equals the entire simplex; maximizing the linear functional sum_K q_K g(K) over that simplex gives max_K g(K). This validates V(1)=max_K g(K).",
+        "The previous Proposition 2, its all-R formula V(R)=base+R(g_max-base), and its base-driven crossing conclusion occur only inside the source conditional at manuscript/paper.tex:939-1166 and are absent from the compiled PDF.",
+        "The Round-2 adjudication specifically prescribed this endpoint correction and warned against retaining the affine formula; the active proposition follows that prescription."
+      ],
+      "qualification": "The endpoint derivation is mathematically correct but terse in the manuscript ('Since B_1 is the full simplex').",
+      "minimal_remaining_action": "Optional clarity hardening: add one sentence showing ||q-H-hat||_1<=2 for two simplex points and that a linear maximum is at a simplex vertex; this is not a correctness blocker."
+    },
+    {
+      "id": "A11-R3-V04-theorem-2-population-protocol",
+      "status": "resolved",
+      "question": "Are Theorem 2's i.i.d., FIT/CAL independence, FIT freezing, and TEST-status conditions sufficiently explicit?",
+      "evidence": [
+        "Theorem 2 (manuscript/paper.tex:315-335) assumes FIT and CAL are independent i.i.d. task samples from a common count-exchangeable replay population; conditional on FIT it freezes a finite pre-declared family including certificate tables; then it applies per-rule empirical Bernstein and Bonferroni over J frozen candidates.",
+        "Protocol text at manuscript/paper.tex:474-490 repeats i.i.d. sampling, FIT/CAL independence, freezing before CAL inspection, CAL-only selection, and that TEST is read once, excluded from selection, and descriptive rather than a second population guarantee.",
+        "The claim audit passed its 'cal-theorem-assumptions' check."
+      ],
+      "minimal_remaining_action": "None."
+    },
+    {
+      "id": "A11-R3-V05-headline-and-table-scope",
+      "status": "resolved",
+      "question": "Do title, abstract, and Table 1 identify the replay-only scope and CAL-versus-TEST status?",
+      "evidence": [
+        "Title: 'Adaptive Stopping in Count-Exchangeable Binary Pass-Count Replay' (manuscript/paper.tex:35-37).",
+        "Abstract opens with count-exchangeable binary pass-count replay and closes by excluding delivered-answer majority, gold correctness, generated tokens, latency, cancellation, and ordered online deployment (lines 45-56 and 81-84).",
+        "Table 1 caption and status row (source lines 521-536; PDF p.7) call it a fixed-benchmark descriptive TEST readout, define CAL-selected as FIT-frozen CAL-UCB selection rather than a TEST guarantee, and label FULL/WINDOW3 as no-CAL-certificate references.",
+        "The claim audit passed 'headline-replay-scope' and 'table1-status'."
+      ],
+      "minimal_remaining_action": "None."
+    },
+    {
+      "id": "A11-R3-V06-withdrawn-source-conditional",
+      "status": "partially_resolved",
+      "question": "Will the historical \\iffalse block contaminate reviewer source reading, and should it be retained?",
+      "evidence": [
+        "Exactly one conditional spans manuscript/paper.tex:939-1166. It starts with a clear Round-3 withdrawal comment, so LaTeX excludes it and it does not contaminate the compiled 18-page PDF.",
+        "Nevertheless, the 228-line block contains the former positive claims verbatim: executable repair, extra-vote/cost, 70-of-72 and universal-budget results, edge/crossing geometry, the former proposition label, and the false affine formula. A reviewer who reads source or runs a naive raw-text search can reasonably be distracted or confused despite the opening comment.",
+        "claim_audit.py intentionally removes only this marked block before checking active source. That makes the executable audit internally consistent but is not a substitute for a source-reader-safe submission.",
+        "Traceability is already preserved outside the live manuscript by the frozen Round-2 submission, review/round_02/adjudication/appendix_repair.json, and review/revision_03_appendix_scope_audit.md."
+      ],
+      "recommendation": "Delete the entire \\iffalse...\\fi historical block from manuscript/paper.tex before the next source snapshot; retain the concise active oracle-withdrawal paragraph immediately after it. Do not retain the block in reviewer-facing source. Frozen Round-2 materials are the appropriate immutable history.",
+      "minimal_remaining_action": "Delete source lines 939-1166, rebuild two isolated outputs, refresh the source/PDF/hash manifest and audit counts, and re-run the targeted raw-source/PDF scans."
+    },
+    {
+      "id": "A11-R3-V07-independent-executable-audits-build-and-visuals",
+      "status": "resolved",
+      "question": "Do the claim audit, monotonicity check, dual-build/hash record, and visual review of pp.16-17 pass?",
+      "evidence": [
+        "Independently executed: python3 manuscript/claim_audit.py -> SUMMARY: 36 PASS / 0 FAIL. It verified the manifest-bound current source, oracle-only withdrawal, TV boundary, theorem/protocol wording, title/abstract, and Table 1 status.",
+        "Independently executed: python3 manuscript/audit_monotonicity_boundary.py -> PASS: 21,824 exact-rational reversal cases and 11,904 zero-F0 support cases, including (N,K,k)=(32,17,29).",
+        "SHA-256 of manuscript/paper.pdf, build/revision_03_build1/paper.pdf, and build/revision_03_build2/paper.pdf is the same a954f7afaaef58f5134e5a34725b9c991ea84629521b003cc94384f31a0e0aec; cmp confirms build1 and build2 are byte-identical. manuscript/paper.tex matches the Round-3 manifest hash above.",
+        "The two existing build logs contain no TeX error, undefined citation/reference, or overfull-box match under the audited warning scan; build_record.json reports the same controlled-build command, hashes, and 18 pages.",
+        "Direct visual inspection of build/revision_03_render_final/page-16.png and page-17.png found the oracle withdrawal paragraph fully visible, legible, and unclipped; p.17 begins with the K-unobservability/non-policy boundary and its Table 5 is readable."
+      ],
+      "qualification": "Hash/build verification is independent and non-mutating; no fresh compiler invocation was performed under the explicit read-only constraint.",
+      "minimal_remaining_action": "None for the attested snapshot. If V06 is applied, repeat the controlled two-output build and visual check as part of its manifest refresh."
+    }
+  ],
+  "minimal_remaining_actions": [
+    {
+      "priority": 1,
+      "action": "Remove the marked historical \\iffalse block from live manuscript source while retaining the active oracle-only withdrawal paragraph.",
+      "reason": "It is the only remaining source-reader contamination risk; immutable frozen Round-2 materials already provide traceability.",
+      "verification": "Raw active-source scan has no old positive E(g) policy/affine-TV text; current claim audit, controlled dual build, matching hashes, and pp.16-17 visual inspection pass again."
+    },
+    {
+      "priority": 2,
+      "action": "Optionally expand the B_1 endpoint sentence into its two-line simplex proof.",
+      "reason": "The statement is correct, but an explicit inequality would make the repair self-contained for a skeptical technical reader.",
+      "verification": "The source says every two simplex points have L1 distance at most 2 and that the linear objective reaches its maximum at a vertex."
+    }
+  ],
+  "non_blocking_evidence_boundaries": [
+    "An executable E(g) policy repair remains unproved until one K-independent observable state table is serialized, mechanically checked, and used to recompute profiles and the capacity-aware TV LP.",
+    "This verification does not close the existing absence of naturally ordered rollout traces, gold stopped-answer correctness, token/latency/cancellation telemetry, raw task/split/selection provenance, or an end-to-end environment lock. The active manuscript appropriately does not claim those endpoints."
+  ]
+}

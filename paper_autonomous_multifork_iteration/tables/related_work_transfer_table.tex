@@ -1,0 +1,26 @@
+\begin{table}[H]
+\caption{Bounded same-checkpoint H20 transfers.  Hydragen uses frozen Qwen3.5
+layer-3 post-RoPE attention; Palu uses eight 256-token PG19 calibration rows
+and one disjoint held-out row.  Errors are relative $\ell_2$ against the
+matched uncompressed operator; state ratios are logical selected-operator
+ratios, not process memory or end-to-end results.}
+\label{tab:related-transfer}
+\centering\scriptsize
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}p{0.16\linewidth}p{0.12\linewidth}p{0.25\linewidth}p{0.20\linewidth}p{0.18\linewidth}@{}}
+\toprule
+Port & Setting & Matched numerical result & Logical state result & Timing / boundary \\
+\midrule
+Hydragen port & $N=8$ & Hydragen--dense rel. $\ell_2=0.00255$ & 8.50 vs. 64.48 MiB ($7.59\times$ smaller) & 0.287 vs. 0.0965 ms; no speedup \\
+Hydragen port & $N=32$ & Hydragen--dense rel. $\ell_2=0.00262$ & 10.00 vs. 257.94 MiB ($25.80\times$ smaller) & 0.290 vs. 0.259 ms; no speedup \\
+\midrule
+Palu port & rank 64/head & held-out K/V $0.487/0.549$ (plain $0.711/0.839$) & 512 vs. 2,048 B/token ($4.00\times$ smaller) & projection only; no fused kernel \\
+Palu port & rank 128/head & held-out K/V $0.317/0.364$ (plain $0.543/0.668$) & 1,024 vs. 2,048 B/token ($2.00\times$ smaller) & projection only; no fused kernel \\
+Palu port & rank 192/head & held-out K/V $0.149/0.194$ (plain $0.341/0.459$) & 1,536 vs. 2,048 B/token ($1.33\times$ smaller) & projection only; no fused kernel \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+\parbox{0.97\textwidth}{\footnotesize Hydragen avoids prefix replication but
+has no speedup here.  Palu improves over plain SVD, but residual error forbids
+an end-to-end quality claim.  Neither is a jointly optimized combined system.}
+\end{table}

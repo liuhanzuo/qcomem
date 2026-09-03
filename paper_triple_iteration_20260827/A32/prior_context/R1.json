@@ -1,0 +1,115 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "c557217eba583f4b47559e4fcbc1c75c71f688febb1f9c633cbdab4d45906277",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "在论文明确限定的范围内，GSM8K 观察性分解、按问题聚类的 bootstrap 以及 N=400 的配对随机干预基本自洽；尤其是作者没有把包含零的干预区间解释为等效性，也没有把第二床的原始判分读数当作已校正结论。不过，跨床结论依赖 30 个目的性人类锚点，且干预只改变无内容填充长度，因此证据不足以支撑更一般的长度机制或迁移表述。",
+    "presentation": "主文的观察性关联、因果检验和跨床敏感性三层结构清楚，图表也没有发现裁切或重叠。负面结论及区间解释较负责；但 SUPPORT、NOT_IDENTIFIED、POWER_LIMITED、sealed/fragility 等多套审计标签与多个判分口径并列，增加了理解一个本来相对简单结果的负担。",
+    "contribution": "最有价值的是用同题随机长度干预否定一个表面上很大的观察性长度关联，而不是代数恒等式本身。当前证据只覆盖一个模型、一个解码设置以及一种无内容填充干预，第二数据床又未完成人类锚定，因此知识增量较窄，新颖性定位也尚未充分区别于既有校准分解、长度分层分析和提示扰动研究。"
+  },
+  "paper_summary": "论文研究 masked-diffusion 解码中提示长度与 signed confidence-accuracy gap（SCE）的关系。GSM8K/LLaDA-8B-Instruct 的自然长度三分位观察性对比为 +0.2227，主要来自准确率下降；但在 400 个问题上加入 37 个无内容冗余 token 的配对随机干预得到 -0.0075，95% 区间为 [-0.052, 0.039]，从而不支持无内容长度导致观察性幅度的因果解释。MATH500 上原始 v2 判分给出正差异，但 30 个目的性人类锚点校正后的敏感性区间跨零，因此作者将跨床迁移标为 POWER_LIMITED。",
+  "strongest_verified_contribution": "第 2 节与表 1 的同题随机干预：在固定解码预算下，+37-token 无内容填充的配对区间排除了 +0.2227 的观察性幅度，同时保留对小正效应的诚实不确定性；这是论文中最清楚、最可验证且最有决策价值的结果。",
+  "strengths": [
+    "明确区分观察性长度分层与随机干预，并在第 2 节直言三分位划分是事后分层而非同题操纵。",
+    "对 SCE、confidence 和 accuracy 同时给出配对/聚类区间，且没有把 Brier/NLL 的恶化错误解释为 signed-gap 机制。",
+    "第 3、6 节和附录 A/B 对判分器修复、目的性锚点、隐藏假阳性风险及 FULL-193 未完成项披露充分。",
+    "逐页视觉检查显示 12 页均完整、图表可读、无明显裁切或覆盖。"
+  ],
+  "questions": [
+    "除“把差值写成置信度项减准确率项”之外，作者认为本文相对既有 calibration-in-the-large 分解、长度分层校准研究和配对提示扰动实验的最小不可替代新贡献是什么？",
+    "commit-step probability 在 masked-diffusion 的不同提交步或不同生成长度下是否是同一可比量？有没有用标准置信度提取方式或替代聚合方式验证结论不依赖这一选择？",
+    "如果把无内容 filler 换成保持答案不变但具有语义、位置或推理结构的长度干预，作者预期哪个可证伪机制会产生不同结果？",
+    "MATH500 的 FULL-193 两层概率抽样人工标注若完成，什么预先规定的判据会把 POWER_LIMITED 升级为可迁移或不可迁移结论？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A32-I1",
+      "severity": "major",
+      "dimensions": ["novelty", "significance", "citation_integrity"],
+      "location": "第 1 页第 1 节贡献 1；第 7 页第 7 节 Related Work；第 8 页第 9 节结论",
+      "claim_ids": [],
+      "evidence_ids": ["Eq. ΔSCE=Δconf−Δacc", "Figure 2a"],
+      "observed_evidence": "论文把“exact two-component decomposition”列为首项贡献，但该式由 SCE=E[conf]−E[acc] 的定义直接相减得到；相关工作主要分别介绍 masked diffusion、校准和答案匹配，没有用逐项对照说明其经验分析相对既有长度-校准或提示扰动研究的新边界。",
+      "why_it_matters": "代数恒等式不能单独承担 ICLR 级概念新颖性。若真正贡献是审慎的负面因果检验，论文需要把新颖性放在设计、可排除的效应范围及适用边界上，否则容易把实现/报告新颖性误写成理论新颖性。",
+      "required_fix": "重写贡献与相关工作定位：将恒等式降为记账工具；建立与最接近的长度-校准分析、序列长度扰动和模型置信度测量工作的逐轴比较，明确本文新增的是哪一种随机化、估计量、效应排除或可复现证据。删除或严格限定任何“首次/精确分解”式暗示。",
+      "verification_test": "检查摘要、引言、相关工作和结论是否一致把主贡献表述为经预注册的同题负面检验；并确认至少一张比较表或一段逐项论证覆盖问题、干预、估计量、模型与结论范围，而非只列引用。",
+      "evidence_needed": "系统的邻近文献比较；若仍主张方法新颖性，需要指出现有方法无法给出的具体输出，并由本文实验证明。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-I2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "第 2 页第 2 节 Within-item causal check 与表 1；第 8 页第 8 节 Limitations",
+      "claim_ids": [],
+      "evidence_ids": ["Table 1", "ΔSCEwithin=-0.0075 [-0.052,+0.039]"],
+      "observed_evidence": "唯一随机干预是在同一 GSM8K/LLaDA-8B-Instruct 床上加入 37 个统一、无内容的冗余 token；它同时显著降低置信度与准确率，却只排除了这一特定剂量下达到 +0.2227 的 signed-gap 扩大。论文也承认没有覆盖有语义长度、其他剂量、其他模型或解码器。",
+      "why_it_matters": "自然提示长度变化通常伴随信息量、结构、位置和难度变化。无内容 filler 的负结果只否定一个很窄的纯长度通道，不能解释观察性差异的来源，也不足以成为一般“长度不致失校准”的结果。",
+      "required_fix": "将标题、摘要和所有结论严格限定为“+37-token 无内容冗余填充、单模型单解码设置”；若要提高贡献层级，增加预先规定的多剂量、有语义但答案保持不变的干预，并在至少一个额外 masked-diffusion 模型或解码设置上复现。",
+      "verification_test": "逐处核对是否没有把 content-free filler 外推为一般 prompt length；新实验应同题配对、固定预算、报告剂量曲线与聚类区间，并明确检验交互作用而非只并排显著性。",
+      "evidence_needed": "内容保持/语义长度干预、多个剂量、第二模型或解码方案的配对结果；最好包含机制可区分的干预设计。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-I3",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "第 3–4 页第 3 节；第 6–7 页第 6 节 judge validation；第 10–11 页附录 A/B",
+      "claim_ids": [],
+      "evidence_ids": ["Table 4", "Table 5", "Table 6", "ΔSCE2,corr=+0.1606 [-0.059,+0.380]"],
+      "observed_evidence": "MATH500 的 v2 judge 在 30 个已选锚点上为 30/30，但锚点是目的性而非概率样本；论文披露 accepted stratum 仍存在隐藏 false accept，并明确 FULL-193 两层人工补标尚未完成。相应的校正区间跨零，且作者正确称其为 design sensitivity 而非经典置信区间。",
+      "why_it_matters": "第二床是论文外部有效性的唯一支撑，但当前判分误差的方向和全床比例不可识别。因此原始 +0.2382 不能验证迁移，现有证据只支持“尚未决定”。",
+      "required_fix": "完成预先声明的两层概率抽样人工标注，冻结判分规则后重新估计 judge error、校正后的 SCE 差及不确定性；在完成前，将原始 v2 正区间从摘要的显著位置降为未校正诊断，并避免把它作为跨床复制。",
+      "verification_test": "核查人工样本的抽样概率、双标注/仲裁、盲法、分层权重和缺失处理均预先固定；主结论必须由校正区间的预设判据决定，且所有 judge 口径只保留一个主结果。",
+      "evidence_needed": "FULL-193 或统计功效等价的概率抽样人工金标准、标注者一致性、分层误差矩阵以及基于该设计的校正区间。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-I4",
+      "severity": "minor",
+      "dimensions": ["clarity", "reproducibility"],
+      "location": "第 1–4 页的 SUPPORT/NOT_IDENTIFIED/POWER_LIMITED 标签；第 10–11 页多种 sealed、v2、lenient 与 anchor-corrected 口径",
+      "claim_ids": [],
+      "evidence_ids": ["Figure 2b", "Table 5", "Table 6"],
+      "observed_evidence": "同一第二床同时出现 v2 composite、isin sensitivity、lenient two-component、human-anchor corrected 以及 sealed/fragility lineage 数值；虽然文字逐项限定，读者仍需跨多页才能确定哪一个是主估计、哪一个不可引用。",
+      "why_it_matters": "过多状态词和谱系读数使核心负面结论更难核验，也提高误引未校正正结果的风险。",
+      "required_fix": "在主文加入单一决策表，只列每个研究问题的估计量、主区间、状态和允许的结论；把废弃/谱系数字移到附录并清楚标为非结果。",
+      "verification_test": "一名只读摘要、主结果表和结论的审稿人应能唯一回答三个问题：观察性幅度是多少、随机干预排除了什么、跨床是否建立。",
+      "evidence_needed": "不需要新实验；需要统一的结果层级与引用规则。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现人类受试者、个人敏感数据或部署风险需要触发伦理审查；未来人工标注应说明标注者招募、报酬与数据处理，但这不改变当前伦理标记。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R1 生成，仅用于内部投稿前质量控制；该子代理只读取冻结 PDF 与指定审稿规则，未与其他评审通信，也未读取其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "完成概率抽样、双人或等价质量控制的 MATH500 人类金标准，使校正后的跨床区间达到预设决策标准。",
+    "在另一个 masked-diffusion 模型/解码设置上复现配对长度干预，并加入有语义但答案保持不变的多剂量干预。",
+    "把新颖性明确定位为可排除效应的随机化负结果，并与最接近工作作逐轴比较。"
+  ],
+  "evidence_that_would_lower_score": [
+    "概率抽样人工标注显示 MATH500 正差主要由 judge 偏差造成，或符号不稳定。",
+    "独立复现发现 GSM8K 配对身份、随机化或置信度提取与论文描述不一致。",
+    "替代合理 commit-confidence 定义使观察性分解或干预结论发生实质反转。"
+  ],
+  "review_limitations": [
+    "本评审严格只依据指定冻结 PDF；未读取代码、数据、附带 artifact、源文件或任何旧稿/修订记录。",
+    "按任务要求未联网，也未核验外部引文的存在性、准确性或遗漏；新颖性判断仅相对于 PDF 自身的相关工作，因此更广泛文献可能改变定位评价。",
+    "逐页视觉核查覆盖全部 12 页；未发现明显裁切、重叠或缺页。"
+  ]
+}

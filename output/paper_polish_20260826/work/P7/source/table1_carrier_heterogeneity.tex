@@ -1,0 +1,54 @@
+% P7 QUANT-GATE — Table 1: carrier-dependent heterogeneity + depth-proxy attribution.
+% booktabs formal table (MGR R126: each table must be reconstructable — see repro notes below).
+% Source data: experiments/qgate_tailturnover/results/fb2_v3/{4B,1.7B}_hqq4_gsm8k.jsonl
+%   (run/trial + host identifiers withheld for double-blind review; bit-identical across r-factors and hosts —
+%   determinism, effective n=1 across runs per TEACHER r46).
+% Repro:  qs training create --config qs/p7_qgate_dec_r1_fb2_v2.yaml   (Trial 1881556)
+%         python3 r24_depth_attribution_power.py                        (CPU, depth/LOO/power)
+%         python3 r31_paper_numbers.py                                  (CPU, prints every cell)
+% Analysis JSON sha16: R24_DEPTH_ATTRIBUTION_POWER.json = fd1bea221759eb4c,
+%                      R31_PAPER_NUMBERS.json           = 6c26aced50960e6d.
+% R31 change: the 1.7B depth columns, previously left as "--", are filled in from the same
+% registered payload; they are what shows that the 1.7B carrier has no depth alignment at all.
+\begin{table}[t]
+\centering
+\caption{Heterogeneity of activation-tail turnover as a predictor of per-layer PTQ degradation
+across the two measured checkpoints (HQQ4 weight-only, arithmetic deployment proxy). Writing
+$\tau$ for turnover (Eq.~\ref{eq:turnover}), $\delta$ for single-block degradation
+(Eq.~\ref{eq:degrad}) on the corrected pad-masked labels (C11) and $d$ for the block index, all
+$\rho$ are rank (Spearman) correlations and $\rho(\cdot,\cdot\mid\cdot)$ is a partial rank
+correlation, taken over \emph{probed blocks of the same model} --- the unit of analysis is a
+layer, not an independent sample (C4, C9). On the masked labels the 4B raw relation is strong
+($\rho\approx0.56$) and robust to noise (C12), while $\tau$ is nearly collinear with $d$ and the
+masked partials do \emph{not} resolve a depth-proxy attribution (both wide;
+\S\ref{sec:results-depth}, C5); on 1.7B the masked relation is weak and its interval
+uninformative. The historical unmasked (pad-polluted) values are reported as a superseded
+sensitivity row in Table~\ref{tab:uncertainty-ledger}.}
+\label{tab:carrier-heterogeneity}
+\setlength{\tabcolsep}{6pt}
+{\small
+\begin{tabular}{lccccccc}
+\toprule
+Carrier & \shortstack{probed\\blocks} &
+$\rho(\tau,\delta)$ & $\rho(d,\delta)$ & $\rho(\tau,d)$ &
+$\rho(\tau,\delta\mid d)$ & $\rho(d,\delta\mid\tau)$ &
+\shortstack{$\mathrm{PPL}_{\rm fp}$ on\\dep.\ proxy} \\
+\midrule
+Qwen3-4B   & 12 of 36 & $+0.559$ & $+0.511$ & $+0.909$ & $+0.266$ & $+0.006$ & $18.953$ \\
+Qwen3-1.7B & 11 of 28 & $+0.118$ & $+0.091$ & $-0.082$ & $+0.127$ & $+0.102$ & $19.597$ \\
+\bottomrule
+\end{tabular}
+}
+
+\smallskip
+\begin{minipage}{\textwidth}
+\footnotesize\raggedright
+\emph{Reconstruction.} HQQ4 weight-only; calibration proxy $=$ templated narrative prompts,
+deployment proxy $=$ templated arithmetic prompts, $n_{\rm cal}=n_{\rm dep}=64$ (C11 states
+what these proxies are and are not). $\mathrm{PPL}_{\rm fp}$ is the full-precision
+deployment-proxy perplexity, the denominator of every degradation value. Probed-block lists,
+analysis JSON sha16s, and the double-blind-suppressed provenance (device / trial / host) are
+consolidated in Appendix Table~\ref{tab:app-provenance}. Uncertainty, robustness and power for
+these same cells are in Table~\ref{tab:uncertainty-ledger}.
+\end{minipage}
+\end{table}

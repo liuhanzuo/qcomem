@@ -1,0 +1,244 @@
+{
+  "reviewer_id": "r01_experiments",
+  "round": 1,
+  "snapshot_sha256": "192c747fc60119ef4aa7051ded3b868a11371856ca7a7f4cf737a91b43a5caca",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The reported within-run statements are carefully scoped, the page arithmetic reconstructs, and the frozen raw shards strongly record exact cross-layout equality. However, the audit's ability to expose realistic ownership failures is not established end to end: both main arms share the same callable and GDN implementation, the only cross-N oracle is blind to N-invariant common-mode errors, request-to-GDN-base disjointness is not checked, and the experiment covers one tail geometry and one sequential schedule. These are substantive evidence gaps for an ownership-audit contribution even though the manuscript discloses them honestly.",
+    "presentation": "The paper is exceptionally clear about control topology, measurement denominators, comparison counts, non-independence, and claim boundaries. Tables 2--4 and the limitations section make the evidence ceiling easy to audit; the only presentation/provenance blemish is that the delivered build record does not bind the delivered source/PDF hashes.",
+    "contribution": "A denominator-explicit, hash-bound audit package is useful, but the current empirical contribution is one clean reference case rather than demonstrated general audit capability. There is no successful independent semantic reference, production scheduler study, optimized full-copy comparator, factorial KV/GDN ownership study, or end-to-end fault-seeding campaign, so the knowledge gained beyond the deterministic allocation formula and self-consistency result remains narrow."
+  },
+  "paper_summary": "ForkAudit proposes an evidence-gated checklist for auditing ownership of paged full-attention KV and functional recurrent state when multiple continuations share a prefix in a hybrid LLM. In one Qwen3.5-35B-A3B/H20 case, it compares a source-retaining materialized-KV control with a shared-document layout under the same recorded vLLM Python callable, checks exact tokens, runtime full-vocabulary logits, final logical KV, and GDN digests, adds a nested-fan-out metamorphic check, and separates analytical page-pool accounting from PyTorch allocator peaks. The paper explicitly frames the result as bounded within-run self-consistency rather than semantic correctness, serving performance, or production capacity.",
+  "strongest_verified_contribution": "The strongest verified contribution is the unusually auditable same-callable reference case: the anonymous manifest binds eight raw shards and executed source, all 504 paired request instances record exact cross-layout tokens/logits/logical-KV/GDN outcomes, and the N=32 source-retaining page-pool and PyTorch allocated-peak denominators reconstruct to 2,960 versus 240 MiB and 74,623,183,360 versus 71,765,915,136 bytes, respectively.",
+  "strengths": [
+    "The experimental claims are disciplined: the manuscript repeatedly distinguishes self-consistency from semantic correctness, residency from concurrent execution, page pools from allocator/process/service memory, and a controlled materialization arm from an optimized production baseline.",
+    "Primary evidence binding is strong. All 36 entries in supplement_anonymous/ANONYMOUS_MANIFEST.sha256, including the eight approximately 29.5 MB raw shards, verify against the submitted files, and the raw rows contain per-request trajectories, callable ledgers, ownership fields, allocator snapshots, and state digests.",
+    "The cross-layout comparison is stricter than token-only agreement: it includes runtime torch.equal checks for every full-vocabulary step tensor, final logical KV at all ten attention layers, and 60 GDN state tensors per request.",
+    "The authors correctly count 504 paired instances as only 256 unique queries, state that the eight books are not stochastic memory replicates, and avoid confidence intervals or performance claims unsupported by the protocol.",
+    "The negative HF-eager versus vLLM gate and near-unity supporting timing ratios are reported rather than hidden, and they are not converted into semantic or speed claims."
+  ],
+  "questions": [
+    "Can the authors validate audit sensitivity with end-to-end seeded faults, such as overlapping private reservations, disabling partial-tail COW, aliasing a request GDN state to the persistent base, corrupting a block-table entry, and supplying an incorrect position or mask contract?",
+    "Can a small-model or short-context dense/eager reference be used as an independent semantic oracle even though the full Qwen3.5 HF-versus-vLLM gate failed? Which observable would distinguish a common-mode error from correct behavior?",
+    "Why is the source arena, including its N-scaled private reservations, retained in the materialized control after all fresh request arenas exist? What are the measured PyTorch and process-memory results for the source-free 85N MiB materialization topology?",
+    "Does tail-safe append remain exact for aligned prefixes and for several residues and append lengths, especially residues 1, 64, and 127 and appends that land exactly on or cross multiple page boundaries?",
+    "What failures appear under an actual serving scheduler with continuous/ragged batching, overlapping CUDA work, cancellation, eviction, and page reclamation?",
+    "Can the artifact archive direct storage-range comparisons between every request-local GDN tensor and the persistent GDN base, and can a KV-share by GDN-share factorial control isolate both ownership mechanisms?",
+    "Can the cross-N design rotate query subsets so that all 256 unique queries receive non-vacuous comparisons, and can allocator cells be repeated under randomized or ABBA arm order?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R01-EXP-001",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Pages 5--6, Table 3 and Sections 4.3--5.1; page 8, Evidence limitations; Appendix B, Table 6 on page 11",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CPU-TESTS",
+        "E-HF-NEG"
+      ],
+      "observed_evidence": "Cross-layout equality compares two layouts that use the same recorded Python attention callable and the same functional GDN treatment. Cross-N detects only resident-count-dependent changes. The paper itself states that both relations miss N-invariant common-mode errors, that the HF-eager semantic gate failed, and that Table 6 lists intended failure sensitivities rather than executed end-to-end runtime mutants. The governance suite mainly tests helpers, serialized-artifact tampering, and replay fail-closure; it does not show that a GPU execution containing each targeted ownership defect is detected.",
+      "why_it_matters": "The central contribution is an audit, so demonstrating that its checks reject representative real faults is decision-relevant. A clean self-consistent run alone cannot establish diagnostic sensitivity, and exact agreement can hold when both arms share the same wrong position, mask, permutation, or recurrent update.",
+      "required_fix": "Add an end-to-end fault-seeding matrix covering each claimed invariant and, where feasible, a semantically independent dense/eager reference at reduced scale. Report which checker fires, detection latency, false negatives, and any fault that survives all relations.",
+      "verification_test": "For every seeded fault, rerun the frozen protocol and require a preregistered audit failure at the intended target; also show that the unmodified control passes. At least one independent reference must compare logits or states against an implementation that does not share the audited block-table/COW path.",
+      "evidence_needed": "New mutant-run artifacts and at least one successful independent-reference experiment, with commands, raw outputs, and registered hashes.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-EXP-002",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Page 4, Section 4.1 and Table 2; page 5, Table 3; pages 6--7, Sections 5.2--5.3; page 8, What it does not establish",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-POOL-01",
+        "C-UNSUPPORTED-GENERAL"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CODE-KERNEL"
+      ],
+      "observed_evidence": "Every primary cell uses a 4,095-token document, page size 128, a 127-token partial tail, 32 query tokens, seven fed-back decode tokens, 39 total appended tokens, BF16/Q16, and the same model. This exercises one nearly full tail that is detached and then spans two private pages, but no aligned prefix, short residue, exact-boundary append, longer multi-page append, alternative page size, or lower-precision cache.",
+      "why_it_matters": "COW and block-table bugs are strongly geometry dependent. One carefully chosen residue establishes this specific case but does not show that the proposed checklist or implementation covers the boundary conditions it is meant to audit.",
+      "required_fix": "Run a compact preregistered geometry sweep over aligned and several partial-tail residues, append lengths below/at/above page boundaries, and at least one additional page size or supported precision. Preserve exactness, ownership, and accounting checks for every cell.",
+      "verification_test": "For each geometry, recompute expected logical tokens, detached-tail bytes, private-page counts, and pool equations from first principles and require exact cross-layout/reference equality with zero source mutation.",
+      "evidence_needed": "New raw geometry-sweep runs and a per-cell expected-versus-observed ledger.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-EXP-003",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Page 4, Table 2; page 5, Section 4.3; page 8, What it does not establish and proposed next evaluation",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-ISOLATE-01",
+        "C-UNSUPPORTED-SPEED"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CODE-MF"
+      ],
+      "observed_evidence": "All request objects are resident, but model steps run sequentially in round-major order on one CUDA stream. The raw shards explicitly set concurrent_kernel_execution_claimed=false. No serving-engine scheduler, continuous/ragged batching, overlapping execution, cancellation, eviction, page reuse, or reclamation is exercised.",
+      "why_it_matters": "Sequential alternation can reveal some shared-state corruption, but it cannot stress races, lifetime bugs, reclamation hazards, or scheduler interactions that motivate multi-request ownership audits in deployed systems. Thus the result is a direct-loop residency check, not evidence for a serving lifecycle.",
+      "required_fix": "Integrate the two ownership modes into an actual scheduler or a controlled concurrent/lifecycle harness and test overlapping requests, ragged progress, cancellation, eviction, and block reuse while retaining the same invariants.",
+      "verification_test": "Execute randomized lifecycle traces with deliberate overlap and reuse; require per-request semantic/state equality, immutable-prefix digests, disjoint live reservations, and complete reclamation without stale-state reuse across repeated runs.",
+      "evidence_needed": "New scheduler or concurrent-harness traces with raw ownership ledgers and failure-injection cases.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-EXP-004",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Page 4, Figure 1; pages 6--7, Sections 5.2--5.3 and Figure 2; page 8, limitations; Appendix A, Table 5 on page 11",
+      "claim_ids": [
+        "C-POOL-01",
+        "C-MEM-01",
+        "C-DENOM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CODE-MF"
+      ],
+      "observed_evidence": "The materialized arm retains the common 80 MiB source plus 5N MiB of source private reservations and additionally allocates N independent 85 MiB request arenas, yielding 80+90N MiB versus 80+5N MiB. The headline 12.33x ratio at N=32 therefore includes memory that an optimized full-copy implementation could release. The manuscript provides an arithmetic source-free counterfactual, 85N MiB with an 80N MiB contrast, but explicitly has no allocator measurement for it and no production baseline.",
+      "why_it_matters": "The controlled topology is valid for isolating an added allocation, but it is not a competitive baseline and inflates the most salient pool ratio relative to a source-free full-copy topology. Without measuring that topology, the 3.83% allocator comparison also cannot be translated into a fair implementation choice.",
+      "required_fix": "Measure a source-free materialization control that releases the source and its unused N-scaled reservations after copies are formed, and compare against at least one real prefix-sharing/full-copy implementation under matched lifecycle and allocator conditions.",
+      "verification_test": "Show post-setup ownership and allocator snapshots proving the source is absent from the source-free arm; report analytical pool, PyTorch allocated/reserved, NVML/process memory if making deployment statements, and equality for all outputs/states.",
+      "evidence_needed": "New source-free baseline runs and, for any practical claim, a matched production-runtime baseline.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-EXP-005",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "Page 5, Table 3; page 6, Section 5.1; page 8, limitations",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-UNSUPPORTED-GDN"
+      ],
+      "evidence_ids": [
+        "E-MF-SHARDS",
+        "E-CODE-GDN",
+        "E-CODE-MF"
+      ],
+      "observed_evidence": "The artifact verifies that final request GDN states are pairwise storage-disjoint for N>1 and that the persistent GDN digest is unchanged, but it does not archive direct request-to-persistent-base storage-range disjointness. Both arms use the same functional torch GDN path, so cross-arm equality cannot validate that path or isolate recurrent-prefix sharing.",
+      "why_it_matters": "Heterogeneous attention/recurrent ownership is the paper's motivating distinction. Leaving the request-base alias relation unchecked and never varying GDN ownership means the hybrid portion is observed but not experimentally isolated.",
+      "required_fix": "Archive and validate storage ranges between each mutable request GDN tensor and every persistent-base tensor before and after updates, and add a 2x2 KV-share/materialize by GDN-share/materialize control where feasible.",
+      "verification_test": "Require zero overlap among mutable request ranges and the persistent base, unchanged base digests, pairwise request disjointness, and cross-cell semantic equality; seed a request-base alias to confirm the validator fails.",
+      "evidence_needed": "New storage-range ledgers, an alias mutant, and factorial GDN/KV control results.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-EXP-006",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Page 4, Table 2; pages 6--7, Sections 5.1 and 5.3; page 8, Evidence limitations",
+      "claim_ids": [
+        "C-ISOLATE-01",
+        "C-MEM-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "Nested fan-outs give non-vacuous cross-N comparisons to only query indices 0--15 on each rank; 128 of 256 unique queries appear only at N=32. There is one observation per rank-N-arm cell, every rank reports byte-identical allocator peaks, and the arm order merely alternates with N rather than using repeated randomized or ABBA blocks. The manuscript correctly says these are not independent memory replicates.",
+      "why_it_matters": "No confidence interval is needed for a deterministic accounting identity, but the allocator residual and the empirical breadth of the N-invariance check remain weakly characterized. Query content and order effects cannot be assessed from this design.",
+      "required_fix": "Rotate or sample query subsets so every query is evaluated at multiple fan-outs, and repeat allocator measurements under balanced randomized/ABBA arm orders while reporting all runs and dispersion.",
+      "verification_test": "Require 256/256 queries to have at least one larger-fan-out comparison and show repeat-level allocator values, order labels, and robust summaries; do not treat nested duplicate appearances as independent samples.",
+      "evidence_needed": "Additional query-balanced fan-out runs and repeated allocator cells.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R01-EXP-007",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "Page 8, Reproducibility Statement; submission MANIFEST.json; build_record.json/build_record.json; delivered main.tex/main.tex and manuscript/main.pdf",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The latest build_record entry binds source SHA-256 0060b87e0c7ed624ad53720f4f4973eeebc15cac354fbb1fd984b41d0e30478a and PDF SHA-256 2c80a6a5db1a4d442aaad6db7c1f7ca403841b176c558c165b85af7501ee4985, whereas MANIFEST.json and direct hashing bind the delivered source to 7743492e0c7a4a4fb5371cf42706069704d38e0cbc69f75d858bbd43333d3511 and the delivered PDF to eb170ba607f6a5947918b9a7fffd1aaa60a7da0270e9fbafb26bda1b7f5c080b. In addition, build inputs such as main.tex and math_commands.tex occur as directories containing same-named files, so the recorded root-level latexmk command is not directly executable on the frozen snapshot.",
+      "why_it_matters": "The experiment artifacts are strongly hash-bound, but the stale build relation prevents an auditor from proving that the reviewed PDF was generated from the reviewed source using the recorded command.",
+      "required_fix": "Regenerate the build record after the final source/PDF freeze and package manuscript inputs in a directly buildable layout or provide a deterministic reconstruction step that normalizes the paths.",
+      "verification_test": "From a clean extraction, execute the recorded build command, require success, and require the build record's source hash and a reproducible-content PDF hash to match the frozen deliverables.",
+      "evidence_needed": "A current build record and clean-build log bound to the final snapshot.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific ethics concern is raised by this systems audit. The paper appropriately notes that it does not evaluate safety, bias, privacy, or downstream deployment quality.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A preregistered end-to-end mutant campaign showing that every central ownership/dispatch invariant detects representative GPU/runtime faults, plus a successful independent semantic reference at a feasible scale.",
+    "Exactness and ownership results across aligned and multiple partial-tail/page-crossing geometries, with at least one additional model or supported cache configuration.",
+    "A real scheduler or concurrent lifecycle evaluation covering ragged progress, cancellation, eviction, reclamation, and reuse.",
+    "A measured source-free materialization comparator and a matched practical baseline, with repeated allocator/process-memory observations.",
+    "Direct request-to-GDN-base storage-range evidence and a KV-by-GDN ownership factorial control.",
+    "A final clean-build record whose hashes match the delivered source and PDF."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any failure of the submitted shard hashes, raw replay, or exactness booleans to match independently recomputed results.",
+    "A seeded N-invariant position, mask, KV-order, or GDN-update defect that passes all current audit targets.",
+    "Divergence or source mutation at aligned/other tail residues, longer appends, or under scheduler page reuse.",
+    "Evidence that request-local GDN state overlaps the persistent base during mutable updates.",
+    "A fair source-free or production full-copy baseline that materially changes the allocator conclusion or reverses the ownership comparison."
+  ],
+  "review_limitations": [
+    "I audited only the frozen round-01 submission snapshot and did not inspect prior reviews, author plans, or the parent workspace.",
+    "I verified submitted hashes and inspected raw summaries, representative raw fields, executed source, tests, and manuscript claims, but I could not rerun the eight-GPU model experiment or recompute unarchived full tensors.",
+    "My primary role was experimental rigor; I did not independently re-search the full related-work literature."
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": "forkaudit-r29-local-replay-overhead-preregistration-v1",
+  "evidence_id": "E-R29-LOCAL-REPLAY-OVERHEAD",
+  "frozen_at": "2026-08-25T11:28:05+08:00",
+  "purpose": "Measure reviewer-package footprint and warm-cache CPU-only offline replay wall time without changing any archived scientific bytes.",
+  "package_root": "paper_autonomous_multifork_iteration/evidence/round_04_rr2_package",
+  "replay_entrypoint": "paper_autonomous_multifork_iteration/evidence/round_04_rr2_package/replay/run_replay.sh",
+  "replay_entrypoint_sha256": "09f032a08059c41f4f562e19442703c48f8cdd7e1e24b6c7a51414a6bc4e0292",
+  "measurement_runner": "scripts/measure_forkaudit_replay_overhead.py",
+  "measurement_runner_sha256": "b0190bc5157032d81c27964ae559029b5042c2a9d2d8f19a3b5c125fb2ac8490",
+  "protocol": {
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "cache_interpretation": "The unreported warmup intentionally primes filesystem and interpreter caches; measured values are warm-cache reviewer replay times, not cold-download or cold-page-cache times.",
+    "execution": "Run the exact package replay entrypoint as a child process from the package root, capture exit status and SHA-256 of stdout/stderr, and measure wall/user/system seconds for each repetition.",
+    "storage": "Recursively count regular files and their logical byte sizes under the frozen package root before replay.",
+    "host_disclosure": "Record OS, architecture, CPU brand, logical CPU count, physical memory, and Python version; omit machine hostname and credentials."
+  },
+  "validity_gates": [
+    "the package root and replay entrypoint exist",
+    "the replay entrypoint SHA-256 equals the preregistered digest",
+    "the result path does not pre-exist",
+    "the warmup and all five measured replays exit zero",
+    "the package footprint is unchanged before and after measurement"
+  ],
+  "estimands": [
+    "package_regular_file_count",
+    "package_logical_bytes_and_MiB",
+    "median/min/max measured wall seconds",
+    "median child user and system CPU seconds"
+  ],
+  "claim_boundary": "This authorizes only storage footprint and CPU-only warm-cache offline replay time on the disclosed Mac host. It does not measure H20 live-capture overhead, cold download time, production latency, throughput, or engineering integration effort.",
+  "negative_result_policy": "Any failed replay or footprint drift invalidates the timing result and remains registered; it is not silently discarded."
+}

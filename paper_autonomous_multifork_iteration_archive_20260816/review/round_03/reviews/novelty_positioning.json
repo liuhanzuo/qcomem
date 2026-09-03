@@ -1,0 +1,67 @@
+{
+  "reviewer_id": "R-NP-01",
+  "round": 3,
+  "snapshot_sha256": "55fab4ba9bdd9190d9d0b9b346235b663862f46eca3bf918a702dcbca44c3fec",
+  "role": "novelty_positioning",
+  "overall_score": 6.8,
+  "confidence": 4,
+  "recommendation": "borderline",
+  "dimension_scores": {
+    "novelty": 4,
+    "significance": 3,
+    "technical_soundness": 3,
+    "experimental_rigor": 4,
+    "clarity": 4,
+    "reproducibility": 4,
+    "citation_integrity": 3,
+    "limitations_responsible_claims": 4
+  },
+  "paper_summary": "本文在单流Q16与4095-token单文档条件下验证了Qwen3.5-35B多常驻请求下same-kernel文档共享策略的correctness与解析账本缩减，给出fresh/reuse容量线性模型与raw轨迹重放校验。",
+  "strongest_verified_contribution": "在严格same-kernel闭环下证明 N=1..32 时 fresh/reuse 在 token 与 full-vocab logits 上 exact，并给出重放驱动的 reuse 带来的解析账本线性下降（fresh=80+90N, reuse=80+5N MiB）。",
+  "strengths": [
+    "边界定义非常谨慎，明确排除了TTFT/throughput/scheduler/Q8-Q4与下游质量主张。",
+    "correctness门禁不仅给出顶层布尔，而是重放 raw trajectory、logical K/V 与GDN，避免了常见的报告过度乐观问题。",
+    "报告与论文在核心数据口径（PyTorch allocator 非NVML）上保持一致。"
+  ],
+  "issues": [
+    {
+      "issue_id": "I-NP-1",
+      "severity": "minor",
+      "dimensions": ["novelty", "significance"],
+      "location": "摘要+引言/讨论: 当前标题和表述强调\"vllm同核常驻分叉\"，但缺少与已知multi-query KV cache/share-prefix或prefix caching相关工作并列定位。",
+      "claim_ids": ["C1", "C3", "C4"],
+      "evidence_ids": ["E1", "E2", "E3"],
+      "observed_evidence": "论文提供了完整实验与复核，但未给出与公开相关方法（如RAG prefix reuse或PagedAttention变体）的可读比较框架。",
+      "why_it_matters": "缺少可复核的“新颖性边界”会让评审难以判断本工作是否实质增量。",
+      "required_fix": "新增一个简短相关工作/定位小节，加入至少2-3条明确对照：该工作与传统cache共享/复用的区别。",
+      "verification_test": "检查新增段落是否定义了最小假设、共享对象（文档块/请求私有元数据）与不可直接外推场景。",
+      "evidence_needed": "可指向本报告方法章节和实验设置证据。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I-NP-2",
+      "severity": "minor",
+      "dimensions": ["citation_integrity"],
+      "location": "正文目前未见正式相关引用条目，citation_requests 仅包含占位空列表。",
+      "claim_ids": ["C6"],
+      "evidence_ids": ["E11"],
+      "observed_evidence": "相关工作与方法背景几乎全凭内部报告描述，无可追溯文献支持。",
+      "why_it_matters": "即使是工程审计型论文，也应将边界和术语锚定在公开可检索文献中，便于可复现和审稿可接受性。",
+      "required_fix": "补充1-2篇基础文献（vLLM unified_attention / paged attention / long-context caching）并在方法/引言中引用。",
+      "verification_test": "citation_requests 不再空；citation_lock 中出现有效条目且与正文映射一致。",
+      "evidence_needed": "bib条目元数据与句对齐支持检查。",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "score_ceiling_under_current_evidence": 7.4,
+  "predicted_score_after_required_changes": 7.6,
+  "evidence_that_would_raise_score": [
+    "与至少两类相关工作建立对比后的‘贡献窗口’定位",
+    "加入简明贡献-对比表"
+  ],
+  "evidence_that_would_lower_score": [
+    "如果新增相关性描述与正文 claims 冲突或证据不足"
+  ]
+}

@@ -1,0 +1,401 @@
+{
+  "reviewer_id": "R44-REV-2",
+  "round": 44,
+  "snapshot_sha256": "3245a5de0899448e0aa73c978bffd18465740fac5257a3559b7bb6a1ad621ce0",
+  "access_mode": "pdf_only",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The core mechanism is plausible and the paper is unusually disciplined about scope, but three substantive defects materially reduce confidence in the central claims. (1) The only storage-free comparator in the timing table, 'no-cache dense recompute', has TPOT 648.75 ms which is numerically indistinguishable from its own TTFT of 0.649 s (Table 2, p.6); i.e. it re-runs a full prefill for every generated token. That contradicts the paper's own definition of the dense endpoint in Section 3 (p.3), which pays 'full prefill on every query'. Under the Section 3 definition the dense endpoint would deliver ~7.40 tok/s against Q-CoMem's measured 7.19, with Store = 0.00 MiB and the table's best F1 (39.42), i.e. Q-CoMem would be Pareto-dominated on every metric the paper measures. (2) Table 1's headline Store values are arithmetically inconsistent with the quantizer the paper defines. Eq. 3 plus Figure 2c (64-value groups, packed codes plus BF16 scale and bias) cap Q4 compression at 128/36 = 3.5556x and Q8 at 1.8824x, yet Table 1 requires 34.683 -> 9.661 MiB = 3.590x for a policy that is only partly Q4 and puts GDN state at Q8. I verified that this same packing model reproduces all four quantized Store values in Table 2 to within 0.03% (Q8 15.89, Q4 8.41, Q4/Q4/Q8 10.01, per-layer 9.74), so the model is right and the 60-item panel is the outlier; the 14.10x headline is the number that cannot be reconstructed. (3) The ForkAudit factorial that supplies all ownership evidence (Section 5.5, Tables 3, 5, 6, 15) runs BF16 KV across all 10 attention layers and all 30 GDN layers on a vLLM-plus-Transformers stack with no split depth and no quantization anywhere in its frozen configuration, whereas the Q-CoMem numbers come from a Transformers-only split-replay implementation. The ownership contract of Section 4.3 is therefore never exercised on a dequantized depth-j entry or on the code that produced Tables 1 and 2. Positive counterweights: the memory decomposition of Eq. 2 honestly counts lower KV and recurrent state rather than the residual alone; the conservative byte-interval construction of Eqs. 6-7 is used in the sound direction (disjoint intervals imply true disjointness, aliasing additionally requires digest equality); and the TCB statement in Section 4.4 plus Appendix H is one of the more complete and honest exclusion lists I have read.",
+    "presentation": "Main-text organization is genuinely good: Section 5 is sequenced memory / latency / quality / ownership to mirror the contribution list, the two figures carry real information, and blank cells for unmeasured metrics are an admirable convention. But several definitions needed to check the paper are absent, and one section is effectively unreviewable. The timing table cannot be reconciled without reverse-engineering: the generated-token count is never stated (it is 8, not the 32 cap quoted in Section 5.1) and 'generated-token throughput' is never defined (it is n/(TTFT + n*TPOT)); I had to recover both numerically before Table 2 made sense. Eq. 4 ranges over all l in A and all l in G with no l<j restriction, contradicting Eq. 2, has no dependence on r on its right-hand side, and expresses none of the immutability, COW, or rebinding semantics that the surrounding prose actually carries. Eq. 5 introduces mandatory slots M_i(Sigma) that never appear in the formula. Section 5.5 (p.7) is dense numerology - '8 x 3 x 540 = 12,960 full serializer/live-object rows', '480 = 8 x 60 direct clone destinations', 'six owner-row anchors' - over terms defined nowhere in the main text, so a reader cannot judge what any of it establishes. 'Q16 projections' (Section 4.2, Tables 2 and 18 footnotes) is never defined, the aggressive-mixed bit assignment is never given anywhere, and the en-dash glyph means 'no retained entry' in Table 1's dense Store cell but 'unmeasured' in the same table's TTFT cells.",
+    "contribution": "The delivered novelty is narrow. The split-replay primitive is explicitly disclaimed as prior work (Section 2, Table 11), groupwise min-max affine quantization is standard, and the added step - quantize the lower KV and recurrent state as well as the residual - is a sensible but incremental accounting fix. The genuinely interesting piece is ForkAudit's phase-indexed storage witness with coverage separated from verdict, and the demonstration that output and terminal request state stayed exact in 8/8 cells while a persistent base was corrupted (Section 5.5, Table 14) is a useful negative result about output-equality testing. However that methodology is not run on the system whose numbers the paper reports, and the capacity contribution is not shown to occupy a point on the Pareto frontier: at j=7 of L=40, Read can skip at most 17.5% of prefill layers, so the 0.673 s TTFT against dense recompute's 0.649 s is a structural outcome, not an implementation artifact, and no sweep over j is reported. The paper's third headline number (54.5% allocator reduction) is, per Appendix Table 15, the gain of the row the authors themselves label 'Paged-prefix baseline' over a control that Appendix H calls not an optimized production baseline."
+  },
+  "paper_summary": "The paper addresses a capacity question for repeated queries over stable documents on memory-constrained hybrid (attention + gated-delta-network) LLMs: how many bytes of reusable per-document state must stay resident, and what latency and quality that buys. It proposes Q-CoMem, which extends prior CoMem split replay by writing a document once through a split depth j=7 (of 40 layers) and groupwise-quantizing the complete retained entry - boundary residual, lower full-attention KV, and lower convolution/recurrent state - at a frozen Q4/Q4/Q8 state-type policy (Eq. 2, Eq. 3, Figure 2). At Read the entry is dequantized, document tensors are shared immutably, request-local mutable state is created by copy-on-write and recurrent rebinding (Eq. 4), the query traverses the lower layers, and layers [7,40) reconstruct the suffix. The design is paired with ForkAudit, a fail-closed seven-target ownership trace whose pass predicate (Eq. 5) requires complete mandatory-record coverage, identity binding, and all registered replay predicates. Evidence: a 60-item archival Qasper/2WikiMQA panel reporting retained Store and F1 (Table 1); a separate eight-item timing execution on a subset of those items reporting Store, TTFT, TPOT, throughput and F1 (Table 2); and a 96-configuration Qwen3.5 ownership factorial on PG-19 with allocator endpoints and mutation controls (Section 5.5, Appendix C-E, G). Headline claims are 14.10x smaller retained payload at -0.39 mean F1 versus split Q16, an explicitly adverse TTFT trade-off, a 54.5% allocator-delta reduction from shared-document KV at N=32, and a historical aliasing defect that output equality missed.",
+  "strongest_verified_contribution": "The honest, verifiable demonstration that output-level equality is insufficient to validate shared-state reuse: in the historical no-injection regression (Section 5.5, Appendix Table 14), tokens, FP32 logits, terminal request GDN state, and logical KV all compare exact in 8/8 cells while the persistent base is corrupted, and only a storage-level base invariant catches it; the target-gate-suppression matrix independently shows token equality catching 0/5 and exact logits 1/5 of semantic-complete mutants (Section 5.5, Appendix Table 8, p.19). This is a fixed-case result, correctly labelled as such, and it is the one claim in the paper whose evidence, boundary, and TCB are all stated at matching strength.",
+  "strengths": [
+    "The retained-state decomposition (Eq. 2, p.4) counts the lower full-attention KV and the lower convolution/recurrent state alongside the residual, rather than reporting the residual alone. This is the honest denominator for a hybrid architecture and it is the paper's clearest methodological improvement over a naive split-replay accounting.",
+    "Table 2's Store column is exactly self-consistent with the quantizer the paper defines. Taking a common BF16 split entry of 29.90 MiB, the 64-value group model reproduces Q8 = 15.89, Q4 = 8.41, Q4/Q4/Q8 = 10.01 and per-layer [8,8,4,4,8,8,8] = 9.74 MiB to within 0.03%. That level of internal coherence is rare and it makes the Table 1 mismatch (issue T-02) diagnosable rather than opaque.",
+    "The TCB statement in Section 4.4 (p.5) and Appendix H is unusually complete and unusually unflattering to the authors: capture/replay, slot schema, slot-to-live-tensor binding and framework storage semantics are named as trusted; coherent omission/fabrication, transient write-then-restore, compiled GDN, ATen/CUDA and device/driver execution are named as uncovered. Very few systems papers state that a pass 'establishes only that the registered predicates held at captured points under that TCB'.",
+    "The storage witness of Eqs. 6-7 (Appendix D, p.18) uses a conservative byte interval in the logically sound direction: disjoint intervals imply genuine disjointness, so the private-ownership predicate cannot be satisfied vacuously, and exact aliasing is required to additionally match interval, geometry, dtype/device, sizes and content digest. The paper also states the residual false-positive direction rather than hiding it.",
+    "Coverage is separated from verdict in Eq. 5, and Table 6 reports both. A missing, duplicated or unbound mandatory receipt leaves a target open rather than silently passing - the right default for an audit contract.",
+    "Negative and unflattering results are reported rather than buried: the adverse TTFT (Section 5.3), the all-Q4 failure endpoint at -3.047 F1 (Table 2), the five catastrophic items under the aggressive policy (Section 5.4), the archival run's missing source and weight ledgers (Section 5.6), and the Mac control in Appendix Table 13 showing all split variants agree with vanilla dense on only 71.89% of top-1 tokens.",
+    "Blank cells for unmeasured Recall and TTFT, with an explicit footnote that blanks are not zeros, is a convention more papers should adopt."
+  ],
+  "questions": [
+    "Does the 'no-cache dense recompute' arm in Table 2 maintain a KV cache during decoding? Its TPOT (648.75 ms) equals its own TTFT (0.649 s) to within 0.04%, which is what one would observe if every decoded token triggered another full prefill. Section 3 defines the dense endpoint as paying 'full prefill on every query', not per token. Which is implemented?",
+    "Please report the end-to-end query latency and throughput of a dense arm that prefills once per query and decodes with a normal KV cache. Using the full-prefix TPOT of 54.11 ms, that arm would produce 8 tokens in 1.082 s (7.40 tok/s) against Q-CoMem's measured 1.113 s (7.19 tok/s), with Store = 0.00 MiB and F1 39.42 versus 39.01. If that reconstruction is right, what does the retained 10.01 MiB buy?",
+    "Please give the per-component byte breakdown (packed residual, scales, biases, lower attention KV, lower GDN conv/recurrent) for every row of Table 1. Eq. 3 with 64-value groups and BF16 scale plus bias caps Q4 at 3.5556x, so 34.683 -> 9.661 MiB (3.590x) is below the floor even if the Q8 GDN component were zero. What accounts for the difference between the two Store implementations described in Section 5.1?",
+    "Does the primary ownership factorial (Table 3) run split replay at depth j and dequantize a packed Q4/Q4/Q8 entry? Table 3 lists 10 attention plus 30 GDN layers, BF16/Q16 KV, page 128, and no split depth, and Section 5.5 says the Q16 label is 'not quantization'. If the audited configuration is full-prefix and unquantized, on what basis does the abstract present ForkAudit as validating Q-CoMem's fork?",
+    "The Q-CoMem quality and timing runs use Transformers only; the ownership factorial uses vLLM 0.26 Triton attention plus Transformers GDN. Is the ownership evidence claimed to transfer to the Transformers-only implementation that produced Tables 1 and 2, and if so on what argument?",
+    "In Appendix Table 15 the shared-document-KV arm that yields 2.229 GiB is labelled 'Paged-prefix baseline', and Appendix H states that full-copy KV is a controlled factor rather than an optimized baseline. Why is the 54.5% reduction of a standard paged prefix-sharing arm over a deliberately naive control presented in the abstract and contribution list as a result of this work?",
+    "How many tokens are generated per item in Table 2, and how is 'generated-token throughput' defined? The columns are reconstructible only under tok/s = n/(TTFT + n*TPOT) with n = 8, which is stated nowhere; Section 5.1 quotes a 32-token cap.",
+    "Why j = 7? At j = 7 of L = 40 the Read path can skip at most 17.5% of prefill layers, which appears to bound any achievable TTFT advantage before dequantization cost is added. Is there a sweep over j showing where the capacity-latency trade-off becomes favourable?",
+    "Eq. 4 ranges over all l in A and all l in G, while Eq. 2 restricts to l < j. Is upper-layer document state forked, and if not, should Eq. 4 carry the l < j restriction?",
+    "What is the bit assignment of the 'aggressive mixed' policy in Table 1 (7.536 MiB, -5.44 F1)? It is the row that anchors the ablation argument but its configuration appears nowhere in the paper.",
+    "Eq. 3 divides by s = (u - m)/(2^b - 1), which is zero for a constant group. How is that case handled, and what is the dequantization map?",
+    "The frozen Q4/Q4/Q8 point is chosen as the headline in Section 5.4 after comparing six policies on the same 60-item panel that supplies its -0.39 [-2.04, 1.08] interval. Is there a held-out cohort on which that selected point's delta was not measured?"
+  ],
+  "issues": [
+    {
+      "issue_id": "T-01",
+      "severity": "critical",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Table 2 (p.6) 'No-cache dense recompute' row; Section 5.3 (p.6); Section 3 (p.3) 'Dense recomputation sets S(D) = 0 but pays full prefill on every query'; Appendix Table 18 (p.24) and Table 19 (p.25)",
+      "claim_ids": [
+        "abstract:capacity-reduction-with-explicit-online-cost",
+        "sec5.3:cost-concentrated-in-first-token",
+        "sec6:capacity-first-trade-off"
+      ],
+      "evidence_ids": [
+        "table2:dense-row",
+        "table2:qcomem-rows",
+        "table19:sglang-cache-off"
+      ],
+      "observed_evidence": "Table 2's dense arm reports TTFT 0.649 s and TPOT 648.75 ms. These differ by 0.04%, i.e. every decoded token costs another full prefill; no other row in the paper has TPOT above 55.5 ms on the same model and hardware. I verified the table is otherwise internally exact: tok/s = n/(TTFT + n*TPOT) with n = 8 reproduces all six reported throughputs (dense 1.370 vs 1.36; full-prefix 13.426 vs 13.38; Q8 7.165 vs 7.15; Q4/Q4/Q8 7.183 vs 7.19; per-layer 7.184 vs 7.19; Q4 7.180 vs 7.19), which confirms 648.75 ms really is a per-decode-step cost and not an aggregate. Section 3 defines the dense endpoint differently, as paying full prefill 'on every query'. Substituting the full-prefix decode cost (54.11 ms) into a Section-3-conformant dense arm gives 8 tokens in 0.649 + 8(0.05411) = 1.082 s = 7.40 tok/s, against Q-CoMem's measured 1.113 s = 7.19 tok/s. That arm also has Store 0.00 MiB (vs 10.01) and the best F1 in the table (39.42 vs 39.01). The paper's own Appendix Table 19 corroborates this: SGLang 0.5.17 with prefix reuse OFF - a genuine no-document-cache baseline - records TTFT 0.283 s, TPOT 53.38 ms, 12.73 tok/s and F1 39.14 on the identical eight items and hardware.",
+      "why_it_matters": "The paper's entire thesis is that Q-CoMem buys a smaller S(D) by spending online work, i.e. that it occupies a useful interior point between dense recomputation (S(D)=0) and exact prefix caching. If the dense endpoint as defined in Section 3 is faster than Q-CoMem while retaining nothing, then Q-CoMem is Pareto-dominated at that end and the interior point does not exist. On the numbers as printed, the only axis on which Q-CoMem beats dense is TPOT/throughput, and that margin rests entirely on a dense row that recomputes the prefix at every token. This is not a presentational quibble: it decides whether the contribution is a trade-off or a dominated design. It also cannot be waved off as a runtime-mismatch artifact, because Table 19's within-paper SGLang-cache-off row shows the same qualitative conclusion on the same slice with an off-the-shelf framework.",
+      "required_fix": "Add to the Table 2 block a dense arm that prefills once per query and decodes with a standard KV cache, matched in stack and harness to the Q-CoMem rows, and report its TTFT, TPOT, throughput, F1 and Store alongside them. State explicitly in Section 5.1 what caching the 'no-cache' arm does and does not use, and reconcile it with the Section 3 definition. If the Section-3-conformant dense arm dominates Q-CoMem on this workload, say so and restate the contribution as bounded to the regime where it does not (e.g. deeper j, longer generations, or many-document residency where 140 MiB/doc of full-prefix cache is the binding constraint and dense prefill latency is unacceptable).",
+      "verification_test": "Re-run the eight indices-6-9 items with three configurations under one harness: (a) prefill-per-query dense with decode KV cache, (b) full-prefix Q16 reuse, (c) Q-CoMem frozen Q4/Q4/Q8. Report per-item generated-token count, TTFT, per-step decode latency, end-to-end wall time and F1. The paper's claim survives only if (c) beats (a) on end-to-end latency or throughput at equal or better F1, or if the authors instead demonstrate a residency regime (documents per device at fixed VRAM) in which (a) is infeasible. Additionally check that a single-query end-to-end latency curve versus number of generated tokens crosses in favour of (c) somewhere within a realistic generation length.",
+      "evidence_needed": "A matched dense-with-decode-cache row in Table 2; per-item raw timing traces including generated-token counts; and either a crossover analysis versus generation length or a documents-per-device capacity measurement at fixed VRAM that shows what the retained entry actually buys.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "Table 1 (p.6), rows 'Q-CoMem frozen Q4/Q4/Q8' (9.661 MiB, 14.10x) and 'Q-CoMem same-memory mixed' (9.395 MiB); against Eq. 3 and Figure 2c (p.4) and Section 5.1 'Memory denominators' (p.5); abstract (p.1); Section 5.2 (p.6); Section 6 (p.9)",
+      "claim_ids": [
+        "abstract:136.235-to-9.661-MiB-14.10x",
+        "sec5.2:92.91-percent-reduction",
+        "sec6:14.10x-smaller-than-full-prefix-Q16"
+      ],
+      "evidence_ids": [
+        "table1:store-column",
+        "fig2c:group-packing",
+        "eq3:quantizer",
+        "table2:store-column"
+      ],
+      "observed_evidence": "Eq. 3 with Figure 2c's stated format - 64 values per group, packed unsigned b-bit codes, BF16 scale and BF16 bias - gives per-group sizes of 36 bytes at Q4 and 68 bytes at Q8 against 128 bytes at BF16, i.e. maximum compression 3.5556x (Q4) and 1.8824x (Q8). Table 1 requires 34.683 -> 9.661 MiB, a ratio of 3.590x, for a policy that packs GDN state at Q8. Even setting the Q8 GDN component to exactly zero, the pure-Q4 floor is 34.683 * 36/128 = 9.755 MiB, above the reported 9.661; the same-memory mixed row (9.395) is further below the floor. Using the GDN share I recovered from Table 2 (6.40 of 29.90 MiB, 21.4%), the frozen policy should land at 11.61 MiB, i.e. 11.73x rather than 14.10x. Table 2 is not affected: the same model reproduces its Q8, Q4, Q4/Q4/Q8 and per-layer rows to within 0.03% from a common 29.90 MiB BF16 entry, which is strong evidence that the packing model is correct and that the 60-item panel's component accounting is the outlier. Section 5.1 does say the two panels use different Store implementations, but a different summation cannot place a quantized entry below the byte floor of its own format.",
+      "why_it_matters": "14.10x is the paper's headline number - it appears in the abstract, in contribution bullet 2, in Section 5.2 and in the conclusion - and it is the product of the 3.93x split factor and the disputed 3.59x quantization factor. If the quantization factor is capped at 3.5556x and is realistically nearer 3.0x once Q8 GDN state is counted, the headline drops to roughly 12x. A reviewer cannot reconstruct the paper's central quantity from the paper's own method section, which is exactly the check Eq. 2 and Eq. 3 exist to enable.",
+      "required_fix": "Publish, for every Table 1 row, the byte breakdown into packed residual codes, residual scales, residual biases, lower attention KV codes plus metadata, and lower GDN codes plus metadata, and show that each row satisfies sum over components of ceil(n_values/64) * (b*64/8 + 4) bytes. Then either correct the affected Store values and all derived ratios and percentages, or state precisely what the 60-item accounting includes or excludes that makes it deviate from the format floor, and re-derive 14.10x under a denominator the reader can reproduce. Report both panels under one accounting implementation as the primary result.",
+      "verification_test": "Instrument the 60-item Store accountant to emit component-level byte counts per item and per policy, then assert programmatically that the packed size of each component equals ceil(n/64)*(b*8 + 4) bytes and that split-Q16-size / frozen-size <= 3.5556. Independently, recompute Table 1's Store with the Table 2 byte-range-union accountant on the same 60 items and report both columns side by side; the two should agree to within the metadata the paper says it excludes.",
+      "evidence_needed": "Per-component byte tables for all Table 1 rows, the group-size and metadata dtype actually used by the 60-item packer, and a cross-accountant comparison of the two Store implementations on a common item set.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims",
+        "clarity"
+      ],
+      "location": "Abstract (p.1); Figure 1 audit rail (p.2); Section 4.4 (p.5) 'ForkAudit validates the Section 4.3 lifecycle'; Section 5 intro (p.5); Section 5.5 (p.7); Appendix Table 3 (p.14) and Table 5 (p.14-16)",
+      "claim_ids": [
+        "abstract:forkaudit-validates-immutability-cow-rebinding",
+        "contrib3:ownership-safe-reuse",
+        "sec5.5:ownership-discipline-of-4.3-holds"
+      ],
+      "evidence_ids": [
+        "table3:frozen-geometry",
+        "table5:primary-ownership-factorial",
+        "table6:seven-target-verdicts"
+      ],
+      "observed_evidence": "Table 3 pins the primary factorial to: Qwen3.5-35B-A3B with all 10 attention plus all 30 GDN layers, vLLM fused attention with BF16/Q16 KV at page 128, 4,095-token PG-19 documents, 32-token transition, 8 output tokens. No split depth appears anywhere in the ownership cohort, and Section 5.5 states outright that the Q16 label is 'the protocol's storage label, not quantization'. I grepped the whole PDF: 'split depth', 'depth 7' and 'j = 7' occur only in the abstract, Section 3, Section 4.1-4.2, Figure 2 and the Apple-M4 control in Appendix Table 13 - never in the ownership cohort. 'Dequantize' likewise never appears in Section 5.5 or Appendix C-E. Separately, the audited stack uses vLLM 0.26 Triton attention while the Q-CoMem quality and latency runs (Section 5.1, Tables 1-2) use Transformers only. So the audited artifact is a full-prefix, unquantized, differently-implemented hybrid system, not the Q-CoMem entry described in Section 4.3.",
+      "why_it_matters": "The abstract sells ForkAudit as part of Q-CoMem ('Online Read dequantizes and forks that document state... A fail-closed ForkAudit trace validates immutability, copy-on-write, recurrent rebinding'), and Figure 1 draws the audit rail against the Read path. A reader reasonably concludes that the audited object is the dequantized depth-j entry. It is not. The ownership mechanism audited (shared vs full-copy KV, borrowed vs materialized GDN) is structurally analogous, but the Q-CoMem Read introduces obligations the factorial cannot have tested: that dequantization produces a document view no request mutates, that residual chunks are correctly bound and kept distinct from query chunks, and that quantized-entry lifetime is managed across forks. None of the seven targets in Table 6 references a residual or a packed entry. As stated, the paper's ownership guarantee does not attach to the code that produced its own memory, latency and quality numbers.",
+      "required_fix": "State plainly, in Section 4.4 and again at the top of Section 5.5, that the primary factorial runs a full-prefix BF16 configuration on a vLLM-plus-Transformers stack and does not execute split replay or quantization; add a row to Appendix Table 5 making that exclusion explicit in the 'Authorized claim / explicit exclusion' column. Then either (a) run the ForkAudit targets against the actual Q-CoMem Read path at j=7 with a packed Q4/Q4/Q8 entry, adding targets for dequantized-view immutability and residual-chunk binding, or (b) rewrite the abstract, Figure 1 caption and contribution bullet 3 so that ForkAudit is presented as a validated ownership methodology for hybrid shared-document serving, evaluated on a full-prefix configuration, rather than as validation of Q-CoMem's fork.",
+      "verification_test": "Instantiate the seven-target contract on the Transformers Q-CoMem Read path: dequantize one packed entry, fork it across N in {1,8,32} requests, and capture setup/transition/final storage witnesses. Confirm that (i) the dequantized document tensors' content digests are unchanged at final, (ii) request-local recurrent states are disjoint from the base and from peers after the registered transition, (iii) the partial-tail copy precedes append, and (iv) the two known ownership mutants (base alias, peer alias) are rejected on this path too. Report coverage and verdict per target as in Table 6.",
+      "evidence_needed": "A ForkAudit run whose frozen geometry table lists a split depth and a quantization policy; and a statement of which implementation (Transformers-only vs vLLM hybrid) each of Tables 1, 2 and 15 was produced by.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-04",
+      "severity": "major",
+      "dimensions": [
+        "limitations_responsible_claims",
+        "experimental_rigor",
+        "novelty"
+      ],
+      "location": "Abstract (p.1) 'shared-document KV lowers the post-priming allocated delta from 4.901 to 2.229 GiB at N = 32'; contribution bullet 3 (p.2); Section 5.5 'Allocator reduction with canonical equality' (p.7); Appendix Table 15 (p.22); Appendix H (p.27)",
+      "claim_ids": [
+        "abstract:4.901-to-2.229-GiB",
+        "contrib3:54.5-percent-allocator-reduction"
+      ],
+      "evidence_ids": [
+        "table15:four-allocator-endpoints"
+      ],
+      "observed_evidence": "Appendix Table 15 names the 2.229 GiB arm 'Paged-prefix baseline' (Shared-doc KV / Materialized GDN base) and names the 4.901 GiB arm 'Full-copy factorial control'. Appendix H states that 'Full-copy KV and materialized GDN bases are controlled ownership factors rather than optimized production baselines'. So the 54.5% figure is the well-established benefit of block-level prefix sharing (Kwon et al. 2023, cited by the paper as the substrate in Table 11) measured against a control the authors themselves say is not a production baseline. Furthermore this experiment shares a full-prefix BF16 KV cache across 32 requests; a Q-CoMem entry at j=7 retains KV for a single attention layer, so the mechanism producing the 2.672 GiB saving is not the mechanism the paper proposes.",
+      "why_it_matters": "It is the third of three quantitative results in the abstract and the closing number of contribution bullet 3, positioned as an independent win. A reader who does not reach Appendix Table 15 will attribute a standard PagedAttention-style saving to this work, measured against a straw control. That is an attribution error at the most visible point in the paper, and it inflates the apparent contribution of a paper whose own defensible claim is narrower.",
+      "required_fix": "Remove the 4.901 -> 2.229 GiB figure from the abstract and from contribution bullet 3, or restate it there as 'we reproduce the expected paged-prefix sharing saving under an ownership-audited implementation, against a full-copy control that is a factorial factor rather than an optimized baseline'. In Section 5.5, adopt Appendix Table 15's own arm labels in the body text so 'Paged-prefix baseline' is visible where the number is first quoted. If an allocator claim for Q-CoMem is wanted, measure it on Q-CoMem entries (see T-05).",
+      "verification_test": "Re-run the N=32 allocator factorial with a fourth arm: N requests sharing a single Q-CoMem packed entry at j=7 with per-request dequantized workspaces. Report final and peak allocated delta for full-copy KV, shared full-prefix KV, and shared Q-CoMem entry. Only the third arm supports an allocator claim for this paper's method; the gap between arms one and two should be reported as reproducing prior art.",
+      "evidence_needed": "Allocator endpoints for a Q-CoMem-entry arm, and explicit labelling in the main text of which arm is the prior-art baseline.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-05",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Eq. 1 and Section 3 (p.3); Section 5.1 'Memory denominators' (p.5); Section 5.6 (p.8); Section 6 (p.9) 'the one term of the deployment budget in Eq. 1 that scales with the hot document set'",
+      "claim_ids": [
+        "sec3:S(D)-is-the-controllable-term",
+        "sec6:reduces-the-Eq1-term",
+        "abstract:14.10x-smaller"
+      ],
+      "evidence_ids": [
+        "eq1:device-budget",
+        "table1:store-column",
+        "table15:allocator-denominator"
+      ],
+      "observed_evidence": "Eq. 1 is a device-byte inequality: M_device >= M_weights + M_shared + M_active + sum_D S(D) + M_runtime. But the measured S(D) in Tables 1 and 2 is a logical tensor payload that Section 5.1 says excludes non-tensor/Python metadata, allocator pools, process/NVML memory, active workspace and admission capacity, and Section 5.6 concedes that 'reducing Store does not by itself prove lower peak VRAM or serving capacity'. Meanwhile the paper demonstrates it can measure exactly the missing quantity - Appendix Table 15 reports final and peak allocated deltas above a frozen post-priming baseline - but applies that instrument only to the ownership factorial, never to a Q-CoMem quantized entry. Note also that Q4 packing produces many small tensors plus per-group BF16 scale and bias arrays, which is precisely the allocation pattern where caching-allocator overhead and fragmentation diverge most from logical payload; a 14.10x logical reduction could easily be a much smaller device-byte reduction.",
+      "why_it_matters": "The motivation, the method and the conclusion are all framed in terms of the Eq. 1 term, but no measurement of that term is ever reported for Q-CoMem. The gap is not disclosed as a mere caveat - it is the difference between 'we reduce the thing that limits how many documents fit' and 'we reduce a logical byte count that may or may not track the thing that limits how many documents fit'. Because the instrument already exists in the paper, this is a missing experiment rather than an infeasible one, which weakens the excuse for leaving it out.",
+      "required_fix": "Report, for at least full-prefix Q16, split Q16 and frozen Q4/Q4/Q8, the allocated and peak device bytes for a fixed number of resident documents under the Table 15 denominator, and state the realized reduction of the Eq. 1 term next to the 14.10x logical figure. If the two diverge, report both and let the logical number be an upper bound. In the abstract, qualify 14.10x as retained tensor payload (which the paper already does) and add the measured device-byte reduction if it differs materially.",
+      "verification_test": "Prime the process, snapshot torch.cuda.memory_allocated and max_memory_allocated, admit K in {1, 4, 16} documents under each retention policy, snapshot again, and report deltas. Separately report documents-admitted-before-OOM at a fixed device budget for each policy. The claim 'quantization increases hot-document capacity' is verified only if documents-before-OOM scales with the logical reduction.",
+      "evidence_needed": "Allocator and peak-memory deltas per retention policy at several residency counts, and ideally a documents-per-device capacity measurement.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-06",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "clarity"
+      ],
+      "location": "Figure 2a (p.4) 'lower prefix [0,7)', 'L7-L39 33-layer online suffix'; Section 4.3 (p.5); Section 5.3 (p.6); Section 5.6 (p.8)",
+      "claim_ids": [
+        "sec4.3:exchanges-suffix-reconstruction-for-smaller-entry",
+        "sec5.3:cost-concentrated-in-first-token"
+      ],
+      "evidence_ids": [
+        "fig2a:split-geometry",
+        "table2:ttft-column"
+      ],
+      "observed_evidence": "The split is fixed at j = 7 of L = 40, so Read skips 7/40 = 17.5% of the layers of a full prefill and must execute layers [7,40) over document plus query. The measured TTFT (0.673 s) is consistent with that structure: 0.825 x 0.649 s = 0.535 s of suffix work plus roughly 0.14 s of dequantization and overhead. j is never justified anywhere in the paper, no sweep over j is reported, and the structural ceiling on prefill savings is never stated. The one place a depth trade-off could be inspected, Appendix Table 13, is a different device and model and reports only a 1.15x online-time ratio at depth 7.",
+      "why_it_matters": "j is the single most important design parameter of a split-replay system: it sets both the retained-entry size and the online replay cost, and the paper's entire capacity-latency story is a function of it. Fixing it at 7 without justification or sensitivity analysis makes the reported operating point unfalsifiable as a design choice, and it hides from the reader that no amount of quantizer engineering can make Read cheaper than 82.5% of a dense prefill at this depth. Combined with T-01, this is why the reported point sits on the wrong side of the dense endpoint.",
+      "required_fix": "State the structural bound explicitly in Section 4.1 or 4.3 (Read executes L - j of L layers, so prefill saving is at most j/L before dequantization cost). Add a sweep over j - at minimum j in {7, 13, 20, 27} - reporting retained Store, TTFT, and F1 for each, so the reader can see where, if anywhere, the trade-off becomes favourable against both endpoints. If deeper splits are infeasible because the retained entry grows, show that explicitly.",
+      "verification_test": "For each j, measure retained Store per document and TTFT on the same eight items, and plot Store against TTFT with the dense and full-prefix endpoints marked. Verify whether any j yields a point that is not dominated by the Section-3-conformant dense endpoint on (Store, end-to-end latency, F1).",
+      "evidence_needed": "A depth sweep with Store, TTFT and F1 per j; and a statement of what constrains j in the Qwen3.5 hybrid geometry (e.g. attention/GDN layer placement).",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-07",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Table 2 (p.6) 'tok/s' column; Section 5.1 'Latency execution' (p.5); Section 5.3 (p.6); Appendix Table 18 (p.24)",
+      "claim_ids": [
+        "sec5.3:throughput-falls-from-13.38-to-7.15",
+        "abstract:13.38-versus-7.15-7.19-tokens-s"
+      ],
+      "evidence_ids": [
+        "table2:tokens-per-second"
+      ],
+      "observed_evidence": "'Generated-token throughput' is never defined and the number of tokens actually generated is never reported. Section 5.1 quotes only the 32-token cap. The column becomes reproducible only under tok/s = n/(TTFT + n*TPOT) with n = 8, which reproduces all six rows to within 0.5% but is stated nowhere; under the more common n/(TTFT + (n-1)*TPOT) no single n fits the table. Appendix Table 19's rows fit the same formula only with n near 9-10, so the convention is not even stable across the paper's own tables.",
+      "why_it_matters": "The throughput drop from 13.38 to 7.15 is quoted in the abstract, and a reader cannot check it, cannot tell whether the drop is a decode-rate effect or a prefill-amortization effect, and cannot compare it to any external number. With n = 8 the column is almost entirely a restatement of TTFT, which is worth saying out loud since Section 5.3 argues the cost is 'concentrated in the first token'.",
+      "required_fix": "State the throughput definition as a formula in Section 5.1, report the mean and median generated-token count per configuration in Table 2, and note in Section 5.3 that at n = 8 the throughput column is dominated by TTFT. Use one convention across Tables 2, 18 and 19 or flag the difference.",
+      "verification_test": "Recompute every tok/s cell from the reported TTFT, TPOT and per-item token counts and confirm agreement to the printed precision; verify the same formula reproduces Table 19.",
+      "evidence_needed": "Per-item generated-token counts and the throughput formula.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-08",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Eq. 4 (p.5) against Eq. 2 (p.4); Eq. 5 (p.5)",
+      "claim_ids": [
+        "sec4.3:logical-fork-definition",
+        "sec4.4:pass-predicate"
+      ],
+      "evidence_ids": [
+        "eq2:retained-payload",
+        "eq4:logical-fork",
+        "eq5:pass-predicate"
+      ],
+      "observed_evidence": "Eq. 2 sums over l < j, l in A and l < j, l in G. Eq. 4 defines the fork as ({K_l^D, K_l^r}_{l in A}, {G_l^D, G_l^r}_{l in G}) with no l < j restriction, so as written it forks document state at every attention and recurrent layer, contradicting Figure 2a's 'No upper-suffix document state is retained'. Eq. 4 also has no r-dependence on its right-hand side beyond a superscript label, so F_1(D) and F_2(D) are syntactically identical, and it encodes none of the immutability, copy-on-write, rebinding or temporal semantics that the surrounding two sentences actually carry. In Eq. 5, the mandatory-slot family M_i(Sigma) is introduced in the preceding line and then never appears in the formula (presumably absorbed into Coverage_i), leaving dangling notation in the paper's central definition.",
+      "why_it_matters": "The ownership contract is the paper's main formal object, and neither of the two equations that state it carries the content. A reader checking whether the contract is well defined - the exact question a soundness reviewer must answer - finds that the definitions delegate everything to prose. The l < j discrepancy is a straightforward error that also confuses what is retained.",
+      "required_fix": "Restrict Eq. 4's index sets to l < j. Replace the set-builder with an ownership-typed definition: give each coordinate an owner tag and a phase index, define share, copy-on-write and rebind as transitions over (owner, storage) pairs, and state the invariant that must hold at setup, transition and final. In Eq. 5, either use M_i(Sigma) explicitly (e.g. Coverage_i(tau) = complete iff every slot in M_i(Sigma) is present, unique and bound) or drop the symbol.",
+      "verification_test": "Check that the revised Eq. 4 instantiated at j = 7 with A = {3}, G = {0,1,2,4,5,6} yields exactly the tensor set counted by Eq. 2, and that each of the seven ForkAudit targets in Table 6 maps to a named clause of the revised definition.",
+      "evidence_needed": "None beyond a corrected formalization.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-09",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "Eq. 3 (p.4); Figure 2c (p.4); Eq. 6 (p.18)",
+      "claim_ids": [
+        "sec4.2:quantizer-definition"
+      ],
+      "evidence_ids": [
+        "eq3:group-quantizer",
+        "eq6:byte-interval"
+      ],
+      "observed_evidence": "Eq. 3 sets s = (u - m)/(2^b - 1) and q = clip(round((x - m)/s), 0, 2^b - 1). For a constant group u = m gives s = 0 and the map is undefined; the paper specifies no epsilon, no fallback and no convention. The dequantization map (presumably x_hat = m + s*q) is never written, so the reconstruction error model is unstated. In Eq. 6, d_i = (s_i - 1) t_i is computed per dimension; for an empty dimension s_i = 0 this yields d_i = -t_i, which pushes m below the storage offset and can make the interval start negative, tripping the paper's own non-negativity requirement on a legitimately empty view.",
+      "why_it_matters": "Eq. 3 is the paper's only statement of what the quantizer does, and it is one of the two equations a reader must use to reproduce the Store column (see T-02). Degenerate groups are common in recurrent and convolution state (zero-initialized or saturated channels), so the s = 0 case is not hypothetical. The Eq. 6 edge case is minor but it sits inside the audit's soundness argument.",
+      "required_fix": "Define the s = 0 case explicitly (e.g. s := 1 and q := 0, reconstructing exactly m) and give the dequantization formula. Guard Eq. 6 with d_i := 0 when s_i = 0, or state that empty views are excluded from the witness.",
+      "verification_test": "Unit-test the packer on constant groups, single-element groups and empty tensors, asserting exact round-trip for constant groups and a well-formed empty interval; assert that the packed byte count matches ceil(n/64)*(b*8 + 4) in every case.",
+      "evidence_needed": "The implemented degenerate-case convention and its round-trip test.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-10",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "Section 4.2 (p.4) 'Q16 projections'; Table 1 (p.6) 'Q-CoMem aggressive mixed' row; Table 1 vs Table 2 dash conventions; Appendix Table 13 (p.21)",
+      "claim_ids": [
+        "table1:aggressive-mixed-18.08x",
+        "sec4.2:per-layer-policy"
+      ],
+      "evidence_ids": [
+        "table1:policy-rows",
+        "table13:mac-control"
+      ],
+      "observed_evidence": "'Q16 projections' appears in Section 4.2 and in the footnotes of Tables 2 and 18 but is never defined - it is unclear which tensors are meant or whether they are inside the Eq. 2 accounting. The 'aggressive mixed' policy (7.536 MiB, 18.08x, -5.44 F1, five catastrophic items) has its bit assignment given nowhere in the paper, yet it anchors the ablation argument in Section 5.4. In Table 1 the dense row's Store cell is an en-dash meaning 'no retained entry' (Table 2 prints 0.00 for the same arm, and Appendix Table 18's footnote confirms the reading), while the same table's footnote declares that blank cells 'denote unmeasured metrics, not zeros' - one glyph, two meanings, in one table. Appendix Table 13 reports a Mac M4 Pro control with Store, timing and top-1 agreement but never names the model used.",
+      "why_it_matters": "These are individually small but they accumulate against reproducibility of the paper's own policy comparison, and the Table 1 dash convention specifically obscures that the dense endpoint has the best Store and a competitive F1 in that table - which is the crux of T-01.",
+      "required_fix": "Define 'projections' and state whether they are counted in Eq. 2. Give the aggressive-mixed bit vector. Print 0.00 for the dense Store cell in Table 1 as Table 2 does, and reserve blanks for unmeasured metrics only. Name the model in Table 13.",
+      "verification_test": "Confirm every policy named in Tables 1, 2 and 18 has a fully specified bit assignment somewhere in the paper, and that each dash or blank in every table is explained by exactly one footnote convention.",
+      "evidence_needed": "Complete policy specifications and a single dash/blank convention.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-11",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 5.4 (p.6) 'We therefore use frozen Q4/Q4/Q8 as the headline operating point'; Table 1 CI column (p.6); abstract (p.1)",
+      "claim_ids": [
+        "abstract:-0.39-points-CI-[-2.04,1.08]",
+        "sec5.4:headline-operating-point"
+      ],
+      "evidence_ids": [
+        "table1:delta-f1-intervals"
+      ],
+      "observed_evidence": "Six retention policies are compared against split Q16 with six paired bootstrap intervals on the same 60-item validation panel, with no multiplicity adjustment, and the headline point is then chosen in Section 5.4 by comparing those same validation results ('the two mixed policies are ablations... We therefore use frozen Q4/Q4/Q8'). Section 4.2 states that the per-layer bit vector was calibrated on four disjoint items, but the choice of which policy to headline is not protected by that calibration set. The reported -0.39 [-2.04, 1.08] is therefore a selected-winner estimate reported on its selection data. Minor arithmetic note in the same table: 54.24 - 54.62 = -0.38 while -0.39 is printed, and 49.19 - 54.62 = -5.43 while -5.44 is printed, consistent with rounding of unreported underlying values but not reproducible from the printed ones.",
+      "why_it_matters": "The abstract's quality claim rests on this interval. Selection on the reporting data biases the point estimate optimistically and narrows the apparent risk, and with n = 60 the interval is already about +/-1.5 F1 wide. The paper is careful to disclaim equivalence, which mitigates but does not remove the issue.",
+      "required_fix": "Either designate the headline policy on the calibration set before looking at validation, or report the selection procedure and state that the interval is not selection-corrected; add a sentence noting the multiplicity across six comparisons. Print unrounded F1 means so the delta column reproduces.",
+      "verification_test": "Re-report the frozen policy's delta and interval on a held-out cohort (e.g. Qasper/2WikiMQA indices outside 4-35) that played no role in policy selection, and check the interval is comparable.",
+      "evidence_needed": "A held-out evaluation of the selected policy, or an explicit pre-registration of the selection rule.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "T-12",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Section 5.5 (p.7), 'Ownership evidence' and 'Falsification beyond output equality' paragraphs",
+      "claim_ids": [
+        "contrib3:96-ownership-configurations"
+      ],
+      "evidence_ids": [
+        "sec5.5:counting-identities"
+      ],
+      "observed_evidence": "The paragraph asserts '8 x 3 x 4 = 96 configurations', '8 x 3 x 6 = 144 selected-owner-row checks', '8 x 3 x 540 = 12,960 full serializer/live-object rows', '8 x 480 = 3,840 direct clone edges', '540 = (1 + 8) x 60', '60 = 30 x 2' - all arithmetically correct, none semantically defined in the main text. 'Serializer row', 'owner-row anchor', 'clone edge', 'adjacent fan-out' and 'phase artifact' first acquire meaning in Appendix Tables 4 and 5. The factor 3 in '8 x 3 x 4 = 96 configurations' is also ambiguous, since the preceding paragraph says four cells evaluate N in {1, 8, 32}: the 3 appears to be phases in some products and resident counts in others.",
+      "why_it_matters": "This is the section that carries the paper's second contribution, and in its current form a reader cannot determine what any of these counts establishes without reconstructing definitions from the appendix. Large correct-looking products are not evidence, and presenting them as such invites the reader to take strength on faith.",
+      "required_fix": "Replace the numerology with two or three sentences stating what was checked, at which phases, and what a pass rules out; move the counts to a table with one row per unit and a definition column (Appendix Table 4 already does this - promote or cross-reference it at first use). Disambiguate the factor 3 in the 96-configuration product.",
+      "verification_test": "Have a reader with no access to the appendix state, from Section 5.5 alone, what the 96 configurations vary and what a passing verdict excludes; the section is adequate only if they can.",
+      "evidence_needed": "None; a rewrite.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "T-13",
+      "severity": "minor",
+      "dimensions": [
+        "citation_integrity"
+      ],
+      "location": "Section 2 (p.3) 'CoMem persists one depth-j residual... (Liu et al., 2026a;b). We build on that interface'; references (p.10); Appendix A (p.12) 'QS Job 234340 / Trial 1830116'; Appendix A (p.13) 'Apple Mac16,8 CPU host'",
+      "claim_ids": [
+        "sec2:build-on-comem-interface"
+      ],
+      "evidence_ids": [
+        "refs:liu-2026a",
+        "refs:liu-2026b",
+        "appA:job-ids"
+      ],
+      "observed_evidence": "The paper builds directly on CoMem, cited to a named, non-anonymized 2026 workshop paper and arXiv preprint, with 'We build on that interface' immediately following the citation. The reference author list includes what appear to be handles rather than names ('Key', 'Rayying'). Appendix A discloses an internal job identifier ('QS Job 234340 / Trial 1830116') and a specific host machine model. Table 27 elsewhere shows anonymization awareness ('the anonymous package assigns a neutral artifact alias').",
+      "why_it_matters": "Third-person citation of prior work is normal and I make no accusation, but the combination of a foundational self-referential-reading citation, non-standard author entries, and internal job identifiers puts avoidable strain on double-blind review and on citation hygiene. It is fixable at zero cost to the science.",
+      "required_fix": "Keep the CoMem citation but neutralize the framing (e.g. 'Q-CoMem adopts the CoMem split-replay interface'), correct the reference author entries to real names or drop the handles, and replace internal job/trial identifiers and host model strings in Appendix A with neutral aliases as already done for the HYPIC artifact.",
+      "verification_test": "Grep the camera-ready-candidate PDF for internal identifiers, platform names and machine model strings; confirm none remains that ties the submission to a specific lab or account.",
+      "evidence_needed": "None.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No ethics concerns identified. The submission includes an ethics statement (Appendix B, p.13): no human-subject data, public PG-19 text and public LongBench-v1 subsets (Qasper, 2WikiMQA), no safety/bias/privacy evaluation claimed, and an explicit note that efficiency gains may increase the scale of model use. That is proportionate to a controlled systems study. A reproducibility statement is present before the references as required, and the main text ends on page 9, within the ICLR 2026 page limit. The only anonymity-adjacent observation is recorded as minor issue T-13 and is not an ethics matter.",
+  "llm_usage_disclosure": "This review was produced by an automated LLM-based reviewer (Claude Opus 5) operating under a PDF-only access restriction. The reviewer read the complete 31-page PDF via pdftotext -layout and inspected pages 4-6 as rendered images to verify Figure 2 and Tables 1-2. All arithmetic assertions in this review (the group-packing floor 128/(8b+4) bytes per 64-value group, giving 3.5556x for Q4 and 1.8824x for Q8; the reconstruction of Table 2's Store column from a common 29.90 MiB BF16 entry to within 0.03%; the identity tok/s = n/(TTFT + n*TPOT) with n = 8 reproducing all six Table 2 throughput cells; the counterfactual dense-with-decode-cache figure of 7.40 tok/s; and the 17.5% prefill-saving ceiling at j = 7 of L = 40) were computed in a Python session rather than asserted from memory. No LaTeX source, repository, evidence package, sibling directory, author note, or prior review was consulted; no external literature lookup was needed to reach any conclusion above. Scores follow the supplied ICLR 2026 rubric.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A matched dense-recompute arm that prefills once per query and decodes with a normal KV cache, reported in the same block as Table 2, showing that Q-CoMem is not dominated by it on end-to-end latency or throughput at equal F1 - or, failing that, an explicit residency-regime argument (documents admitted per device at fixed VRAM) in which the dense arm is infeasible and Q-CoMem is not. This single addition is worth more than everything else on this list.",
+    "A per-component byte breakdown of every Table 1 row that satisfies the group-packing identity of Eq. 3, so that 14.10x (or its corrected value) can be reconstructed from the method section. If the corrected figure is nearer 11.7x, reporting it honestly would raise my confidence in the rest of the paper.",
+    "ForkAudit run against the actual Q-CoMem Read path - a packed Q4/Q4/Q8 entry, dequantized and forked at j = 7 - with targets extended to cover dequantized-view immutability and residual-chunk binding, and with Table 3's frozen geometry listing a split depth and a quantization policy.",
+    "Allocator and peak device-memory deltas for full-prefix Q16, split Q16 and frozen Q4/Q4/Q8 at several residency counts, connecting the Store estimand to the Eq. 1 term the paper says it targets; ideally plus a documents-before-OOM measurement.",
+    "A sweep over the split depth j with Store, TTFT and F1 per depth, plotted against the dense and full-prefix endpoints, showing whether any depth yields a non-dominated point.",
+    "A held-out quality cohort (items outside the 4-35 index range, or a third dataset) on which the pre-selected frozen Q4/Q4/Q8 policy's delta and interval are reported without selection on the same data.",
+    "Explicit definitions of generated-token throughput and the generated-token count, so Table 2 is checkable as printed.",
+    "Restating the 54.5% allocator number in the abstract as a reproduction of paged prefix sharing rather than a contribution of this work, with Appendix Table 15's own arm labels used in the body text."
+  ],
+  "evidence_that_would_lower_score": [
+    "Confirmation that the 'no-cache dense recompute' arm does recompute the prefix per decoded token, combined with a refusal to add a Section-3-conformant dense baseline. That would leave the paper's only favourable comparison resting on a strawman and would move me to 2.",
+    "An inability to reconcile Table 1's Store column with Eq. 3, or a correction that materially reduces 14.10x without corresponding correction of the abstract, conclusion and contribution bullets.",
+    "Confirmation that the ForkAudit factorial cannot be run against the Q-CoMem implementation at all (e.g. the split-replay path exists only in a Transformers prototype the audit harness cannot instrument), while the abstract's ownership framing is retained.",
+    "Evidence that the two Store accounting implementations differ in what tensors they include, such that the 3.93x split factor and the quantization factor are measured on different tensor sets and the 14.10x product is not a valid factorization.",
+    "Discovery that the archival 60-item panel's predictions or Store values cannot be regenerated at all (Section 5.6 already concedes no source-frozen regeneration), which would make the paper's broadest quality evidence unverifiable rather than merely unrepeatable.",
+    "Any indication that Table 2's F1 values were computed over a different generation budget than the timing measurements (Qasper is capped at 128 tokens in Section 5.1 but Table 2 states at most 32, and the throughput identity implies 8 tokens were actually produced)."
+  ],
+  "review_limitations": [
+    "PDF-only access. I could not inspect the implementation, the evidence packages referenced throughout Appendix I, or any raw shard, so every claim about what the code does is inferred from the manuscript's own text, tables and arithmetic.",
+    "My central finding (T-01) rests on interpreting TPOT 648.75 ms alongside TTFT 0.649 s as per-token prefill. The throughput identity I recovered (tok/s = n/(TTFT + n*TPOT), n = 8, reproducing all six rows) makes that interpretation nearly forced, but the authors may have an accounting convention I cannot see from the PDF.",
+    "T-02's magnitude is bounded but not pinned. The direction is certain (9.661 MiB is below the 9.755 MiB pure-Q4 floor for 34.683 MiB even with zero Q8 content), but the size of the error depends on the GDN share of the 60-item entries, which I could only estimate at 21.4% by transfer from Table 2's different cohort.",
+    "I could not verify that Qwen3.5-35B-A3B, vLLM 0.26, PyTorch 2.11.0+cu129 or Transformers 5.14.1 behave as described, nor check the cited CoMem and HYPIC preprints, so I evaluated the internal consistency of the manuscript rather than its agreement with those systems.",
+    "The appendix cites roughly two dozen evidence packages by path and hash. I take their existence on faith and score only what the manuscript states about their scope; a repository-access reviewer should check whether the ownership packages contain any split-replay or quantized configuration at all (T-03).",
+    "I did not attempt to assess novelty against the full prefix-caching and KV-compression literature; that is another reviewer's lens, and my contribution score reflects what the manuscript itself claims as new (Section 2 and Appendix Table 11) rather than an independent priority search."
+  ]
+}

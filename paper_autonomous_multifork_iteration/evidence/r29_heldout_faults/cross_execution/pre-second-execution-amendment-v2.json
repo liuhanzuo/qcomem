@@ -1,0 +1,120 @@
+{
+  "schema_version": "forkaudit-r29-heldout-pre-second-execution-amendment-v2",
+  "created_at_utc": "2026-08-25T04:24:33Z",
+  "created_before_second_gpu_execution": true,
+  "second_gpu_execution_had_started": false,
+  "run_id": "R29-HELDOUT-FAULTS-20260825B",
+  "retained_history": {
+    "v1_execution_input": {
+      "path": "execution-input.json",
+      "raw_sha256": "9fafb3eb3859984c69a165beb2a77c126e6a826eb8aab1d659c270423aa8f2a0",
+      "canonical_sha256": "c2ca39b22f60a8fcb89403f05c9d8387c1dacd925c994f034296ecb78b4d7586"
+    },
+    "v1_source_ledger": {
+      "path": "executor-source.sha256",
+      "raw_sha256": "7eaf42809cdf085f137b6e2731a19b0b9b6c31b31040fac40e3aca2a6e192b08"
+    },
+    "v1_preexecution_freeze": {
+      "path": "preexecution-freeze.sha256",
+      "raw_sha256": "3ec6410ed8bdd6dd02f7433846e8591e5c358a4840c658d5236a7f04b42fd417"
+    },
+    "v1_readiness": {
+      "path": "readiness_report.json",
+      "raw_sha256": "3c2501d75323e5c4c25e7f27dc490bfcd864c16c40b7e2ca010ebfaa0179c2ab"
+    },
+    "remote_preflight_receipt": {
+      "path": "remote-preflight-receipt.json",
+      "raw_sha256": "e29ac5be1b623c45ea3d5ab88a61e831ae62f8a2d198844a0a87004f04686f5a"
+    }
+  },
+  "first_formal_attempt": {
+    "run_id": "R29-HELDOUT-FAULTS-20260825A",
+    "run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-heldout-faults-20260825a",
+    "observed_stage_labels": [
+      "00",
+      "01",
+      "02",
+      "03_rank_operational_failure"
+    ],
+    "rank_count": 3,
+    "rank_logs": {
+      "byte_identical": true,
+      "bytes_each": 1271,
+      "sha256_each": "41eccbe6c09b5cca9c6bd8f4655d9a2aeacc6e2da8ed6a6c04c9d6cd21a11238"
+    },
+    "preregistration_copies": {
+      "execution_input_raw_sha256": "9fafb3eb3859984c69a165beb2a77c126e6a826eb8aab1d659c270423aa8f2a0",
+      "heldout_fault_suite_raw_sha256": "108f2f551838cc261d42ef6697a7dfbce753ce6ac51bc4ce771d1d6b0773b496"
+    },
+    "gpu_inventory": {
+      "raw_sha256": "08ea069c9e8e8d3b3c5cfc9cabf815ecac9e4e5101cf77aeb4b5d7c96e10eef3"
+    },
+    "raw_rank_json_file_count": 0,
+    "sidecar_file_count": 0,
+    "model_inference_started": false,
+    "scientific_outcome_generated": false,
+    "failure_classification": "pre-model operational failure in environment-identity validation; not a scientific negative result and ineligible for detector scoring"
+  },
+  "blocker": {
+    "location": "gpu/r29_execute_heldout_faults.py::_load_runtime",
+    "v1_predicate": "Path(sys.executable).resolve().is_relative_to(env_dir)",
+    "cause": "The frozen virtual environment uses a symlink launcher. Resolving sys.executable reaches the base Conda interpreter outside env_dir even though the process was invoked through the frozen environment and sys.prefix identifies it exactly.",
+    "remote_facts": {
+      "env_bin_python_chain": "env/bin/python -> python3 -> /root/miniconda3/bin/python3",
+      "sys_executable_lexical": "<frozen-env-dir>/bin/python",
+      "sys_executable_realpath": "/root/miniconda3/bin/python3.11",
+      "sys_prefix": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/envs/vllm-cu129-v1",
+      "sys_base_prefix": "/root/miniconda3"
+    }
+  },
+  "scope_preserving_amendments": [
+    {
+      "file": "gpu/r29_execute_heldout_faults.py",
+      "before_sha256": "04050674d489fae4cf471b65f3d51735204ae4300f4c0f99835cdce36a11be79",
+      "after_sha256": "1a6168685e7228c6ae411ac0f6373fee818813138248bbd85b5f1590cf3b09e5",
+      "change": "Replace resolved-path containment with a symlink-safe identity proof: exact sys.prefix equals the frozen environment directory; lexical sys.executable equals frozen env/bin/python; and both executable paths resolve to the same interpreter target. The target is not required to remain under env_dir. Exact Python, Torch, Torch-CUDA, Transformers, and vLLM version checks remain unchanged."
+    },
+    {
+      "file": "gpu/test_r29_heldout_fault_executor.py",
+      "before_sha256": "77eda4b72f7f78aec07297a2efe316b042ec4323734b3daadb908d7eea3ea249",
+      "after_sha256": "f75be26a388f72f2c5ddf9eed88de7881dd8e56b4b92abb6334b8f7dd595f402",
+      "change": "Add a regression test for env/bin/python -> python3 -> an external base interpreter. It requires acceptance with an exact frozen sys.prefix and rejection when sys.prefix instead identifies the base environment."
+    },
+    {
+      "file": "gpu/r29_launch_heldout_faults.sh",
+      "before_sha256": "56683451ea539c0e038d2d977a0c177eadcb51fe7094b270627f871d38b8cf77",
+      "after_sha256": "4abe1b356c5ff4a539fca37520f077b0325e5c3aec978c2f7da1ff1280e69ad0",
+      "change": "Bind and run the cross-executor regression tests, and emit the same symlink-safe Python-environment identity receipt before rank execution."
+    },
+    {
+      "file": "paper_autonomous_multifork_iteration/evidence/r29_heldout_faults/cross_execution/execution-input-v2.json",
+      "before_sha256": "9fafb3eb3859984c69a165beb2a77c126e6a826eb8aab1d659c270423aa8f2a0",
+      "after_sha256": "62de04c0d5b9c4732e3640d5d62b197af2d3dcc5f91a0e7aa913bf641780d4d3",
+      "change": "Bind the amended executor and launcher and require a fresh 20260825b code directory and run directory. All scientific inputs and protocol fields are unchanged."
+    }
+  ],
+  "unchanged": {
+    "heldout_fault_suite_raw_sha256": "108f2f551838cc261d42ef6697a7dfbce753ce6ac51bc4ce771d1d6b0773b496",
+    "heldout_fault_suite_canonical_sha256": "1913b62010d5020b18c56170569131928e580fb27879fd7c62618cbfe3966867",
+    "fault_module_sha256": "eb60216edac44f30d1b540c454461ff5495a291968caa86e46b16205c8f7848f",
+    "author_test_sha256": "13cccbbd46867ba79399ed80942779b806473cfd628930605273bce74b8cce30",
+    "aggregator_sha256": "0b229c459ec71786209e8dce2800a3d4873411624c93eafecb4245d7e4756972",
+    "scientific_question": true,
+    "fault_definitions_and_assignments": true,
+    "model_revision_and_dtype": true,
+    "data_and_frozen_query_banks": true,
+    "token_coordinate_and_horizon": true,
+    "lane_order_and_interventions": true,
+    "conventional_assertions": true,
+    "forkaudit_receipt_battery": true,
+    "per_fault_scoring_and_no_detection_rate": true,
+    "claim_boundary": true
+  },
+  "second_attempt": {
+    "required_fresh_code_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_r29_heldout_faults_20260825b",
+    "required_fresh_run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-heldout-faults-20260825b",
+    "must_not_reuse_first_run_dir": true,
+    "outcome_policy": "Preserve and report every per-fault valid outcome or operational-invalid result; do not compute a pooled detection rate."
+  },
+  "v2_disposition": "Only the v2 execution input, v2 source ledger, v2 readiness report, and v2 preexecution freeze are eligible for a second attempt. GPU execution had not begun when this amendment was frozen."
+}

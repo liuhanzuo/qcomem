@@ -1,0 +1,125 @@
+{
+  "reviewer_id": "R19-EXP",
+  "round": 19,
+  "snapshot_sha256": "78fbe618c81777dc0834e33a9a14f6d5efec996fa5e7294cf1625680b6f1a3b7",
+  "role": "experimental_rigor",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 4, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The paper's deliberately bounded claims are generally matched to the reported evidence: the four ownership cells use paired inputs and schedules, registered observables agree exactly, ownership predicates are phase-aware, memory estimands are distinguished, and negative transfer results are retained. Confidence is nevertheless limited by a single fixed-order execution per rank-configuration, sparse independent numerical-oracle coverage, and the absence of a successful independent implementation.",
+    "presentation": "The manuscript is unusually precise about definitions, execution phases, comparison counts, non-independent units, denominators, negative results, and claim boundaries. Tables 3–5 and 11–14 make the cohort-to-claim mapping and limitations easy to audit, although the dense volume of receipt terminology creates some cognitive load.",
+    "contribution": "The integrated ownership, provenance, mutation, lifecycle, and denominator audit is useful and more systematic than an ordinary cache comparison. However, it is not a new cache mechanism or serving system, and empirical validation remains one successful adapter/runtime, one model, one hardware family, and one sequential schedule; the attempted second-runtime transfer is entirely negative."
+  },
+  "paper_summary": "FORKAUDIT proposes an executable audit contract for forked hybrid-LLM state, separating immutable document KV, request-private append storage, persistent recurrent bases, post-transition mutable recurrent state, dispatch provenance, semantic equivalence, and memory denominators. The reported Qwen3.5-35B-A3B case evaluates four KV-by-GDN ownership policies over eight PG-19 books and three fan-outs, checks canonical token/logit/KV/GDN equality, samples independent FP32 attention and recurrent-transition oracles, injects nine targeted live faults, exercises one same-adapter cancellation/reclamation lifecycle, and reports a negative Transformers DynamicCache transfer cohort.",
+  "strongest_verified_contribution": "The strongest reported contribution is the phase-aware, pointer-free ownership witness combined with a complete 2×2 ownership factorial: all 96 rank–fan-out–policy configurations agree on registered semantic observables, while setup, first-transition, and final storage records distinguish legitimate borrowed-base aliases from the required post-write request-private GDN state.",
+  "strengths": [
+    "The experimental units and derived comparison counts are reported honestly: eight books/ranks are distinct workloads rather than stochastic replicates, nested fan-outs are not counted as independent samples, and cohorts are not pooled.",
+    "The 2×2 factorial separates KV-document ownership from GDN setup ownership and includes fixed-axis projections, which is a strong control against attributing one factor's effect to the other.",
+    "The paper directly checks the N=1 request-to-base predicate instead of relying on vacuous request-to-request comparisons.",
+    "The memory discussion carefully separates logical payload, allocated pages, allocator allocated/reserved quantities, and unmeasured process or service capacity, and it avoids throughput, scheduler, or admitted-capacity claims.",
+    "Negative evidence is handled responsibly: the Transformers cohort's 8/8 clean dense-oracle failures and 16 clean false positives are retained and used to reject runtime portability.",
+    "The live mutations use separately rebuilt matched-clean cells, preassigned gates, restoration receipts, and appropriately limited gate-reachability language rather than an unsupported completeness or detector-rate claim.",
+    "The manuscript explicitly limits the attention and GDN oracles to captured operator boundaries and acknowledges that most evidence is digest-based rather than an independent end-to-end implementation."
+  ],
+  "questions": [
+    "Which exact attention layer, decoding step, request index, fan-out, and ownership cell was selected for each of the eight dense-oracle rows? What pre-execution rule ensured coverage was not concentrated in an easy layer or phase?",
+    "Were any complete factorial configurations rerun in fresh processes or under a counterbalanced cell order? If so, did every canonical digest and allocator contrast reproduce?",
+    "What were the absolute post-priming allocated and reserved-memory baselines and final endpoints for each primary RR2 cell, not only their deltas?",
+    "What evidence binds each allocator-only memory cell to the separately rebuilt witness cell beyond sharing a nominal configuration—for example, a common execution identity, callable receipt, or lightweight semantic checksum?",
+    "What explains the very large 0.377545–0.933235 dense-oracle errors in the Transformers cohort despite 8/8 top-1 agreement: an adapter-boundary mismatch, a genuine implementation error, or a different but valid attention convention?",
+    "How sensitive are the results to process-level reruns, allocator history, and the fixed ordering of the four cells, even while retaining the paper's explicitly sequential one-stream scope?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R19-EXP-01",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "Section 4.3, p. 6, lines 294–297; Appendix E, p. 16, lines 820–828; Appendix I, p. 19, lines 1019–1020.",
+      "claim_ids": [], "evidence_ids": [],
+      "observed_evidence": "All requests execute sequentially on one CUDA stream with a frozen cell order, and the paper states that there is one observation per rank–configuration cell with no stochastic replication. Table 6 likewise describes one deterministic run. The fresh-process control in Table 4 covers only one clean path and M1 at N=2, not reproduction of the factorial.",
+      "why_it_matters": "Exact equality in one execution supports that frozen execution, but it cannot reveal intermittent state leakage, process-initialization dependence, allocator-history effects, or a cell-order-dependent common-mode failure. These possibilities are directly relevant to an executable ownership audit even without introducing concurrency or scheduler claims.",
+      "required_fix": "Repeat a decision-relevant subset of the existing experiment in multiple fresh processes, including all four cells at N=32 and the partial-tail path, with at least two counterbalanced cell orders. Report every exactness/ownership outcome and the run-level allocator endpoints; no new workload family or scheduler experiment is required.",
+      "verification_test": "For every repeated run and order, all registered tokens, logits, logical KV, GDN state, immutability, disjointness, and tail-COW predicates must pass. The full-copy versus shared-document memory contrast must retain its sign, and its run-level magnitude and any variation must be reported rather than collapsed into the original single execution.",
+      "evidence_needed": "Fresh-process manifests, configuration/order assignments, raw semantic and ownership receipts, and per-run allocated/reserved-memory snapshots.",
+      "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R19-EXP-02",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility"],
+      "location": "Section 3, pp. 4–5, lines 241–248; Sections 4.2–4.3, p. 6, lines 285–313; Sections 5.2–5.3, p. 8, lines 378–398; Appendix H, p. 19, Table 13.",
+      "claim_ids": [], "evidence_ids": [],
+      "observed_evidence": "The independent attention check contains eight rows selected from one frozen cell per rank, but the PDF does not disclose their layer, decoding-step, fan-out, request, and ownership-cell distribution. The independent GDN check contains only four transitions from one frozen book/window at layers 0, 10, 20, and 38 and begins after native q/k normalization. The remaining evidence is relational across implementations sharing the same execution path.",
+      "why_it_matters": "Cross-cell and cross-N equality cannot detect a common-mode semantic error. Without a visible sampling frame, eight attention rows and four post-normalization recurrent transitions provide uncertain coverage of ten attention layers, thirty GDN layers, multiple lifecycle phases, and all fan-outs. The paper accurately calls these checks bounded, but their current breadth places a low ceiling on how strongly the case validates the general audit contract.",
+      "required_fix": "Publish the frozen oracle-selection table and add a preregistered, stratified sample spanning attention layers, early and late decoding steps, multiple ranks, and small and large fan-outs. Extend the recurrent sample across multiple windows and additional layers, with at least one independent check that includes the native normalization boundary, or further narrow the claimed validation to exactly the currently sampled boundaries.",
+      "verification_test": "A blinded aggregate must reconstruct every newly selected row from archived inputs, apply predeclared tolerances, and report all rows rather than only extrema. Seeded faults at each newly covered boundary should fail while all matched-clean rows pass.",
+      "evidence_needed": "The pre-execution selection manifest, complete row metadata, numerical sidecars, reference implementation identity, per-row errors, and clean/fault decisions.",
+      "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R19-EXP-03",
+      "severity": "major",
+      "dimensions": ["significance", "novelty", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "Section 5.3, p. 8, lines 409–418; Appendix H, p. 18, Table 12; Appendix I, pp. 19–20, lines 1026–1030.",
+      "claim_ids": [], "evidence_ids": [],
+      "observed_evidence": "The only successful full ownership audit uses the Qwen3.5/vLLM Q16 adapter. The separate Transformers DynamicCache cohort fails the preregistered dense oracle on all eight clean ranks, with relative-L2 errors of 0.377545–0.933235, and 16 of 24 expected fault cases are classified as clean false positives.",
+      "why_it_matters": "The negative result is reported correctly and does not invalidate the one-adapter case. It does, however, leave open whether the proposed record contract and predicates transfer cleanly to an independently constructed implementation or are partly tailored to the primary adapter. This is the main evidence ceiling for an ICLR-level general audit contribution.",
+      "required_fix": "Either diagnose the second-runtime failure and produce one preregistered independent implementation with clean semantic predicates and valid fault classifications, or consistently frame FORKAUDIT as a Qwen3.5/vLLM reference case and interface proposal rather than empirically validated runtime-independent methodology.",
+      "verification_test": "For a positive transfer claim, an independently implemented adapter must pass matched-clean ownership and semantic gates before fault injection, then detect predeclared faults without clean false positives or wrong-gate outcomes. For claim narrowing, the abstract, contribution list, decision rule, discussion, and conclusion must all avoid implying demonstrated cross-runtime validity.",
+      "evidence_needed": "A frozen independent-adapter specification, matched-clean oracle records, full fault classifications, and a diagnosis showing why the current Transformers cohort failed.",
+      "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "R19-EXP-04",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "clarity", "reproducibility", "limitations_responsible_claims"],
+      "location": "Section 4.4, p. 6, lines 316–323; Section 5.4 and Table 2, pp. 8–9, lines 420–445; Appendix E, p. 16, Table 6.",
+      "claim_ids": [], "evidence_ids": [],
+      "observed_evidence": "The primary 2×2 result reports final allocated deltas and allocated peaks above an unreported post-priming baseline, but it does not show absolute allocated memory, reserved memory, or model-inclusive percentages for those same four cells. The model-inclusive 1.0398× ratio is taken from an earlier two-arm capacity cohort rather than the primary factorial.",
+      "why_it_matters": "The paper correctly avoids equating a 2.67 GiB incremental reduction with service capacity, yet the headline emphasis on explicit denominators and on savings after model/runtime state enter the denominator cannot be checked directly for the primary four-cell experiment. Mixing a primary delta with an older cohort's absolute denominator also obscures whether the same runtime state and phase conventions apply.",
+      "required_fix": "Add the primary RR2 post-priming baseline and absolute final/peak allocated and reserved bytes for every cell, together with model-inclusive ratios or percentages. Keep NVML and capacity explicitly unmeasured; they are unnecessary for this bounded correction.",
+      "verification_test": "Readers must be able to recompute every Table 2 delta, absolute endpoint, full-copy/shared ratio, and percentage from the disclosed primary-cohort rows, with phase names matching the raw snapshots and no arithmetic imported from another cohort.",
+      "evidence_needed": "Per-rank primary RR2 baseline, setup, generation, final, allocated-peak, and reserved-peak snapshots plus the aggregation rule.",
+      "expected_impact": "medium", "confidence": "high"
+    },
+    {
+      "issue_id": "R19-EXP-05",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "reproducibility"],
+      "location": "Section 3, p. 5, lines 250–253; Section 4.2, pp. 5–6, lines 279–287; Section 5.1, p. 7, lines 338–340.",
+      "claim_ids": [], "evidence_ids": [],
+      "observed_evidence": "Each nominal configuration is rebuilt once for allocator measurement and once for ownership/semantic witnesses, producing 192 live cells. This separation is sensible because strong-reference guards perturb allocation, but the PDF does not report a direct parity receipt showing that the allocator-only cell followed the same ownership, callable, append, and semantic path as its witness counterpart.",
+      "why_it_matters": "The memory effect and the correctness witness are therefore observed in different executions. A configuration or dispatch divergence between the paired executions could make the measured saving describe a path that was not actually subjected to the full ownership and semantic checks.",
+      "required_fix": "Record a lightweight, allocation-safe bridge for each memory/witness pair: shared frozen identity and schedule hashes, factor assignment, callable descriptor, append counts, and a final token or compact semantic checksum whose allocation effect is measured or excluded.",
+      "verification_test": "Every memory cell must have exactly one witness partner with identical frozen inputs, factor assignment, schedule, callable and append receipts, and matching lightweight semantic output; unmatched or divergent pairs must invalidate the corresponding memory row.",
+      "evidence_needed": "A pair-level identity table or replay predicate and a measurement of the bridge receipt's allocator overhead.",
+      "expected_impact": "medium", "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent for this controlled systems audit. The manuscript uses an existing PG-19 split, reports no human-subject collection, and avoids safety, privacy, quality, or deployment claims unsupported by the experiment.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "Fresh-process, counterbalanced-order repetitions that preserve all exactness and ownership predicates and show stable allocator contrasts.",
+    "A disclosed, preregistered stratified oracle sample covering more layers, lifecycle phases, fan-outs, and recurrent windows, with all clean rows passing and seeded faults rejected.",
+    "A successful independently implemented runtime or adapter with clean semantic gates before mutation and no clean false positives.",
+    "Primary-factorial absolute allocated and reserved-memory endpoints that reproduce the reported deltas and quantify the model-inclusive effect without borrowing another cohort's denominator.",
+    "A replayable parity predicate binding each allocator-only cell to its separately rebuilt semantic/witness cell."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any cross-arm or cross-N digest mismatch, prefix mutation, tail-COW failure, or post-transition GDN alias in a fresh-process rerun.",
+    "A reversal or material instability of the reported KV memory contrast under counterbalanced execution order or allocator history.",
+    "Evidence that the selected oracle rows were chosen after inspecting successful outputs or concentrated in a nonrepresentative layer or phase.",
+    "A finding that the Transformers failures arise from an error in the audit oracle or adapter rather than a genuine runtime boundary.",
+    "Artifact replay failures, inconsistent hashes, or memory-cell executions that cannot be bound to the corresponding witnessed configuration."
+  ],
+  "review_limitations": [
+    "PDF-only review: all 20 pages of manuscript/main.pdf were read, but linked source code, manifests, raw shards, numerical sidecars, preregistrations, supplement files, and replay commands were not inspected or executed.",
+    "Citation metadata and the substantive claims attributed to linked literature were not independently verified outside the supplied PDF and calibration document.",
+    "The supplied snapshot hash was used as instructed; the visible PDF file hash is a different object-level hash and was not substituted for the snapshot identifier."
+  ]
+}

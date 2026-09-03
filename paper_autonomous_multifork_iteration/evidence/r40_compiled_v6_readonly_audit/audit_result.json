@@ -1,0 +1,77 @@
+{
+  "schema_version": "forkaudit-r40-compiled-v6-readonly-audit-v1",
+  "audit_date": "2026-08-27",
+  "target": "../r39_primary_compiled_dispatch_v6",
+  "target_version": "20260827f",
+  "target_archive_sha256": "306daba7b79b045a306f0b22d6434143dd568cf1f3b6af7114ad1a4ebe1d6f82",
+  "verdict": "HOLD",
+  "formal_gpu_run_performed": false,
+  "gpu_used": false,
+  "qs_or_ssh_used": false,
+  "target_modified": false,
+  "passing_checks": {
+    "v6_source_ledger": "pass",
+    "dependency_ledger_in_source_tree": "pass",
+    "focused_fixture_source_ledger": "pass",
+    "archive_sha256": "pass",
+    "archive_path_link_duplicate_device_safety": "pass: 260 members, 228 regular files, zero bad paths, duplicates, links, or devices",
+    "all_four_ledgers_in_fresh_archive_extract": "pass",
+    "v6_cpu_tests": "pass: 13/13, zero skips",
+    "fresh_archive_v6_cpu_tests": "pass: 13/13, zero skips",
+    "python_compile": "pass from fresh archive with external pycache root",
+    "shell_syntax": "pass",
+    "frozen_tf514_route_static": "pass against archived formal source snapshot at SHA-256 688d9a8f2830d6729cd2945563f38b710100c086565b97c27c94c96bd9716b9f",
+    "detached_rr2_suite_on_local_mac": "161 pass, 1 expected environment skip because real Transformers is unavailable; the H20 launcher correctly rejects any skip and requires the real-TF test to pass"
+  },
+  "hold_reasons": [
+    {
+      "id": "H1_AUTHORIZATION_GATE",
+      "severity": "critical-operational",
+      "finding": "The H20 launcher has no mandatory explicit authorization environment gate."
+    },
+    {
+      "id": "H2_SELECTED_ARTIFACT_NOT_DEVICE_BINARY_ATTESTATION",
+      "severity": "major-claim-boundary",
+      "finding": "The hook records a CompiledKernel/cache-artifact selection immediately before calling the Python launcher. A completed run implies the launcher returned, but no driver/module/device-launch identity is observed."
+    },
+    {
+      "id": "H3_VLLM_ENTRYPOINT_SOURCE_UNBOUND",
+      "severity": "major-provenance",
+      "finding": "The distribution version and callable name are pinned by inherited checks, but the vLLM unified_attention source and Triton CompiledKernel/Autotuner implementation are not source-bound or snapshotted."
+    },
+    {
+      "id": "H4_AUTOTUNE_KWARGS_UNVERIFIED",
+      "severity": "major-claim-boundary",
+      "finding": "Replay compares only num_warps, num_ctas, and num_stages. selected_kwargs is serialized but can be arbitrarily changed while replay still passes."
+    },
+    {
+      "id": "H5_V6_RUNTIME_INTEGRATION_SMOKE_MISSING",
+      "severity": "major-readiness",
+      "finding": "The new recurrent and in-place-conv observer repair has static and string-level unit coverage, but no fresh frozen-environment no-CUDA integration smoke covering actual installation, all bound callables, and restoration."
+    },
+    {
+      "id": "H6_OUTER_FAILURE_PROVENANCE",
+      "severity": "moderate-readiness",
+      "finding": "The outer wrapper has no persistent supervisor transcript or ERR trap that terminally hashes preflight/finalizer partial failure artifacts."
+    }
+  ],
+  "counterexamples": {
+    "script": "counterexamples.py",
+    "result": "counterexample_results.json",
+    "count": 5,
+    "all_accepted": true,
+    "interpretation": "These establish verifier/threat-model boundaries. The selector and rank-relabel cases require self-consistent producer-side rewriting and therefore do not contradict the package's explicit exclusion of malicious-producer resistance."
+  },
+  "mitigated_cases": {
+    "simple_missing_rank": "rejected by exact rank-0..7 finalizer loop",
+    "simple_rank_mismatch": "rejected by expected-rank, cell-rank, argv-rank, output-path, and shard-hash checks",
+    "missing_formal_attention_or_gdn_call": "rejected by exact per-cell and rank totals",
+    "warmup_only_capture": "does not satisfy the formal-cell call closure; pre-factorial warmups are deliberately excluded",
+    "cuda_graph_replay_without_per_call_python_launcher": "would produce zero recorded launcher calls and fail; v6 does not positively attest graph nodes",
+    "postcapture_artifact_byte_tamper_without_self_consistent_rewrite": "rejected",
+    "fallback_reported_by_the_frozen_primary_ledger": "dense_fallback_calls must be zero"
+  },
+  "maximum_defensible_claim_if_v6_formal_passes_unchanged": "In the frozen honest in-process execution, every registered formal attention call reached exactly one observed Triton CompiledKernel Python launcher whose final cache bundle and normalized launch metadata were hashed and replayed; this is not independent device-binary execution attestation, full autotuning-choice attestation, or malicious-producer resistance.",
+  "paper_target_5_upgrade_allowed": false,
+  "recommended_next_version": "non-overwriting v7 before H20 execution"
+}

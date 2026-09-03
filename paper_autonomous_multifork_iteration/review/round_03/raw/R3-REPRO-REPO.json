@@ -1,0 +1,188 @@
+{
+  "reviewer_id": "R3-REPRO-REPO",
+  "round": 3,
+  "snapshot_sha256": "a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a",
+  "role": "reproducibility_provenance",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The manuscript carefully bounds its claims, separates memory denominators, uses a four-cell ownership factorial, and reports targeted mutation controls and a limited independent attention oracle. However, the central RR2 evidence cannot be independently replayed from the submitted snapshot: the referenced raw RR2 shards, phase witnesses, oracle sidecars, and mutation receipts are absent, while the included executable source and replay script implement the earlier two-arm capacity cohort rather than the reported RR2 factorial. This is substantive because the paper's main contribution is explicitly an executable audit.",
+    "presentation": "The paper is unusually explicit about its scope, measurement windows, relational versus independent oracles, and unsupported claims. Tables 2–5 and the limitations on pp. 8–9 make the experimental boundary easy to understand. Artifact presentation is nevertheless inconsistent: Appendix E and the Reproducibility Statement describe replayable RR2 material that is not present, and the machine-readable oracle field is mislabeled.",
+    "contribution": "A phase-aware ownership checklist combining heterogeneous KV/GDN state witnesses, denominator accounting, factorial controls, and mutation testing is useful and reasonably distinct. Its demonstrated scope is nevertheless one checkpoint, one runtime and hardware family, one tail geometry, and a sequential single-stream schedule, with no evidence that the contract transfers to another hybrid model or serving engine. The missing executable RR2 artifact further weakens the practical contribution."
+  },
+  "paper_summary": "ForkAudit is an executable audit contract for distinguishing immutable shared document state from request-private mutable state in hybrid LLM inference. The paper applies it to Qwen3.5-35B-A3B using a 2×2 factorial over full-copy versus shared-document KV and materialized versus borrowed-immutable GDN bases at N={1,8,32}. It reports bitwise cross-cell equality, phase-aware storage-range witnesses, eight bounded FP32 attention checks, nine live fault injections, and denominator-separated allocator measurements. The paper explicitly disclaims scheduler, throughput, production-capacity, downstream-quality, and broad generalization claims.",
+  "strongest_verified_contribution": "The clearest supported contribution is the disciplined separation of ownership lifecycle and memory denominator claims. Sections 3–5 and Tables 3 and 5 distinguish setup aliasing from post-transition mutable-state disjointness and distinguish analytical pages from PyTorch allocator deltas. The submitted aggregate records the advertised four-cell exactness, per-rank oracle values, memory matrix, and nine expected-gate mutant outcomes, even though the underlying RR2 bytes are unavailable for independent replay.",
+  "strengths": [
+    "The claim boundary is unusually responsible: the abstract, Introduction, Table 3, and pp. 8–9 consistently state that this is not a new kernel, scheduler, completeness proof, throughput study, or production-capacity measurement.",
+    "Memory quantities are kept separate. Section 4.4 and Table 5 distinguish final allocated deltas, setup-plus-generation peaks, generation-window peaks, reserved bytes, and unmeasured NVML/service capacity.",
+    "The audit design addresses important common-mode risks through fixed-axis projections, direct ownership witnesses, a bounded dense-FP32 calculation, and matched-clean live mutants rather than relying only on token equality.",
+    "The anonymous earlier-cohort supplement has a complete internal manifest: all 36 listed files verify against ANONYMOUS_MANIFEST.sha256, and its eight capacity-cohort shards plus replay script are available.",
+    "Citation and anonymity records are well organized, and the PDF respects the nine-page main-text boundary before references."
+  ],
+  "questions": [
+    "Where is the exact executed source closure for the RR2 four-cell factorial, GDN setup policies, dense-FP32 reconstruction, and nine live mutations? The submitted 18-file closure and launcher expose only the earlier two-arm resident-capacity experiment.",
+    "Can the authors provide anonymized copies of the eight approximately 62 MB RR2 shards and the 536 artifacts listed in rr2_formal_w/all-raw-artifacts.sha256, including the binary oracle sidecars and phase timelines?",
+    "Why does rr2_formal_w/forkaudit-summary.json set oracle_max_relative_l2 to 0.005 when the maximum of oracle_relative_l2_by_rank is 0.0017432502481433169 and 0.005 is the tolerance?",
+    "Can the authors produce one clean, bytecode-disabled end-to-end execution whose governance tests, GPU run, aggregation, detached receipt verification, and terminal recursive audit all pass in the same run?",
+    "Which parts of the contract have been exercised on a second hybrid model or runtime with materially different recurrent-state semantics?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R3-REPRO-01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "Reproducibility Statement, p. 9; Appendix E/Table 8, p. 13; repository_inventory.md; MANIFEST.json",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-GDN-01",
+        "C-RR2-ORACLE-01",
+        "C-RR2-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS",
+        "rr2_formal_w/detached-receipt-manifest.json",
+        "rr2_formal_w/all-raw-artifacts.sha256",
+        "rr2_formal_w/forkaudit-summary.json"
+      ],
+      "observed_evidence": "The snapshot manifest contains no forkAudit-shard-{0..7}.json files, no oracle-sidecar bytes, no phase timeline files, and no experiment_registry.json. The detached manifest describes eight roughly 62 MB shards, and all-raw-artifacts.sha256 lists 536 raw artifacts, but only their hashes and aggregate extracts are included. The available resident shards under supplement_anonymous/raw_primary belong to the earlier two-arm capacity cohort, not RR2.",
+      "why_it_matters": "The central ownership, oracle, and mutation claims depend on contents that cannot be inspected or replayed. A digest authenticates a byte string only when that byte string is available; it cannot substitute for the missing witness. This directly conflicts with the paper's characterization of the contract as executable and the claim map's instruction to replay the raw shards.",
+      "required_fix": "Release anonymized RR2 shards, phase witnesses, oracle sidecars, mutation receipts, detached manifests, and the experiment registry, or provide a stable anonymous archive containing them. Update Appendix E so every path resolves in the distributed package.",
+      "verification_test": "Starting only from the released package, verify every detached SHA-256 entry, replay all 96 factorial configurations and nine matched-clean/mutant pairs, recompute every FP32 oracle value from binary sidecars, and regenerate Tables 4–5 and Figure 2 without trusting aggregate pass booleans.",
+      "evidence_needed": "The actual bytes bound by the RR2 manifests and a documented offline replay command.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-REPRO-02",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Sections 4.2–5.3, pp. 5–7; Reproducibility Statement, p. 9; supplement_anonymous/code; supplement_anonymous/scripts/generate_paper_artifacts.py",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-GDN-01",
+        "C-RR2-ORACLE-01",
+        "C-RR2-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-GDN",
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "supplement_anonymous/code/EXECUTED_SOURCE_SHA256"
+      ],
+      "observed_evidence": "The included launcher and runner implement stages static-dry-run and resident-shard for a two-arm fresh-versus-reuse experiment at N={1,2,4,8,16,32}. The source contains no RR2/ForkAudit factorial driver, no materialized-versus-borrowed GDN policy axis, no nine-mutant campaign, and no RR2 dense-oracle reconstruction path. The provided artifact-generation script reads multifork-resident-summary.json and creates earlier-cohort capacity/exactness artifacts, not the primary RR2 dashboard or tables.",
+      "why_it_matters": "The supplied code cannot execute the experiment supporting the paper's main claims. Source provenance for an earlier experiment does not establish the correctness or reproducibility of the materially different four-cell RR2 pipeline.",
+      "required_fix": "Distribute the exact RR2 executed source, protocol, dependency lock, tests, launcher, and artifact-generation scripts, each bound to the run's source ledger. Clearly separate RR2 code from earlier-cohort code.",
+      "verification_test": "In a clean pinned environment, invoke the supplied RR2 launcher and confirm that it generates run_id 372384bd37cf7640ca210537a4360e1a-compatible schemas, four ownership cells at N={1,8,32}, eight oracle reconstructions, nine matched-clean/mutant outcomes, and the reported aggregate fields.",
+      "evidence_needed": "The complete source preimage corresponding to the RR2 source ledger and an end-to-end command.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-PROV-03",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Reproducibility Statement, p. 9; rr2_formal_w/forkaudit-summary.json",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-GDN-01",
+        "C-RR2-ORACLE-01",
+        "C-RR2-MUT-01"
+      ],
+      "evidence_ids": [
+        "rr2_formal_w/forkaudit-summary.json",
+        "rr2_formal_w/model-load-closure.json"
+      ],
+      "observed_evidence": "The manuscript states that the W run's terminal recursive audit failed because Python bytecode appeared after execution, while the bytecode-disabled follow-up stopped before GPU execution because governance tests were stale. Nevertheless, the aggregate reports passed=true and formal_ready=true without exposing the failed terminal-closure state in its top-level status.",
+      "why_it_matters": "The scientific outcome may still be valid, as the paper cautiously states, but there is no single clean execution closing code, GPU evidence, aggregation, and final package integrity. The machine-readable status is easier to overinterpret than the prose.",
+      "required_fix": "Complete one clean rerun or add explicit terminal_package_closure_passed=false and rerun_status fields to the aggregate and claim map.",
+      "verification_test": "A fresh execution must pass preflight, governance tests, all GPU shards, aggregation, detached receipt checks, recursive package audit, and final source/model rehash without post-run modifications.",
+      "evidence_needed": "A clean terminal closure receipt bound to the same scientific aggregate.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-PROV-04",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "Section 5.2 and Figure 2, p. 7; rr2_formal_w/forkaudit-summary.json",
+      "claim_ids": [
+        "C-RR2-ORACLE-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS",
+        "rr2_formal_w/forkaudit-summary.json",
+        "forkaudit_fp32_calibration_manifest.json"
+      ],
+      "observed_evidence": "The aggregate field oracle_max_relative_l2 is 0.005, whereas max(oracle_relative_l2_by_rank) is 0.0017432502481433169. The manuscript and calibration manifest identify 0.005 as the fixed tolerance, not an observed maximum.",
+      "why_it_matters": "A primary machine-readable field has incorrect semantics and can cause automated audits to reproduce the wrong headline value or mistake the threshold for an observation.",
+      "required_fix": "Store 0.005 under an explicit oracle_relative_l2_tolerance field and set oracle_max_relative_l2 to the maximum of the eight observed values. Version the schema and regenerate dependent artifacts.",
+      "verification_test": "A schema test should require oracle_max_relative_l2 == max(oracle_relative_l2_by_rank) and require every observed value to be below oracle_relative_l2_tolerance.",
+      "evidence_needed": "Corrected aggregate JSON and a passing invariant test.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-SCOPE-05",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "Table 2, p. 5; Discussion and Limitations, p. 8",
+      "claim_ids": [],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "The audit is demonstrated on one Qwen3.5 checkpoint, one H20 family, one BF16 page geometry with a 127-token partial tail, N≤32, and sequential round-major execution on one CUDA stream. It does not cover another hybrid architecture, another cache implementation, scheduler lifecycle operations, cancellation, reclamation, or concurrent execution.",
+      "why_it_matters": "The proposed contribution is an audit contract intended to guide hybrid-cache studies, but the evidence does not establish that its targets, witnesses, and mutation gates transfer beyond the implementation from which they were developed. This limits the amount of new general knowledge contributed at ICLR scale.",
+      "required_fix": "Apply the contract to at least one independent hybrid model or runtime with different recurrent-state and cache-lifecycle semantics, ideally including cancellation or reclamation and at least one naturally occurring defect or implementation disagreement.",
+      "verification_test": "Demonstrate that the same contract schema can be instantiated without implementation-specific assumptions, detects an independently introduced or naturally occurring ownership fault, and reports comparable denominator-separated evidence.",
+      "evidence_needed": "A second implementation case study with raw evidence and an analysis of which audit targets transfer unchanged.",
+      "expected_impact": "high",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern identified. The paper uses PG-19 training data for systems behavior, makes no human-subject or deployment-safety claims, and includes a proportionate ethics statement.",
+  "llm_usage_disclosure": "This independent internal review was generated by an LLM. It inspected only the frozen submission snapshot identified above, performed read-only textual and hash/manifest checks, and did not use prior reviews, author responses, external repositories, or internet sources.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A complete anonymized RR2 artifact containing the eight raw shards, all listed phase/oracle/mutation bytes, the experiment registry, and a replay script that regenerates the primary results.",
+    "The exact RR2 executed source closure and dependency environment, with one clean end-to-end run passing terminal package integrity.",
+    "A corrected, schema-tested aggregate separating observed oracle maxima from the preregistered tolerance.",
+    "A second hybrid model or serving-runtime case showing that the contract transfers and catches an independently arising ownership or lifecycle fault.",
+    "An independent oracle for at least part of the GDN transition path or another end-to-end semantic reference."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of released RR2 shard hashes to match the detached receipts or failure of offline replay to reproduce the four-cell exactness and intended-gate outcomes.",
+    "Evidence that the unavailable RR2 source differs materially from the source ledger or that the aggregate's source bindings refer to the earlier capacity implementation.",
+    "A clean rerun that changes the reported exactness, GDN disjointness, oracle values, or allocator deltas.",
+    "Discovery that the mutation gates detect injected metadata changes without exercising the corresponding live runtime fault."
+  ],
+  "review_limitations": [
+    "The review was restricted to the frozen snapshot and could not inspect the absent RR2 raw artifacts or any external archive.",
+    "No GPU execution was attempted because the snapshot lacks model weights, PG-19 text, the RR2 launcher, and the RR2 raw source closure.",
+    "Citation claims were assessed from the bundled citation lock and manuscript rather than independently browsing external sources."
+  ]
+}

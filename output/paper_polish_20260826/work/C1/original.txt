@@ -1,0 +1,2273 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      Null Calibration for Multiple-Choice Evaluation: When
+002   “Above Chance” Fails the Input-Blind Floor
+003
+004
+005       Anonymous authors
+006       Paper under double-blind review
+007
+008
+009                                               Abstract
+010
+011             Multiple-choice scores are commonly interpreted against chance. We argue
+012             that, before comparing model arms, each score should instead clear a re-
+013
+                porting floor given by the construct’s best constant input-blind predictor,
+                and we scope the claim: this is a per-construct reporting convention, not
+014
+                a logical validity gate. Below that floor an interface’s raw arm differences
+015
+                need not be trusted in the same way as above it, but the mechanism by
+016             which the floor matters differs by construct family — we therefore state the
+017             floor’s role per family rather than assert a single necessary condition. The
+018             floor is itself an estimate, and its calibrating null must be realisable by the
+019             construct. Under a null restricted to each item’s legal letters, only MMLU
+020             and BoolQ have label floors a balanced null could not plausibly produce;
+021             the other letter constructs show that chance is the wrong reference without
+022             establishing that their floors differ from chance in magnitude.
+023             On MMLU-Pro, the reference choice changes the reading of structurally
+024             damaged arms. Under the matched paired-bootstrap standard, only 1/12
+025             non-OLMo cells clears the best-constant floor, and the point-estimate sen-
+026
+                sitivity to winner treatment is reported separately rather than mixed into
+                that verdict. Across five smaller benchmarks, only 9/85 designated dam-
+027
+                aged cells clear the floor on the interval standard, all of them healed OLMo-
+028
+                2 arms. The complete matched-standard counts are consolidated in Table 1;
+029             a power analysis explains why most per-benchmark tests remain inconclu-
+030             sive.
+031             For the distinct question of whether one arm carries item-level information,
+032             we adapt an arm-conditional permutation null within option-count strata.
+033             It assigns every pure constant emitter exactly zero regardless of collapse
+034             letter. Re-judging 27 cells withdraws one above-floor capability label, dis-
+035             solves both below-floor competence labels, and exposes a weak intact-family
+036             anchor. Full-fp32 evaluation removes every bf16 exact tie yet does not re-
+037             cover accuracy, ruling out numerical precision as the explanation. Together
+038             these results motivate a simple rule: calibrate every reported construct to
+039
+                its explicit input-blind null before interpreting arm differences.
+040
+041
+      1     Introduction
+042
+043   A recent multilingual evaluation reported an awkward pattern: every tested model was
+044   above chance, yet none beat the benchmark’s majority-class baseline (Arčon et al., 2026).
+045   The authors found the flip because they happened to print both reference lines. This is no
+046   curiosity of one newly constructed benchmark: a systematic construct-validity review of 445
+047   language-model benchmarks offers 27 actionable checklist items, none of which asks authors
+048   to report a null, a chance level, or a constant predictor (Bean et al., 2025). The missing
+049
+      item is operational: before comparing model arms, test whether the reported construct
+      clears its own input-blind floor. Figure 1 previews the two distinct nulls needed for interface
+050
+      comparability and arm-specific item-level information.
+051
+      For a letter-valued multiple-choice construct, the floor is the most accurate constant letter
+052
+      under the benchmark’s empirical gold marginal; for content likelihood, an analogous input-
+053
+      blind heuristic can exploit option length. These references need not equal nominal chance,
+
+
+                                                      1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+073
+074
+      Figure 1: Two construct-matched nulls. Arm-independent v1 uses the best constant under
+075
+      the gold-label marginal for comparability; arm-conditional v2 preserves legal option-count
+076   strata and the prediction marginal to test item-level information. Either is a reporting
+077   reference, not a logic gate, for construct validity.
+078
+079
+080   and more importantly an arm can look “above chance” while carrying no more usable signal
+081   through the measured interface than a constant predictor — especially under structural
+082   damage, where option-token selection bias (Zheng et al., 2024) can dominate the argmax
+083
+      while content knowledge remains partly available.
+084   We study null calibration as a measurement protocol, not a new multiple-choice interface
+085
+      or debiasing algorithm. Majority-class baselines for MCQA already exist (Balepur et al.,
+      2024); letter-versus-content formulations are established (Gu et al., 2025; Cho et al., 2026);
+086
+      constant outputs are known to game automatic judges (Zheng et al., 2025). Our contribution
+087
+      is to make the construct-appropriate input-blind null a pre-comparison gate, quantify the
+088   degrees of freedom hidden inside it, and separate two questions needing different references:
+089
+      1. Is the interface valid for arm comparison? Use an arm-independent best-constant floor.
+090   2. Does this particular arm carry item-level information? Use an arm-conditional permu-
+091       tation null that preserves the arm’s prediction marginal.
+092   The distinction prevents two opposite mistakes: chance can credit a literal constant emitter
+093   as competent, while the best-constant floor can label two equally empty emitters differently
+094   solely for collapsing onto different letters. The first motivates our headline floor; the second
+095   motivates read-out v2, for which we prove constant-collapse invariance algebraically.
+096   Our evidence uses ten target constructs plus Winogrande as a negative control, four base-
+097   model families, letter and content likelihood interfaces, and structurally damaged arms. Our
+098   findings:
+099   • The null is not “chance,” and the floor must itself be calibrated against a null the con-
+100       struct can realise. Our first MMLU-Pro calibration violated that requirement. The
+101       corrected construct-level estimates and verdicts are reported in Table 7; only MMLU
+102       and BoolQ support a quantitative above-balanced-null claim.
+103   • Content floors are not dataset constants unless their tie convention, length unit, and
+104
+          tokenizer are fixed. Table 8 reports the measured reversals and spans; Section A.1.5
+          records the separate option-count correction.
+105
+      • At MMLU-scale power, the conventional chance reference materially overstates the
+106
+          damaged-arm count. Table 1 puts the chance and best-constant comparisons under
+107
+
+
+
+                                                     2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+         matched point-estimate and interval standards; Appendix A.4 reports the exceptions
+109      and power limits.
+110   • The permutation null makes every pure constant emitter score exactly zero, re-sorts
+111      rather than uniformly shrinks the read-out, and reveals intact Llama-2-7B as a weak
+112      MMLU-Pro anchor (Tables 16 and 17).
+113   • Full-fp32 evaluation removes the exact-tie mechanism without recovering accuracy; the
+114      compact diagnostic audit in Table 2 separates that result from the integrity repairs.
+115   The floor test is deliberately one-directional: a failure withholds the above-reference label
+116   from the score as evidence for an arm comparison, but a pass does not certify that the
+117   benchmark measures the intended capability. Feng et al. (2019) construct a dataset where
+118   a partial-input baseline is at chance while artifacts remain exploitable; clearing a null is, in
+119
+      Feng et al.’s framing, necessary, not suﬀicient.
+120
+121   2   Related Work
+122   Input-blind and constant baselines. Balepur et al. (2024) define a majority-class baseline
+123   for letter MCQA and recommend stronger-than-chance references; their object is dataset
+124   cheatability under a black-box generative setup, ours a per-arm gate for likelihood-scored
+125   constructs. The distinction is operational: their invalid-output analysis imputes either 0.0
+126   or 0.25 on MMLU, while the construct’s best-constant letter value is 0.2689. Zheng et al.
+127   (2025) use “null model” for crafted constant responses that adversarially exploit an LLM
+128   judge — an attack optimized against a judge, whereas ours is a reference derived from
+129   benchmark statistics, requiring no attacker. The metalinguistic preprint motivating our
+130
+      opening reports the above-chance/below-majority pattern descriptively on one new bench-
+      mark, without turning it into a pre-comparison protocol (Arčon et al., 2026).
+131
+132   Selection bias and MC interfaces. Letter preference is not a new observation. Zheng et al.
+133   (2024) identify selection and token bias and propose PriDe, which estimates an option-ID
+134   prior from permuted contents. PriDe fixes the predictor; null calibration fixes the reference
+135   line. Even after prediction debiasing, reporting only against chance can leave the bench-
+136   mark’s gold-marginal floor unreported. We therefore do not reject permutation controls on
+137   cost grounds — they are a useful and potentially inexpensive diagnostic, answering whether
+138   predictions should be corrected, while our arm-independent floor answers whether the re-
+139
+      sulting interface score is comparable across arms.
+140   OLMES standardizes both multiple-choice formulation (MCF) and cloze formulation (CF),
+141
+      then uses the better score per task and model (Gu et al., 2025); this is not a size-keyed
+      rule. Its reference discussion is nevertheless framed around a random baseline rather than
+142
+      a measured label-marginal floor, so the max rule can select an interface without testing
+143
+      whether that interface clears an input-blind reference. Our ARC-Easy result shows CF
+144   rescuing an at-floor letter read-out; MMLU shows that an interface swap need not do so.
+145   Cho et al. (2026) independently study symbols, cloze, and hybrid formats and propose a
+146   new question-sensitive score. We do not claim the interface contrast; our method instead
+147   gates whichever construct is reported.
+148
+149
+      Length-based scoring. Length-normalized likelihood can over-correct and its token-based
+      form is tokenizer-dependent (Oostermeijer, 2026), so we claim no generic length sensitivity
+150
+      or tokenizer dependence of the scoring rule. We show the induced input-blind floor inherits
+151
+      these choices: its value changes with tie convention, character versus continuation-token
+152   length, and tokenizer. OLMES’s observation that tokenizer dependence may be irrelevant
+153   when ranking options for one fixed model and tokenizer is compatible with ours; our scope
+154   is cross-model comparison of the reference itself.
+155
+156   Nulls as interpretive controls. Our arm-conditional read-out v2 is a chance-corrected agree-
+157   ment statistic: ∆perm equals the numerator of Cohen’s κ (Cohen, 1960) within option-count
+158
+      strata, and the constant-emitter zero we rely on is that literature’s standard property, not
+      a new result. We claim only the stratification by variable option count and the statistic’s
+159
+      use as a pre-comparison gate.
+160
+      Control tasks and selectivity can reverse conclusions about which representation layer is in-
+161
+      formative (Hewitt & Liang, 2019) — the closest structural precedent, their null randomizing
+
+
+                                                     3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      supervision for a probe while ours removes input dependence from an MC construct. Ding
+163   et al. (2021) similarly motivate sensitivity and specificity tests for representation similarity.
+164   Finally, Bean et al. (2025) provide the construct-validity vocabulary and a broad benchmark
+165   checklist. We position null calibration as the missing operational item, not as the invention
+166   of construct validity.
+167
+168   3     Null-Calibrated Measurement
+169
+170
+      Let a benchmark have items i = 1, . . . , n, gold answers yi , and a scored interface producing
+      predictions ŷi , with empirical accuracy
+171
+                                                  1X
+                                                     n
+172
+                                           acc =        1[ŷi = yi ].                             (1)
+173                                               n i=1
+174
+175   3.1   Read-out v1: the arm-independent interface floor
+176   For a letter construct with legal labels L, define the input-blind constant family hL (x) = L.
+177   The construct floor is
+                                                     1X
+                                                        n
+178
+179
+                                      fconst = max         1[yi = L].                            (2)
+                                                L∈L n
+                                                       i=1
+180
+      The v1 statistic is ∆ﬂoor = acc − fconst . Because fconst depends only on the evaluated
+181
+      item set, every arm is compared to the same reference — arm independence is essential, or
+182
+      arm-to-arm comparisons could change merely because the null changed with the arm.
+183
+      For content likelihood, we use an input-blind longest-option family, whose prediction de-
+184
+      pends solely on option length but is not fully specified until a tie convention and length unit
+185   are fixed; token-based variants also require a tokenizer. Section 3.3 treats these as part of
+186   the construct.
+187   Our decision rule is intentionally asymmetric: failing the floor withholds the above-reference
+188   label from any claim that the interface expresses arm-specific capability above the strongest
+189   constant reference, while clearing it passes one necessary test but leaves artifacts no single
+190   null enumerates (Feng et al., 2019).
+191
+      Why the floor is the achievable constant. The operative reference is the literal observed
+192
+      floor fconst = maxL (countL /n), not the balanced expectation E[fˆ], for a decision-theoretic
+193
+      reason: the realized construct must beat the best input-blind score actually attainable
+194
+      on this item set, not the score a balanced benchmark of identical size would have deliv-
+195   ered. The literal floor is the maximum-marginal constant a realizable interface could have
+196   reached by construction; any null calibrated to a uniform marginal scores a different, legal-
+197   but-unrealisable experiment against that construct (classically, the weighted-κ corollary
+198   collapses to 1/k iff the marginal is uniform (Cohen, 1960; Brennan & Prediger, 1981)). The
+199   residual winner’s-curse gap fconst − E[fˆ] (0.273 pp on MMLU-Pro) is disclosed side-by-side
+200   in Table 15, so the reader sees both the baseline that was actually achievable and the
+201   selection-biased expectation the plug-in preserves.
+202
+203
+      3.2   Read-out v2: an arm-conditional independence null
+204   The v1 floor asks whether an interface is suitable for mutually comparable arm scores; it is
+205   not collapse-invariant as a competence statistic. On the full MMLU-Pro item set, always-A,
+206   always-E, and always-J contain the same item-level information—none—yet receive unequal
+207   v1 deltas because the gold marginals are non-uniform (Table 9). The separate ten-letter
+208
+      implementation self-test below conditions each letter on items where it is legal.
+209   For the arm-specific question, we preserve the arm’s own prediction multiset and remove its
+210
+      alignment with items. MMLU-Pro has variable option count, so permutations are uniform
+211   within n_opt strata s. With ns the stratum size and cpred        gold
+                                                                s,L , cs,L the prediction and gold
+      counts,
+212                                                          X 1 X pred gold
+213                    c = E[acc | ŷ permuted within s] =
+                      acc                                                 cs,L cs,L ,          (3)
+                                                              s
+                                                                 nns
+214                                                                      L
+215   and
+                                            ∆perm = acc − c
+                                                          acc.                                     (4)
+
+
+                                                     4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+      The statistic is decades old; only the varying-k stratification and its use are ours. ∆perm
+217   is the numerator of Cohen’s κ within n_opt strata: with po = acc and pe = c              acc, κ =
+218   (po − pe )/(1 − pe ), hence ∆perm = κ (1 − pe ) identically — verified to printing precision in all
+219   27 cells of Table 17. We claim neither this statistic nor the collapse identity below as new:
+220   that chance-corrected agreement vanishes for a constant rater is the textbook property,
+221   since po = pe there. That a chance term should depend on how many options an item
+222   offers likewise long predates this work (Bennett et al., 1954; Brennan & Prediger, 1981;
+223   Frary, 1988; Brenner & Kliebsch, 1996; Vries et al., 2008), and we claim none of it: neither
+224   correcting for option count, nor treating pe as a methodological decision, nor noting that κ-
+225
+      family statistics depend on k. Those works assume a single global k; what we are not aware
+      of there, and do claim, is (i) a null in which k varies item to item (n_opt ∈ {3, . . . , 10},
+226
+      eight strata here), the permutation confined within strata so a letter illegal for an item can
+227
+      never be credited to it, and (ii) use of the quantity as an arm-conditional pre-comparison
+228   gate with an explicit materiality bar rather than as an agreement score. We report ∆perm
+229   rather than κ to keep it on the v1 floor’s percentage-point scale, which is what makes the
+230   two nulls directly comparable (Table 9). Appendix A.2 states that boundary claim by claim;
+231   its footprint is the 36 items below.
+232
+233
+      Constant-collapse identity. For a pure always-L emitter, P (ŷ = L′ ) = δL′ L . Writing mL′
+      for the relevant gold marginal,
+234                             X
+235                        c =
+                          acc      δL′ L mL′ = mL = acc,    ∴ ∆perm = 0.                       (5)
+236                               L′
+237   This is an algebraic identity for every legal collapse letter, not an empirical regularity: it is
+238   the κ = 0 property specialised to our stratified estimator, and the implementation asserts
+239   zero to below 10−12 for all ten letters. The loophole “collapse onto a different letter” is
+240   therefore closed by construction.
+241   The two nullsPmust not be conflated, and their ordering is weaker than it first appears.
+242   Unstratified,    L pL mL ≤ maxL mL places the v2 null at or below the v1 best-constant
+243   floor; within-stratum permutation instead yields a bound that can dominate fconst when
+244   stratum argmaxes differ. Appendix Table 10 gives the exact combinatorial gap, empirical
+245   count, binding cell, and legal counterexample. The ordering holds for the measured cells but
+246
+      becomes a theorem only under a regularity condition we can state and not assume. Passing
+      v2 must never be described as clearing the paper’s floor.
+247
+      Uncertainty uses 10,000 paired bootstrap resamples with acc  c recomputed inside each, cross-
+248
+      checked against 10,000 within-stratum permutations; both use seed 7 and must agree at
+249
+      α = 0.05. Significance is not enough at n = 12032, so we define
+250
+251   Reference-choice reporting rule (operative).
+252
+      Operative calibration reference. Throughout the paper the operative calibration reference
+253
+      for per-cell ‘above floor’ / ‘at floor’ / ‘below floor’ verdicts is the literal observed best-
+254
+      constant floor fconst = maxL (countL /n) (1403/12032 = 0.116606 on MMLU-Pro). Table 1
+255   consolidates the matched-standard headline counts, and Table 15 prints every MMLU-Pro
+256
+      cell; all are defined against the observed floor. Where a count against E[fˆ] differs, both
+257   figures are printed. The selection-aware joint resample that would also vary the winning
+258   letter is not run here (items unavailable this run; plug-in/Wilson intervals only). Any future
+259   re-judging that treats the winner letter as random must re-issue the counts and must not
+260   silently re-use these figures.
+261
+262   Frozen sensitivity surface E[fˆ]. The legality-aware balanced-null expectation always ac-
+263
+      companies the literal reference in Table 15 but enters verdicts only as a frozen supple-
+      ment/sensitivity surface, never as a replacement. Appendix Table 14 aligns the cells sep-
+264
+      arating the references: sign flips do not automatically change interval verdicts, one healed
+265
+      OLMo-2 cell straddles the literal floor, and the clear-both comparator remains distinct.
+266   Where aggregate counts differ, both are printed in the corresponding tables rather than
+267   repeated here.
+268
+269                                                            ∆perm
+                                        recovery_fraction =          ,                               (6)
+                                                               ∆max
+
+                                                      5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      with ∆max the best alignment achievable by reassigning the observed prediction multiset
+271   subject to each item’s legal option count, and require at least 0.10 times the same-family
+272   intact anchor for a material signal. If the intact anchor fails that cutoff, relative claims
+273   are blocked. Appendix Table 18 reports the full threshold sweep; membership is unchanged
+274   in the intended operating neighbourhood and only the lowest sensitivity boundary admits
+275   three additional cells.
+276
+      Pre-registration status. The v2 rule, gates, stratification, and materiality constant were
+277
+      committed before re-judging the existing cells and before future unscored milestones. The
+278
+      27 numbers here are nevertheless post-hoc by construction: those cells had already been
+279   scored, and the designer had already seen the shape of the collapse defect. We therefore
+280   present v2 as a pre-registered rule for future read-outs and a transparent post-hoc re-analysis
+281   of the existing cells.
+282
+283   3.3   Four under-specifications of the reference
+284   A content floor is not a dataset constant. Four independent choices must be printed with
+285   the score: the tie convention, the length unit, the tokenizer, and — when option count
+286   varies — the definition of chance. In our audit, tie handling can reverse an ARC-Challenge
+287   verdict, and the extreme-convention sensitivity span on MMLU-Pro is much larger than
+288   the operative span among defensible conventions; changing the length unit or tokenizer also
+289
+      moves the floor by more than the effects under study. Nominal and item-averaged chance
+      likewise disagree on MMLU-Pro. Tables 7 and 8 place the exact floors, tie rates, gaps,
+290
+      sensitivity endpoints, and calibrated verdicts in aligned columns; Appendix A.1 develops
+291
+      each choice and its provenance. Jointly, the four define a token content floor as a property
+292   of (dataset, convention, unit, tokenizer). The letter floor is exempt: it depends only on the
+293   item set’s gold-label marginal.
+294
+295   4     Experimental Setup
+296
+297   Benchmarks and constructs. We evaluate letter constructs on MMLU (Hendrycks et al.,
+298
+      2021), ARC-Challenge and ARC-Easy (Clark et al., 2018), OpenBookQA (Mihaylov et al.,
+      2018), CommonsenseQA (Talmor et al., 2019), PIQA (Bisk et al., 2020), MMLU-Pro (Wang
+299
+      et al., 2024), and Winogrande (Sakaguchi et al., 2020) as a negative control; BoolQ (Clark
+300
+      et al., 2019) supplies an additional binary label floor. Content-side longest-option constructs
+301   use MMLU, MMLU-Pro, and the five non-MMLU evidence tasks, Winogrande again only
+302   as a control. The inventory is ten constructs plus the control; OpenBookQA content is
+303   reported under both character and token units rather than counted twice.
+304
+305   Models and structural damage. The four families are OLMo-2-7B (Groeneveld et al., 2024),
+306
+      Llama-2-7B (Touvron et al., 2023), Llama-3-8B (Grattafiori et al., 2024), and Qwen3-8B-
+      Base (Yang et al., 2025). OLMo-2 arms are prune-then-heal checkpoints, including keep8,
+307
+      keep10, keep12, keep14, and shortgpt16. Non-OLMo damage is evaluation-time front-N
+308
+      truncation: the intact base is loaded and its layer list replaced by the first N blocks, with
+309   no fresh block, optimizer, gradient, healing, or damaged checkpoint — a regime confound,
+310   not a clean family contrast, and every joint table labels it. Qwen3’s 36 layers against the
+311   others’ 32 make k8 retain 22.2% rather than 25.0%.
+312
+313
+      Interfaces and scoring protocol. The letter prompt is the content prompt with the labelled
+      option body inserted before Answer:; the letter interface scores the continuations “ A”, “
+314
+      B”, and so forth, while the content interface omits the labelled body and scores option text.
+315
+      Scoring is likelihood-based throughout: summed token log-probability over each candidate
+316   continuation, then argmax. There is no sampling, no decoding, and no regex over generated
+317   text.
+318   All results use chat_template = False: the evaluated systems are base language models with
+319   no supervised fine-tuning and no reinforcement learning from human feedback, so applying a
+320   chat template would be an unfair and non-comparable measurement. We also use add_bos
+321   = 0, desc_style = none, fp32 master weights with bf16-autocast forward, and batch size 48.
+322   MMLU-Pro cross-family runs use maximum length 2048; every final cell has zero truncation.
+323   Numbers here are all from the corrected launch; the protocol.max_len=1536 field inside the
+      per-cell MMLU-scale record is retained for provenance (Appendix A.8).
+
+
+                                                    6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      Statistics and integrity. For deterministic per-item null predictions we report 10,000-
+325   resample paired-bootstrap intervals and two-sided mid-p values with seed 7, plus exact
+326   McNemar tests; v2 additionally uses 10,000 within-stratum permutations. Every cell re-
+327   quires shard indices exactly {0, . . . , 7}, expected cardinality, zero duplicate IDs, zero NaNs,
+328   zero truncations, and chat_template is False; partial merges raise an error.
+329
+330   Power design. The five smaller evidence benchmarks cannot resolve every effect of interest,
+331
+      so null results are never interpreted without the power table (Table 11, Appendix A.4).
+      MMLU-Pro supplies n = 12032 and makes all 21 letter-floor cells capable of detecting
+332
+      MMLU’s −1.389-point reference effect, with 95% half-widths from 0.083 to 0.968 points.
+333
+334   Designated damaged cells, and multiplicity. Every denominator below is over designated
+335   damaged cells: all five OLMo-2 prune-then-heal arms and all four truncation rungs of each
+336   non-OLMo family, giving 17 MMLU-Pro cells and 85 off MMLU, with Winogrande the sole
+337   excluded control. The designation is fixed by construction, never by a measured score, and
+338   is identical in every denominator; Appendix A.4 records that an earlier version narrowed it
+339
+      on MMLU-Pro without saying so. We report per-cell α = 0.05 decisions with no family-wise
+      correction, so headline counts are counts of per-cell decisions rather than simultaneously
+340
+      valid claims; the conclusions rest on the aggregate’s direction and on the regime-and-depth
+341
+      pattern organising its exceptions, not on one cell.
+342
+343
+      5     Results and Analysis
+344
+345   5.1   Wrong-null verdict flips at MMLU-scale power
+346
+      MMLU-Pro provides the cleanest test. Table 1 aligns the chance and best-constant counts
+347
+      under matched point-estimate and interval standards; Table 15 in Appendix A.8 gives the
+348   per-cell values. The reference changes the damaged-arm interpretation, but not every cell
+349   moves, so we retain the exact counts rather than claim a universal categorical flip.
+350
+351   Both sides of the flip, held to one standard. Those counts were initially asymmetric in
+352   evidentiary standard: the floor side carried an interval and a test, whereas “above chance”
+353
+      was a bare point comparison. Because both references are deterministic functions of the
+      evaluated item set, the same paired bootstrap can be applied to each side.
+354
+355
+            Scope and standard                                       Above chance Above best-constant floor
+356
+            MMLU-Pro non-OLMo, point estimate                           10/12                3/12
+357         MMLU-Pro non-OLMo, CI95 excludes 0                           3/12                1/12
+358         MMLU-Pro non-OLMo, BH/Bonferroni at 0.05                     0/12                0/12
+            Off-MMLU designated OLMo-2 heal cells (25), point est.      20/25                9/25
+359         Off-MMLU designated non-OLMo cells (60), point est.         25/60                4/60
+360         Off-MMLU designated non-OLMo cells (60), CI95 excl. 0         —                  0/60
+361
+362   Table 1: Calibrating the reference sharply reduces the advertised damaged-arm count. The
+363   first two rows compare matched point-estimate and paired-bootstrap standards; the third
+364
+      records the multiplicity result under either stated correction; the final three show the off-
+      MMLU replication by regime. ‘Above chance’ uses mean(1/n_opt). Exact cells and power
+365
+      limits in Tables 15 and 11. The paired bootstrap conditions on the observed winning letter;
+366
+      the selection-aware joint resample is not run.
+367
+368
+      The symmetric interval comparison is about one third the size suggested by the asymmet-
+369   ric point-estimate comparison. This does not weaken the reporting rule; it removes an
+370   evidentiary mismatch and shows why both the reference and its uncertainty must be stated.
+371   Table 1 shows that every interval-level off-MMLU clear belongs to the OLMo-2 rows and
+372   aligns the chance, point-floor, and interval-floor counts without repeating them in prose.
+373   The item-average convention is operative; the nominal convention would restore the pre-
+374   calibration chance-side reading on the MMLU-Pro rows. A joint-resample re-issue is the
+375   natural follow-up and must not re-use these counts.
+376   Two qualifications belong with this comparison, both quantified in Appendix A.5. McNe-
+377   mar’s test does not transfer to a non-binary chance reference, and neither side retains an
+
+
+
+                                                          7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      individual cell after multiplicity correction. The aggregate chance-side count remains un-
+379   likely under a global null, so we read it as evidence that the chance side is not uniformly
+380   null, not as simultaneously valid per-cell claims.
+381   The result is strong but not universal: 15/17 cells are at or below the floor, and the two
+382   exceptions differ in kind. Table 15 shows that qwen3_8b_base/k14 is statistically real but
+383   below the materiality gate, whereas OLMo-2 shortgpt16 clears its floor decisively. The latter
+384   retains more of the stack than any keepN rung, so the floor test does not indiscriminately
+385   reject damaged arms (Appendix A.4).
+386
+387
+      Materiality is stable against its own threshold. Figure 2 plots the half-width diagnostic and
+      signed ∆perm against the recovery fraction for every cell. The intact Llama-2 anchor fails
+388
+      the precondition, so that family’s relative-recovery stack is blocked; Table 17 supplies the
+389
+      numerator intervals, while ∆max is deterministic. Appendix Table 18 reports the full thresh-
+390   old sweep and per-cell diagnostics: the material set is unchanged throughout the intended
+391   operating range, and only the lowest sensitivity boundary admits additional cells. Llama-2
+392   remains excluded throughout because its intact anchor fails, not because of post-hoc se-
+393   lection. The table is recomputed from the frozen heal_readout_v2_permutation_null.json
+394   record by code/emit_materiality_sweep.py.
+395   The small-benchmark replication contains literal constant emitters that sit on the opti-
+396   mal constant while appearing above chance: the final rows of Table 1 show the aggregate
+397   supersession of the advertised damaged-arm count. Every surviving above-floor case is a
+398   healed OLMo-2 arm retaining at least 14 layers; no shallower healed arm or truncate-only
+399   arm significantly clears its floor. Margins and per-cell counts in Tables 1 and 12. Because
+400
+      OLMo-2 is the only healed family, this remains a property of that ladder, not a family effect.
+      Appendix A.6 reports the exact constant-emitter, depth, and power counts.
+401
+402   5.2   Read-out versus retained knowledge
+403
+404
+      A floor-level letter score does not imply all task-relevant competence is gone. The ARC-Easy
+      contrast in Table 2 shows an arm that can rank contents but cannot express that knowledge
+405
+      through the damaged letter interface. Conversely, healthy models often favor letters, so
+406
+      “content is the fair interface” generalises no better.
+407
+      The residual-fraction effect is likewise construct-specific: chance inflates it on OpenBookQA
+408
+      but slightly deflates it on PIQA and ARC-Easy. Null calibration is therefore not a one-way
+409   correction; the exact ratios are recorded in Appendix A.6.
+410
+411
+       Diagnostic         Baseline/read-out          Intervention/contrast    Takeaway
+412
+       ARC-Easy keep8     letter 0.2584;      floor content 0.6460;      gap content survives the
+413
+                          0.266414                  +38.76 pp                damaged letter inter-
+414                                                                          face
+415    Qwen3 k8          v1 −0.881 pp (p =           v2 −0.139 pp (p = below-floor           compe-
+416                      0.0362)                     0.0964)                 tence label dissolves
+417    Llama-2 k8        v1 −0.914 pp (p =           v2 −0.416 pp (p = below-floor           compe-
+                         0.0168)                     0.1002)                 tence label dissolves
+418
+       OLMo-2     keep8, 4,303      bf16     ties;   fp32 has zero ties; numerical         precision
+419    MMLU              2,532/14,042     argmax     ∆accuracy = −0.0015     does not recover accu-
+420                      changes                                             racy
+421    Qwen3 k14         shipped BH family: 27       damaged-only family: 23 multiplicity-corrected
+422                      cells, qBH = 0.0297         cells, qBH = 0.0759     downgrade dissolves
+423
+424   Table 2: Representative interventions separate interface failure, arm-conditional signal, and
+425
+      numerical precision. Full intervals and multiplicity-adjusted results in Tables 16 and 17.
+426
+427   V2 re-sorts the 27-cell read-out. Under v1, two MMLU-Pro cells are significantly below
+428   the best-constant floor; under v2 the below-null count is zero (Table 2). V2 is not uniformly
+429   conservative: it downgrades qwen3/k14 and upgrades olmo2/keep14. The qwen3/k14 down-
+430   grade survives only under the originally shipped 27-cell BH family and not the pre-declared
+431   23-cell damaged-only family, so we report it as an uncorrected per-cell observation. V2 also
+
+
+
+                                                      8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      exposes intact Llama-2-7B as a weak arm-conditional anchor, blocking relative-recovery
+433   claims for that family (Table 16).
+434
+435                                                         vertical rf CI = hw-Delta / Delta-max (numerator-dominant); Delta-max combinatorial-exact
+436
+                                               (A) v1 uncertainty vs. modal share                                                              (B) v2 materiality: signed delta vs. capacity ratio
+437                           1.0                                                            Qwen3
+                                                                                             OLMo-2                                      0.5
+
+
+
+
+                                                                                                        recovery fraction = Δperm/Δmax
+438
+                                                                                             Llama-2
+439                           0.8                                                            Llama-3
+                                                                                                                                         0.4
+
+
+
+      v1 CI half-width (pp)
+                                                                                                                                                       intact Llama-2 anchor            intact anchors (filled)
+                                                                                                                                                       (anchor-blocked: rf=0.055 < 0.10 bar)
+440
+441                           0.6                                                                                                        0.3
+442                                                                                                                                      0.2
+                              0.4
+443                                                                                                                                      0.1
+444                                                                                                                                                                                                      Qwen3
+                              0.2                                                                                                        0.0           shortgpt16                                        OLMo-2
+                                                                                                                                                                                                         Llama-2
+445                                                                                                                                                                                                      Llama-3
+                                    pearson r=-0.822
+446
+                                      0.3      0.4      0.5 0.6 0.7 0.8                  0.9      1.0                                          0      5      10        15       20        25       30        35
+447                                                    modal prediction share                                                                                Δperm (pp) = acc − acc ̂
+448
+449
+450
+      Figure 2: Quantitative evidence for the gate and its materiality bar (27 cells). (A) v1
+451   CI half-width against modal-prediction share (pearson r = −0.822; Table 17). (B) signed
+452   ∆perm against rf = ∆perm /∆max and the pre-registered family bar. ∆max is deterministic;
+453   all 27 rows are in Table 18.
+454
+455
+      6                        Discussion
+456
+457   A reporting rule. Define and report the strongest construct-appropriate input-blind pre-
+458   dictor, test each arm against it, and place the floor label beside every comparison. The
+459   rule does not say every damaged model becomes constant or every chance line inflates a
+460   claim — only that an arm score without its floor can support the wrong verdict. V1 is
+461   arm-independent (interface comparability); v2 is arm-conditional (item-level alignment) —
+462   chance credits constants, while a best-constant test confounds knowledge with collapse let-
+463
+      ter. Current claim. 15/17 MMLU-Pro damaged cells fail their own best-constant floor while
+      above chance (Table 15); off MMLU clearance concentrates on healed arms retaining ≥14 of
+464
+      32 layers, so the failure tracks damage severity, not interface universality (retraction history:
+465
+      Appendix A.13).
+466
+467
+      References
+468
+469   Tjaša Arčon, Matej Klemen, Marko Robnik-Šikonja, and Kaja Dobrovoljc. Evaluating
+470     metalinguistic knowledge in large language models across the world’s languages. arXiv
+471     preprint arXiv:2602.02182, 2026.
+472   Nishant Balepur, Abhilasha Ravichander, and Rachel Rudinger. Artifacts or abduction:
+473     How do LLMs answer multiple-choice questions without the question? In ACL 2024
+474     main, pp. 10308–10330, 2024. doi: 10.18653/v1/2024.acl-long.555.
+475
+476   Andrew M. Bean, Ryan Othniel Kearns, Angelika Romanou, Franziska Sofia Hafner, Harry
+477
+       Mayne, Jan Batzner, Negar Foroutan, Chris Schmitz, Karolina Korgul, Hunar Batra,
+       Oishi Deb, Emma Beharry, Cornelius Emde, Thomas Foster, Anna Gausen, María
+478
+       Grandury, Simeng Han, Valentin Hofmann, Lujain Ibrahim, Hazel Kim, Hannah Rose
+479
+       Kirk, Fangru Lin, Gabrielle Kaili-May Liu, Lennart Luettgau, Jabez Magomere, Jonathan
+480    Rystrøm, Anna Sotnikova, Yushi Yang, Yilun Zhao, Adel Bibi, Antoine Bosselut, Ronald
+481    Clark, Arman Cohan, Jakob Foerster, Yarin Gal, Scott A. Hale, Inioluwa Deborah Raji,
+482    Christopher Summerfield, Philip H. S. Torr, Cozmin Ududec, Luc Rocher, and Adam
+483    Mahdi. Measuring what matters: Construct validity in large language model benchmarks.
+484    In NeurIPS 2025 Datasets & Benchmarks, 2025.
+485
+
+
+
+                                                                                                        9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Edward M. Bennett, R. Alpert, and A. C. Goldstein. Communications through limited
+487     response questioning. Public Opinion Quarterly, 18(3):303–308, 1954. doi: 10.1086/
+488     266520.
+489
+490   Yonatan Bisk, Rowan Zellers, Ronan Le Bras, Jianfeng Gao, and Yejin Choi. PIQA: Rea-
+491     soning about physical commonsense in natural language. In AAAI 2020, pp. 7432–7439,
+492
+        2020.
+493   Robert L. Brennan and Dale J. Prediger. Coeﬀicient kappa: Some uses, misuses, and
+494     alternatives. Educational and Psychological Measurement, 41(3):687–699, 1981. doi:
+495     10.1177/001316448104100307.
+496
+497
+      Hermann Brenner and Ulrike Kliebsch. Dependence of weighted kappa coeﬀicients
+        on the number of categories. Epidemiology, 7(2):199–202, 1996. doi: 10.1097/
+498
+        00001648-199603000-00016.
+499
+500   Gyeongje Cho, Yeonkyoung So, and Jaejin Lee. Choices speak louder than questions. In
+501    ICLR 2026 Poster, 2026.
+502
+      Christopher Clark, Kenton Lee, Ming-Wei Chang, Tom Kwiatkowski, Michael Collins, and
+503
+        Kristina Toutanova. BoolQ: Exploring the surprising diﬀiculty of natural yes/no questions.
+504
+        In NAACL 2019, pp. 2924–2936, 2019.
+505
+506   Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa
+507     Schoenick, and Oyvind Tafjord. Think you have solved question answering? try ARC,
+508     the AI2 reasoning challenge. arXiv preprint arXiv:1803.05457, 2018.
+509
+      Jacob Cohen. A coeﬀicient of agreement for nominal scales. Educational and Psychological
+510     Measurement, 20(1):37–46, 1960. doi: 10.1177/001316446002000104.
+511
+512   Frances Ding, Jean-Stanislas Denain, and Jacob Steinhardt. Grounding representation sim-
+513     ilarity through statistical testing. In NeurIPS 2021 Poster, pp. 1556–1568, 2021.
+514
+      Shi Feng, Eric Wallace, and Jordan Boyd-Graber. Misleading failures of partial-input base-
+515     lines. In ACL 2019 main, pp. 5533–5538, 2019. doi: 10.18653/v1/P19-1554.
+516
+517   Robert B. Frary. Formula scoring of multiple-choice tests (correction for guessing). Edu-
+518     cational Measurement: Issues and Practice, 7(2):33–38, 1988. doi: 10.1111/j.1745-3992.
+519     1988.tb00434.x.
+520   Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian,
+521     et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783, 2024.
+522
+523   Dirk Groeneveld, Iz Beltagy, Pete Walsh, Akshita Bhagia, Rodney Kinney, Oyvind Tafjord,
+524     Ananya Harsh Jha, Hamish Ivison, Ian Magnusson, Yizhong Wang, Shane Arora, David
+525
+        Atkinson, Russell Authur, Khyathi Raghavi Chandu, Arman Cohan, Jennifer Dumas,
+        Yanai Elazar, Yuling Gu, Jack Hessel, Tushar Khot, William Merrill, Jacob Morri-
+526
+        son, Niklas Muennighoff, Aakanksha Naik, Crystal Nam, Matthew E. Peters, Valentina
+527
+        Pyatkin, Abhilasha Ravichander, Dustin Schwenk, Saurabh Shah, Will Smith, Emma
+528     Strubell, Nishant Subramani, Mitchell Wortsman, Pradeep Dasigi, Nathan Lambert, Kyle
+529     Richardson, Luke Zettlemoyer, Jesse Dodge, Kyle Lo, Luca Soldaini, Noah A. Smith, and
+530     Hannaneh Hajishirzi. OLMo: Accelerating the science of language models. arXiv preprint
+531     arXiv:2402.00838, 2024.
+532
+533
+      Yuling Gu, Oyvind Tafjord, Bailey Kuehl, Dany Haddad, Jesse Dodge, and Hannaneh
+        Hajishirzi. OLMES: A standard for language model evaluations. In Findings of NAACL
+534
+        2025, pp. 5020–5048, 2025. doi: 10.18653/v1/2025.findings-naacl.282.
+535
+536   Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and
+537    Jacob Steinhardt. Measuring massive multitask understanding. In ICLR 2021, 2021.
+538
+      John Hewitt and Percy Liang. Designing and interpreting probes with control tasks. In
+539
+        EMNLP-IJCNLP 2019 main, pp. 2733–2743, 2019. doi: 10.18653/v1/D19-1275.
+
+
+                                                  10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      Todor Mihaylov, Peter Clark, Tushar Khot, and Ashish Sabharwal. Can a suit of armor
+541     conduct electricity? a new dataset for open book question answering. In EMNLP 2018,
+542     pp. 2381–2391, 2018.
+543
+544   Koen Oostermeijer. Accuracy and normalized accuracy under length bias: Analysis, guide-
+545    lines, and a bayesian alternative. In ICML 2026, 2026.
+546   Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi. WinoGrande:
+547     An adversarial winograd schema challenge at scale. In AAAI 2020, pp. 8732–8740, 2020.
+548
+549   Alon Talmor, Jonathan Herzig, Nicholas Lourie, and Jonathan Berant. CommonsenseQA:
+550     A question answering challenge targeting commonsense knowledge. In NAACL 2019, pp.
+551
+        4149–4158, 2019.
+552   Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei,
+553    Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, Dan Bikel, Lukas
+554    Blecher, Cristian Canton Ferrer, Moya Chen, Guillem Cucurull, David Esiobu, Jude
+555    Fernandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami, Na-
+556    man Goyal, Anthony Hartshorn, Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas,
+557    Viktor Kerkez, Madian Khabsa, Isabel Kloumann, Artem Korenev, Punit Singh Koura,
+558    Marie-Anne Lachaux, Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning
+559
+       Mao, Xavier Martinet, Todor Mihaylov, Pushkar Mishra, Igor Molybog, Yixin Nie, An-
+       drew Poulton, Jeremy Reizenstein, Rashi Rungta, Kalyan Saladi, Alan Schelten, Ruan
+560
+       Silva, Eric Michael Smith, Ranjan Subramanian, Xiaoqing Ellen Tan, Binh Tang, Ross
+561
+       Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov, Yuchen
+562    Zhang, Angela Fan, Melanie Kambadur, Sharan Narang, Aurelien Rodriguez, Robert Sto-
+563    jnic, Sergey Edunov, and Thomas Scialom. Llama 2: Open foundation and fine-tuned
+564    chat models. arXiv preprint arXiv:2307.09288, 2023.
+565
+566   Han De Vries, Marc N. Elliott, David E. Kanouse, and Stephanie S. Teleki. Using pooled
+567
+        kappa to summarize interrater agreement across many items. Field Methods, 20(3):272–
+        282, 2008. doi: 10.1177/1525822X08317166.
+568
+569   Yubo Wang, Xueguang Ma, Ge Zhang, Yuansheng Ni, Abhranil Chandra, Shiguang Guo,
+570     Weiming Ren, Aaran Arulraj, Xuan He, Ziyan Jiang, Tianle Li, Max Ku, Kai Wang, Alex
+571     Zhuang, Rongqi Fan, Xiang Yue, and Wenhu Chen. MMLU-Pro: A more robust and
+572     challenging multi-task language understanding benchmark. In NeurIPS 2024 Datasets &
+573     Benchmarks, 2024.
+574
+      An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu,
+575    Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei
+576    Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong
+577    Tu, Jianwei Zhang, Jianxin Yang, Jiaxin Yang, Jingren Zhou, Junyan Lin, Kai Dang,
+578    Keqin Bao, Kexin Yang, Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei
+579    Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao
+580    Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng
+581    Ren, Yang Fan, Yang Su, Yichang Zhang, Yinger Zhang, Yu Wan, Yuqiong Liu, Zekun
+582    Wang, Zeyu Cui, Zhenru Zhang, Zhipeng Zhou, and Zihan Qiu. Qwen3 technical report.
+583
+       arXiv preprint arXiv:2505.09388, 2025.
+584   Chujie Zheng, Hao Zhou, Fandong Meng, Jie Zhou, and Minlie Huang. Large language
+585     models are not robust multiple choice selectors. In ICLR 2024 Spotlight, 2024.
+586
+587   Xiaosen Zheng, Tianyu Pang, Chao Du, Qian Liu, Jing Jiang, and Min Lin. Cheating
+588
+        automatic LLM benchmarks: Null models achieve high win rates. In ICLR 2025 Oral,
+        2025.
+589
+590
+591   7   Ethics Statement
+592
+593
+      This work uses existing benchmark records and base-model checkpoints, collecting no
+      human-subject data and making no deployment claim. The main ethical risk is epistemic:
+
+
+                                                11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      a poorly calibrated reference can make a damaged or degenerate system appear capable,
+595   distorting model comparisons and downstream decisions. We mitigate by publishing the
+596   null definition, uncertainty, power, integrity checks, counterexamples, and a flat retraction
+597   ledger, and by not treating a floor pass as certification (untested artifacts may remain).
+598   The experiments consumed substantial accelerator resources; the manuscript itself adds
+599   none. Our recommended nulls use only existing labels, option metadata, and prediction
+600   records, so they can usually be added with negligible compute relative to model evaluation.
+601
+602   Reproducibility Statement
+603
+604   Every quantitative claim in this paper is bound to a machine-readable record, and the
+605
+      binding is checked mechanically rather than by hand. A checker walks the marked numerals
+      in the source and requires each to be either an exact match to a value in the evidence set,
+606
+      a correct rounding of one, or a stated difference of two. Table 3 aligns the coverage counts,
+607
+      the sole checker-scope flag, and the wider scan. The flag is not a transcription error: the
+608   Qwen3 k8/PIQA accuracy in Table 12 matches its own per-cell record, while the checker
+609   treated the floor-adjacent literal as a floor. The same table records which statistics are
+610   emitted from per-item prediction records rather than transcribed, so a reader who re-runs
+611   the emitters obtains the printed tables or a diff.
+612
+613     Audit slice            Recorded result             Interpretation
+614
+        Marked prose values    67 checked; 66 exact or     The sole flag is inspected below rather
+615                            correctly rounded; 1        than silently waived.
+616                            flagged; 12 skipped; 0
+617                            uncovered
+618     Flagged literal        Qwen3 k8/PIQA accuracy      The checker applied a floor-adjacent
+                               0.505441; construct floor   rule to an accuracy field; the printed
+619
+                               0.504897                    accuracy matches its per-cell record.
+620     Wider source scan      653 numerals; 0             No unresolved literal remains in the
+621                            unresolved                  expanded scan.
+622     Generated statistics   Two nulls, winner’s-curse   Each is emitted from per-item records;
+623                            calibration, stratified     rerunning yields the printed tables or a
+                               permutation, and power      diff.
+624
+                               tables
+625
+626
+      Table 3: The reproducibility audit separates coverage from the single explained checker flag.
+627
+      Counts come from evidence/prose_vs_evidence_check.json; the compared Qwen3 values are
+628   retained side by side so the checker-scope mismatch is auditable without a numeric wall in
+629   prose.
+630
+631
+      The measurement protocol is fixed and reported in full in Section 4: chat_template = False,
+632
+      add_bos = 0, desc_style = none, fp32 master weights with bf16-autocast forward, batch size
+633   48, and maximum length 2048 for the cross-family MMLU-Pro runs, with zero truncation
+634   asserted per shard in every reported cell. The chat template is disabled deliberately and not
+635   for convenience: the evaluated systems are base language models with neither supervised
+636   fine-tuning nor RLHF, so applying a chat template would measure a different object.
+637   Three properties of this study are load-bearing for reproduction and are stated here rather
+638   than left implicit. First, the floor is a maximum over noisy label marginals and is therefore
+639   upward biased even under exactly uniform labels; any attempt to reproduce a floor-above-
+640   chance claim must reproduce that calibration, not only the point estimate. Second, content-
+641   side floors are not a property of a dataset alone: they are determined jointly by the tie
+642   convention, the length unit, and the tokenizer, so a reproduction that fixes only the dataset
+643
+      will not recover our numbers. Third, the ordering between the two nulls is a measured
+      property of the reported cells under an explicitly stated regularity condition, not an identity;
+644
+      we give the margin by which it holds and the construction that violates it.
+645
+      We also record what a reproduction will not find. Claims that earlier drafts of this work
+646
+      considered and that the evidence did not sustain are listed with their current status in
+647
+      Table 22, including six retracted and two prohibited numeric claims. That ledger is part of
+
+
+                                                    12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+      the artifact: it exists so that a reader who encounters one of those numbers elsewhere can
+649   see that we withdrew it and why.
+650
+651   Artifact availability. The complete evidence pack, build record, code, and frozen sources
+652   of every table are attached as an anonymized supplementary archive to this submission
+653   (paths resolve relative to the code-repository root as in Table 20). The anonymisation gate
+654   covers the compiled PDF (layout_audit.json:anonymization); the longer identifiers and file
+655
+      paths inside evidence JSON and code files resolve only relative to the anonymized repos-
+      itory root, and contributor-identifying verbatim lines in non-.tex inputs were scrubbed by
+656
+      code/scrub_artifact_paths.py with a fail-closed post-pass verification (zero identifying lit-
+657
+      erals remain). Every numeric value in the paper is one of (i) emitted by a script in the
+658   archive from a frozen input file, (ii) quoted from a public benchmark with its exact down-
+659   load checksum, or (iii) a pure-arithmetic rewriting of (i)–(ii); none is introduced by hand
+660   into a table or sentence. The numeral-checker run by code/check_prose_vs_evidence.py
+661   (and its dedicated table-level sibling) validates transcription fidelity between source mani-
+662   fests and the compiled PDF strings; it does not verify the upstream statistical computation
+663   itself (raw-data to statistics); that second layer is the reproduction path documented above.
+664   The selection-aware joint bootstrap used for the E[fˆ] calibrating-reference verdicts is not
+665   run in this version (per-item letter-level prediction shards are not in the release artifact;
+666   the numbered floors and counts reported are therefore plug-in/Wilson intervals only, and
+667   any future re-issue must re-run the selection step). The anonymous artifact registry lives
+668
+      at paper/SHA_PIN_R13.{json,md} (frozen manuscript identifier and content association),
+      paper/evidence/ (one JSON or CSV per evidence tag E-A through E-K plus E-CAL), and
+669
+      review/SEAL_RETIREMENT_REGISTRY.json (append-only lineage + successor replace-
+670
+      ment for the seal/identity sha of every superseded build).
+671
+672
+      A   Limitations
+673
+674   Character-unit reconstruction. The OpenBookQA character floor, added after the original
+675   audit flagged an evidence hole, is now recomputed from raw parquet and passes a 12/12
+676   character/token self-test; the narrower remaining limitation is that character values are
+677   reconstructed from raw option text rather than stored per-item in the scored records. Item
+678   matching to the token leg therefore follows the shared loader and self-test, not a stored
+679
+      character-count column. The convention of excluding the continuation’s leading space was
+      explicit; including it yields the identical 0.363500 value.
+680
+681   One family at one depth; unmatched healing corpora. The prospective healed comparison
+682   has unmatched family, depth, corpus, and exposure. Table 4 places those quantities on
+683   aligned rows; the Qwen3 arm also cannot consume OLMo-2-token Dolmino, whose raw text
+684   is on neither disk. The design therefore supports neither a depth gradient nor a family
+685   contrast.
+686
+      Regime, pooling, and the planned causal contrast. Tables mixing truncate-only non-OLMo
+687
+      arms with prune-then-heal OLMo-2 arms cannot identify a family effect; pooled results
+688   must not be read as per-benchmark verdicts (the Cho et al. overlap audit used arXiv v4,
+689   the January 26, 2026 camera-ready being unreachable from the audit network). The two
+690   planned contrasts are not merely unmeasured: their failed prerequisites are reported in
+691   Table 4. A future read-out can ask only whether the healed arm has material item-level
+692   signal.
+693
+694
+695
+696
+697
+698
+699
+700
+701
+
+
+
+                                                   13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+        Limitation              Measured constraint                   Consequence
+703
+704     Contrast coverage       One non-OLMo family at one            The observed ladder is a
+                                absolute depth; Llama-2, Llama-3,     cliff, not an estimable depth
+705
+                                and k10/k12/k14 remain confounded     gradient.
+706     Healing exposure        Qwen3: 5.72 epochs, 5.541B            Training corpus and
+707                             SlimPajama tokens; OLMo-2: 1.0        exposure are unmatched.
+708                             epoch, 31.7B Dolmino tokens
+709     Relative depth          keep8: 22.2% versus 25.0% at 36       Relative depth is untested.
+                                versus 32 layers
+710
+        Planned causal          H_heal: −0.139 pp, p = 0.0964 for     Neither prerequisite holds,
+711     contrasts               the required Qwen3 comparator;        so additional training
+712                             H_family: 0/27 cells below the        cannot identify the
+713                             permutation null                      proposed contrasts.
+714
+715   Table 4: The healed comparison is not factorial and does not identify a family or depth effect.
+716   The table aligns the otherwise scattered exposure, depth, and prerequisite diagnostics; none
+717   supports a causal family claim.
+718
+719   A.1     Four Under-Specifications of the Reference
+720   This appendix develops the four degrees of freedom summarised in Section 3.3, one sub-
+721   section each, and carries the two tables they are read from. The phrase “compare to a
+722   baseline” hides choices large enough to reverse a verdict. These choices are part of the
+723   measured construct and must be printed with the score (Table 8).
+724
+      A.1.1    Tie convention
+725
+726   For a longest-option heuristic, tied maxima can be split fractionally, resolved by the first or
+727   last option, credited whenever gold belongs to the tied set, or counted as wrong. On ARC-
+728
+      Challenge, split, first, last, and wrong place all six OLMo-2 arms significantly above the
+      content floor; credit moves five of six significantly below it. Table 5 aligns the MMLU-Pro
+729
+      oracle span, the defensible default span, and the intact-model comparator; Table 8 gives
+730
+      every per-convention floor. A convention that lets an oracle harvest every tie is useful as a
+731   reductio, not as a neutral default.
+732
+733   A.1.2    Length unit
+734   “Longest” may mean characters or continuation tokens. Table 5 reports the matched-
+735   item shifts, the OpenBookQA contrast, and the ARC-Challenge tie-rate change in aligned
+736   columns. Their scale shows why printing the convention without the unit is not reproducible
+737   specification.
+738   The character-unit values were recomputed from raw parquet under len(option text). Count-
+739   ing the continuation’s leading space gives the same OpenBookQA value, 0.363500, because
+740   the shift is uniform across options. The character and token legs are item-matched by the
+741   shared loader and a 12/12 self-test.
+742
+      A.1.3    Tokenizer
+743
+744
+      Within the token unit, the floor is tokenizer-valued. Table 5 consolidates the audited split
+      and credit movements and the vocabulary-size comparison. This is a floor-level consequence
+745
+      of the known tokenizer dependence of length-based scoring (Oostermeijer, 2026); we make
+746
+      no vocabulary-size explanation because the ordering is not monotone.
+747
+      This degree of freedom creates an asymmetry. A token-based content floor is a property
+748
+      of (dataset, convention, unit, tokenizer). A character-based floor is tokenizer-free under its
+749   stated character convention. By contrast, the letter floor is a pure property of the item
+750   set’s gold labels: it is invariant across all 15 cross-family arms and bit-identical across all
+751   21 MMLU-Pro cells.
+752
+753   A.1.4    What “chance” means when option count varies
+754   MMLU-Pro is described as up to ten-way, but its option count varies item to item. Table 5
+755   places the naive and item-average chance lines beside the same observed floor, including
+      both additive and multiplicative gaps. Both are defensible descriptions of a chance line, so
+
+
+                                                      14
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+756
+      both must be reported. The floor remains a dataset property; its gap to an under-specified
+757   chance line does not.
+758
+759     Choice        Audited contrast        Measured sensitivity                      Reporting
+760                                                                                     takeaway
+761     Tie rule      MMLU-Pro, OLMo-2 wrong: 0.125914; credit: 0.532164                Print the rule;
+762                   tokenizer               (40.6 pp, 4.2264×). The defensible        treat credit
+763                                           split/first/last span is approximately    only as an
+764                                           0.5–3.1 pp; credit exceeds intact         oracle bound.
+765
+                                              content_norm 0.207613 by 32.5 pp.
+        Length unit   Characters versus       split shifts by at most 2.02 pp; credit   The convention
+766                   continuation tokens     shifts by 14.53–35.20 pp.                 alone is not
+767                                           OpenBookQA credit is 0.416 versus         reproducible
+768                                           0.644; ARC-Challenge tied-longest         specification.
+769                                           rates are 18.60% versus 50.85%.
+770
+        Tokenizer     Item-matched token split shifts by 0.9003 pp; credit shifts       Print the
+                      comparisons             by up to 10.6 pp on four-way tasks        tokenizer;
+771                                           and 9.26 pp on MMLU-Pro. The              vocabulary size
+772                                           32k/152k tokenizers yield fewer           is not a
+773                                           MMLU-Pro ties than the 100k/128k          monotone
+774                                           pair.                                     explanation.
+775
+        Chance line   MMLU-Pro,               Naive 1/10 = 0.100000 versus              Print both
+                      n_opt ∈ {3, . . . , 10} item-average 0.110877, against floor      defensible
+776                                           0.116606: +1.661 pp and 1.1661×           chance
+777                                           versus +0.573 pp and 1.0517×.             definitions.
+778
+779   Table 5: Four under-specifications can move a content-side reference enough to reverse its
+780   reading. The table moves the comparable numerical contrasts out of prose while preserving
+781   their scopes. Full per-convention floors are in Table 8; all values come from the same audited
+782   item records.
+783
+784   A.1.5   The calibrating null must be realisable, and we initially failed this on our own
+785           largest construct
+786
+      The four degrees of freedom above concern the floor. A fifth concerns the null used to
+787
+      calibrate it, and our first calibration drew uniformly over letters that are not legal on every
+788   MMLU-Pro item. That null places mass outside the support of every legal labelling of the
+789   benchmark: it is not a conservative approximation of the right experiment but a different
+790   experiment. Table 6 records the affected item share and the unequal legal letter marginals.
+791   Their non-exchangeability raises the maximum marginal, which is precisely the quantity the
+792   floor must be compared against.
+793   The admissible null holds the observed n_opt histogram fixed — n_opt is a property of the
+794   item set, not a random variable — and draws each item’s gold letter uniformly among its
+795   own legal letters. Table 6 aligns the expectation and p-value before and after this correction
+796   with the unchanged observed floor and downstream counts. The correction changes what
+797   the floor is compared to, never the floor itself.
+798
+      Which rows moved, and in which direction. We state this explicitly because a correction
+799   that a reader cannot audit for self-service is not a correction. Where n_opt is constant the
+800   two nulls are the same distribution, so no correction is possible and none is applied. The
+801   surviving constructs are therefore exactly those whose option count was never in question,
+802   while the lost row is the largest construct and the one carrying the power analysis. Where
+803   option count varies, narrower items concentrate mass on always-legal low letters and move
+804   MMLU-Pro against us; wider exceptional items move the two ARC rows slightly in our
+805   favour. Table 6 gives the item counts, p-value changes, and standard-error distances side
+806   by side. Neither ARC verdict turns, but the two directions matter because they falsify the
+807
+      claim that the correction can only move against the authors.
+808
+      A rounding convention with the same sign problem. Since p = Pr(fˆ ≥ floor) and the floor
+809   is an exact rational count/n, the threshold is an integer count. Comparing against a rounded
+
+
+                                                     15
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+810
+      decimal can demand an extra count, exclude the observed outcome, and bias p downward
+811   toward “survives”. We therefore evaluate every p at the exact rational floor. Table 6 lists
+812   the affected rows, the rounded and exact values, and the clean counterexamples. No verdict
+813   changes, but the MMLU-Pro result moves away from significance rather than toward it.
+814
+815     Audit item        Legality-blind or         Legal or exact form        Consequence
+816                       rounded form
+817     Support          2,051/12,032 items         Hold the observed n_opt    The first null assigns
+818                      (17.05%) have fewer        histogram fixed and draw   mass outside every
+819                      than ten options under     only among each item’s     legal labelling.
+820                      a uniform A–J draw         legal letters
+821
+        Letter marginals E[m̂A ] = 0.110877         Compare the maximum        Exchangeability
+                         versus                     legal marginal, not        understates
+822                      E[m̂J ] = 0.082954         exchangeable ten-letter    E[maxL m̂L ].
+823                                                 marginals
+824     MMLU-Pro          E[fˆ] = 0.104457 and      E[fˆ] = 0.113873 (+0.94    The balanced-null
+825     calibration       p < 10−5                  pp), p = 0.083; observed   claim is withdrawn;
+826                                                 floor                      the literal floor does
+                                                    1403/12032 = 0.116606      not move.
+827
+                                                    unchanged
+828     Downstream        —                         15/17, the                 All remain defined
+829     counts                                      3/12-versus-1/12           against the observed
+830                                                 matched-standard           floor and are
+831                                                 comparison, and            unchanged.
+                                                    off-MMLU 9/85
+832
+        Fixed option      MMLU: 14,042 items,       The old and legal nulls    No correction is
+833     count             four-way; BoolQ:          are identical; MMLU and    possible or applied.
+834                       3,270, two-way;           BoolQ retain p < 10−5
+835                       OpenBookQA,
+836                       CommonsenseQA, and
+                          PIQA:
+837
+                          four/five/two-way
+838     Variable option   ARC-Easy: 4/2,376         MMLU-Pro moves in the Both directions
+839     count             five-way, 0.140 → 0.136   opposite direction because occur; neither ARC
+840                       (∆p = −0.0012, −3.3       narrower items             verdict changes.
+841                       SE); ARC-Challenge:       concentrate mass on
+                          3/1,172, 0.453 → 0.448    always-legal letters
+842
+                          (−0.0052, −7.3 SE)
+843     Rounded           MMLU-Pro p = 0.078;  Exact rational floor gives      No verdict changes,
+844     threshold         PIQA p = 0.658       0.083 and 0.691; five of        but MMLU-Pro
+845                                            nine rows (four                 moves away from
+846                                            constructs) are affected        0.05.
+        Threshold         MMLU 0.268908 versus OpenBookQA is exact at          A stored decimal can
+847
+        examples          3776/14042; BoolQ    138/500; ARC-Easy,              demand an
+848                       0.621713 versus      ARC-Challenge, and              unobserved extra
+849                       2033/3270            CommonsenseQA round             count.
+850                                            down
+851
+852   Table 6: Legality and exact-threshold audit for the calibrating null. Every numerical com-
+853   parison formerly embedded in the repair prose is aligned here with its measured conse-
+854   quence. The generated nine-row manifest in Table 21 is the machine-readable source for the
+855
+      construct-level values.
+856
+857   What this leaves standing. The protocol claim is unchanged and arguably strengthened: a
+858   null must be compatible with the construct it calibrates, and the failure mode is available to
+859   any author who writes “uniform over k” for a benchmark whose k is not constant. What we
+860   withdraw is the quantitative claim for one construct. We no longer assert that MMLU-Pro’s
+861
+      floor exceeds what a balanced null could produce; at p = 0.083 it is unresolved at n = 12032,
+      close enough to the conventional line that a larger item set could plausibly settle it, and we
+862
+      decline to describe it as either significant or comfortably inside the noise.
+863
+
+
+
+                                                      16
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+864
+      Construct                 n L⋆      Floor   Chance Gap (pp)      Ratio      E[fˆ]      q95 p
+865
+866   MMLU-Pro, naive     12032    A   0.116606 0.100000    +1.661 1.1661× 0.113873 0.117188 0.083
+      MMLU-Pro, item-avg. 12032    A   0.116606 0.110877    +0.573 1.0517× 0.113873 0.117188 0.083
+867
+      MMLU                14042    D   0.268908 0.250000    +1.891 1.0756× 0.254350 0.258225 < 10−5
+868   OpenBookQA            500    A   0.276000 0.250000    +2.600 1.1040× 0.273190 0.294000 0.384
+869   ARC-Easy             2376    C   0.266414 0.250161    +1.625 1.0650× 0.260523 0.269781 0.136
+870   ARC-Challenge        1172    B   0.265358 0.250156    +1.520 1.0608× 0.264984 0.278157 0.448
+871
+      CommonsenseQA        1221    B   0.208845 0.200000    +0.884 1.0442× 0.214994 0.226863 0.853
+      PIQA                 1838    B   0.504897 0.500000    +0.490 1.0098× 0.509300 0.522851 0.691
+872   BoolQ                3270    B   0.621713 0.500000    +12.17 1.2434× 0.506972 0.517125 < 10−5
+873
+874
+875
+      Table 7: Only MMLU and BoolQ have floors a balanced null could not plausibly produce
+      (p < 10−5 ). All nine constructs’ floors lie at or near nominal chance, but the calibrated
+876
+877
+      estimator fˆ = maxL m̂L is a maximum over k noisy marginals on a single finite item set, so
+878
+      a positive Gap is not by itself evidence that the floor differs from chance. E[fˆ] and q95 are
+879   the mean and 95th percentile of fˆ under the legality-aware balanced null (each item’s gold
+880   letter drawn uniformly among its own legal letters); p = Pr(fˆ ≥ observed floor) under that
+881   null. Evidence E-CAL is the single machine-readable source for these rows.
+882
+883
+        Dataset               Unit/tokenizer        split      first       last     credit     wrong
+884
+885     MMLU-Pro              token, OLMo-2 0.193150 0.195894          0.190824   0.532164   0.125914
+        OpenBookQA            character     0.363500 0.362000          0.362000   0.416000   0.320000
+886
+        OpenBookQA            token, OLMo-2 0.368000 0.384000          0.360000   0.644000   0.228000
+887     ARC-Challenge         character     0.274104 0.272184          0.274744   0.347270   0.220990
+888     ARC-Challenge         token, OLMo-2 0.283902 0.265358          0.296075   0.543515   0.142491
+889     Winogrande, control   character     0.491713 0.492502          0.490923   0.581689   0.401736
+890     Winogrande, control   token, OLMo-2 0.501184 0.494081          0.508287   0.933702   0.068666
+891
+892   Table 8: The content floor changes with tie convention and length unit. Numbers are
+893
+      the content-side longest-option floors recomputed per (convention, unit, tokenizer) from
+      the per-item option records, including the raw-parquet character reconstruction and its
+894
+      character/token self-test (evidence E-F, E-H and the August 14 character-unit addendum;
+895
+      see the reproducibility statement for the artifact paths).
+896
+897
+898   A.2   Prior art on option-count-aware chance correction
+899   Section 3.2 claims the within-stratum permutation and its use as a gate, and nothing else.
+900   This appendix attributes the rest, result by result. Bennett’s S sets pe = 1/k for k response
+901   categories (Bennett et al., 1954); Brennan & Prediger (1981) recommend exactly that free-
+902   marginal alternative wherever κ’s marginal dependence misleads; formula scoring corrects
+903   for guessing as an explicit function of the per-item option count (Frary, 1988); and Brenner
+904   & Kliebsch (1996) show that a weighted κ drifts systematically with the number of cate-
+905   gories — the very pathology our stratification is designed to avoid. Pooling an agreement
+906   coeﬀicient across heterogeneous item groups is likewise established (Vries et al., 2008). We
+907
+      therefore claim none of the following: correcting for the number of options, choosing pe as a
+      methodological decision, or noticing that κ-family statistics depend on k. The works above
+908
+      assume a single global k; what we are not aware of in that literature is a null in which
+909
+      k varies item to item (n_opt ∈ {3, . . . , 10}, eight strata here), with the permutation con-
+910   fined within strata so that a letter illegal for an item can never be credited to it. That is a
+911   loophole-closing construction, not a new statistic, and its measured footprint on MMLU-Pro
+912   is the 36 items quantified in Appendix A.3.
+913
+914   A.3   Why the v1/v2 ordering is not an identity
+915   Section 3.2 states the ordering between the two nulls as a measured property under an
+916   explicit regularity condition. This appendix gives the argument in full, and Table 9 sets the
+917   two read-outs side by side.
+
+
+                                                     17
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+918                  P
+      Unstratified,    L pL mL ≤ maxL mL places the v2 null at or below the v1 best-constant
+919   floor. Our  estimator, however, permutes within n_opt strata, and stratification only yields
+             P                                                                   P
+920    c ≤ s ws maxL ms,L , whose right-hand side dominates fconst = maxL s ws ms,L . The
+      acc
+921   ordering is recovered only when the same letter maximises every stratum, which MMLU-Pro
+922   violates. Table 10 aligns the global and stratum maxima, the combinatorial gap, the non-
+923   independent empirical count, the binding cell, and a legal counterexample. The ordering
+924   becomes a theorem under a condition we can state but not assume  P — that the arm’s letter
+925                                                             c = L pL fL ≤ fconst exactly.
+      distribution not vary with n_opt, since ps,L = pL gives acc
+926   We therefore state it as a measured property under that explicit regularity condition, not
+927
+      as an identity.
+928
+929
+        Read-out        Question                           Null                               Required depen-
+                                                                                              dence
+930
+931     v1,   head-     Is this interface valid for com-   Best constant, e.g. always-A Arm-
+        line            paring arms?                       0.116606                     independent
+932
+        v2,    com-     Does this arm’s prediction vec-    Prediction vector permuted Arm-conditional
+933     panion          tor contain item-level informa-    within n_opt strata
+934                     tion?
+935
+936                             Constant emitter always-A always-E always-J
+937
+                                v1 delta (pp)       0.000   −2.111   −3.807
+938
+939
+      Table 9: The two nulls answer different questions, and v1 is not collapse-invariant. The
+      upper panel gives their estimands and required dependence; the lower panel shows that
+940
+      equally uninformative constant emitters receive unequal v1 deltas on MMLU-Pro. Values
+941
+      and definitions come from the stratified permutation-null record for the re-judged cells
+942   (evidence E-D; see the reproducibility statement for the artifact path).
+943
+944
+945     Audit slice          Observed structure                 Bound or count              Interpretation
+946     Global versus        Global best constant A:            Four of eight strata,       Maximum possible
+947     strata               1403/12032; stratum                623/12,032 items;           inversion is 36
+948                          argmax B/E/B/E for                 stratified bound            items, or 0.299 pp.
+949                          n_opt = 5/6/7/8                    1439/12032
+950
+        Empirical cells      27 total cells                     13 clear the floor by       The raw 27/27
+                                                                more than 0.299 pp;         ordering
+951                                                             remaining 14 span four      overstates
+952                                                             base models, including      independent
+953                                                             five nearby healing         evidence.
+954                                                             checkpoints
+955
+        Binding cell         Llama-2 keep12, unhealed           Observed margin 0.0078      This cell supplies
+                                                                pp; attainable violation    the tight
+956                                                             0.085 pp; 94.8% weight      comparison.
+957                                                             in A-argmax strata
+958     Constructive         Legal emitter                      Attains fconst + 0.299 pp   The ordering
+959     counterexample       A,A,B,E,B,E,A,A                                                needs a regularity
+960
+                                                                                            condition; it is not
+                                                                                            an identity.
+961
+962
+      Table 10: Why the v1/v2 ordering is measured rather than algebraic. The table separates
+963
+      the combinatorial bound, the empirical count, the binding cell, and a legal counterexample.
+964   Exact per-cell v2 values are in Table 17.
+965
+966
+967   A.4   Designated damaged cells, multiplicity, and power
+968   Designated damaged cells. Throughout, designated damaged means an arm that was struc-
+969   turally pruned and is reported as a damaged rung of its family; the designation is fixed by
+970   construction, not by measured score. The set comprises the named OLMo-2 prune-then-
+971   heal arms and the same four truncation rungs for each non-OLMo family. Tables 15 and 13
+      state the resulting denominators, while Winogrande remains a control and enters none. An
+
+
+                                                           18
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+972
+       earlier roll-up silently omitted shortgpt16 and keep14; their floor deltas and tests are now
+973    printed in Table 15, and both arms are included everywhere. The omission was not defensi-
+974    ble because the matching retained depth was counted as damaged in the other families. The
+975    checker gate_designated_denominator.py now asserts that the declared arm set equals ev-
+976    ery roll-up set, that depth is treated consistently across families, and that each denominator
+977    equals arms times benchmarks.
+978
+979
+       Multiplicity. We report per-cell decisions without a family-wise correction, so the headline
+       totals are descriptive counts rather than simultaneously valid claims. This is a deliberate
+980
+       limitation: the cells share items, nest arms, and share a null, making them neither inde-
+981
+       pendent nor exchangeable and leaving no defensible off-the-shelf family definition. Readers
+982    should treat each borderline result as a per-cell decision. The conclusions rest on the aggre-
+983    gate direction and the regime-and-depth concentration printed in Table 13, not on one cell
+984    crossing a threshold. This remains weaker than multiplicity control, but the concentration is
+985    load-bearing: an indiscriminate test would not place all rejections at one end of the damage
+986    ladder.
+987    Table 11 is the power disclosure that Section 4 requires before any null result on the five
+988    smaller benchmarks is interpreted.
+989
+990             Task                       n   keep8 ∆     CI95 half-width   Detect −1.389 pp?
+991             MMLU                14042       −1.389               1.154            reference
+992             ARC-Easy             2376       −0.800               1.305      yes, borderline
+993             Winogrande, control  1267       +0.552               1.184                  yes
+994             PIQA                 1838       +2.503               2.775                   no
+                CommonsenseQA        1221       −1.065               3.399                   no
+995
+                ARC-Challenge        1172       −0.939               3.882                   no
+996             OpenBookQA            500       −1.800               6.400                   no
+997
+998    Table 11: Mandatory achieved-precision disclosure (with one true power reference) for small-
+999    benchmark null results. What is reported per cell is the paired-bootstrap CI95 half-width —
+1000   achieved precision, not classical power: only the MMLU row satisfies the standard definition
+1001   (the probability that the reference cell’s interval would exclude zero given its observed effect,
+1002   obtained from plug-in simulation), while the remaining rows say whether their achieved
+1003   half-width would resolve the reference effect. Numbers are the paired-bootstrap half-widths
+1004   recorded per cell in the five-benchmark letter/content null records (evidence E-F; see the
+1005
+       reproducibility statement for the artifact path).
+1006
+1007   Power is part of construct validity. Small benchmarks produce apparently reassuring at-
+1008   floor results even when observed effects are large, so any interpretation of a null result must
+1009   include the achieved interval. MMLU-Pro changes the evidential status: OLMo-2 keep8’s
+1010   interval excludes an MMLU-sized below-floor effect, making this a powered non-replication,
+1011   not an absence of evidence. The ladder remains a cliff, not a gradient; no depth curve should
+1012   be fitted to the sparse rungs.
+1013
+       A.5   Multiplicity in the two-reference comparison
+1014
+1015   Two qualifications belong with the two-reference comparison of Section 5.1. First, one
+1016   instrument does not transfer: the floor comparison also carries an exact McNemar test,
+1017   which has no analogue here because mean(1/n_opt) is not a binary predictor and generates
+1018
+       no discordant pairs. Second, these remain per-cell decisions under a shared-item dependence
+       structure. Table 1 now prints the raw matched-standard comparison and the Benjamini–
+1019
+       Hochberg/Bonferroni result on separate rows; after correction, neither reference retains a
+1020
+       cell, so the joint comparison is undefined rather than a corrected version of the raw ratio. We
+1021   therefore treat the raw counts as descriptive evidence that the chance side is not uniformly
+1022   null, not as simultaneously valid per-cell claims. The independent-binomial tail used by an
+1023   earlier draft contradicted this dependence structure and has been removed.
+1024
+1025
+
+
+
+                                                      19
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1026
+       A.6    Constant emitters and the off-MMLU replication
+1027
+1028   Table 12 sets all 60 non-OLMo designated damaged cells against both deterministic refer-
+1029   ences, with their intervals.
+1030
+                       Table 12: Chance-side and floor-side per-cell read-out for the 60 non-
+1031                   OLMo designated damaged cells. Each row gives the truncated arm’s let-
+1032                   ter accuracy, deltas against the item-average chance line mean(1/n_opt)
+1033                   and against the construct’s best-constant floor, the paired-bootstrap CI
+1034                   half-width (identical for both deterministic references), and the two-
+1035
+                       sided mid-p against the floor; the floor-side columns reproduce the values
+                       aggregated in Section 5.1 (0/60 above floor, 7/60 significantly below).
+1036                   n per construct as in Table 7; Winogrande is the sole negative control
+1037                   and enters none of these denominators. The 25 OLMo-2 prune-then-heal
+1038                   cells of the same grid are summarised in Appendix A.6: five shortgpt16
+1039                   cells above floor (+11.21 to +49.66 points), four keep14 cells above floor
+1040
+                       (+6.47 to +18.69, PIQA at the floor), and 0/15 above floor for the re-
+                       maining ≤ 12-layer rungs. ‡ Literal constant emitter on the optimal con-
+1041
+                       stant with the floor on the same observed labels; the bootstrap supplies
+1042                   no spread and mid-p is exactly 1.0000. Evidence E-B.
+1043
+1044         Family     Rung (cell)         Acc. ∆chance          hw       p    ∆ﬂoor      hw Floor verdict
+1045
+             Llama-2    k14 / ARC-C     0.226109    -2.405    3.925    0.0499   -3.925   3.925   below floor
+1046         Llama-2    k14 / ARC-E     0.251684   +0.152     2.841    0.3214   -1.473   2.841   at floor
+1047         Llama-2    k14 / OBQA      0.272000   +2.200     0.800    0.3208   -0.400   0.800   at floor
+1048         Llama-2    k14 / CSQA      0.196560    -0.344    3.522    0.5002   -1.229   3.522   at floor
+1049         Llama-2    k14 / PIQA      0.493471    -0.653    4.543    0.6095   -1.143   4.543   at floor
+1050         Llama-2    k12 / ARC-C     0.226109    -2.405    3.925    0.0499 -3.925 3.925 below floor
+1051         Llama-2    k12 / ARC-E     0.250842   +0.068     2.841    0.2928 -1.557 2.841 at floor
+1052         Llama-2    k12 / OBQA      0.276000   +2.600     0.000    1.0000 +0.000 0.000 at floor ‡
+             Llama-2    k12 / CSQA      0.195741    -0.426    3.522    0.4724 -1.310 3.522 at floor
+1053
+             Llama-2    k12 / PIQA      0.494559    -0.544    4.598    0.6504 -1.034 4.598 at floor
+1054
+             Llama-2    k10 / ARC-C     0.221843    -2.831    3.754    0.0230   -4.352   3.754   below floor
+1055
+             Llama-2    k10 / ARC-E     0.243266    -0.690    2.694    0.0960   -2.315   2.694   at floor
+1056         Llama-2    k10 / OBQA      0.260000   +1.000     3.902    0.4308   -1.600   3.902   at floor
+1057         Llama-2    k10 / CSQA      0.197379    -0.262    3.481    0.5192   -1.147   3.481   at floor
+1058         Llama-2    k10 / PIQA      0.480413    -1.959    3.863    0.2083   -2.448   3.863   at floor
+1059         Llama-2    k8 / ARC-C      0.230375    -1.978    3.541    0.0520   -3.498   3.541   at floor
+1060         Llama-2    k8 / ARC-E      0.263047   +1.289     2.441    0.7845   -0.337   2.441   at floor
+1061         Llama-2    k8 / OBQA       0.250000   +0.000     5.000    0.3217   -2.600   5.000   at floor
+1062         Llama-2    k8 / CSQA       0.203931   +0.393     2.088    0.6317   -0.491   2.088   at floor
+             Llama-2    k8 / PIQA       0.498368    -0.163    3.455    0.7039   -0.653   3.455   at floor
+1063
+1064         Llama-3    k14 / ARC-C     0.262799   +1.264     2.517    0.8553 -0.256 2.517 at floor
+             Llama-3    k14 / ARC-E     0.267256   +1.709     2.588    0.9620 +0.084 2.588 at floor
+1065
+             Llama-3    k14 / OBQA      0.264000   +1.400     6.400    0.7279 -1.200 6.400 at floor
+1066         Llama-3    k14 / CSQA      0.213759   +1.376     1.065    0.3803 +0.491 1.065 at floor
+1067         Llama-3    k14 / PIQA      0.494015    -0.598    1.360    0.1153 -1.088 1.360 at floor
+1068
+             Llama-3    k12 / ARC-C     0.258532   +0.838     2.730    0.6337 -0.683 2.730       at floor
+1069         Llama-3    k12 / ARC-E     0.250000    -0.016    2.609    0.2095 -1.641 2.609       at floor
+1070         Llama-3    k12 / OBQA      0.232000    -1.800    6.200    0.1729 -4.400 6.200       at floor
+1071         Llama-3    k12 / CSQA      0.218673   +1.867     1.556    0.2345 +0.983 1.556       at floor
+1072         Llama-3    k12 / PIQA      0.491295    -0.871    0.843    0.0015 -1.360 0.843       below floor
+1073         Llama-3    k10 / ARC-C     0.241468    -0.869    4.053    0.2512 -2.389 4.053       at floor
+1074         Llama-3    k10 / ARC-E     0.236953    -1.321    2.862    0.0438 -2.946 2.862       below floor
+             Llama-3    k10 / OBQA      0.202000    -4.800    6.000    0.0145 -7.400 6.000       below floor
+1075
+             Llama-3    k10 / CSQA      0.208845   +0.885     3.563    0.9999 +0.000 3.563       at floor
+1076         Llama-3    k10 / PIQA      0.479869    -2.013    3.863    0.2071 -2.503 3.863       at floor
+1077
+             Llama-3 k8 / ARC-C         0.217577    -3.258 3.925 0.0144         -4.778 3.925 below floor
+1078
+             Llama-3 k8 / ARC-E         0.239057    -1.110 2.841 0.0633         -2.736 2.841 at floor
+1079
+                                                                                    continued on next page
+
+
+                                                             20
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1080      Table 12 (continued)
+1081      Family     Rung (cell)            Acc. ∆chance          hw       p   ∆ﬂoor     hw Floor verdict
+1082
+          Llama-3 k8 / OBQA             0.272000   +2.200 1.400 0.5997         -0.400 1.400 at floor
+1083
+          Llama-3 k8 / CSQA             0.203931   +0.393 3.563 0.7835         -0.491 3.563 at floor
+1084      Llama-3 k8 / PIQA             0.490751    -0.925 4.271 0.5083        -1.415 4.271 at floor
+1085
+          Qwen3      k14 / ARC-C        0.226962    -2.319    3.925    0.0550 -3.840 3.925 at floor
+1086      Qwen3      k14 / ARC-E        0.250421   +0.026     2.820    0.2801 -1.599 2.820 at floor
+1087      Qwen3      k14 / OBQA         0.276000   +2.600     0.600    0.9831 +0.000 0.600 at floor
+1088      Qwen3      k14 / CSQA         0.195741    -0.426    3.563    0.4675 -1.310 3.563 at floor
+1089      Qwen3      k14 / PIQA         0.498368    -0.163    4.597    0.7677 -0.653 4.597 at floor
+1090      Qwen3      k12 / ARC-C        0.226962    -2.319    3.925    0.0550 -3.840 3.925 at floor
+1091      Qwen3      k12 / ARC-E        0.250421   +0.026     2.841    0.2811 -1.599 2.841 at floor
+1092      Qwen3      k12 / OBQA         0.276000   +2.600     0.600    0.9992 +0.000 0.600 at floor
+          Qwen3      k12 / CSQA         0.192465    -0.753    3.563    0.3700 -1.638 3.563 at floor
+1093
+          Qwen3      k12 / PIQA         0.495647    -0.435    4.625    0.6862 -0.925 4.625 at floor
+1094
+1095
+          Qwen3      k10 / ARC-C        0.226962    -2.319    3.925    0.0550 -3.840 3.925 at floor
+          Qwen3      k10 / ARC-E        0.250421   +0.026     2.841    0.2795 -1.599 2.841 at floor
+1096
+          Qwen3      k10 / OBQA         0.276000   +2.600     0.000    1.0000 +0.000 0.000 at floor ‡
+1097      Qwen3      k10 / CSQA         0.198198    -0.180    3.645    0.5496 -1.065 3.645 at floor
+1098      Qwen3      k10 / PIQA         0.494559    -0.544    4.325    0.6356 -1.034 4.325 at floor
+1099      Qwen3      k8 / ARC-C         0.247440    -0.272    2.432    0.1511 -1.792   2.432   at floor
+1100      Qwen3      k8 / ARC-E         0.255051   +0.489     2.883    0.4315 -1.136   2.883   at floor
+1101      Qwen3      k8 / OBQA          0.260000   +1.000     6.002    0.6105 -1.600   6.002   at floor
+1102      Qwen3      k8 / CSQA          0.192465    -0.753    3.522    0.3537 -1.638   3.522   at floor
+1103
+          Qwen3      k8 / PIQA          0.505441   +0.544     1.632    0.9558 +0.054   1.632   at floor
+1104
+1105
+1106    Slice                Denominator/read- Measured result                          Takeaway
+1107                         out
+1108    All designated       85 cells           45/85 above chance; 13/85               Every interval clear
+1109    cells                                   point-estimate above floor;             is an OLMo-2
+1110                                            9/85 interval-level above floor         healed arm.
+        Literal constants    Nine damaged cells Sixteen constant emitters               Chance can credit
+1111
+                             plus seven control total. Two OpenBookQA cells             an empty emitter;
+1112                         cells              score 0.276000, ∆ = 0, CI95             the floor does not.
+1113                                            [0, 0], yet sit 2.6 pp above
+1114                                            chance.
+1115    OLMo-2, at least     Ten cells across   Five shortgpt16 clears                  Nine of ten
+        14 layers            shortgpt16/keep14 (+11.21 to +49.66 pp) and                interval-clear; a
+1116
+                                                four keep14 clears (+6.47 to            healed-ladder
+1117                                            +18.69 pp); keep14 PIQA is              property.
+1118                                            at floor
+1119    Other regimes        15 shallower       0/15 and 0/60 interval-level            Equal depth does
+1120                         OLMo-2 cells; 60   clears. Non-OLMo has 4/60               not reproduce the
+                             truncate-only      point-estimate above and                healed-ladder
+1121
+                             non-OLMo cells     5/60 exactly at floor.                  behavior.
+1122    Non-OLMo             60 cells           25/60 above chance; 7/60                Most
+1123    precision                               significantly below floor;              small-benchmark
+1124                                            52/60 underpowered for the              nulls remain
+1125                                            MMLU effect.                            non-observations.
+                                                ARC-Challenge: effect −3.840
+1126
+                                                pp, half-width 3.92; MMLU:
+1127                                            −3.603, 1.18.
+1128    Boundary             Nine clears versus Smallest interval-clear margin          The two groups do
+1129    separation           76 remaining cells +6.47 pp; largest remaining             not overlap on the
+1130                                            point estimate +2.61 pp                 reported margins.
+1131
+1132   Table 13: Off-MMLU roll-up by regime, depth, and achieved precision. This table consoli-
+1133
+       dates the comparable counts and margins from the 60-cell Table 12 and the paired-bootstrap
+       evidence record; Winogrande remains a control and enters no damaged-cell denominator.
+
+
+                                                             21
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1134
+       The most vivid small-benchmark cases are literal constant emitters. Table 13 separates dam-
+1135   aged cells from the negative control and aligns the OpenBookQA constant-emitter score,
+1136   floor delta, interval, and chance gap. The Winogrande letter-side control floor is 0.504341
+1137   (evidence second_mc_benchmark/gate2_letter_content_nulls.json; arm-invariant across
+1138   the studied arms), and the control still enters no damaged-cell denominator. The empty
+1139   emitters illustrate the central discrepancy: chance credits them, while the optimal-constant
+1140   reference does not.
+1141   The full off-MMLU roll-up is reported in Table 13: chance, point-floor, and interval-floor
+1142   counts are shown on one row; healed, shallower, and truncate-only regimes are separated;
+1143   the margin gap and the achieved-precision contrast are explicit. The interval-level clears
+1144   are concentrated at the top of the OLMo-2 healed ladder, while equal or shallower retained
+1145
+       depths in the other regimes do not reproduce that behaviour. The non-overlapping reported
+       margins support that concentration, whereas the achieved half-widths explain why most
+1146
+       small-benchmark nulls remain non-observations rather than powered replications. Regime
+1147
+       and family remain confounded here as everywhere in this paper: OLMo-2 is the only prune-
+1148   then-heal family, so the depth threshold is a property of that ladder and must not be read
+1149   as a family contrast.
+1150
+1151   A.7   Auditing the audit: the three defects in full
+1152
+       Significance alone would re-import the defect because a tiny effect can be detected at MMLU-
+1153   Pro scale while one letter dominates the likelihood argmax. Table 19 aligns the rejected
+1154   own-modal, content-interface, entropy, and modal-share diagnostics with their same-cell
+1155   comparators: entropy and modal share are descriptive rather than competence measures.
+1156
+1157   Full precision falsifies the numerical-tie mechanism. The full-precision row of Table 2 re-
+1158
+       moves every exact tie and reshuffles letter decisions without recovering accuracy, and the
+       arm remains below its floor: precision does not create item-level information. The analy-
+1159
+       sis likewise repaired three implementation defects (doubled-tail bootstrap, tokenizer-specific
+1160
+       left truncation, OOM partial result), none of which changed a substantive verdict (Table 20).
+1161
+       The analysis uncovered and repaired three implementation defects without changing a sub-
+1162
+       stantive verdict. Table 20 aligns each defect with its consequence, repair, and measured
+1163   impact: the bootstrap repair makes the probability bound structural; the tokenizer-specific
+1164   truncation is now a hard per-shard assertion; and the cache-disabled teacher-forced pass
+1165   recovers the previously unavailable intact cell. All reported cross-family MMLU-Pro results
+1166   use the corrected launch.
+1167
+1168   A.8   Per-cell MMLU-Pro read-out and the v2 re-sort
+1169   Table 15 reports all 17 designated damaged MMLU-Pro cells. Table 16 isolates the five
+1170   verdict changes, and Table 17 gives the complete 27-cell v2 family.
+1171
+1172                   Cell             ∆lit    ∆cal        Interval verdict
+1173
+                       OLMo-2 keep8     below   above       unchanged (at floor)
+1174                   Llama-2 k12      below   above       unchanged (at floor)
+1175                   Llama-3 k14      below   above       unchanged (at floor)
+1176                   Qwen3 k12        below   above       unchanged (at floor)
+1177                   OLMo-2 keep14 +0.324 +0.597 at floor (straddles lit. floor)
+1178                   Qwen3 k14     clears clears clears (both refs, both stds)
+1179
+1180   Table 14: Reference anatomy for the five cells separating the literal floor from the frozen
+1181   calibrated expectation, plus one clear-both comparator. Sign-flip cells reverse the sign of
+1182   ∆ between the two references without moving their interval verdict; OLMo-2 keep14 and
+1183
+       Qwen3 k14 differ in kind as the table indicates. Exact per-cell margins in Table 15.
+1184
+1185
+1186
+1187
+
+
+
+                                                       22
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1188
+       Family    Arm/regime       Acc.     ∆lit    ∆cal hwﬂoor    pﬂoor Lit. verdict Cal. label          ∆†chance hwchance pchance
+1189   OLMo-2 shortgpt16, heal 0.153341 +3.674 +3.947      0.702 0.0001 above floor   above floor (pt-est) +4.246      —      —
+1190   OLMo-2 keep14, heal     0.119847 +0.324 +0.597      0.636 0.3234 at floor      above floor (pt-est) +0.897      —      —
+       OLMo-2 keep12, heal     0.113115 −0.349 −0.076      0.765 0.3805 at floor      untested (−0.076) +0.224         —      —
+1191   OLMo-2 keep10, heal     0.112450 −0.416 −0.142      0.727 0.2662 at floor      at/below floor       +0.157      —      —
+1192   OLMo-2 keep8, heal      0.115442 −0.116 +0.157      0.582 0.7118 at floor      above floor (pt-est) +0.456      —      —
+       Llama-2 k14, truncation 0.116772 +0.017 +0.290      0.083 0.7072 at floor      above floor (pt-est) +0.589   0.577 0.0456
+1193   Llama-2 k12, truncation 0.115858 −0.075 +0.198      0.083 0.0693 at floor      above floor (pt-est) +0.498   0.575 0.0882
+1194   Llama-2 k10, truncation 0.113198 −0.341 −0.067      0.416 0.1132 at floor      at/below floor       +0.232   0.572 0.4210
+       Llama-2 k8, truncation 0.107463 −0.914 −0.641       0.736 0.0168 below floor   at/below floor       −0.341   0.548 0.2308
+1195   Llama-3 k14, truncation 0.114694 −0.191 +0.082      0.852 0.6631 at floor      above floor (pt-est) +0.382   0.569 0.1802
+1196   Llama-3 k12, truncation 0.111868 −0.474 −0.201      0.852 0.2847 at floor      at/below floor       +0.099   0.566 0.7250
+       Llama-3 k10, truncation 0.111951 −0.465 −0.192      0.827 0.2885 at floor      at/below floor       +0.107   0.568 0.6938
+1197   Llama-3 k8, truncation 0.113531 −0.308 −0.034       0.407 0.1296 at floor      at/below floor       +0.265   0.563 0.3714
+1198   Qwen3 k14, truncation 0.118933 +0.233 +0.506        0.191 0.0192 above floor   above floor (pt-est) +0.806   0.577 0.0062
+       Qwen3 k12, truncation 0.115027 −0.158 +0.115        0.428 0.4645 at floor      above floor (pt-est) +0.415   0.579 0.1546
+1199   Qwen3 k10, truncation 0.118185 +0.158 +0.431        0.233 0.1872 at floor      above floor (pt-est) +0.731   0.575 0.0126
+1200   Qwen3 k8, truncation 0.107796 −0.881 −0.608         0.819 0.0362 below floor   at/below floor       −0.308   0.547 0.2672
+
+1201
+1202
+       Table 15: All 17 designated damaged MMLU-Pro cells against the observed literal floor
+       and a frozen calibrated reference. Deltas and confidence-interval half-widths are percentage
+1203
+       points. The paired-bootstrap p freezes the observed winning letter; the calibrated column
+1204
+       is therefore a sensitivity surface, not a replacement verdict, and is labelled accordingly: the
+1205   nine cells whose ∆cal point estimate is positive print ‘above floor (pt-est)’, the cell whose
+1206   ∆cal is negative but not interval-resolved prints the explicit ‘untested’ marker, and the
+1207   remaining cells print ‘at/below floor’. These are reporting labels from the point estimate,
+1208   not separate tests against the calibrated reference. † ∆chance uses the item-average convention
+1209   mean(1/n_opt) = 0.110877; its chance-side hwchance and pchance columns are transcribed
+1210   from the same 10,000-resample run (evidence s2_03, reference recomputed inside every
+1211   resample) and differ from the floor-side columns cell-by-cell — the two sides are separate
+1212   intervals, not shared. The five OLMo-2 cells’ chance bootstrap was not part of that run
+1213
+       (columns print —). OLMo-2 is prune-then-heal; the other families are truncate-only. See
+       the reproducibility statement.
+1214
+1215
+1216   Together the tables support “Wrong-null verdict flips at MMLU-scale power” and “V2 re-
+1217   sorts the 27-cell read-out.” The Benjamini–Hochberg column in Table 17 separates the
+1218
+       surviving downgrade from the non-surviving upgrade; all values are unchanged from the
+       Results and Analysis section.
+1219
+1220
+             Cell                        v1 ∆     v1 p v1 verdict      ∆perm     v2 p v2 verdict
+1221
+             Qwen3 k8, unhealed      −0.881     0.0362   below floor   −0.139   0.0964   no item-level signal
+1222         Llama-2 k8, unhealed    −0.914     0.0168   below floor   −0.416   0.1002   no item-level signal
+1223         Qwen3 k14, unhealed     +0.233     0.0192   above floor   +0.267   0.0066   trace signal
+             OLMo-2 keep14, healed   +0.324     0.3234   at floor      +0.608   0.0172   trace signal
+1224         Llama-2 intact          +1.538     0.0001   above floor   +1.959   0.0001   anchor blocked, recovery 0.0545
+1225
+1226   Table 16: V2 re-sorts rather than uniformly deflates the read-out. All deltas are percentage
+1227   points. Numbers are the paired v1-floor and v2-permutation records for the same cells
+1228   (evidence E-D; see the reproducibility statement for the artifact path).
+1229
+1230
+       A.9      Complete read-out v2 table
+1231
+1232   Table 17 reports all 27 cells used in the post-hoc v2 re-analysis. the capacity-below-resolution
+1233   and degenerate-zero-capacity integrity flags fire on no cell; all 27 pass the integrity gate; the
+1234   permutation and bootstrap decisions disagree on 0/27 cells at α = 0.05. The largest absolute
+1235   difference between their p-values is 0.0371, away from the decision boundary. Stratification
+1236
+       is nevertheless load-bearing: for unhealed Qwen3 k8, the stratified statistic differs from the
+       unstratified one by −1.271 points because E is not legal on every item.
+1237
+1238
+1239
+1240
+1241
+
+
+
+                                                                 23
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1242
+         Family   Cell                   Acc.     Null       ∆ CI hw       p    qBH Verdict
+1243
+1244     Qwen3 heal@5000          0.115276 0.115993 −0.072       0.231 0.5412 0.7306 none
+         Qwen3 heal@5500          0.115691 0.115654 +0.004       0.316 0.9810 0.9968 none
+1245
+         Qwen3 heal@6000          0.114860 0.115857 −0.100       0.281 0.4932 0.7306 none
+1246     Qwen3 heal@6500          0.114943 0.115864 −0.092       0.287 0.5204 0.7306 none
+1247     Qwen3 heal@7000          0.115775 0.115995 −0.022       0.241 0.8522 0.9839 none
+1248     OLMo-2 keep8@45000       0.117271 0.114046 +0.322       0.370 0.0856 0.2185 none
+1249     OLMo-2 keep8@121000      0.115442 0.113152 +0.229       0.446 0.3122 0.5620 none
+         Qwen3 k8, unhealed       0.107796 0.109185 −0.139       0.162 0.0964 0.2185 none
+1250
+         Qwen3 intact             0.461104 0.112212 +34.889      0.844 0.0001 0.0005 item signal
+1251     OLMo-2 intact            0.271858 0.112324 +15.953      0.761 0.0001 0.0005 item signal
+1252     OLMo-2 keep10@83500      0.112450 0.111508 +0.094       0.481 0.6966 0.8623 none
+1253     OLMo-2 keep12@124000     0.113115 0.112219 +0.090       0.471 0.7026 0.8623 none
+1254     OLMo-2 keep14@200000     0.119847 0.113766 +0.608       0.500 0.0172 0.0663 trace
+         OLMo-2 shortgpt16@200000 0.153341 0.112797 +4.054       0.575 0.0001 0.0005 item signal
+1255
+         Qwen3 k10, unhealed      0.118185 0.116155 +0.203       0.228 0.0804 0.2185 none
+1256     Qwen3 k12, unhealed      0.115027 0.114880 +0.015       0.379 0.9432 0.9968 none
+1257     Qwen3 k14, unhealed      0.118933 0.116263 +0.267       0.188 0.0066 0.0297 trace
+1258     Llama-2 intact           0.131981 0.112392 +1.959       0.525 0.0001 0.0005 anchor block
+1259     Llama-2 k8, unhealed     0.107463 0.111620 −0.416       0.495 0.1002 0.2185 none
+         Llama-2 k10, unhealed    0.113198 0.114575 −0.138       0.356 0.4510 0.7163 none
+1260
+         Llama-2 k12, unhealed    0.115858 0.116528 −0.067       0.081 0.1052 0.2185 none
+1261     Llama-2 k14, unhealed    0.116772 0.116408 +0.036       0.085 0.3950 0.6666 none
+1262     Llama-3 intact           0.329205 0.112014 +21.719      0.813 0.0001 0.0005 item signal
+1263     Llama-3 k8, unhealed     0.113531 0.115399 −0.187       0.351 0.2894 0.5581 none
+1264     Llama-3 k10, unhealed    0.111951 0.112269 −0.032       0.366 0.8746 0.9839 none
+         Llama-3 k12, unhealed    0.111868 0.111851 +0.002       0.514 0.9968 0.9968 none
+1265
+         Llama-3 k14, unhealed    0.114694 0.110945 +0.375       0.446 0.0970 0.2185 none
+1266
+1267
+       Table 17: Complete 27-cell v2 read-out. Null is c
+                                                       acc; deltas and CI half-widths are percentage
+1268   points. “Item signal,” “trace,” and “anchor block” abbreviate the verdicts defined in the
+1269   text. The final column reports Benjamini–Hochberg q-values over exactly these 27 cells: six
+1270   clear q ≤ 0.05 and five clear Bonferroni at α/27 = 0.001852. Evidence E-D; emitted by
+1271   gate_bh_27cell_consistency.py.
+1272
+1273
+1274
+1275
+1276
+1277
+1278
+1279
+1280
+1281
+1282
+1283
+1284
+1285
+1286
+1287
+1288
+1289
+1290
+1291
+1292
+1293
+1294
+1295
+
+
+
+                                                    24
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1296
+                         Relative-recovery cutoff c          0.05     0.10      0.15    0.20     0.25
+1297                     Material cells (all)                   7        4         4       4        4
+1298                     Material cells (damaged only)          4        1         1       1        1
+1299
+1300      Cell                                     ∆perm        ∆max recovery_fraction family anchor rf
+1301      qwen3/k8+f2 heal@5000             -0.072 8.372                               -0.0086             0.5441
+1302      qwen3/k8+f2 heal@5500            +0.004 11.249                                0.0003             0.5441
+1303      qwen3/k8+f2 heal@6000             -0.100 12.126                              -0.0082             0.5441
+1304
+          qwen3/k8+f2 heal@6500             -0.092 11.062                              -0.0083             0.5441
+          qwen3/k8+f2 heal@7000             -0.022 9.137                               -0.0024             0.5441
+1305      olmo2/keep8+f2 heal@45000        +0.322 20.718                                0.0156             0.3045
+1306      olmo2/keep8+f2 heal@121000 [P2] +0.229 24.955                                 0.0092             0.3045
+1307      qwen3/k8 UN-healed [P1]           -0.139 2.172                               -0.0640             0.5441
+1308      qwen3 INTACT                    +34.889 64.120                                0.5441             0.5441
+1309
+          olmo2 INTACT                    +15.953 52.398                                0.3045             0.3045
+          olmo2/keep10+f2 heal@83500       +0.094 30.206                                0.0031             0.3045
+1310      olmo2/keep12+f2 heal@124000      +0.090 28.763                                0.0031             0.3045
+1311      olmo2/keep14+f2 heal@200000      +0.608 29.797                                0.0204             0.3045
+1312      olmo2/shortgpt16 heal@200000     +4.054 40.715                                0.0996             0.3045
+1313      qwen3/k10 UN-healed              +0.203 8.090                                 0.0251             0.5441
+1314
+          qwen3/k12 UN-healed              +0.015 19.596                                0.0007             0.5441
+          qwen3/k14 UN-healed              +0.267 5.412                                 0.0493             0.5441
+1315      llama2 INTACT                    +1.959 35.927                                0.0545             0.0545
+1316      llama2/k8 UN-healed               -0.416 31.050                              -0.0134             0.0545
+1317      llama2/k10 UN-healed              -0.138 18.172                              -0.0076             0.0545
+1318      llama2/k12 UN-healed              -0.067 1.180                               -0.0568             0.0545
+1319
+          llama2/k14 UN-healed             +0.036 0.892                                 0.0408             0.0545
+          llama3 INTACT                   +21.719 66.176                                0.3282             0.3282
+1320      llama3/k8 UN-healed               -0.187 12.089                              -0.0155             0.3282
+1321      llama3/k10 UN-healed              -0.032 19.982                              -0.0016             0.3282
+1322      llama3/k12 UN-healed             +0.002 33.180                                0.0001             0.3282
+1323      llama3/k14 UN-healed             +0.375 26.929                                0.0139             0.3282
+1324
+1325   Table 18: The material set is stable over the intended cutoff range. The top panel reports
+1326   the threshold sweep over the relative-recovery cutoff c (material ⇔ ∆perm /∆max ≥ c ×
+1327
+       rf (intact, same family)); the damaged-only row excludes the three intact anchors (whose
+       own ratios are 1.0 by construction), so the pre-registered c = 0.10 operating point retains
+1328
+       exactly one damaged cell (olmo2/shortgpt16). the lower panel gives per-cell diagnostics
+1329
+       for the 27 cells of Table 17: signed ∆perm (percentage points), the re-assignment capacity
+1330   bound ∆max , the relative-recovery fraction ∆perm /∆max , and the same-family intact-anchor
+1331   fraction used by the anchor-competence precondition. qwen3/intact, olmo2/intact, and
+1332   llama3/intact are their families’ anchors. Numbers are emitted from the frozen within-
+1333   stratum permutation record by code/emit_materiality_sweep.py.
+1334
+1335   A.10      Rejected v2 alternatives
+1336
+1337
+        Alternative       Cell              Null/statistic (pp)     Comparator (pp) Measured reason for rejection
+1338
+        Own-modal null    Qwen3 k8          +1.230 vs always-E v2 −0.139                Over-credits by 1.37 pp and
+1339                                                                                    flips the sign
+1340    Content interface Qwen3 heal@7000   content −3.610          letter −0.022       More negative under the same
+                                                                                        permutation null
+1341    Content interface Qwen3 k8          content −1.076          letter −0.139       More negative under the same
+1342                                                                                    permutation null
+        Content interface OLMo-2            content −0.086          letter +0.229       Does not rescue the damaged
+1343                      keep8@121000                                                  read-out
+1344    Entropy/modal     Llama-3 k12       ∆perm = +0.002          p = 0.997           Modal share 0.339 and en-
+        share                                                                           tropy 0.614 still contain no
+1345                                                                                    signal
+1346
+1347   Table 19: Measured reasons for rejecting simpler v2 alternatives. Numbers are the same-
+1348   cell comparisons recorded alongside the adopted permutation null (evidence E-D; see the
+1349   reproducibility statement for the artifact path).
+
+
+
+                                                           25
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1350
+       A.11    Integrity repairs
+1351
+1352
+1353    Defect            Consequence               Repair/hardening               Measured impact
+1354    Bootstrap zero    Illegal p = 1.042         Two-sided mid-p splits zero 0/24 verdicts changed;
+1355    atom counted                                mass evenly; p ≤ 1          0/30 crossed 0.05;
+1356
+        in both tails                               structurally                non-p fields
+                                                                                byte-identical
+1357    Tokenizer-        10/15 first-launch        Raise cap to 2048; n_trunc 0/14 verdicts changed;
+1358    specific left     cells lost part of        becomes a hard per-shard    maximum 0.0083 pp;
+1359    truncation        labelled option body      assertion                   all eight argmax flips
+1360                                                                            on affected items, 0
+1361
+                                                                                elsewhere
+        Llama-2           5/8 shards failed;        Merge guard refused         Peak memory 94 GiB
+1362    KV-cache          partial 3/8 result        output; use_cache=False     to 41–50 GiB; intact
+1363    OOM               unavailable               for teacher-forced pass     cell recovered
+1364
+1365   Table 20: Integrity defects and repairs. Numbers are from the bootstrap mid-p repair record
+1366   and the truncation/OOM re-launch audit of the first cross-family MMLU-Pro run (evidence
+1367   E-E and E-I; see the reproducibility statement for the artifact paths).
+1368
+1369
+       A.12    Generated construct-null manifest
+1370
+1371   Table 21 restates the construct nulls of Table 7 as a generated artefact, and additionally
+1372   retains the superseded legality-blind p column beside the corrected one. It is written by
+1373   the manifest emitter directly from the balanced-null calibration record (evidence E-CAL),
+1374   the single machine-readable source for these nine rows, and the emitter contains no numeric
+1375
+       literal for any floor or chance line. The emitter refuses to write on any inconsistency: it
+       checks that each stored percentage-point gap equals 100 (Floor − Chance), that each floor
+1376
+       is a label count divided by n, that no floor falls below 1/k, that each row’s balanced-null
+1377
+       verdict agrees both with its p-value and with the file’s own partition of the constructs, that
+1378   the corrected record agrees with the record it supersedes on every quantity the correction
+1379   does not touch — n, k, floor, chance and gap — so that a “correction” cannot silently move
+1380   a floor, and that the row identities agree with a second, independently recorded evidence
+1381   file. It also re-parses every number in the hand-authored Table 7 and in its own output and
+1382   re-verifies each against the source at the precision that table chose. A companion checker
+1383   extends the same tolerance-based comparison to the prose. Both exit non-zero on any
+1384   mismatch, so a typed number that drifts from the evidence becomes a build failure rather
+1385   than a reading error. Both are named with their repository paths in Table 23.
+1386
+                                                                          p under null
+1387
+1388   Construct                     n   k     Chance   Floor Gap (pp)     blind    legal Verdict
+                                                                             −5
+1389   MMLU-Pro letter, naive     12032 10 0.100000 0.116606    +1.661   < 10      0.083 inside estimator noise
+       MMLU-Pro letter, item-avg. 12032 10 0.110877 0.116606    +0.573   < 10−5    0.083 inside estimator noise
+1390                                                                          −5
+       MMLU letter                14042 4 0.250000 0.268908     +1.891   < 10    < 10−5 above balanced null
+1391   OpenBookQA letter            500 4 0.250000 0.276000     +2.600     0.383   0.384 inside estimator noise
+1392   ARC-Easy letter             2376 4 0.250161 0.266414     +1.625     0.140   0.136 inside estimator noise
+       ARC-Challenge letter        1172 4 0.250156 0.265358     +1.520     0.453   0.448 inside estimator noise
+1393   CommonsenseQA letter        1221 5 0.200000 0.208845     +0.884     0.853   0.853 inside estimator noise
+1394   PIQA letter                 1838 2 0.500000 0.504897     +0.490     0.658   0.691 inside estimator noise
+                                                                              −5
+       BoolQ                       3270 2 0.500000 0.621713    +12.171   < 10    < 10−5 above balanced null
+1395
+1396
+       Table 21: Construct-null manifest, generated from evidence E-CAL. The legality-blind col-
+1397   umn is retained beside the admissible legal null: for the 4 variable-option rows, only the
+1398   legal null respects each item’s available labels. Verdicts therefore follow the legal column.
+1399   All values, including k, Gap, and both p columns, are emitted and checked from the frozen
+1400   calibration record (schema 1.0.0; seed 20260814; 1000000 draws; SHA prefix ec58acbeb433);
+1401   Appendix A.12 gives the construction and supersession details.
+1402
+1403
+
+
+
+                                                        26
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1404
+       A.13   What we claim and what we retract
+1405
+1406
+       #      Claim previously considered                Current status       Manuscript-safe form
+1407
+       1      Letter behavior is a family-general step   Retracted            Report     per-family   descriptions
+1408          function or sharp phase transition.                             only.
+1409   2      Damage turns the letter interface into a   Narrowed             Damage drives the letter score to or
+              constant predictor.                                             below its best-constant floor; modal
+1410                                                                          share is separate.
+1411   3      Exact ties are the family-general causal   Retracted            Precision     changes     ties   and
+              mechanism.                                                      argmaxes but not accuracy; mech-
+1412                                                                          anisms are family-specific.
+1413   4      Letter MC is generally an unreliable in-   Retracted            Intact models can favor letter or
+              strument.                                                       content; calibrate each reported
+1414                                                                          construct.
+1415   5      Accuracy-versus-normalized-accuracy        Preempted            Attribute generic over-correction
+              length sensitivity is our finding.                              and tokenizer dependence to Oost-
+1416                                                                          ermeijer; our result is floor inheri-
+1417                                                                          tance.
+       6      Content is within ±3 pp of letter on every Re-scoped            False off MMLU; ARC-Easy reaches
+1418          damaged arm.                                                    +38.76 pp.
+1419   7      Damaged letter scores are significantly be- Retracted           Only ARC-Easy keep10 in OLMo-2;
+              low floor across small non-MMLU bench-                          accompany other nulls with power.
+1420          marks.
+1421   8      k14 is the last arm above floor in every Retracted              Descriptive only for healed OLMo-
+              family.                                                         2; other ladders are cliff-like and
+1422                                                                          regime-confounded.
+1423   9      A pooled floor verdict can be read per     Prohibited           Pool only per-item deviations and
+              benchmark.                                                      label the aggregate scope.
+1424   10     A content floor is a dataset property.     Narrowed             Token floors require dataset, con-
+1425                                                                          vention, unit, and tokenizer; letter
+                                                                              floors are dataset properties.
+1426   11     Larger BPE vocabularies create more Retracted                   Tokenizer dependence stands; the
+1427          option-length ties.                                             vocabulary-size mechanism is non-
+                                                                              monotone.
+1428   12     Significant below-floor behavior is MMLU- Retracted and rein-   MMLU-Pro has v1 below-floor cells,
+1429          specific.                                 terpreted             but v2 shows no negative item-level
+                                                                              signal.
+1430   13     Damage universally drives letter to or be- Narrowed             The honest MMLU-Pro count is
+1431          low floor.                                                      15/17; Qwen3 k14 is a real but im-
+                                                                              material exception and shortgpt16
+1432                                                                          clears its floor decisively.
+1433   14     First-launch    cross-family     MMLU-Pro Retracted             Use only the 2048-token corrected
+              numbers are usable.                                             launch and canonical v2 evidence.
+1434   15     Clearing the floor certifies validity.    Retracted             Clearing one reference is not suﬀi-
+1435                                                                          cient; failure withholds a label, suc-
+                                                                              cess does not certify.
+1436   16     Deprecated numeric claims remain usable.   Prohibited           Do not resurrect 4.8×, 0.2822,
+1437                                                                          58/91, MMLU 0.25, BoolQ 0.50, or
+                                                                              45.74 pp.
+1438
+1439
+       Table 22: Flat current-status ledger. The 16 rows and their status are the retrac-
+1440
+       tion/narrowing ledger maintained with the claim-to-evidence map, whose retracted-claim
+1441
+       rows correspond one-to-one with the rows here (evidence E-K; see the reproducibility state-
+1442   ment for the artifact path).
+1443
+1444
+1445
+       A.14   Reporting checklist
+1446   For each reported multiple-choice construct, we recommend the following minimal record:
+1447
+       1. Define the input-blind predictor family and report the best member on the evaluated
+1448      item set.
+1449
+       2. Report the score, null value, paired effect, confidence interval, and test.
+1450
+1451   3. For content length nulls, print tie convention, length unit, and tokenizer. If option count
+1452      varies, print the definition of chance.
+1453   4. Establish that the experiment could resolve the effect under discussion; otherwise describe
+1454      the result as a non-observation.
+1455   5. Keep arm-independent interface validity separate from arm-conditional item-level infor-
+1456      mation.
+1457   6. Treat a floor pass as necessary, not suﬀicient.
+
+
+                                                           27
+       Under review as a conference paper at ICLR 2026
+
+
+
+
+1458
+       A.15   Evidence provenance
+1459
+1460   The construct floors, MMLU-Pro cell table, read-out v2 values, fp32 comparison, small-
+1461   benchmark power analysis, integrity repairs, and claim ledger are transcribed from a single
+1462
+       machine-extracted evidence record, whose lettered sections are the identifiers E-A through
+       E-K used in the table captions. The character-versus-token table additionally uses that
+1463
+       record’s August 14 addendum, which records the raw-parquet reconstruction and 12/12
+1464
+       self-test. No healed Qwen3 step-121000 result is included.
+1465
+       Table 23 resolves every evidence identifier used in a caption to the file that carries it in
+1466
+       the released artifact, together with the emitters and checkers named above. Captions cite
+1467   the identifier rather than the path so that the claim remains legible without the artifact
+1468   in hand; this table is the one place where the identifiers become literal paths, so a reader
+1469   who does have the artifact can follow any caption to its source. Paths are relative to the
+1470   accompanying code repository.
+1471
+1472          Identifier           Artifact path (relative to the code repository root)
+1473          E-A                evidence/SECOND_MC_BENCHMARK_VERDICT.md
+1474          E-B                per-cell records in evidence/mmlu_scale_power/ and evi-
+1475                             dence/POWER_WALL_VERDICT.md
+1476          E-D                evidence/heal_readout_v2_permutation_null.json
+1477
+              E-E                evidence/R7_BOOTSTRAP_P_FIX.md
+              E-F                evidence/second_mc_benchmark/                and       evi-
+1478                             dence/SECOND_MC_BENCHMARK_VERDICT.md
+1479          E-H                evidence/construct_nulls_length_unit.json
+1480          E-I                evidence/mmlu_scale_ power/trunc_fix_ before_after.json
+1481                             and evidence/mmlu_scale_ power/ trunc_audit_1536.json,
+1482
+                                 emitted by code/mmlu_pro_ trunc_fix_compare.py and
+                                 code/mmlu_pro_ trunc_audit.py
+1483          E-K                row-by-row map in evidence/claim_evidence_map.tsv
+1484          E-CAL              evidence/construct_nulls_legality_aware.json, which super-
+1485                             sedes evidence/ floor_winners_ curse_calibration.json and
+1486                             names it, with its sha256, in its own supersedes field
+1487
+              Emitter            code/emit_tab_construct_nulls.py
+              Null recomputation code/recompute_legality_aware_nulls.py
+1488          Prose checker      code/check_prose_vs_evidence.py
+1489
+1490   Table 23: Evidence identifiers used in the captions, resolved to artifact paths. The identifiers
+1491   are stable; the paths are where those records live in the released repository.
+1492
+1493
+1494
+1495
+1496
+1497
+1498
+1499
+1500
+1501
+1502
+1503
+1504
+1505
+1506
+1507
+1508
+1509
+1510
+1511
+
+
+
+                                                      28
+

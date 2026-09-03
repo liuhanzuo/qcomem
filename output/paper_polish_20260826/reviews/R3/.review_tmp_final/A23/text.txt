@@ -1,0 +1,1120 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      C ONSTRUCT C ONSISTENCY OF I N -D ECODING
+002   C ONFIDENCE R EADOUTS FOR R ISK -G ATED
+003
+004   M ASKED -D IFFUSION D ECODING
+005
+006
+       Anonymous authors
+007
+       Paper under double-blind review
+008
+009
+010
+011                                              A BSTRACT
+012
+013
+014
+               Masked-diffusion decoders expose several token-conﬁdence summaries, but
+               choosing among them need not produce the same decode ranking or selective-
+015
+               prediction utility. On one frozen LLaDA-8B-Instruct × GSM8K bed (974 distinct
+016
+               problems, one decode each), we compare last-revision (commit), ﬁrst-exposure
+017            (first), and within-block mean (all) readouts using decode-clustered infer-
+018            ence. In a post-alignment exploratory contrast with paired bootstrap inference,
+019            AUROC(commit)−AUROC(all) is +0.0278 in rank units. By contrast, every
+020            paired risk difference on the coverage grid {0.2, 0.5, 0.8} is small and has a zero-
+021            crossing CI within the intra estimand (Table 5). The early/late equality at coverage
+022            0.2 is a shared 1/195 lattice observation, not evidence of identical retained sets,
+023            and a noise-model-sensitive reliability bound cannot robustly separate ρ = 1 from
+024            ρ < 1. Thus this frozen bed separates commit and all in rank units, but it
+025
+               establishes neither practical equivalence nor a generally null selection increment.
+               The paper instead provides an auditable frozen-stream analysis and speciﬁes the
+026
+               replication needed to test this bounded result.
+027
+028
+029
+030
+031   1   I NTRODUCTION
+032
+033
+034   Selective prediction trades coverage for lower conditional risk by abstaining on low-conﬁdence ex-
+035   amples (Chow, 1970; El-Yaniv & Wiener, 2010; Bartlett & Wegkamp, 2008; Geifman & El-Yaniv,
+036   2017). A masked-diffusion language model revises positions in parallel, so a decode admits sev-
+037   eral plausible conﬁdence summaries: last-revision conﬁdence (commit), ﬁrst-exposure conﬁdence
+038
+      (first), and the within-block mean (all). Their ranking quality need not imply an observable dif-
+      ference in risk at a chosen coverage, and non-signiﬁcance cannot by itself establish absence (Altman
+039
+      & Bland, 1995).
+040
+041   We study that measurement problem on a single frozen event stream, not model internals and not
+042   best-of-k generation. Each of the 974 prompts has exactly one decode, making prompt, problem,
+043   and decode the same independent cluster. The central analysis aligns the treatment contrast on both
+044
+      readouts: commit−all AUROC and risk@coverage use the same decodes and paired resamples.
+      A second, explicitly different AUROC-over-random estimand is retained only to connect the result
+045
+      to the registered discrimination analysis.
+046
+047   Our contributions are threefold: (i) an aligned, same-arm comparison that places an exploratory rank-
+048   separation estimate beside paired risk increments; (ii) a calibrated joint-endpoint analysis showing
+049   that the three-anchor family design alone does not explain the unresolved risk increment; and (iii)
+050
+      boundary audits for lattice equality, retained-set overlap, residual-covariance sensitivity, practical
+      equivalence, and experiment recoverability. Every claim remains restricted to this event stream and
+051
+      the recorded estimator.
+052
+053   Figure 1 previews the measurement ﬂow and marks the two non-interchangeable contrasts used
+      below.
+
+
+                                                        1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+      Figure 1: Measurement ﬂow from one frozen event stream to three conﬁdence summaries and a
+069
+      decode-level selection score. Takeaway: the commit-vs-all incremental selection utility is not
+070
+      resolvable at this bed’s power, a distinct estimand from the registered AUROC-vs-random discrimi-
+071   nation lift. Conceptual ﬁgure; it contains no experimental quantities beyond the captioned, evidence-
+072   linked takeaway.
+073
+074
+075   Table 1: Estimand crosswalk. H2 is a conservative robustness ﬂag, not the nominal detection test.
+076   Takeaway: units, contrasts, and gates are never interchanged.
+077
+      Estimand          Contrast and unit                             Scale       MDE tag     Applicable gate
+078
+079   Registered rank   commit vs random ordering                     AUROC       MDEA
+                                                                                     80       CI/p; H2 ﬂag
+080
+      Aligned rank      commit vs all, paired decode                  AUROC       MDEA
+                                                                                     80       CI/p; H2 ﬂag
+      R3 utility        commit vs all, paired decode                  risk        MDER,c
+                                                                                     80       CI/p; TOST; H2
+081
+      R1/R4/R5          early vs late window, paired decode           risk        MDEEL,c
+                                                                                     80       Holm(3); TOST
+082
+083
+084   2     M EASUREMENT AND I NFERENCE
+085
+086
+087   2.1   R EADOUTS AND ESTIMANDS
+088
+089   For window W ∈ {E, L} (blocks 0–3 or 4–7), readout r, and coverage c, riskW,r (c) is the er-
+090   ror among the top k = max(1, round(974c)) decodes ranked by the window-mean readout. The
+091
+      early/late quantity used by R1, R4, and R5 is δEL,r (c) = riskE,r (c) − riskL,r (c). R3 instead uses
+      the paired, within-block arm difference
+092
+093
+                                                      commit (c) − riskall (c),
+                                                                       intra
+094                                  ∆intra (c) = riskintra                                               (1)
+095
+096   where risk is computed per block and averaged over eight blocks.
+097   We stress that the registered two halves use different contrasts and are never merged: the AU-
+098   ROC half compares commit with a random-ordering baseline (ranking units), whereas the
+099   risk@coverage half compares commit with all (selection-utility units). A measurable AUROC-
+100   over-random lift therefore does not imply a resolvable commit-vs-all selection gain; these are dis-
+101   tinct estimands on different units, distinct contrasts, not a dissociation. Table 1 is the sole estimand
+102   crosswalk used by subsequent forward references. The exact aggregation and inference procedures—
+103   including tie, revision, and block-averaging rules and a hand-veriﬁable worked example—appear in
+104
+      Appendix A.
+105   The single-readout window-restricted beneﬁt gainW = base − riskW,r is about +8.7 percentage
+106   points at c = 0.2. It is distinct from the A0 full-window rig control gainfull = +0.2126 at the same
+107   coverage (Table 12). It shows that each readout can risk-gate relative to no selection; it is not the
+      commit-vs-all increment.
+
+
+                                                          2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      2.2   G ATE AND POWER CONVENTIONS
+109
+110   Inference resamples decodes as clusters and preserves the readout and coverage vector within a
+111   resample (Field & Welsh, 2007). Registered anchor families use Holm’s sequential procedure over
+112   c ∈ {0.2, 0.5, 0.8} (Holm, 1979). A conventional two-sided 95% CI and ptwo-sided report detection.
+113   Practical absence is evaluated separately by two one-sided tests (TOST) at the registered practical
+114   bound δ ∗ = 1 percentage point (E0) (Schuirmann, 1987).
+115
+      The historical H2 ﬂag uses MDE80 = 2.8016 SE    c and labels MDE80 /|∆| ˆ ≥ 1 as PL. Algebraically
+116
+      this is a two-sided z threshold with de facto α = 2{1 − Φ(2.8016)} ≈ 0.0051, stricter than nominal
+117
+      0.05. We retain H2 only as a conservative 80%-power robustness criterion. Observed-SE MDE80
+118   is a descriptive sensitivity/design reference, never a post-hoc substitute for the CI/p detection de-
+119   cision (Hoenig & Heisey, 2001). Thus the cross-block row that excludes zero at nominal 95%
+120   is detected but below the robustness threshold, not a non-detection. Only TOST can support a
+121   practical-equivalence statement.
+122
+123
+      Statistical conventions and prior art. Holm correction, clustered resampling, TOST, and the
+124
+      distinction between absence of evidence and evidence of absence are established guidance (Holm,
+125
+      1979; Field & Welsh, 2007; Schuirmann, 1987; Altman & Bland, 1995). Our H1–H6 appendix
+126   restates those principles for readout-to-selection claims. The practice combination speciﬁc to this
+127   study is to co-report the full-width, scale-tagged H2 sensitivity and to re-run the entire CI-plus-
+128   family procedure under label permutation (Table 7); neither component is claimed as a new statistical
+129   test.
+130
+131   Table 2: Notation glossary. R1–R5 are the ﬁve locked claims audited in Table 3; scopes and verdict
+132   labels are ﬁxed before inference and may not be expanded post-hoc. Takeaway: a claim referenced
+133   in the prose below always resolves to one of these rows.
+134   Symbol    Plain-language deﬁnition
+135
+      R1        Equal lattice risks shared by two readouts at any ﬁxed coverage; says nothing about set identity
+136   R2        Whether residual-covariance ratio ρ = 1 (latent model collapses) robustly separates from ρ < 1
+137   R3        Aligned rank separation of commit vs all readouts and their selection-increment
+138   R4        Desaturation (intra-decode conﬁdence pull) and coverage-localized risk differences after alignment
+139   R5        High-selectivity early-vs-late risk pattern inside a Holm-corrected anchor family
+      PL                 ˆ ≥ 1: observed SE too coarse to detect the measured effect at 80% power
+                MDE80 /|∆|
+140
+      RES       Residual covariance; the R2 construction that compares raw to covariance-corrected risks
+141
+      H2        Historical strict ﬂag: reports MDE80 = 2.8016 SE;  c robustness only, not a decision criterion
+142
+      E0        Registered 1-pp practical-equivalence bound used by TOST
+143   MDE80     Minimum detectable effect at 80% power under the observed SE
+144
+145
+146
+147   3     R ESULTS
+148
+149
+      Table 3 is the claim-level map for the detailed result sections.
+150
+151
+152   3.1   R1 AND R2: LATTICE AND LATENT- MODEL BOUNDARIES
+153
+154   R1. The lowest-coverage equality is one shared lattice observation, not three independent working
+155   instances. The tie and retained-set audits in Table 4 show that identical lattice risk does not imply
+156   an identical retained set; the higher anchors also exclude wholesale pipeline collapse.
+157   R2. Under the assumed residual-covariance correction, the point result lies below unity, but the
+158   sensitivity rows in Table 4 show that a modest covariance perturbation erases the rejection. We
+159   therefore cannot robustly separate ρ = 1 from ρ < 1. A 61-point residual-covariance sweep over
+160   the frozen bed has now been executed in this reﬁne pass and is reported in full in Appendix D; it is
+161   an analysis-level sensitivity statement computed over the frozen asset, not a causal or model-internal
+      claim.
+
+
+                                                          3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      Table 3: R1–R5 verdict matrix. Takeaway: the aligned rank separation is an exploratory, post-
+163
+      alignment estimate; risk utility and boundary claims remain bounded.
+164
+165   Key    Claim                                                                Gate                     Detail
+166   R1     Equal lattice risks; retained sets differ                            boundary audit           §3.1
+167   R2     ρ = 1 vs ρ < 1 not robustly separated                                sensitivity-open         §3.1
+      R3     Rank separated (exploratory, post-alignment); risk increment         CI/TOST/H2               Table 5
+168
+             unresolved
+169   R4     Desaturation changes variance; readout-level risk differences        paired-diff bootstrap    §3.3
+170          remain coverage-dependent
+171   R5     High-selectivity pattern lacks family support                        Holm(3) empty            Figure 2
+172
+173   Table 4: R1/R2 boundary audit, with comparable values transferred from the frozen tie, retained-set,
+174   and residual-covariance assets. Takeaway: equal lattice risk does not establish identical selection,
+175   and the latent-correlation result remains sensitivity-open.
+176
+      Key Audit                Frozen values                                          Reading
+177
+178   R1    Lattice            c = .2: all readouts δEL = −15/195 = −.076923          One shared observation
+      R1    Tie stability      tie mass ≤ .0051; 200 breaks: Jaccard 1.0, risk SD 0   Stable to recorded tie breaks
+179
+      R1    Retained sets      tie mass 0; Jaccards .569/.690/.749                    Equal risk, different sets
+180                            (commit–ﬁrst/commit–all/ﬁrst–all)
+181   R1    Other anchors      c = .5/.8: the three point estimates diverge           No wholesale collapse
+182   R2    Corrected point    upper bound .979; reliabilities .755/.678              Below unity under the
+183                            (commit/all)                                           assumed correction
+      R2    Sensitivity        6.5–10% over-estimate erases rejection; point          No ground-truth ρ;
+184
+                               breakeven m ≈ .905; CI-upper returns to 1 at           analysis-level statement
+185                            m ≈ .94; 61-pt sweep over [.85, 1.15] now run on
+186                            frozen bed (r211)
+187
+188   3.2   R3: ALIGNED RANK AND SELECTION CONTRASTS
+189
+190   R4 is a lattice observation of R1, not independent evidence. R1 reports a c = 0.2 lattice value
+191   shared by all readouts (δEL = −15/195 = −0.076923, Table 4). R4 re-reads that same frozen cell
+192
+      through the paired-difference resample of §3.3; the −15/195 underlying observation is identical.
+      R4 therefore localizes where a shared lattice point sits inside its resampled distribution; it does not
+193
+      supply a second observation supporting R1. When support counts are tallied elsewhere in this paper
+194
+      R4 is explicitly excluded as an independent anchor of R1.
+195
+196   Table 6 keeps the registered AUROC-to-risk bridge separate from the aligned paired contrast in
+197   Table 5. The bridge is a scale sensitivity, not a cross-estimand equality; its assumptions are listed in
+198
+      Appendix C. The joint endpoint and resample diagnostics likewise do not ﬂip R3, while the cross-
+      block row remains nominally detected but below the separate H2 robustness threshold.
+199
+200   Bootstrap centering is not driving the family decision: observed-centered, null-centered,
+201   and permutation-calibrated twin-p variants all yield an empty Holm(3) survivor set
+202   (decision_flip=False). Here “twin p” denotes the bootstrap tail calculation deﬁned
+203   in Appendix B, not a second hypothesis family.
+204   Table 7 records the calibration check, and Table 8 separates the equivalence result from the next-bed
+205   replication targets.
+206
+207   3.3   R4 AND R5: DESATURATION AND COVERAGE LOCALIZATION
+208
+209   R4. Table 9 reports the direct paired-difference bootstrap between the first and commit readouts
+210   at each coverage, replacing any indirect CI-overlap argument; because both readouts derive from
+211   the same decodes, the paired difference is the appropriate test. The c = 0.2 lattice equality is the
+212
+      same shared observation as R1, not independent support. Saturation compresses variance, while the
+      readout-level risk difference remains coverage-dependent: not established at the selective anchors,
+213
+      and a small positive shift at the intermediate one.
+214
+215   R5. The earlier mixed-stratum ratio is replaced by the like-for-like coverage estimates grouped in
+      Table 9, shown across the full proﬁle in Figure 2, and compared with the registered anchor grid in
+
+
+                                                            4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+      Table 5:      Headline aligned contrast from the frozen r204 paired-contrast asset (ex-
+217
+      ploratory, post-alignment analysis).          Two panels share the same frozen, block-mean
+218   decode scores and a decode-cluster bootstrap (B                  =     2000; r217 recomputation
+219   results/r217_readout_auroc_aurc.json). The upper panel reports absolute readout-
+220   level AUROC and AURC (risk–coverage area over c ∈ [0.05, 1], trapezoid, mean risk); the lower
+221   panel reports the paired commit−all contrasts, whose AUROC reference uses the normal SE
+222   implied by the reported percentile-CI width and whose risk ratios use the shared r205 paired
+223   bootstrap. Takeaway: within one estimand, contrast, and paired resampling scheme, the two
+224   readouts separate in rank units while all three risk increments have zero-crossing CIs; the separation
+225   is reported as exploratory, not conﬁrmatory.
+226   Quantity                                          Point           95% CI Note
+227   Absolute readout level (same frozen scores)
+228   Absolute AUROC commit                           0.7377    [0.7053, 0.7696]
+229   Absolute AUROC all                              0.7100    [0.6734, 0.7443]
+230   Absolute AUROC first                            0.6970    [0.6592, 0.7312]
+      Absolute AURC commit                            0.1603    [0.1369, 0.1884]
+231
+      Absolute AURC all                               0.1797    [0.1537, 0.2100]
+232   Absolute AURC first                             0.1895    [0.1621, 0.2207]
+233
+      Paired commit−all contrast
+234
+      Paired AUROC ∆                                +0.0278 [0.0123, 0.0438] H2 MDE80/|∆| = 0.81; RES
+235   Paired risk @ 0.2                             −0.0058 [−0.0199, 0.0058] H2 2.79; PL; CI ∋ 0
+236   Paired risk @ 0.5                             −0.0067 [−0.0131, 0.0008] H2 1.62; PL; CI ∋ 0
+237   Paired risk @ 0.8                             −0.0008 [−0.0056, 0.0022] H2 3.60; PL; CI ∋ 0
+238
+239   Table 6: R3 scale-bridge and joint-endpoint diagnostics. Values sharing a row belong to one diag-
+240   nostic; aligned AUROC and risk increments remain in Table 5. Takeaway: neither the descriptive
+241   bridge nor the pooled diagnostics resolves the aligned selection increment.
+242
+      Diagnostic              Frozen values                                        Reading
+243
+244   Registered bridge       AUROC lift +.0144; AUROC MDE80 .0069;                Descriptive scale sensitivity;
+                              projected risk ≈ .012 vs risk MDE80 .017 (≈ .71×)    not aligned +.0278
+245
+      Joint primary           point −.004415; 95% CI [−.009971, .000521]; SE       Zero-crossing pooled
+246                           .002662; z = −1.7836; p = .07449                     endpoint
+247   Resample signs          all-three-negative fraction .6236; joint sign-ﬂip    No decision ﬂip
+248                           p = .7246; Wilcoxon p = .08826
+249   Cross-block             z = 2.24; p ≈ .025                                   Nominally detected; H2
+                                                                                   robustness not passed
+250
+251
+252
+      Table 13. The descriptive H2 ﬂag is unchanged, but neither view establishes practical equivalence:
+      no R5-speciﬁc TOST accepts E0, and the registered Holm(3) family remains empty.
+253
+254
+255   4    E XPERIMENTAL S ETUP AND R EPRODUCIBILITY
+256
+257   The frozen bed is LLaDA-8B-Instruct (Nie et al., 2025) on GSM8K (Cobbe et al., 2021). Table 10
+258   groups the complete frozen schedule, grading construct, and answer-extractor audit. The frozen
+259   artifacts do not retain the original extraction-stage labels, so the original path each answer took
+260   cannot be veriﬁed; a post-hoc rerun of the canonical extractor on the frozen prediction text (in this
+261   reﬁne pass) populated the fallback branch census, the unparseable count, and an n = 200 manual-
+262   equivalence audit. That rerun supplies the reported numbers; it does not recover the original label
+263
+      provenance, so the manual audit counts as a noise upper bound, not a calibrated gold estimate.
+264
+265   First-class recoverability limitation. The remasking policy deﬁnes the commit/first distinc-
+266
+      tion and is therefore an experimental decoder hyperparameter, not incidental metadata. It was not
+      recorded; neither were the generation seed or prompt template. Consequently nobody, including the
+267
+      authors, can re-decode this bed. Every conclusion is conditional on the frozen event stream as given.
+268
+269   The analysis layer is deterministic. The event stream is identiﬁed by SHA256
+      6e39e0ad3d4a42340ab6ef31474a20a2bdf7356dac9c9dbf6c0de63968b85972;
+
+
+                                                         5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      Table 7: Decision stability of the R3 risk anchors under label permutation (1000 label permutations,
+271
+      inner B = 1000 paired bootstrap). Achieved per-anchor false-positive rates are 0/1000 at every
+272   coverage, whose exact one-sided Clopper–Pearson upper bound is ≈ 0.003. The permutation proce-
+273   dure tests a label-independence null, which is not the same as an equal-performance null hypothesis;
+274   we therefore report the outcome as decision stability under this permutation procedure, not as cal-
+275   ibration of the detection test against the equal-performance alternative. The null-calibrated central
+276   band does not create a PL→RES ﬂip. Takeaway: all three R3 decisions are unchanged by this
+277   permutation stress test.
+278                   c      Achieved FP (CP upper)   Calibrated 95% band    Excludes 0    Flip
+279
+                     0.2          0/1000 (< 0.003)      [−0.0319, 0.0190]        no        no
+280                  0.5          0/1000 (< 0.003)      [−0.0199, 0.0076]        no        no
+281                  0.8          0/1000 (< 0.003)      [−0.0097, 0.0065]        no        no
+282
+283
+284   Table 8: Equivalence and next-bed design at the R3 decision anchor. E0 is the practical bound δ ∗ = 1
+285   pp; it was ﬁxed after the original effect estimates were observed, before the TOST recomputation,
+286   and is retained as the target for subsequent prospective replication. Takeaway: lower-coverage
+287   absence is not established; the next bed needs roughly two to three times as many decodes.
+288   Check         Anchor          Result                      Decision
+289   TOST        c = 0.2           90% CI [−0.018, 0.004]      Inconclusive at E0
+290   TOST        c = 0.5           90% CI [−0.012, −0.001]     Inconclusive at E0
+291   TOST        c = 0.8           90% CI [−0.005, 0.002]      Equivalent within ±1 pp
+292   Design   MDE80 = 1.2 pp       n ≈ 1960                    Replication target
+293
+      Design   MDE80 = 1.0 pp       n ≈ 2820                    Replication target
+294
+295   its metadata table by 2b5c1f9d116257a7ccab6403c619cf0b74526472e4cabe11
+296   0ed8a97cdf6258a5. Scripts, seeds, schema, and a co-located manifest deﬁne the analysis
+297   release; release of the event-stream bundle remains subject to the project data steward’s decision.
+298
+299
+300
+      Ethics. This frozen benchmark analysis involves no human subjects, private user data, or live
+      trafﬁc. Deployment would require recalibration on the target distribution, coverage range, and cost
+301
+      function.
+302
+303
+304
+      5    R ELATED W ORK
+305
+306
+307   Three literature streams leave the present question open. Discrete and masked diffusion work es-
+308   tablishes denoising in discrete state spaces and competitive language modeling (Austin et al., 2021;
+309
+      Sahoo et al., 2024; Nie et al., 2025; Han et al., 2023; Ye et al., 2025); it does not establish which in-
+      ternal conﬁdence aggregation is a stable decode-level selective score. Failure prediction, calibration,
+310
+      and LLM self-assessment show that maximum probability, verbalized conﬁdence, or self-evaluation
+311
+      can track correctness (Hendrycks & Gimpel, 2017; Guo et al., 2017; Lin et al., 2022; Kadavath et al.,
+312   2022; Kuhn et al., 2023); they leave window and aggregation choice largely implicit. Selective clas-
+313   siﬁcation and risk–coverage evaluation formalize the utility target (Chow, 1970; El-Yaniv & Wiener,
+314   2010; Geifman & El-Yaniv, 2017; 2019; Ding et al., 2020), but not the measurement provenance of
+315   an iterative decoder.
+316
+      Closest conﬁdence-gated decoding work. Fast-dLLM uses token conﬁdence as an actionable per-
+317
+      token signal for threshold-gated parallel unmasking (Wu et al., 2025). Our outcome is decode-level
+318   risk after aggregating that signal. A per-token action can therefore be useful while a difference
+319   between two decode-level summaries is unresolved. Early halting and self-consistency address stop-
+320   ping or multiple-sample agreement (Lo Cicero Vaina et al., 2023; Wang et al., 2023); the present
+321   k = 1 bed instantiates neither a candidate pool nor repeated generation. The LLaDA line itself cou-
+322   ples per-token conﬁdence with the remasking schedule (Nie et al., 2025; low-conﬁdence remasking
+323   and its conﬁdence-aware variants), but does not treat any in-decoding aggregation as a decode-level
+      selective score against a paired, clustered risk endpoint; that is precisely the junction measured here.
+
+
+                                                         6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      Table 9: R4/R5 desaturation and localization audit. R4 rows report the direct paired-difference
+325
+      bootstrap of risk(first)−risk(commit) on identical decode-cluster resamples (B = 2000), with
+326   early-window rows shown in parentheses. Takeaway: desaturation changes variance, the readout-
+327   level risk difference is coverage-dependent rather than uniformly absent, and the high-selectivity
+328   pattern remains power-limited without a family survivor.
+329
+      Key Audit                                                                Values                                                          Reading
+330
+331   R4   Paired diff c = .2                                                  +.0410 [0, .0923] (early: +.0103 [−.0256,                       CI touches zero; R1 lattice
+                                                                               .0615])                                                         shared
+332
+      R4   Paired diff c = .5                                                  +.0452 [.0164, .0678] (early: +.0411 [.0164,                    first keeps more errors
+333                                                                            .0678])
+334   R4   Paired diff c = .8                                                  −.0013 [−.0128, .0141] (early: 0 [−.0141,                       Not established
+335                                                                            .0141])
+336   R4   Late-window spread                                                  SD first ≈ .20 vs commit .055                                   Saturation compresses
+                                                                                                                                               variance
+337
+      R5   Like-for-like c = .6                                                δEL = −.012414; SE .008983;                                     H2 power-limited
+338                                                                            MDE80/|δ| = 2.027
+339   R5   Like-for-like c = .8                                                δEL = −.002246; SE .005683;                                     H2 power-limited
+340                                                                            MDE80/|δ| = 7.087
+341   R5   Family/equivalence                                                  Holm(3): no survivor; no R5-speciﬁc TOST                        No practical-equivalence
+                                                                               accepts E0                                                      claim
+342
+343
+344                                                              δEL vs    coverage,
+                                                                   high-selectivity band (covper   conf readout (frozen bed g3_main/A, n=974)
+                                                                                             0.15–0.35)
+345                                              0.05
+346
+347                                              0.00
+348
+
+
+
+
+            δEL(c) = risk(early) − risk(late)
+349                                             −0.05
+350
+351                                             −0.10
+352
+353                                             −0.15
+354
+355                                             −0.20
+356
+                                                          c<0.2: descriptive;
+357                                             −0.25   multiplicity-uncontrolled
+                                                                                                                 commit (last-conf)                first local −MDE80(c)
+358                                                                                                              commit local −MDE80(c)            all (block mean)
+                                                                                                                 first (first-exposure conf)       allro local −MDE80(c)
+359                                             −0.30
+360                                                                            0.2              0.4                  0.6                         0.8
+361                                                                                     coverage c (fraction of decodes retained)
+
+362
+363   Figure 2: Early-minus-late risk δEL (c) for all three readouts, with decode-clustered 95% CIs.
+364   Dashed, marker-matched curves show the coverage-local MDE80(c) at registered anchors; no con-
+365
+      stant MDE band is projected across the axis. The hatched c < 0.2 region is descriptive and
+      multiplicity-uncontrolled. Takeaway: the negative point pattern is concentrated at high selectiv-
+366
+      ity, but the registered family has no survivor and the tail is not evidence of practical equivalence.
+367
+368
+369
+      Why not conformal or RCPS on this frozen k = 1 stream. Table 11 positions each of these lines
+      by the unit its conﬁdence score is deﬁned on, when the evidence is aggregated, the selection endpoint
+370
+      it feeds, and how aggregate uncertainty is treated; the junction measured here—which in-decoding
+371
+      aggregation of a masked diffusion decoder’s conﬁdence serves as the decode-level selective score,
+372   with paired clustered inference on both rank and risk—is not covered by any of them. Distribution-
+373   free risk-control frameworks (conformal prediction (Vovk et al., 2005), risk-controlling prediction
+374   sets (Bates et al., 2021; Angelopoulos & Bates, 2023), and selective-prediction risk control (Geifman
+375   & El-Yaniv, 2017)) deliver marginal guarantees on future draws of a pipeline-deﬁned score. The
+376   object audited here is narrower: conditioning on a frozen, single-pass k = 1 decode stream, which
+377   of two in-decoding aggregations is the better selective score inside this dataset. No calibration split
+      exists—each prompt contributes exactly one decode—and the identity of the “working” score is
+
+
+                                                                                                      7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Table 10: Frozen-bed registry and answer-extractor audit. Takeaway: the audit was executed on
+379
+      the frozen prediction text in this reﬁne pass; branch frequencies, unparseable count, and the manual
+380   audit are now populated rather than asserted absent, but the generation and extraction provenance of
+381   the original bed remain incomplete.
+382
+      Field                          Frozen setting or audit result
+383
+384   Sample                         974 problems; one decode/problem; 8 blocks; block length 32; NFE 64
+      Readouts                       commit=last; first=ﬁrst; all=block mean
+385
+      Judge                          #### N>boxed>last-number; tolerance 10−6
+386
+      Base score                     accuracy 0.7053; error 0.2947
+387   Fallback frequency             hash 2/974 (0.21%); last_num 257/974 (26.4%); boxed 714/974
+388                                  (73.3%); absent 1/974 — rerun on the frozen text, this reﬁne
+389   Unparseable count              8/974 (0.82%; extract-returns-None) — rerun on the frozen text, this reﬁne
+390   Manual equivalence audit       n = 200 audit against a canonical-independent extractor; label-ﬂip rate 30%
+                                     (driven by last_num-branch disagreements); counts as a noise upper bound,
+391
+                                     not a calibrated estimate
+392   Inference                      Decode-cluster bootstrap; paired vector; ﬁxed reported seeds
+393
+394
+395
+      Table 11: Closest-work positioning. Columns: the unit the conﬁdence score is deﬁned on, when the
+      evidence is aggregated, what selection endpoint it feeds, and how aggregate uncertainty is treated.
+396
+      Takeaway: the audit of which in-decoding aggregation of a masked diffusion decoder’s conﬁdence
+397
+      to use as a decode-level selective score, with paired clustered inference on both rank and risk scales,
+398   is the speciﬁc junction not covered by prior work.
+399
+400
+      Work                            Score unit / timing             Selection endpoint      Uncertainty treatment
+401   LLaDA (Nie et al., 2025)        token; per-step, in             remasking order         none at decode level
+402   (the frozen bed)                decoding
+      Fast-dLLM (Wu et al.,           token (action); per-step,       parallel unmask count   none at decode level
+403
+      2025)                           in decoding
+404   Early halting                   sequence / step; in             stop / continue         heuristic threshold
+405   (Lo Cicero Vaina et al.,        decoding
+406   2023)
+407   Self-consistency (Wang          candidate answer;               majority vote           vote frequency
+      et al., 2023)                   post-hoc over k samples
+408
+      Calibration (Guo et al.,        single-pass prob;               conﬁdence reliability   temperature / ECE
+409   2017)                           post-hoc
+410   Selective classiﬁcation         single-pass feature/prob;       abstain vs predict      risk–coverage curve
+411   (Chow, 1970; Geifman &          post-hoc
+412   El-Yaniv, 2019)
+      Failure prediction              response; post-hoc              abstain vs accept       AUROC / calibration
+413
+      (Hendrycks & Gimpel,
+414   2017; Kadavath et al., 2022)
+415   This work                       in-decoding revision;           risk-gated decode selec- paired clustered boot-
+416                                   ﬁrst / last / mean              tion                     strap, dual scale
+417                                   exposure
+418
+419   itself the unknown. Splitting the stream post-hoc to ﬁt a conformal threshold would (i) break the
+420   paired structure that underlies every claim in this paper, and (ii) only certify the calibration subset
+421   at the coverages where it already has low error, collapsing to the descriptive bounds of Table 4. We
+422
+      therefore audit the readout with paired clustered resampling on the full stream, and leave guarantee-
+      based control to the preregistered replication bed (§6), where a held-out split is part of the design.
+423
+424
+425   6       L IMITATIONS
+426
+427   This is one model–task–temperature bed with no generation replication, no second dataset, and no
+428   causal intervention on readouts. Block number and canvas position are not crossed, so the early/late
+429   analysis is not a timing mechanism test. R2 depends on an unprotected covu correction; a 61-point
+430   residual-covariance sensitivity sweep over m ∈ [0.85, 1.15] has now been run on the frozen bed
+431   (zero GPU, this reﬁne) and is disclosed below, but the claim remains an analysis-level statement,
+      not a causal one. R5’s ﬁne grid is descriptive outside the registered anchors and has no family
+
+
+                                                                  8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      survivor. The H2 ratio is a strict, observed-SE robustness ﬂag, not evidence of absence; only the
+433   reported TOST result supports equivalence. The unrecorded decoder conﬁguration and the original
+434   extraction-stage audit prevent regeneration. A post-hoc rerun of the canonical extractor on the frozen
+435   prediction text (this reﬁne) populated branch census, unparseable count, and an n = 200 manual
+436   audit (Table 10); constraining the ±0.0278 headline by paired-agreement noise beyond that audit
+437   would require a calibrated human gold set, which is not resource-feasible here.
+438
+439
+      7   C ONCLUSION
+440
+441
+      This bed supports a narrow conclusion: commit and all separate in rank units, while their incre-
+442
+      mental risk utility is neither resolved at the lower coverages nor established absent. A decisive test
+443
+      requires a fully recorded replication on a second model and task with n ≈ 1960–2820, repeated de-
+444   code seeds, archived remasking policy and prompt, and the same paired commit-vs-all endpoint.
+445   R3 would be falsiﬁed if that preregistered replication showed a practically relevant risk increment
+446   whose TOST interval lies outside ±1 pp, or if rank separation disappeared under the aligned contrast.
+447   Recording the decoder and extractor is therefore part of the measurement, not optional reproducibil-
+448   ity metadata.
+449
+450   Data and analysis release. The analysis layer—-runtime metadata, schemas, anal-
+451   ysis scripts, a co-located manifest, and the ﬁxed identiﬁers of the frozen event
+452   stream      (SHA256        6e39e0ad3d4a42340ab6ef31474a20a2bdf7356dac9c9dbf
+453   6c0de63968b85972;                   metadata       2b5c1f9d116257a7ccab6403c619cf0b
+454   74526472e4cabe110ed8a97cdf6258a5)—-is released without precondition, and the
+455
+      stream contains no proprietary decoder internals. Release of the raw event-stream bundle itself
+      remains subject to the project data steward’s decision, as stated in §4. The remasking policy,
+456
+      decode seed, and prompt conﬁguration were not recorded at decode time, so the decoder cannot
+457
+      be re-executed; what is auditable is the frozen-stream analysis protocol, not the decoding itself.
+458   Consequently this release is a frozen-stream analysis protocol, not a claim of model-internal access
+459   and not a reproducible decode.
+460
+461
+462   R EFERENCES
+463   Shivani Agarwal, Thore Graepel, Ralf Herbrich, Sariel Har-Peled, and Dan Roth. Generalization
+464     bounds for the area under the ROC curve. In Journal of Machine Learning Research, volume 6,
+465     pp. 393–425, 2005.
+466
+467   Douglas G. Altman and J. Martin Bland. Absence of evidence is not evidence of absence. BMJ, 311
+468    (7003):485, 1995. doi: 10.1136/bmj.311.7003.485.
+469
+      Anastasios N. Angelopoulos and Stephen Bates. Conformal prediction: A gentle introduction. Foun-
+470
+        dations and Trends in Machine Learning, 16(4):494–591, 2023.
+471
+472   Jacob Austin, Daniel D. Johnson, Jonathan Ho, Daniel Tarlow, and Rianne van den Berg. Struc-
+473     tured denoising diffusion models in discrete state-spaces. In Advances in Neural Information
+474     Processing Systems, volume 34, pp. 17981–17993, 2021.
+475
+476   Peter L. Bartlett and Marten H. Wegkamp. Classiﬁcation with a reject option using a hinge loss.
+477     Journal of Machine Learning Research, 9:1823–1840, 2008.
+478
+      Stephen Bates, Anastasios N. Angelopoulos, Lihua Lei, Jitendra Malik, and Michael I. Jordan.
+479
+        Distribution-free, risk-controlling prediction sets. In Journal of the ACM, volume 68, pp. 1–34,
+480
+        2021.
+481
+482   C. K. Chow. On optimum recognition error and reject tradeoff. IEEE Transactions on Information
+483     Theory, 16(1):41–46, 1970. doi: 10.1109/TIT.1970.1054406.
+484
+485   Stéphane Clémençon, Gábor Lugosi, and Nicolas Vayatis. Ranking and empirical minimization of
+        U-statistics. Annals of Statistics, 36(2):844–874, 2008.
+
+
+                                                        9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+487     Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John
+488     Schulman. Training veriﬁers to solve math word problems. arXiv preprint arXiv:2110.14168,
+489     2021.
+490
+491   Yukun Ding, Jinglan Liu, Jinjun Xiong, and Yiyu Shi. Revisiting the evaluation of uncertainty
+492
+        estimation and its application to explore model complexity–uncertainty trade-off. In Proceedings
+        of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops, pp. 4–5,
+493
+        2020.
+494
+495   Ran El-Yaniv and Yair Wiener. On the foundations of noise-free selective classiﬁcation. Journal of
+496     Machine Learning Research, 11:1605–1641, 2010.
+497
+      C. A. Field and A. H. Welsh. Bootstrapping clustered data. Journal of the Royal Statistical Society:
+498
+        Series B (Statistical Methodology), 69(3):369–390, 2007. doi: 10.1111/j.1467-9868.2007.00593.
+499     x.
+500
+501   Yonatan Geifman and Ran El-Yaniv. Selective classiﬁcation for deep neural networks. In Advances
+502     in Neural Information Processing Systems (NeurIPS), volume 30, pp. 4878–4887, 2017.
+503
+      Yonatan Geifman and Ran El-Yaniv. SelectiveNet: A deep neural network with an integrated reject
+504     option. In Proceedings of the 36th International Conference on Machine Learning, volume 97 of
+505     Proceedings of Machine Learning Research, pp. 2151–2159, 2019.
+506
+507   Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. On calibration of modern neural
+508
+        networks. In Proceedings of the 34th International Conference on Machine Learning (ICML),
+        volume 70 of Proceedings of Machine Learning Research, pp. 1321–1330, 2017.
+509
+510   Xiaochuang Han, Sachin Kumar, and Yulia Tsvetkov. SSD-LM: Semi-autoregressive simplex-based
+511     diffusion language model for text generation and modular control. In Proceedings of the 61st
+512     Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp.
+513     11575–11596, 2023. doi: 10.18653/v1/2023.acl-long.647.
+514
+      Dan Hendrycks and Kevin Gimpel. A baseline for detecting misclassiﬁed and out-of-distribution
+515
+        examples in neural networks. In International Conference on Learning Representations, 2017.
+516
+517   John M. Hoenig and Dennis M. Heisey. The abuse of power: The pervasive fallacy of power
+518     calculations for data analysis. The American Statistician, 55(1):19–24, 2001. doi: 10.1198/
+519     000313001300339897.
+520   Sture Holm. A simple sequentially rejective multiple test procedure. Scandinavian Journal of
+521     Statistics, 6(2):65–70, 1979.
+522
+523   Saurav Kadavath, Tom Conerly, Amanda Askell, Tom Henighan, Dawn Drain, Ethan Perez,
+524     Nicholas Schiefer, Zac Hatﬁeld-Dodds, Nova DasSarma, Eli Tran-Johnson, et al. Language mod-
+525
+        els (mostly) know what they know. arXiv preprint arXiv:2207.05221, 2022.
+526   Lorenz Kuhn, Yarin Gal, and Sebastian Farquhar. Semantic uncertainty: Linguistic invariances for
+527     uncertainty estimation in natural language generation. In International Conference on Learning
+528     Representations (ICLR), 2023.
+529
+      Stephanie Lin, Jacob Hilton, and Owain Evans. Teaching models to express their uncertainty in
+530
+        words. Transactions on Machine Learning Research, 2022.
+531
+532   Soﬁa Maria Lo Cicero Vaina, Nikita Balagansky, and Daniil Gavrilov. Diffusion language models
+533     generation can be halted early. arXiv preprint arXiv:2305.10818, 2023.
+534
+      Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai
+535
+        Lin, Ji-Rong Wen, and Chongxuan Li. Large language diffusion models. arXiv preprint
+536
+        arXiv:2502.09992, 2025.
+537
+538   Subham Sekhar Sahoo, Marianne Arriola, Yair Schiff, Aaron Gokaslan, Edgar Marroquin, Justin T.
+539     Chiu, Alexander Rush, and Volodymyr Kuleshov. Simple and effective masked diffusion language
+        models. In Advances in Neural Information Processing Systems, volume 37, 2024.
+
+
+                                                      10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      Donald J. Schuirmann. A comparison of the two one-sided tests procedure and the power approach
+541     for assessing the equivalence of average bioavailability. Journal of Pharmacokinetics and Bio-
+542     pharmaceutics, 15(6):657–680, 1987. doi: 10.1007/BF01068419.
+543
+544   Vladimir Vovk, Alexander Gammerman, and Glenn Shafer. Algorithmic Learning in a Random
+545
+        World. Springer, 2005.
+546   Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdh-
+547     ery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models.
+548     In International Conference on Learning Representations (ICLR), 2023.
+549
+      Chengyue Wu, Hao Zhang, Shuchen Xue, Zhijian Liu, Shizhe Diao, Ligeng Zhu, Ping Luo, Song
+550
+        Han, and Enze Xie. Fast-dLLM: Training-free acceleration of diffusion LLM by enabling KV
+551     cache and parallel decoding. arXiv preprint arXiv:2505.22618, 2025.
+552
+553   Jiacheng Ye, Zhihui Xie, Lin Zheng, Jiahui Gao, Zirui Wu, Xin Jiang, Zhenguo Li, and Lingpeng
+554      Kong. Dream 7b: Diffusion large language models. arXiv preprint arXiv:2508.15487, 2025.
+555
+556
+      A     R EADOUT AND INFERENCE ALGORITHMS
+557
+558
+      A.1    E VENT STREAM AND READOUT CONSTRUCTION
+559
+560   Each decode produces an event stream of records (pos, step, conf), one per revision of position pos:
+561   an event at step s records the model’s conﬁdence conf ∈ (0, 1] in the current token assignment of
+562   that position. A position is ﬁrst exposed at its ﬁrst recorded event and committed at its last; a position
+563   is revised if and only if |Ed,p | > 1. Positions with no recorded event carry no score and are excluded.
+564   The three readouts and the decode-level selective score are built by Figure 3. Event extraction from
+565   the frozen decoder dump is unchanged from the frozen asset; only the aggregation is restated here.
+566   Algorithm 1 Readout construction and decode-level selective score
+567   Input : event stream E = {(d, pos, s, v)} for decode d;
+              readout r in {commit, first, all}; blocks B_1..B_8; coverage c.
+568
+      Output: selective score S_d^(r); retained set at coverage c.
+569    1: for each (d,pos) do                        # pos-level readout
+570    2:    if r = commit: c_(d,pos) <- v at max s in E_(d,pos) (last rev.)
+571    3:    if r = first:    c_(d,pos) <- v at min s in E_(d,pos) (first exp.)
+572    4:    if r = all:      c_(d,pos) <- mean of v in E_(d,pos) (rev. mean)
+       5: for each (d, block b) do                   # block-level aggregation
+573
+       6:    R_(d,b)^(r) <- mean of c_(d,pos) over pos in b with any event
+574    7: for each d do                              # decode-level score
+575    8:    S_d^(r) <- (1/8) * sum_b R_(d,b)^(r)
+576    9: sort decodes by S_d^(r); ties by stable decode index (mergesort)
+577   10: retain k = max(1, round(c * n)) top-ranked decodes
+578   Figure 3: Reference pseudocode for the three conﬁdence readouts and the decode-level selective
+579   score. An independent implementer given the public event stream and this rule alone reproduces the
+580
+      three readouts and rankings exactly.
+581
+582   Repeated revisions, unexposed positions, and answer length. Every grouped mean is deﬁned
+583
+      over positions with at least one event; unexposed positions (padding or never-touched canvas) con-
+      tribute no term. Revisions enter all as an unweighted arithmetic mean over that position’s events,
+584
+      so a position revised twice and one revised ﬁve times contribute equally at the position level (each is
+585
+      one position); the real stream has between 1 and 8 events per exposed position (median 4.5, Table-of-
+586   support in the release). Generated answers vary in length across decodes, so the number of exposed
+587   positions per block varies; because every normalization is a per-position arithmetic mean, the block
+588   readout is invariant to answer length. An exposed position always has a commit and a ﬁrst value (its
+589   last and ﬁrst event), so no readout is undeﬁned.
+590
+591   A.2    PAIRED AUROC AND CLUSTERED RISK INFERENCE
+592
+                                                               (r)
+593   AUROC is computed on the pooled decode score Sd against the binary correctness label with
+      mergesort tie handling. The aligned contrast in Table 5 is the paired difference AUROC(commit)−
+
+
+                                                         11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+      AUROC(all) on identical decode-cluster bootstrap resamples; it is not a block-wise AUROC aver-
+595   aged across blocks (that is a different estimand, used only as a reported auxiliary). Risk@coverage
+596   uses the bootstrapped per-block risk deﬁned by Equation 1 and averaged over the eight blocks. All
+597   conﬁdence intervals are percentile bootstrap CIs over decode clusters (the independent unit is the
+598   decode), B = 2000 resamples, seed 20260825; ﬁrst-/last-exposure tie order within a position is
+599   resolved by the event sort on (pos, step) and never affects a reported digit (retained-set tie audit in
+600   Table 4).
+601
+602   A.3   H AND - VERIFIABLE WORKED EXAMPLE
+603
+604   One decode, one block of two exposed positions, events (pos, step, conf): for position 1, (1, 1, .6),
+605   (1, 3, .8) (two revisions); for position 2, (2, 2, .9) (never revised). First exposure → commit is
+606   read directly: position 1 is exposed at .6 and committed at .8; position 2 at .9 throughout.
+                                                                                                   Then
+607   commit = (.8 + .9)/2 = .85, first = (.6 + .9)/2 = .75, all = (.6 + .8)/2 + .9 /2 = .80.
+608
+      With one block the decode scores equal these block values; ranking three such decodes by commit
+      already separates them as .85 above a single-revision peer at .80 and a decaying one at .75. With
+609
+      one block the denominator 8 scales all readouts identically and leaves the ranking unchanged.
+610
+611
+612   B     I NFERENCE DETAILS
+613
+614   Retained counts use banker’s rounding with a ﬂoor at one; at c = 0.2, round(194.8) = 195. Stable
+615                                                                            c δ̂b > 0), Pr(
+      index order breaks exact score ties. The twin statistic is ptwin = 2 min{Pr(         c δ̂b < 0)}
+616   over paired bootstrap resamples. For label permutations we use the two-sided tail count on |∆|,
+                 PB
+617   p = (1 + b=1 1{|∆πb | ≥ |∆obs |})/(B + 1). The reported B = 2000 resolution is therefore
+618   expressed as p ≤ 1/(B + 1) ≈ 5 × 10−4 , not as an exact p = 0.0005.
+619
+620   Table 12: Full R3 risk grid with conventional two-sided p and H2 robustness ﬂag. The H2 boundary
+621   is p ≈ 0.0051; it is stricter than nominal detection. Takeaway: nominal detection and H2 robustness
+622   must be read separately.
+623                                  ˆ
+             Anchor                  ∆          95% CI MDE80 Ratio              p2s Reading
+624
+625
+             intra c = .2     −.0058 [−.0199, .0058]         .0161 2.79      .3160 CI ∋ 0; H2 PL
+             intra c = .5     −.0067 [−.0131, .0008]         .0108 1.62      .0835 CI ∋ 0; H2 PL
+626          intra c = .8     −.0008 [−.0056, .0022]         .0029 3.60      .4362 CI ∋ 0; H2 PL
+627          cross c = .2     −.0410 [−.077, −.005]          .0513 1.25      .0250 detected; H2 PL
+628          A0 full c = .2   +.2126     [.125, .218]        .0660   .31 < 10−18 detected; H2 RES
+629          A0 full c = .5   +.1407     [.079, .147]        .0484   .34 < 10−15 detected; H2 RES
+630          A0 full c = .8   +.0649     [.038, .098]        .0431   .67 2.5×10−5 detected; H2 RES
+631
+             A1 shufﬂe c = .2 +.0038   [−.064, .069]         .0953 25.39     .9121 CI ∋ 0
+             A1 shufﬂe c = .5 +.0073   [−.036, .048]         .0602 8.27      .7348 CI ∋ 0
+632          A1 shufﬂe c = .8 +.0079   [−.025, .039]         .0459 5.79      .6282 CI ∋ 0
+633
+634
+635
+      Table 13: Early/late anchors with two-sided normal-reference p. H2 PL/RES changes at p ≈ 0.0051;
+      conventional CI and Holm decisions remain separate. Takeaway: every registered early/late anchor
+636
+      remains H2 power-limited.
+637
+638                      Readout/c         δ̂        95% CI MDE80       Ratio    p2s H2
+639                      commit/.2 −.0769 [−.144, −.010]         .0944 1.227 .0224 PL
+640                      commit/.5 −.0267 [−.058, .008]          .0487 1.824 .1245 PL
+641                      commit/.8 +.0077 [−.012, .026]          .0271 3.518 .4258 PL
+642                      ﬁrst/.2   −.0769 [−.133, −.005]         .0934 1.215 .0211 PL
+                         ﬁrst/.5   −.0021 [−.035, .035]          .0493 24.036 .9072 PL
+643
+                         ﬁrst/.8   +.0013 [−.021, .019]          .0284 22.136 .8993 PL
+644                      all/.2    −.0769 [−.138, −.005]         .0953 1.239 .0237 PL
+645                      all/.5    −.0246 [−.055, .014]          .0499 2.025 .1665 PL
+646                      all/.8    −.0051 [−.022, .018]          .0284 5.539 .6130 PL
+647
+      Table 14 isolates the raw knife-edge family member from the registered family-level verdict.
+
+
+                                                        12
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+648
+      Table 14: Knife-edge Monte Carlo audit for the raw c = 0.2 early/late family member. The regis-
+649
+      tered family outcome remains empty; this table diagnoses resampling sensitivity rather than promot-
+650   ing a survivor. Takeaway: the smallest raw p straddles the Holm boundary, but the registered family
+651   verdict stays empty.
+652
+      Audit                    Frozen value     Reference          Reading
+653
+654   High-B bootstrap        B = 20,000        10 seeds           CI excludes zero in all runs
+      Smallest-p range       0.0144–0.0174      α/3 = 0.01667      Threshold-straddling
+655
+      Mean smallest p           0.01636         MC-SE 0.0011       Not a stable survivor
+656   CI endpoint drift       ≈ 3 × 10−17       discrete grid      Endpoints stable
+657   Registered outcome       0 survivors      Holm(3)            Retain boundary verdict
+658
+659
+660
+      C       AUROC- TO - RISK PROJECTION ASSUMPTIONS
+661
+                       d = ∆A(1 − c)d assumes monotone score ordering, a ﬁrst-order Taylor approx-
+      The projection ∆risk
+662
+663   imation, independent decode clusters, and no calibration equality. It is neither a conﬁdence bound
+664
+      nor a measured risk increment; Equation 1 remains the selection estimand.
+665
+666   Derivation and references. Write the risk at coverage c as the conditional error over the retained
+667   set Sc = {i : si ≥ τc }, with τc the per-decode score threshold that keeps a fraction c of the mass.
+668   Differentiating under the dependence assumptions above (cf. Geifman & El-Yaniv, 2017; El-Yaniv
+669   & Wiener, 2010, for the risk-coverage family) plus the AUROC-to-tail decomposition of ranking
+670   losses (Agarwal et al., 2005; Clémençon et al., 2008) gives, to ﬁrst order in a small score shift ∆A,
+671
+                                          d
+                                        ∆risk(c)    ≈ ∆A · (1 − c) · d,
+672
+673                                                                   
+      where d = Pr(i ∈ Sc | yi = 1) · 1 − Pr(i ∈ Sc | yi = 1) is the dispersion term pushed into
+674
+      the frozen constant. The (1 − c) factor is the risk-density slope of a threshold policy at coverage c;
+675   it doubles when coverage halves. We report d only as a frozen-bed diagnostic and never as a new
+676   score.
+677
+678
+679   D       R2 RESIDUAL - COVARIANCE SENSITIVITY
+680
+681   The sweep scales the residual-covariance term by a multiplier m: cdovu 7→ m cd ovu . At the reported
+682   correction the upper bound is 0.979; multiplying by 0.9038 returns the point calculation to ρ = 1,
+683   while the CI-upper calculation crosses near 0.935. In this reﬁne pass the [0.85, 1.15] sweep was
+684   executed on the frozen events stream (61 points, step 0.005; each point a paired B = 2000 decode-
+685   cluster bootstrap; seed 20260823; asset r211_r2_covu_sweep_v6). Representative rows are
+686   in Table 15. The point estimate crosses ρ = 1 at m ≈ 0.905; the 95% CI upper excludes ρ = 1 for
+687   m ≳ 0.94; and Pr(ρ < 1) ≥ 0.99 for m ≳ 0.945. The sweep therefore reproduces the breakeven
+688   diagnostic and the claim narrowing recorded in the ledger, without supplying a ground-truth ρ for
+689
+      the latent structure.
+690
+      Table 15: R2 residual-covariance sensitivity sweep on the frozen events stream (61 points; paired
+691
+      decode-cluster bootstrap, B = 2000, seed 20260823). ρ denotes the disattenuated correlation and
+692   m the multiplier on cd ovu . Takeaway: the point estimate crosses ρ = 1 near m ≈ 0.905, the CI
+693   upper excludes ρ = 1 from m ≈ 0.94, and Pr(ρ < 1) ≥ 0.99 from m ≈ 0.945; the result is an
+694   analysis-level sensitivity statement over the frozen asset, not a causal one.
+695
+          m ρb(m)            95% CI Pr(ρ < 1) Note
+696
+697    0.85    1.018   [1.007, 1.029]         0.00   CI strictly above 1
+      0.905    1.000   [0.988, 1.010]         0.52   point-ρ crosses 1
+698
+       0.94    0.988   [0.977, 0.999]         0.99   CI upper returns to 1
+699   0.945    0.986   [0.975, 0.997]         0.99   Pr(ρ < 1) ≥ 0.99
+700     1.0    0.968   [0.956, 0.979]         1.00   nominal (assumed correction)
+701    1.15    0.919   [0.903, 0.934]         1.00   far end of requested range
+
+
+
+                                                            13
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+702
+      E    R EGISTRATION AND PROVENANCE
+703
+704
+      Table 16 binds each claim to its frozen evidence path and timing.
+705
+706   Table 16: R1–R5 registration ledger. Paths are relative to the run root. “Post” means ﬁxed after the
+707   ﬁrst computation and is not presented as preregistration. Takeaway: evidence paths and timing are
+708   claim-speciﬁc; post-alignment analyses are not preregistrations.
+709   ID Hypothesis and verdict          Evidence path                                   Registration/time relation
+710
+      R1 δEL (.2) < 0; early–late;       agents/A23/workspace/results/                   r16/r17 before r19;
+711      decode; zero. Verdict:          r19_crossreadout_family.json                    grid/family ﬁxed
+712      lattice equality; sets differ
+713   R2 corrected ρ < 1;                agents/A23/workspace/results/                   r15 model ﬁxed before
+714      commit–all; decode; unity.      r15_singlefactor_pointpred.                     result; sensitivity post
+         Verdict: not robustly           json
+715
+         separated
+716   R3 ∆intra ̸= 0; commit–all;        agents/A23/workspace/results/                   scope/grid before r204;
+717      decode; zero. Verdict: rank     r204_p1_paired_commitall/r204_                  paired AUROC
+718      RES; risk unresolved            p1_paired_commitall.json                        post-alignment
+719   R4 ﬁrst preserves early/late       agents/A23/workspace/results/                   r17 before ﬁrst
+720
+         sign; decode; zero. Verdict:    r17_window_desaturation.json                    computation
+         only .2 lattice-identical
+721   R5 effect localized to high        agents/A23/workspace/results/                   ﬁne grid descriptive; Holm
+722      selection; decode; zero.        r21_coverage_shape_scan.json                    family pre-ﬁxed
+723      Verdict: no family survivor
+724     Run-ID map. Each frozen asset links to the recorded output it contributed; IDs are omitted from the main
+725                                                  verdict matrix.
+726   ID    Output                                       ID              Output
+727
+      r16     early/late decomposition                   r17              ﬁrst-readout desaturation
+728   r19     three-readout family                       r21              descriptive coverage curve
+729   r56     full-width MDE correction                  r106             complete MDE/control grid
+730   r197    label-permutation Type-I                   r198             conservative calibration reading
+731   r202    twin-p and tie audit                       r204             aligned paired contrasts
+      r205    joint/calibrated/Jaccard/R5                g3_main/A        frozen event-stream arm
+732
+      partD   registered within-block risk               P1 sensitivity   covu breakeven
+733
+734   Scope and {0.2, 0.5, 0.8} were ﬁxed before the registered R3 risk computation; the Holm family
+735   and reported seeds were ﬁxed in the corresponding run ﬁles. The practical bound δ ∗ = 1 pp was
+736   ﬁxed before the TOST recomputation but after the original effect estimates. The 1.2 pp AUROC
+737   projection is post-hoc and explicitly descriptive. The aligned paired AUROC, calibrated central
+738   band, joint endpoint, and Jaccard audits were introduced during revision on the same frozen stream;
+739   they are post-hoc analyses, not prospective registrations.
+740
+741   F    J UDGMENT- HYGIENE CHECKLIST
+742
+743   H1 separates rank from utility; H2 treats full-width MDE as sensitivity, not post-hoc power; H3
+744   desaturates; H4 reports intervals; H5 crosses readout and coverage; and H6 audits ties, retained sets,
+745   calibration, and reproduction. Their assembly is the reusable protocol.
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+
+
+
+                                                          14
+

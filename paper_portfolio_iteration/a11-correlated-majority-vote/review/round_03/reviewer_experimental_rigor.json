@@ -1,0 +1,127 @@
+{
+  "reviewer_id": "a11-r3-experimental",
+  "round": 3,
+  "snapshot_sha256": "683d2d58f3eead73dba6344efefe02a17d9904f9170b77fb6364a6e1735dc6ee",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within the explicitly stated count-exchangeable binary pass-count replay model, the FIT/CAL/TEST procedure, exact per-count DP evaluation, and CAL empirical-Bernstein selection provide a coherent empirical test of the restricted flip/count claim. The supplied evidence does not establish the substantially different online returned-answer, chronological-order, or operational-cost claims, and the paper appropriately says that it does not.",
+    "presentation": "The manuscript is unusually explicit about split status, replay endpoints, synthetic-drift scope, and nonclaims. The abundance of replay and sensitivity material is readable, but it cannot substitute for a compact account of independently reproducible primary experiments or a real online endpoint.",
+    "contribution": "The posterior-certificate/replay analysis and strong count-reduction results are potentially useful as a narrowly scoped analytical result. Its demonstrated practical value for adaptive self-consistency is currently uncertain because the central empirical carrier is count-only and the supplied package cannot independently reconstruct the main experiment."
+  },
+  "paper_summary": "This paper studies early stopping for a binary full-vote pass-count replay endpoint. BAYES-H fits a distribution over per-task final pass counts on FIT, stops when a hypergeometric posterior probability of disagreement with the full-N replay decision is below alpha, and uses CAL empirical-Bernstein bounds with Bonferroni control to accept frozen rules. The main OMR replay readout reports 80.9% count reduction at alpha=0.05, with replication and two additional replay carriers. The paper carefully distinguishes these results from online stopped-answer correctness, natural generation order, and token/latency/cancellation savings.",
+  "strongest_verified_contribution": "For the stated count-exchangeable replay model, the supplied artifacts support a well-controlled CAL selection chain: on OMR, the FIT-frozen BAYES-H alpha=0.05 rule has CAL UCB 0.03503 and the held-out descriptive replay readout is flip 0.02489 with 0.8085 count reduction (artifacts/results/fit_cal_test_r469_result.json; manuscript/paper.pdf Table 1, p. 6). The same restricted replay pattern is reproduced on OMR shard 1 and appears at an intermediate scale on RLVE (artifacts/results/shard1_robust_r471_result.json and artifacts/results/rlve_n8_r474_result.json).",
+  "strengths": [
+    "The primary comparison controls selection on CAL rather than selecting budgets on the held-out OMR TEST split: the result artifact records FIT/CAL/TEST = 4000/4000/3607, J=64, and CAL certificates before TEST readout (artifacts/results/fit_cal_test_r469_result.json; source/paper.tex:475-491).",
+    "The empirical evidence tests an informative mechanism rather than only a favorable endpoint: it includes fixed mixture-aware and distribution-free baselines, a negative ESC-style WINDOW3 result, a disjoint OMR shard replication, an M=2 non-stopping boundary case, and an N=8 intermediate carrier (source/paper.tex:493-656; artifacts/results/shard1_robust_r471_result.json; artifacts/results/openr1_m2_pilot_r473.json; artifacts/results/rlve_n8_r474_result.json).",
+    "The authors separate evidence from non-evidence: Table 1 labels TEST values descriptive, the margin scan is labeled exploratory, and the limitations state that replay agreement and rollout-count reduction are not delivered-answer correctness or operational savings (source/paper.tex:514-531, 679-691, 693-739)."
+  ],
+  "questions": [
+    "Can the authors provide a reviewer-safe, end-to-end rerunnable release for the OMR headline result: deduplicated task identifiers and pass counts, deterministic FIT/CAL/TEST assignments, the exact main runner, all selection outputs, and an environment lock or container?",
+    "Will the authors run the already specified EXP-ORDERED-CORRECTNESS-COST protocol on a frozen ordered carrier, reporting paired stopped-answer gold correctness, completed and billable-token cost, latency, and cancellation telemetry against an actual full-N answer policy?",
+    "For the E1/E2/E3 drift results, which choices were frozen before inspecting outcomes, and can the authors report Monte-Carlo uncertainty, per-mechanism seed records, and an independent confirmation split for any margin value presented as a repair?"
+  ],
+  "issues": [
+    {
+      "issue_id": "ER-1",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "manuscript/paper.pdf Abstract p. 1, Experiments pp. 6-8, and Limitations p. 9; source/paper.tex:44-84, 504-518, 592-647, 693-739; protocol/decisive_experiment_protocol.md",
+      "claim_ids": [
+        "C02",
+        "C04"
+      ],
+      "evidence_ids": [
+        "EXP-OMR-R469",
+        "EXP-DRIFT-R469",
+        "EXP-ORDERED-CORRECTNESS-COST"
+      ],
+      "observed_evidence": "The registry identifies the OMR evaluation as count-exchangeable replay with ordered_rollouts=false, gold_correctness_endpoint=false, and realized_token_latency_cancellation_endpoint=false; the only direct experiment that would test all three is marked planned_not_authorized_to_run (evidence/experiment_registry.json). The manuscript itself states that all headline flips are pass-count replay disagreement and that it does not measure delivered-answer majority, gold correctness, tokens, latency, cancellation, or ordered online deployment (source/paper.tex:81-84 and 695-703). RLVE's sample-id slope is explicitly descriptive and not an online-policy audit (source/paper.tex:638-647).",
+      "why_it_matters": "This is missing evidence, not evidence against the paper's restricted replay theorem. However, a paper framed around adaptive stopping for self-consistency cannot establish its practical benefit or deployment validity from a random-prefix reconstruction of completed binary counts. The gap is decision-relevant for significance and experimental rigor.",
+      "required_fix": "Either narrow the title, abstract, introduction, figure, and conclusion further to position the work solely as a count-replay analysis, or add the smallest pre-registered ordered online experiment described in protocol/decisive_experiment_protocol.md. It must compare frozen BAYES-H-online with a real full-N returned-answer policy using a deterministic gold evaluator, chronological trace-integrity checks, paired correctness analysis, completed/billable tokens, latency, and cancellation/post-stop telemetry.",
+      "verification_test": "Before inspecting TEST, verify frozen model/task/evaluator/split/table/config hashes and append-only trace ledgers. On integrity-valid held-out paired episodes, report the prespecified one-sided 95% correctness non-inferiority interval, paired operational-cost intervals, cancellation fields, and the fixed 10% shadow-completion agreement diagnostic. Treat any trace-integrity failure as invalid infrastructure evidence rather than a favorable result.",
+      "evidence_needed": "A completed integrity-valid formal run of EXP-ORDERED-CORRECTNESS-COST, or unambiguous claim narrowing that removes practical online/cost implications from all headline material.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-2",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "manuscript/paper.pdf Reproducibility appendix p. 18; source/paper.tex:1061-1064; evidence/repository_inventory.md 'Round-2 reviewer-safe snapshot boundary'; source/claim_audit_manifest.json 'residual_blocker'",
+      "claim_ids": [
+        "C02",
+        "C03"
+      ],
+      "evidence_ids": [
+        "EXP-OMR-R469",
+        "EXP-DRIFT-R469"
+      ],
+      "observed_evidence": "The package provides aggregate JSON results and checksums, but the experiment registry labels the headline OMR and drift experiments 'supplied_artifact_not_rerun'. The repository inventory states that raw task membership, duplicate checks, original selection timestamps, predictions, and an environment lock are absent; the hash-bound current audit similarly says it cannot reconstruct original FIT/CAL/TEST membership, duplicate checks, selection timestamps, raw predictions, or a clean environment (evidence/repository_inventory.md; source/claim_audit_manifest.json). The supplied snapshot includes scripts for the OpenR1 and RLVE auxiliary carriers, but not the registered OMR headline runner.",
+      "why_it_matters": "The aggregate numbers are internally consistent and mechanically traceable, but an independent reviewer cannot check whether the claimed split isolation, de-duplication, carrier preprocessing, or frozen selection sequence generated the headline result. This caps confidence in the primary experimental claim without implying fabrication or a numerical contradiction.",
+      "required_fix": "Release a double-blind-safe reproducibility bundle for every primary result: raw or content-addressed per-task count records and licenses, deterministic task-ID split manifests, de-duplication and inclusion logs, the exact OMR FIT/CAL/TEST and drift runners, all frozen configuration/selection files, command logs/output hashes, and a pinned environment/container. If raw data cannot be redistributed, provide a documented acquisition script plus hash-verifiable preprocessing outputs and an executable smoke-to-full replay path.",
+      "verification_test": "An independent clean environment should recreate the OMR FIT/CAL/TEST assignments, all CAL certificates and selected rules, Table 1 values to printed precision, and the reported drift-table inputs from the released data/configuration without accessing an unavailable developer path. The release should fail loudly on hash, duplicate, or split mismatch.",
+      "evidence_needed": "A reviewer-safe end-to-end reproduction package and an independent rerun log, not only static claim checks over aggregate JSON files.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-3",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims",
+        "clarity"
+      ],
+      "location": "manuscript/paper.pdf pp. 8-9 and Figure 1 p. 2; source/paper.tex:658-691 and 1027-1059; artifacts/results/margin_repair_r469_result.json",
+      "claim_ids": [
+        "C03",
+        "C08"
+      ],
+      "evidence_ids": [
+        "EXP-DRIFT-R469"
+      ],
+      "observed_evidence": "The ordered-drift analysis applies three synthetic mechanisms to counts, and the margin scan artifact contains point estimates over a gamma grid but no uncertainty intervals. The paper explicitly says that no frozen margin-selection record is bundled and that margin thresholds are exploratory (source/paper.tex:679-691). The figure nevertheless gives the margin repair prominent visual emphasis, while its quantitative statement depends on the selected E3/gamma cell (source/fig1_earlystop.png; artifacts/results/margin_repair_r469_result.json).",
+      "why_it_matters": "The stated exploratory qualification prevents this from invalidating the replay result. Still, selecting and visually foregrounding a threshold based on the same synthetic grid can overstate how general or stable the proposed repair is, especially because the mechanisms are not observed online order and uncertainty is not displayed.",
+      "required_fix": "Keep the analysis explicitly diagnostic, report Monte-Carlo and task-resampling uncertainty plus all pre-fixed grid/seed details, and move any selected gamma claim to a clearly exploratory sensitivity caption. A confirmatory repair claim requires gamma selection on a separate calibration mechanism set and evaluation on a held-out ordered carrier.",
+      "verification_test": "For each reported drift cell, reproduce results from recorded seeds or independent resampling and show confidence intervals. Verify that any confirmatory gamma was selected without reading its evaluation cell and that its stated coverage holds on a disjoint ordered test carrier.",
+      "evidence_needed": "Seed-complete uncertainty reporting for the present synthetic analysis; a frozen selection record and disjoint confirmation only if the margin is retained as a repair claim.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct human-subject, privacy, or safety issue is established by the supplied snapshot. The relevant responsible-research concern is evidentiary: replay count reduction should not be represented as user-facing correctness or cost without the missing ordered online measurements.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the frozen submission snapshot and supplied rubric.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A successful, integrity-valid, pre-registered ordered online comparison showing the frozen policy's stopped-answer correctness and actual operational-cost behavior against a true full-N answer policy on at least one deterministic-evaluator carrier.",
+    "A reviewer-safe end-to-end reproduction release that independently recreates the OMR split, CAL selection, Table 1, and synthetic-drift inputs from data and configuration rather than aggregate result JSON alone.",
+    "Uncertainty-complete and independently confirmed drift evidence if the margin repair remains a highlighted substantive result."
+  ],
+  "evidence_that_would_lower_score": [
+    "A rerun showing that FIT/CAL/TEST separation, de-duplication, or frozen-rule selection cannot be reconstructed or yields materially different Table 1 values.",
+    "A chronological trace audit showing that the online policy reads future rollouts, or an integrity-valid formal run showing a prespecified correctness loss or no realized cost saving.",
+    "Evidence that synthetic drift mechanisms or displayed margin thresholds were chosen after observing the same evaluation outcomes while being presented as confirmatory."
+  ],
+  "review_limitations": [
+    "I reviewed only the frozen snapshot and did not inspect unavailable upstream carrier files, prior review rounds, author plans, or external literature beyond the snapshot's own citation materials.",
+    "The supplied aggregate artifacts support internal consistency checks but do not permit an independent end-to-end rerun; this limitation is itself reflected in ER-2.",
+    "The score evaluates the paper's present restricted replay evidence, not an inference that the absent online experiment would succeed or fail."
+  ]
+}

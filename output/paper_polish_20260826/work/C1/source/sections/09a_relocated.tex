@@ -1,0 +1,63 @@
+% RELOCATED (2026-08-16, ICLR 9-page budget). Each subsection below is the full text
+% of a passage whose main-text home now carries a shorter in-text summary. Nothing was
+% deleted in the move; the pairing is recorded in the distributed Appendix.
+
+\subsection{Prior art on option-count-aware chance correction}
+\label{app:priorart}
+
+Section~\ref{sec:v2} claims the within-stratum permutation and its use as a gate, and nothing else. This appendix attributes the rest, result by result. Bennett's $S$ sets $p_e=1/k$ for $k$ response categories \citep{bennett1954communications}; \citet{brennan1981kappa} recommend exactly that free-marginal alternative wherever $\kappa$'s marginal dependence misleads; formula scoring corrects for guessing as an explicit function of the per-item option count \citep{frary1988formula}; and \citet{brenner1996weightedkappa} show that a weighted $\kappa$ drifts systematically with the number of categories --- the very pathology our stratification is designed to avoid. Pooling an agreement coefficient across heterogeneous item groups is likewise established \citep{devries2008pooledkappa}. We therefore claim \emph{none} of the following: correcting for the number of options, choosing $p_e$ as a methodological decision, or noticing that $\kappa$-family statistics depend on $k$. The works above assume a single global $k$; what we are not aware of in that literature is a null in which $k$ \emph{varies item to item} ($\texttt{n\_opt}\in\{3,\dots,10\}$, eight strata here), with the permutation confined within strata so that a letter illegal for an item can never be credited to it. That is a loophole-closing construction, not a new statistic, and its measured footprint on MMLU-Pro is the $36$ items quantified in Appendix~\ref{app:ordering}.
+
+\subsection{Why the v1/v2 ordering is not an identity}
+\label{app:ordering}
+
+Section~\ref{sec:v2} states the ordering between the two nulls as a measured property under an explicit regularity condition. This appendix gives the argument in full, and Table~\ref{tab:two-nulls} sets the two read-outs side by side.
+
+Unstratified, $\sum_L p_{L}m_{L}\leq\max_Lm_{L}$ places the v2 null at or below the v1 best-constant floor. Our estimator, however, permutes \emph{within} \texttt{n\_opt} strata, and stratification only yields $\widehat{\mathrm{acc}}\leq\sum_s w_s\max_L m_{s,L}$, whose right-hand side dominates $f_{\mathrm{const}}=\max_L\sum_s w_s m_{s,L}$. The ordering is recovered only when the same letter maximises every stratum, which MMLU-Pro violates. Table~\ref{tab:ordering-audit} aligns the global and stratum maxima, the combinatorial gap, the non-independent empirical count, the binding cell, and a legal counterexample. The ordering becomes a theorem under a condition we can state but not assume --- that the arm's letter distribution not vary with \texttt{n\_opt}, since $p_{s,L}=p_{L}$ gives $\widehat{\mathrm{acc}}=\sum_L p_{L}f_{L}\leq f_{\mathrm{const}}$ exactly. We therefore state it as a measured property under that explicit regularity condition, not as an identity.
+
+\input{sections/tab_two_nulls}
+
+\FloatBarrier
+
+\subsection{Designated damaged cells, multiplicity, and power}
+\label{app:designated}
+
+\paragraph{Designated damaged cells.} Throughout, \emph{designated damaged} means an arm that was structurally pruned and is reported as a damaged rung of its family; the designation is fixed by construction, not by measured score. The set comprises the named OLMo-2 prune-then-heal arms and the same four truncation rungs for each non-OLMo family. Tables~\ref{tab:mmlupro} and~\ref{tab:offmmlu-rollup} state the resulting denominators, while Winogrande remains a control and enters none. An earlier roll-up silently omitted \texttt{shortgpt16} and \texttt{keep14}; their floor deltas and tests are now printed in Table~\ref{tab:mmlupro}, and both arms are included everywhere. The omission was not defensible because the matching retained depth was counted as damaged in the other families. The checker \texttt{gate\_designated\_denominator.py} now asserts that the declared arm set equals every roll-up set, that depth is treated consistently across families, and that each denominator equals arms times benchmarks.
+
+\paragraph{Multiplicity.} We report per-cell decisions without a family-wise correction, so the headline totals are descriptive counts rather than simultaneously valid claims. This is a deliberate limitation: the cells share items, nest arms, and share a null, making them neither independent nor exchangeable and leaving no defensible off-the-shelf family definition. Readers should treat each borderline result as a per-cell decision. The conclusions rest on the aggregate direction and the regime-and-depth concentration printed in Table~\ref{tab:offmmlu-rollup}, not on one cell crossing a threshold. This remains weaker than multiplicity control, but the concentration is load-bearing: an indiscriminate test would not place all rejections at one end of the damage ladder.
+
+Table~\ref{tab:power} is the power disclosure that Section~\ref{sec:setup} requires before any null result on the five smaller benchmarks is interpreted.
+
+\input{sections/tab_power}
+
+\FloatBarrier
+
+\paragraph{Power is part of construct validity.} Small benchmarks produce apparently reassuring at-floor results even when observed effects are large, so any interpretation of a null result must include the achieved interval. MMLU-Pro changes the evidential status: OLMo-2 \texttt{keep8}'s interval excludes an MMLU-sized below-floor effect, making this a powered non-replication, not an absence of evidence. The ladder remains a cliff, not a gradient; no depth curve should be fitted to the sparse rungs.
+
+\subsection{Multiplicity in the two-reference comparison}
+\label{app:analysis-mult}
+
+Two qualifications belong with the two-reference comparison of Section~\ref{sec:flips}. First, one instrument does not transfer: the floor comparison also carries an exact McNemar test, which has no analogue here because $\mathrm{mean}(1/\texttt{n\_opt})$ is not a binary predictor and generates no discordant pairs. Second, these remain per-cell decisions under a shared-item dependence structure. Table~\ref{tab:headline-reference} now prints the raw matched-standard comparison and the Benjamini--Hochberg/Bonferroni result on separate rows; after correction, neither reference retains a cell, so the joint comparison is undefined rather than a corrected version of the raw ratio. We therefore treat the raw counts as descriptive evidence that the chance side is not uniformly null, not as simultaneously valid per-cell claims. The independent-binomial tail used by an earlier draft contradicted this dependence structure and has been removed.
+
+\needspace{4\baselineskip}
+\subsection{Constant emitters and the off-MMLU replication}
+\label{app:offmmlu}
+
+Table~\ref{tab:offmmlu-cells} sets all 60 non-OLMo designated damaged cells against both deterministic references, with their intervals.
+
+\input{sections/tab_offmmlu_cells}
+
+\input{sections/tab_offmmlu_rollup}
+
+The most vivid small-benchmark cases are literal constant emitters. Table~\ref{tab:offmmlu-rollup} separates damaged cells from the negative control and aligns the OpenBookQA constant-emitter score, floor delta, interval, and chance gap. The Winogrande letter-side control floor is $0.504341$ (evidence \textsf{second\_mc\_benchmark/gate2\_letter\_content\_nulls.json}; arm-invariant across the studied arms), and the control still enters no damaged-cell denominator. The empty emitters illustrate the central discrepancy: chance credits them, while the optimal-constant reference does not.
+
+The full off-MMLU roll-up is reported in Table~\ref{tab:offmmlu-rollup}: chance, point-floor, and interval-floor counts are shown on one row; healed, shallower, and truncate-only regimes are separated; the margin gap and the achieved-precision contrast are explicit. The interval-level clears are concentrated at the top of the OLMo-2 healed ladder, while equal or shallower retained depths in the other regimes do not reproduce that behaviour. The non-overlapping reported margins support that concentration, whereas the achieved half-widths explain why most small-benchmark nulls remain non-observations rather than powered replications. Regime and family remain confounded here as everywhere in this paper: OLMo-2 is the only prune-then-heal family, so the depth threshold is a property of that ladder and must not be read as a family contrast.
+
+\subsection{Auditing the audit: the three defects in full}
+\label{app:audit}
+
+Significance alone would re-import the defect because a tiny effect can be detected at MMLU-Pro scale while one letter dominates the likelihood argmax. Table~\ref{tab:v2-alternatives} aligns the rejected own-modal, content-interface, entropy, and modal-share diagnostics with their same-cell comparators: entropy and modal share are descriptive rather than competence measures.
+
+\paragraph{Full precision falsifies the numerical-tie mechanism.}
+The full-precision row of Table~\ref{tab:diagnostic-contrasts} removes every exact tie and reshuffles letter decisions without recovering accuracy, and the arm remains below its floor: precision does not create item-level information. The analysis likewise repaired three implementation defects (doubled-tail bootstrap, tokenizer-specific left truncation, OOM partial result), none of which changed a substantive verdict (Table~\ref{tab:integrity}).
+
+The analysis uncovered and repaired three implementation defects without changing a substantive verdict. Table~\ref{tab:integrity} aligns each defect with its consequence, repair, and measured impact: the bootstrap repair makes the probability bound structural; the tokenizer-specific truncation is now a hard per-shard assertion; and the cache-disabled teacher-forced pass recovers the previously unavailable intact cell. All reported cross-family MMLU-Pro results use the corrected launch.

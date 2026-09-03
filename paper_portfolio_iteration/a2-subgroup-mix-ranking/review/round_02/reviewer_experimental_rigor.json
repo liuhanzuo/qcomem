@@ -1,0 +1,160 @@
+{
+  "reviewer_id": "subgroup-r2-experimental",
+  "round": 2,
+  "snapshot_sha256": "a59cc79648a2b5daedc8f4b8f57637648180e5cd8d1c9eb3abffc6739eb61edc",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The finite-sample statements are carefully conditional on calibration isolation and fixed within-group risks, and the manuscript correctly labels normal/CLT and all held-out results as non-certifying diagnostics. However, the empirical package neither tests the central fixed-class-conditional-risk premise on a natural target nor permits independent end-to-end replay of the headline results. Thus the conditional theorem is plausible, but the empirical case for the deployment-motivated setting has substantive unresolved gaps.",
+    "presentation": "The method-status taxonomy, exact-versus-asymptotic labels, and repeated distinction between a certificate and a held-out diagnostic make the evidence boundaries unusually clear. Some experimentally important detail is deferred to unavailable historical artifacts, so the paper is readable but not fully self-contained for verification.",
+    "contribution": "The paired, simplex-uniform regret-gating formulation is a focused and potentially useful contribution. Its current empirical value is narrow: the four-carrier evidence uses constructed class-mixture grids, and the allocation component is explicitly exploratory because seed-level outcomes are absent."
+  },
+  "paper_summary": "The paper studies selecting from a fixed candidate-model pool when only subgroup mixture weights change. It selects by calibration point estimates and commits only when absolute CP or paired-difference regret upper bounds meet a tolerance; otherwise it abstains. It gives conditional finite-sample certificates uniform over mixture weights, contrasts exact and asymptotic gates on four public classification carriers, and treats budgeted subgroup allocation and a width surrogate as descriptive diagnostics rather than deployment policies.",
+  "strongest_verified_contribution": "Under the stated turnover and split-isolation assumptions, the paired construction in Theorem 1 provides a clearly scoped regret upper certificate for all simplex mixture weights; the manuscript also correctly prevents the normal/CLT frontier and dependent held-out pass rates from being presented as finite-sample evidence.",
+  "strengths": [
+    "The experiment-facing claims are substantially more disciplined than usual: Tables 2--3 explicitly call zero test violations a dependent held-out diagnostic, not coverage, and label normal/CLT as asymptotic.",
+    "The paired and absolute exact variants use matched five-seed summaries, and the selected model is held fixed across certificate variants, making the reported certificate-price comparison interpretable within the frozen design.",
+    "Section 6 does not overstate M3: it says the three-seed aggregate allocation directions are descriptive, and the evidence map records the missing per-seed records.",
+    "The paper identifies rather than hides abstention/fallback costs and within-group covariate shift as scope boundaries."
+  ],
+  "questions": [
+    "Can the authors execute the predeclared E11 temporal/geographic-target protocol, including target mixture distances and per-candidate/per-subgroup conditional-loss audits, and report failed invariance checks rather than replacing targets or groups post hoc?",
+    "Can the authors release reviewer-safe prediction/loss arrays, exact FIT/CAL/OUTER split and configuration hashes, seed-level summary records, and an environment lock so that the E03 frontier can be independently replayed end to end?",
+    "For M3/M3.5, can the authors retain one outcome per seed and allocation (with the same mixture rows) and report paired uncertainty intervals or a predeclared repeated-seed analysis, rather than only three-seed aggregate rates?",
+    "What precommitted fallback would an operator run after abstention, and can its classification loss plus an abstention-penalty sensitivity analysis be reported for the central exact gate?"
+  ],
+  "issues": [
+    {
+      "issue_id": "ER-1",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract; Assumption 1 and Sections 5.2 and 6; evidence registry E03/E04/E07/E08/E11; pre-review audit residual blocker 1",
+      "claim_ids": [
+        "C01",
+        "C03",
+        "C05"
+      ],
+      "evidence_ids": [
+        "E03",
+        "E04",
+        "E07",
+        "E08",
+        "E11"
+      ],
+      "observed_evidence": "All reported carrier evaluations construct mixtures over ground-truth classes. The experiment registry explicitly scopes them as constructed mixture-grid results and records no natural temporal/geographic shift or within-group invariance audit. E11 is only an execution-ready protocol, not an executed result.",
+      "why_it_matters": "The certificate is valid only if each subgroup's conditional risk remains fixed. Constructed reweighting does not test whether this central deployment premise survives a real target shift; a target can have the desired mixture change while conditional risks move, invalidating application of the certificate to that target.",
+      "required_fix": "Run the locked natural time and held-out-region study in E11 without outcome-driven target or subgroup changes. Report target mixtures, split isolation, conditional-loss differences with multiplicity handling, and each target's pass/fail/indeterminate invariance status; narrow deployment language for any failed target.",
+      "verification_test": "A reviewer can verify immutable dataset/split/config hashes, confirm that no target labels enter fitting or calibration decisions, and recompute the per-candidate/subgroup source-versus-target audit and committed-regret diagnostics from released prediction-level records.",
+      "evidence_needed": "Executed E11 records plus reviewer-safe prediction/loss arrays and the predeclared invariance and fallback endpoints for both natural targets.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-2",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Sections 5.2--5.2.1 and Tables 2--3; evidence registry E03; method provenance M01--M04; pre-review audit residual blocker 3",
+      "claim_ids": [
+        "C02",
+        "C03"
+      ],
+      "evidence_ids": [
+        "E03",
+        "E12"
+      ],
+      "observed_evidence": "The snapshot contains a frozen result JSON and a deterministic gate-boundary audit, but the registry labels the original frontier as executed_snapshot_artifact_not_replayed. The audit record says no raw prediction/loss arrays, split/config manifest, or environment lock is reviewer-safe for end-to-end replay.",
+      "why_it_matters": "This is not evidence that the reported rates or zero violations are wrong. It is a reproducibility boundary: a reviewer cannot independently check data splits, preprocessing, model tuning parity, or recompute the headline commit and test-regret values, so those empirical findings receive limited evidentiary weight.",
+      "required_fix": "Provide a self-contained, reviewer-safe reproduction bundle: dataset/version and preprocessing identifiers, FIT/CAL/OUTER split hashes, candidate hyperparameters and selection rules, seeds, dependency/environment lock, commands, and prediction/error arrays sufficient to regenerate each table from immutable inputs.",
+      "verification_test": "An independent clean-environment replay regenerates Tables 2--3 within stated rounding and checks that test labels were not used in selection, thresholding, or certificate construction.",
+      "evidence_needed": "End-to-end replay logs and outputs from the released bundle, including failure handling and per-seed frontier rows.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-3",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "significance"
+      ],
+      "location": "Section 6, Table 4, Section 7, Table 5, and Limitations; evidence map C05/C08 and registry E04/E13",
+      "claim_ids": [
+        "C05",
+        "C08"
+      ],
+      "evidence_ids": [
+        "E04",
+        "E13"
+      ],
+      "observed_evidence": "The M3 records retain aggregate three-seed summaries but no seed identifier or per-seed allocation outcome. The paper properly calls allocation rankings descriptive, including the MNIST/Fashion reversals, rather than estimating uncertainty.",
+      "why_it_matters": "The candor prevents this from being a statistical error, but it leaves the budget-allocation contribution unable to distinguish a stable allocation effect from carrier- or seed-specific variation. Consequently these tables cannot support a practical allocation recommendation beyond exploratory illustration.",
+      "required_fix": "Repeat or recover M3/M3.5 with retained per-seed, per-allocation, and per-mixture outcomes under a frozen allocation protocol. Analyze paired seed-level differences with uncertainty intervals and report all carriers/budgets, including null or reversed results.",
+      "verification_test": "A reviewer can reproduce allocation counts from FIT-only inputs, match each paired seed and mixture across rules, and recompute the reported effect estimates and intervals from the released rows.",
+      "evidence_needed": "Seed-level M3/M3.5 artifacts and a prespecified paired analysis; ideally an independent repeated-seed replication.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "ER-4",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims",
+        "significance"
+      ],
+      "location": "Section 5.1, Section 5.2.1 item 2, Appendix 'Defer costs in M3', and claim C06",
+      "claim_ids": [
+        "C06"
+      ],
+      "evidence_ids": [
+        "E03",
+        "E11"
+      ],
+      "observed_evidence": "The manuscript explicitly says abstention has no fixed or evaluated fallback and reports only forced-pick/FIT-anchor diagnostics; the registry records operational fallback policy and cost as missing.",
+      "why_it_matters": "The paper does not falsely claim operational utility, but without a precommitted fallback or penalty sensitivity, commit-rate and abstention-pattern evidence cannot establish the practical value of the proposed decision rule.",
+      "required_fix": "For a deployment-oriented evaluation, freeze a status-quo fallback before outcome evaluation and report its loss, switch rate, and a predeclared abstention-penalty sensitivity curve; otherwise keep the contribution framed purely as conditional certification.",
+      "verification_test": "Check that the fallback is FIT/source-selected before target outcomes and recompute total-loss sensitivity over the stated penalty grid.",
+      "evidence_needed": "Fallback outcome records and a transparent cost/penalty sensitivity analysis, or an explicit continued restriction to certificate-only claims.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics violation is evident in the frozen submission. The main responsible-deployment concern is that the certificate depends on a potentially fragile within-group invariance assumption and abstention costs are unmeasured; the manuscript identifies both boundaries.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It reviewed only the supplied frozen snapshot and rubric, and did not access prior rounds, author responses, plans, or external literature.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "An executed, preregistered natural temporal/geographic-target evaluation with transparent conditional-risk invariance audits and honest failure reporting.",
+    "A reviewer-safe end-to-end reproduction bundle that independently regenerates the five-seed exact and asymptotic frontiers from data/split/config and prediction-level artifacts.",
+    "Seed-level M3/M3.5 artifacts with paired uncertainty analysis confirming or qualifying the descriptive allocation patterns.",
+    "A precommitted abstention fallback with target-level loss and abstention-penalty sensitivity results."
+  ],
+  "evidence_that_would_lower_score": [
+    "A replay finding that any headline exact-gate commitment uses test/outer labels for selection, threshold choice, allocation, or certificate computation.",
+    "A natural-target audit showing material within-group conditional-risk changes while the paper continues to apply its finite-sample deployment certificate there.",
+    "Recomputed frontier rows that contradict the reported committed rates or reveal committed held-out estimated-regret violations omitted from the tables.",
+    "Evidence that candidate tuning or data splits differ across certificate variants in a way that invalidates the matched comparison."
+  ],
+  "review_limitations": [
+    "I could verify the frozen snapshot hash and inspect its manuscript, evidence map, registry, result artifact, and audits, but raw datasets, executable historical training code, and external literature verification were intentionally outside this isolated snapshot.",
+    "Accordingly, the reproducibility findings distinguish unavailable verification from an allegation of incorrect numerical results."
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "090599d59e42d3dbe36d9cf724ddc469f317f9ea9065ab90a58b321bda30aa6d",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "五个 block-length 臂的观察结果、共享问题 cluster bootstrap、非极值 rank-sum 和非嵌套 canvas-96 probes 共同支持“active-block recorder 的选中周期随 L 变化”这一窄描述。但 partition 与每块 step allocation 联动、没有同轨迹双 recorder，对原始选择性门的审计又发现 10/25 错误候选触发；因此机制和确认性推断仍不足。",
+    "presentation": "论文清楚区分 a-priori reachability、from-events magnitude 与 mechanism，并把 post-treatment amendment、边界基数和零功效 null 写入限制。18 页逐页视觉检查未见裁切。缺点是大量诊断、修订层级和术语使一个直观的仪器工件结论显得过度复杂。",
+    "contribution": "证明 recorder readout 可追踪记录 schedule 而非模型固有机制，是有用的测量警示；L16/L32/L64 加 L24/L48 probes 也比单床观察更扎实。然而 active-block observation window 产生 schedule-aligned 边界本身高度可预期，论文没有分离 recorder、sampler 与 model state，也没有提出新解码方法或跨模型规律，贡献仍属于窄审计。"
+  },
+  "paper_summary": "本文研究 masked-diffusion 解码中一个 position-wise identity-lock 诊断是否继承 active-block recorder 的几何结构。作者定义每个位置最后一次变化后的 lock time、跨 decode 中位数剖面及相邻差分，再用边界最小值减内部最大值的 min–max separation 选择候选周期。固定模型与总 NFE=48 的 L16、L32、L64 三臂，以及 canvas-96 的 L24/L48 probes，均得到选中周期 P*=配置 block length；L16/L64 上没有检测到固定 32 recorder-visible component。另一个 L32/NFE32 床上，初始置信度与较早 lock 有中等粒度的残差秩关联。论文将结论严格限制为 recorder-output association，而非模型或 sampler 机制。",
+  "strongest_verified_contribution": "最强的实证结果是五个被测臂都由两个不同统计读数选出自身配置的 block length：min–max 的 modal P*=L 在所有臂为 1.0，非极值 rank-sum 的最大候选也均为 L；主三臂的共享问题联合 bootstrap 在 2000/2000 次中同时满足 P16*=16、P32*=32、P64*=64（PDF pp.3–6，§2、§3.1，Tables 2–3、Figure 2）。非嵌套 L24/L48 probes 进一步排除了仅由 canvas-256 边界嵌套造成的固定 32 读法。",
+  "strengths": [
+    "结论范围克制：PDF pp.3–4 和 pp.8–9 明确将干预称为 partition-plus-required-allocation，并反复否认模型内在或 sampler-state 归因。",
+    "不是只依赖一个极值统计：PDF pp.3–6 同时报告 min–max selection、共享 cluster bootstrap、rank-sum、边界/内部基数和 L32 弱控制臂的 0.8805 firing probability。",
+    "非嵌套 canvas-96 的 L24/L48 probes 检查 candidate 32，在几何上补充了主 canvas-256 嵌套设计（PDF pp.5–6，Tables 3–4）。",
+    "Appendix A.4（PDF p.13）公开原门 10/25 的错误候选命中和后续修正，而不是隐藏不利 calibration；Appendix A.1 也列出 post-treatment scope amendment。",
+    "内容关联分析明确来自独立的 L32/NFE32 床，且只声称在 BIN16 以前的中等 null granularity 成立，没有把 BIN32 零功效点解释成下界（PDF p.8 与 p.14）。"
+  ],
+  "questions": [
+    "如果同一解码轨迹同时用 active-block 与 full-canvas/passive recorder 记录，P*=L 是否只在前者出现？这是区分 recorder 工件与 sampler/model 状态的关键实验。",
+    "能否在固定 partition 下独立改变 per-block step allocation，或固定 allocation 结构只改 partition，从而拆分当前 composite intervention？",
+    "原始 within-block threshold 对错误候选有 40% 命中率；为什么修正后的 cross-condition margin 可作为 arm-specific 选择性证据，而不是另一个缺少真实 null 的诊断？",
+    "post-treatment 撤回 model-intrinsic branch 后，作者是否会在全新、完全预注册的数据上重复核心判定而不再修改 estimand/门？",
+    "私有且与公开 LLaDA-8B-Instruct 非字节一致的 checkpoint 会如何影响可复现性与外部有效性？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A31-I1",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "PDF pp.1–2，Abstract、§1；PDF pp.9–10，§5 Related Work 与 §6 Conclusion",
+      "claim_ids": [
+        "paper-level contribution",
+        "measurement canon"
+      ],
+      "evidence_ids": [
+        "Figure 1",
+        "Table 13",
+        "Table 14"
+      ],
+      "observed_evidence": "论文的核心结论是 active-block recorder 的 identity-lock period 随记录 block length 变化，并将可迁移产出表述为一套报告规则。相关工作表显示最接近研究测量不同维度；本文没有新模型、解码算法或机制识别，且 schedule-aligned 读数对一个只观察 active block 的 recorder 有较强先验可预期性。",
+      "why_it_matters": "当前研究很好地告诫不要把仪器几何误读为模型机制，但其科学增量主要是一个实现特定的反例和报告规范，尚未显示该问题会系统性改变更广泛的 dLLM 结论。",
+      "required_fix": "增加主动/被动双 recorder、多个 sampler/模型/任务上的对照，并与已有 position-resolved commit/periodicity 方法直接在同一维度比较；把可迁移的新命题明确写成可证伪形式。",
+      "verification_test": "在不同 recorder 窗口下记录同一轨迹，并跨至少两个模型和 sampler 预注册检验 P* 是否只跟 recorder L、也跟 sampler latent schedule，或两者交互。",
+      "evidence_needed": "跨 recorder、sampler、模型的直接复现和最近同维度基线。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I2",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp.3–4，§2 Matched intervention and scope；PDF pp.8–9，§4 Limitations",
+      "claim_ids": [
+        "period-follows-block-length",
+        "recorder-output attribution"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Table 3",
+        "Figure 2"
+      ],
+      "observed_evidence": "在固定总 NFE 下改变 L 会必然改变 partition 与每块 step allocation；没有 uniform-allocation arm，也没有同一轨迹的 dual-recorder 对照。active-block recorder 同时受 model state、sampler state 和 observation window 影响。",
+      "why_it_matters": "观察到 P*=L 不能判断边界由记录窗口直接制造，还是由每块解码动态/状态传递产生。没有分解就无法把结果转化为对模型诊断设计的具体机制性建议。",
+      "required_fix": "做 partition×allocation 的可分离实验，并让 active-block 与 full-canvas/passive recorder 同时观察同一底层轨迹；必要时直接记录 sampler state transfer。",
+      "verification_test": "若只换 recorder 而固定轨迹时周期随观察窗口变化，可定位为 recorder artifact；若两 recorder 都随 sampler L 变化，则需要进一步 sampler-state 干预。报告完整交互。",
+      "evidence_needed": "factorial schedule 实验和同轨迹双 recorder 日志。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I3",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor"
+      ],
+      "location": "PDF pp.3–7，§2–§3.3，Tables 2–7；PDF p.13，Appendix A.4，Table 11",
+      "claim_ids": [
+        "selection stability",
+        "selectivity calibration"
+      ],
+      "evidence_ids": [
+        "Table 2",
+        "Table 3",
+        "Table 5",
+        "Table 11"
+      ],
+      "observed_evidence": "min–max separation 是离散极值统计，L48 probe 只有一个 boundary locus，L32 control 的 firing probability 仅 0.8805 且 stability band 触零。更关键的是 Appendix A.4 显示原 within-block threshold 对 25 个错误候选触发 10 次（40%）；修正 margin 的 red-team 是跨条件比较，不是每臂数据打乱下的 false-positive calibration，L24 的 pmargin=0.055/0.071 仍边缘。",
+      "why_it_matters": "bootstrap modal selection=1 主要反映观察样本下的离散稳定性，不等于错误发现受控。缺少有效 arm-specific null 时，五臂都选 L 的显著性强度可能被夸大，尤其是低边界基数 probes。",
+      "required_fix": "在研究前定义有正确 type-I error 的选择性检验，用合成 null、已知干净的真实 arm 或可交换生成机制校准；报告候选搜索的 family-wise error 和低边界基数下的功效。",
+      "verification_test": "大量 null simulations/negative-control runs 下整体误选率不超过预设 α，并在独立 positive controls 上达到预设功效；所有候选与阈值在数据前冻结。",
+      "evidence_needed": "有效 null 生成器、选择性误差校准及独立重复。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I4",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp.3–4，Registration and two-layer reachability；PDF p.11，Appendix A.1，Table 9",
+      "claim_ids": [
+        "confirmatory status",
+        "model-intrinsic branch"
+      ],
+      "evidence_ids": [
+        "Table 9"
+      ],
+      "observed_evidence": "min–max estimator 是在 development control 失败后选择、虽在 treatment 前登记；更重要的是 amendment v3 在观察 treatment 数据后撤回 model-intrinsic decision branch。canvas-96 probes 随后单独预注册，但不能使已经看过的主结果恢复确认性。",
+      "why_it_matters": "作者当前的 recorder-level 限定是正确的，但结论层级随数据改变说明原科学假设没有在干净确认流程中通过。透明记录不能消除 outcome-contingent scope change。",
+      "required_fix": "把当前全套分析视为开发性工作，在全新模型/题目/运行上冻结 estimator、候选网格、null、scope 和结论门后一次性复现。",
+      "verification_test": "带时间戳的注册早于任何新运行，所有 planned arms 完成，主结论不依赖事后删改分支；公开 deviations 表应为空或仅含非结论性执行细节。",
+      "evidence_needed": "独立、完全预注册的确认研究。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A31-I5",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "significance"
+      ],
+      "location": "PDF pp.8–9，§4 Limitations；PDF pp.16–17，Appendix B、Table 15",
+      "claim_ids": [
+        "external validity",
+        "reproducibility"
+      ],
+      "evidence_ids": [
+        "Table 10",
+        "Table 15"
+      ],
+      "observed_evidence": "研究只覆盖一个 LLaDA-8B-Instruct-scale 私有本地 checkpoint 和 GSM8K；该 checkpoint 与公开 LLaDA-8B-Instruct 并非 byte-identical，不能授权发布。L32 control 复用既有连续子池；cross-seed variance 不在 estimand 内，匿名 supplement 是否公开也待 provenance approval。",
+      "why_it_matters": "外部研究者无法使用相同 checkpoint 重建生成结果，单一 deterministic seed/题池也无法量化模型、问题采样或运行变异。结果可能只属于本地模型和 recorder 实现。",
+      "required_fix": "在公开 checkpoint 上完整复现并发布 events/scripts；用多个独立 question subsets 或 seeds，重新运行同 session 的 L32 control，并跨任务验证。",
+      "verification_test": "公开工件可在独立环境重建 Table 2–8；公开模型上的预注册 P*=L 关系和无 fixed-32 结果与当前方向一致。",
+      "evidence_needed": "公开模型复现、fresh controls、多 seed/subset 与可访问匿名事件流。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现需要升级的伦理问题；研究使用公开数学题与离线模型轨迹，不涉及人类受试者或部署。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R1 独立完成，仅用于内部投稿前质量控制；未与任何其他评审者或评审代理通信，也未查看其输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "同一轨迹的 active-block 与 full-canvas/passive 双 recorder 实验明确定位工件来源。",
+    "partition×step-allocation factorial 设计分离当前 composite intervention。",
+    "在新数据上使用经 null 校准且完全预注册的选择性检验复现五臂关系。",
+    "在公开 checkpoint、多个 sampler/任务/seeds 上复现并公开完整事件流。"
+  ],
+  "evidence_that_would_lower_score": [
+    "有效 null 校准显示修正 margin 仍有高误选率。",
+    "双 recorder 对照表明 P*=L 只是特定实现的日志重置现象，且对科学诊断没有下游影响。",
+    "公开模型或 fresh L32 control 无法复现 period-following 关系。",
+    "更换合理的非极值 estimator 后周期选择不稳定或主要结果消失。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的 18 页冻结 PDF；未读取源代码、事件流、注册文件、匿名工件或任何其他评审输出。",
+    "按隔离任务约束未联网，未独立核验外部引文、相关工作覆盖完整性或工件可访问性；新颖性判断仅相对于 PDF 自述的相关工作。",
+    "逐页视觉核查未发现裁切或无法解析页面。"
+  ]
+}

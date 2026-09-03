@@ -1,0 +1,237 @@
+{
+  "schema_version": "1.0",
+  "audit_id": "A11-WOR-CS-COMPARISON-OMR-R1-INDEPENDENT-VERIFICATION",
+  "created_at": "2026-08-22T22:52:15+0800",
+  "scope": "Independent technical, primary-source, integrity-chain, interval, and manuscript-promotion audit of the frozen same-endpoint comparator run.",
+  "verdict": {
+    "technical_implementation": "pass",
+    "primary_source_support": "pass",
+    "frozen_artifact_chain": "pass",
+    "scientific_promotion": "pass_with_mandatory_narrow_scope",
+    "repository_promotion": "pending_central_evidence_registration_and_immutable_checkpoint"
+  },
+  "audit_constraints": {
+    "write_scope": "Only this INDEPENDENT_VERIFICATION.json file was created.",
+    "runner_or_frozen_artifacts_modified": false,
+    "raw_TEST_rows_reaggregated": false,
+    "TEST_used_to_reselect_method_alpha_prior_or_rule": false,
+    "formal_TEST_result_used": "Only the already-written hash-locked formal_result.json and its stored sufficient statistics were inspected.",
+    "manifest_access_during_rerun": "The existing preflight and verification paths hashed the manifest but did not aggregate TEST content.",
+    "review_mode": "Independent subagent; no manuscript, evidence-map, review, or frozen-output edits."
+  },
+  "rerun_checks": {
+    "python_compile": "pass",
+    "unit_tests": {
+      "status": "pass",
+      "tests_run": 5,
+      "failures": 0
+    },
+    "preflight": {
+      "status": "pass",
+      "execution": "Existing stage_preflight function rerun with its final write suppressed to preserve the frozen artifact.",
+      "manifest_content_parsed": false,
+      "TEST_aggregated": false,
+      "ppr_ratio_equivalence_cells": 74052
+    },
+    "verify": {
+      "status": "pass",
+      "execution": "Existing stage_verify function rerun with its final write suppressed to preserve the frozen artifact.",
+      "second_TEST_aggregation_performed": false,
+      "checks": [
+        "frozen file hashes",
+        "preflight/FIT/CAL/formal-result hash chain",
+        "manifest hash",
+        "top-level output schema",
+        "fixed-K confidence-sequence audit"
+      ]
+    }
+  },
+  "primary_source_verification": {
+    "citation": "Ian Waudby-Smith and Aaditya Ramdas, Confidence sequences for sampling without replacement, Advances in Neural Information Processing Systems 33, 2020, pp. 20204-20214.",
+    "official_record": "https://proceedings.neurips.cc/paper/2020/hash/e96c7de8f6390b1e6c71556e4e0a4959-Abstract.html",
+    "official_pdf": "https://proceedings.neurips.cc/paper_files/paper/2020/file/e96c7de8f6390b1e6c71556e4e0a4959-Paper.pdf",
+    "retrieved_pdf_sha256": "3a3c8cdb16186b6211faf5d287af949cfecab12ef3f57baaad9a634fb4fd5952",
+    "checked_material": [
+      "Proposition 2.1",
+      "Theorem 2.1",
+      "Section 2.2",
+      "Section 2.3"
+    ],
+    "supported_facts": [
+      "The prior-to-posterior ratio evaluated at the fixed truth is a nonnegative martingale.",
+      "The strict set C_t={K:pi_0(K)/pi_t(K)<1/alpha} is a frequentist (1-alpha) confidence sequence under uniform random-order sampling without replacement.",
+      "The running intersection over times is also a valid (1-alpha) confidence sequence.",
+      "The source recommends a uniform working prior when there is no prior information; BetaBinomial(N,1,1) is uniform on K=0,...,N.",
+      "At t=N the posterior set shrinks to the observed total."
+    ]
+  },
+  "formula_audit": {
+    "result": "pass",
+    "derivation": [
+      "For a uniform prior pi_0(K)=1/(N+1), the likelihood of prefix count x at time k is h_K=HypergeomPMF(N,K,k,x).",
+      "The exact identity sum_{K=0}^N h_K=(N+1)/(k+1) gives the marginal prefix-count probability 1/(k+1).",
+      "Therefore pi_0(K)/pi_k(K)=1/((k+1)h_K), so the source's strict inequality pi_0/pi_k<1/alpha is exactly h_K>alpha/(k+1).",
+      "ppr_current_mask implements that strict threshold with exact rational arithmetic."
+    ],
+    "strict_boundary": "correct",
+    "zero_posterior_mass_behavior": "K is excluded, as required because the prior/posterior ratio is infinite.",
+    "terminal_singleton_sets_checked": 132
+  },
+  "independent_exact_fraction_dp": {
+    "implementation_independence": "A separate Fraction-based dynamic program was run without importing run_comparison.py; it used the theorem-derived masks and exact hypergeometric transitions.",
+    "fixed_K_alpha_cells": 132,
+    "all_decision_error_le_running_miscoverage_le_alpha": true,
+    "max_abs_difference_against_frozen_FIT_lock_floats": 1.0658141036401503e-14,
+    "by_alpha": {
+      "0.10": {
+        "worst_decision_error": 0.03398900790125594,
+        "worst_decision_error_K": 17,
+        "worst_running_miscoverage": 0.060246767179511544,
+        "worst_running_miscoverage_K": 15
+      },
+      "0.05": {
+        "worst_decision_error": 0.013210903037445624,
+        "worst_decision_error_K": 17,
+        "worst_running_miscoverage": 0.025891641756937037,
+        "worst_running_miscoverage_K": 15
+      },
+      "0.02": {
+        "worst_decision_error": 0.004361725122158785,
+        "worst_decision_error_K": 17,
+        "worst_running_miscoverage": 0.00927818658908759,
+        "worst_running_miscoverage_K": 9
+      },
+      "0.01": {
+        "worst_decision_error": 0.0021445170170998258,
+        "worst_decision_error_K": 17,
+        "worst_running_miscoverage": 0.004281300210109999,
+        "worst_running_miscoverage_K": 8
+      }
+    }
+  },
+  "endpoint_semantics": {
+    "result": "pass",
+    "full_count_boundary": "K<=16 is negative and K>=17 is positive.",
+    "full_count_center_K16_side": 0,
+    "prefix_tie_side_for_BAYES_rules": 0,
+    "running_intersection": "The code begins with C_0 and intersects every C_s through the current k before testing whether the nonempty intersection lies wholly on one side.",
+    "empty_running_intersection": "Returns no decision and continues, so an empty set is never treated as evidence for either side.",
+    "full_N_fallback": "At k=N, all methods return the observed full-count side rather than extrapolating a prefix decision.",
+    "primary_alpha_center_K16_check": {
+      "decision_error": 0.009950387834146444,
+      "expected_k": 30.337581500537723,
+      "terminal_full_fallback_probability": 0.4835464470900473,
+      "running_miscoverage": 0.019901274769586145
+    }
+  },
+  "frozen_chain": {
+    "result": "pass",
+    "chronology": "Protocol/config/schema preceded runner/tests; preflight preceded FIT, CAL, TEST, and verification; audit report and registry followed verification.",
+    "frozen_file_hashes_match": true,
+    "stage_chain_hashes_match": true,
+    "formal_result_sha256": "e34fe88abf3eb388dbdbd2f067850bcd69e10283934c26cf0c73d142da990e89",
+    "verification_report_sha256": "241f0a92191ed20beaa575caad3f5d7405e13ca2a76f5b0379a2ccbdabf78dde",
+    "manifest_sha256": "a9df3733783566d772836705b2d9a0bb5f7a1560ad4d75cc899479ae6bd0f096",
+    "programmatic_TEST_selection_path_found": false,
+    "human_nonexposure_boundary": "The artifact chain verifies that the new rules and primary alpha were locked before this formal comparator aggregation; it cannot establish that authors had never seen earlier analyses of the reused carrier. The result must remain descriptive rather than be described as a pristine prospective test."
+  },
+  "interval_and_comparison_audit": {
+    "result": "pass_with_family_wording_constraint",
+    "arithmetic_max_abs_difference": 4.961309141293668e-15,
+    "calibration": {
+      "family": "12 fixed method-by-alpha rows",
+      "per_row_delta": 0.004166666666666667,
+      "all_stored_UCB_values_and_pass_flags_recomputed_from_stored_mean_variance_n": true,
+      "primary_alpha_all_three_rules_pass": true,
+      "BAYES_H_alpha_0.01_pass": false
+    },
+    "test_row_intervals": {
+      "rule": "Two-sided Hoeffding radii using the declared bounded range and delta=0.05/12.",
+      "checked": true,
+      "wording_constraint": "The 12-row flip bands and 12-row normalized-count bands are each a separate Bonferroni family; the implementation is not a single joint 24-endpoint 95% family."
+    },
+    "paired_intervals": {
+      "rule": "Two-sided Hoeffding radii with delta=0.05/8 and the correct difference ranges: 2*(N-min_stop)/N for count reduction and 2 for flip.",
+      "checked": true,
+      "wording_constraint": "The eight count-gap bands and eight flip-gap bands are each a separate Bonferroni family; do not call all 16 bands one joint 95% family."
+    },
+    "primary_alpha_0.05": {
+      "BAYES_H": {
+        "mean_flip": 0.024888264669569133,
+        "mean_k": 6.128000895419269,
+        "count_reduction": 0.8084999720181478,
+        "CAL_EB_UCB": 0.03365802998879298
+      },
+      "BAYES_UNIF": {
+        "mean_flip": 0.017612344382131148,
+        "mean_k": 7.190514985062697,
+        "count_reduction": 0.7752964067167907,
+        "CAL_EB_UCB": 0.025480746164764118,
+        "BAYES_H_minus_comparator_count_reduction": 0.03320356530135769,
+        "count_gap_band": [
+          -0.018048887724167316,
+          0.08445601832688271
+        ],
+        "efficiency_separation_supported": false
+      },
+      "WOR_PPR_CS": {
+        "mean_flip": 0.0006359200754656221,
+        "mean_k": 12.701541425600666,
+        "count_reduction": 0.6030768304499792,
+        "CAL_EB_UCB": 0.0048387943631257495,
+        "BAYES_H_minus_comparator_count_reduction": 0.2054231415681686,
+        "count_gap_band": [
+          0.1541706885426436,
+          0.2566755945936936
+        ],
+        "BAYES_H_minus_comparator_flip": 0.024252344594103317,
+        "flip_gap_band": [
+          -0.03230208633061393,
+          0.08080677551882057
+        ],
+        "same_nominal_alpha_efficiency_separation_supported": true,
+        "flip_difference_interval_excludes_zero": false
+      }
+    }
+  },
+  "data_and_reproducibility_boundary": {
+    "status": "conditional_replay_only",
+    "supported": "The result is exactly replayable and hash-auditable conditional on the anonymous 11,607-row count manifest.",
+    "not_supported": "The package does not reconstruct the count manifest from the omitted 220,414,147-byte raw parquet, so it cannot independently establish raw-row origin, evaluator extraction, or derivation correctness end to end.",
+    "carrier": "Fixed N=32 count-exchangeable random-prefix replay.",
+    "not_observed": [
+      "natural rollout chronology",
+      "gold answer correctness",
+      "generated tokens",
+      "latency",
+      "cancellation telemetry",
+      "monetary or serving cost"
+    ]
+  },
+  "promotion_decision": {
+    "may_enter_manuscript": true,
+    "evidence_class": "Descriptive same-endpoint comparator result conditional on the hash-pinned derived manifest.",
+    "administrative_preconditions": [
+      "Register the experiment and exact artifact hashes in the central experiment registry.",
+      "Add a claim-evidence-map entry before adding the quantitative manuscript claim.",
+      "Include the experiment and currently untracked derived manifest in an immutable submission checkpoint."
+    ],
+    "recommended_narrow_wording": "On the hash-pinned OMR count manifest, at the pre-specified alpha=0.05 and under exact count-exchangeable random-prefix replay, all three rules passed the 12-rule CAL screen. BAYES-H used 6.13 of 32 expected prefix samples versus 12.70 for the uniform-prior running-intersection WOR-PPR-CS stopper, a BAYES-H minus comparator count-reduction gap of 0.205 with the pre-specified Bonferroni/Hoeffding count-gap band [0.154, 0.257]. The WOR-PPR-CS point estimate had lower replay flip (0.00064 versus 0.02489), while the paired flip band included zero. Against BAYES-UNIF, the count-reduction gap was 0.033 with band [-0.018, 0.084], so no efficiency separation was supported.",
+    "mandatory_adjacent_qualification": "This is a same-nominal-alpha tradeoff on a reused derived replay carrier, not equal-realized-risk or Pareto dominance, not theorem-level superiority, and not evidence about ordered online stopping, gold correctness, tokens, latency, cancellation, or serving cost.",
+    "forbidden_claims": [
+      "BAYES-H dominates WOR-PPR-CS.",
+      "BAYES-H is more efficient at matched realized error or matched correctness.",
+      "The WOR-PPR-CS flip advantage is statistically separated by the reported paired band.",
+      "BAYES-H is more efficient than BAYES-UNIF at alpha=0.05.",
+      "The experiment validates natural-order online deployment or operational cost savings.",
+      "The experiment establishes gold-answer correctness or noninferiority.",
+      "The comparison is a pristine, never-before-observed prospective TEST evaluation.",
+      "The result is reproduced end to end from raw parquet."
+    ]
+  },
+  "packaging_note": {
+    "git_revision_recorded_by_run": "fff60993466decfb0de3ae8d048b23f5862457e1",
+    "audit_time_git_state": "The comparison directory and count manifest were untracked at audit time, so the recorded revision alone cannot reconstruct this run; exact file hashes currently provide the operative identity.",
+    "severity": "promotion_condition_not_scientific_invalidation"
+  }
+}

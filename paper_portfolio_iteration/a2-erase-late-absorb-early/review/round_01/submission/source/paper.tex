@@ -1,0 +1,292 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\input{math_commands.tex}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{amsmath,amssymb,amsthm}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newcommand{\Expo}{E}
+\newcommand{\Budget}{B}
+
+\title{Training-Path Dependence in Bounded Convex Dynamics:\\
+Exposure Products, Clean-Tail Return, and an Affine Recursion}
+\author{Anonymous}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper records three narrowly scoped ways in which a training-path
+intervention can be analyzed. A fixed quadratic has an exact matrix-product
+solution whose first-order log contraction depends on cumulative
+learning-rate exposure, with a finite-step squared-step remainder. A
+twice-differentiable, strongly convex clean objective contracts full
+parameter error after an intervention is removed; a faster directional rate
+requires an additional invariant-subspace condition. An affine scalar
+conditional-mean recursion has an exact product law and an exponential upper
+bound. These statements do not imply corresponding laws for logistic
+regression, shuffled SGD, CNNs, nonconvex optimization, or real label noise.
+The current public package makes no empirical or deployment claim.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Training-data attribution and unlearning study relationships between a training
+set and a trained model, including influence functions
+\citep{koh2017understanding}, datamodels \citep{ilyas2022datamodels},
+TRAK \citep{park2023trak}, and retraining-based unlearning
+\citep{bourtoule2021sisa}. This paper addresses a more limited mathematical
+question: when an objective is changed along a training trajectory, which
+contraction quantities can be stated exactly?
+
+The answer depends sharply on the model. We prove three results, each with its
+own assumptions. T1 is a fixed-quadratic product identity. T2 is a
+strong-convex clean-tail contraction result. T3 is an affine scalar
+conditional-mean identity. The results share product structure but are not
+interchangeable: neither T1 nor T3 establishes a law for nonlinear SGD, and
+T2 is not a machine-unlearning guarantee for arbitrary neural networks.
+
+\paragraph{Scope.}
+The frozen public baseline contained historical numerical material without
+co-located public code, output, configuration, seed, and preregistration
+artifacts. That material is not part of this submission source. A separate,
+uncompiled archive points to the immutable checkpoint containing it. A planned
+two-scenario experiment is a falsification path only, not evidence.
+
+\section{Formal setup}
+\label{sec:setup}
+
+Let $A$ denote a clean objective and let $D$ denote an intervention block.
+The results below use only the objective active at the relevant step; they do
+not assume that $D$ is a particular data type, or that an observed loss signal
+identifies it. Write $\eta_t\geq0$ for a deterministic step size and
+$E_{s:T}=\sum_{t=s}^{T-1}\eta_t$ for tail exposure. We reserve
+the word return for distance to the minimizer of the clean objective, not for
+accuracy, a representation, or a deployment outcome.
+
+\section{Three bounded results}
+\label{sec:theory}
+
+\subsection{T1: fixed-quadratic exposure product}
+\label{sec:t1}
+
+\begin{lemma}[T1]
+\label{thm:t1}
+Let
+\[
+ Q(w)=\tfrac12(w-w^\star)^\top H(w-w^\star),\qquad
+ 0\prec\mu I\preceq H\preceq LI,
+\]
+and run $w_{t+1}=w_t-\eta_t\nabla Q(w_t)$ with
+$0\leq\eta_tL<1$. Then
+\begin{equation}
+ w_T-w^\star=\prod_{t=0}^{T-1}(I-\eta_tH)(w_0-w^\star).
+\label{eq:t1product}
+\end{equation}
+For an eigenvalue $\lambda_j$ of $H$, set
+$P_j=\prod_t(1-\eta_t\lambda_j)$,
+$E=\sum_t\eta_t$, and $q_j=\max_t\eta_t\lambda_j<1$. Then
+\begin{equation}
+ 0\leq-\log P_j-\lambda_jE
+ \leq\frac{\lambda_j^2\sum_t\eta_t^2}{2(1-q_j)}.
+\label{eq:t1log}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Since $\nabla Q(w)=H(w-w^\star)$, one step gives
+$w_{t+1}-w^\star=(I-\eta_tH)(w_t-w^\star)$, and iteration proves
+\eqref{eq:t1product}. Diagonalize the symmetric positive-definite $H$.
+On an eigenvector with eigenvalue $\lambda_j$, the multiplier is $P_j$.
+For $x\in[0,q_j]$,
+\[
+ 0\leq-\log(1-x)-x
+   =\sum_{k\geq2}\frac{x^k}{k}
+ \leq\frac{x^2}{2(1-q_j)}.
+\]
+Apply this inequality to $x=\eta_t\lambda_j$ and sum over $t$.
+This proves \eqref{eq:t1log}.
+\end{proof}
+
+T1 says that equal exposure yields the same first-order log contraction in
+this fixed quadratic. It does not say that arbitrary finite schedules with
+equal exposure have identical terminal iterates: the squared-step term
+quantifies the permitted discrepancy. Replacing a step $\eta$ by $K$ steps of
+size $\eta/K$ preserves exposure, whereas repeating $K$ original steps changes
+exposure and is not a finite-budget invariance.
+
+\subsection{T2: strong-convex clean-tail return}
+\label{sec:t2}
+
+\begin{theorem}[T2]
+\label{thm:t2}
+Let $L_A$ be twice continuously differentiable, $\mu$-strongly convex, and
+$L$-smooth on every segment joining a tail iterate to its unique minimizer
+$w_A^\star$. If $0\leq\eta_t\leq1/L$, then after switching to gradient
+descent on $L_A$ at step $s$,
+\begin{equation}
+ \lVert w_T-w_A^\star\rVert_2
+ \leq\prod_{t=s}^{T-1}(1-\eta_t\mu)
+      \lVert w_s-w_A^\star\rVert_2
+ \leq e^{-\mu E_{s:T}}\lVert w_s-w_A^\star\rVert_2.
+\label{eq:t2full}
+\end{equation}
+If, in addition, $e\ne0$ and $\operatorname{span}(e)$ is invariant for every segment
+average Hessian in the proof and its eigenvalue on $e$ is at least
+$\lambda_e$, then
+\begin{equation}
+ |e^\top(w_T-w_A^\star)|
+ \leq e^{-\lambda_eE_{s:T}}|e^\top(w_s-w_A^\star)|.
+\label{eq:t2direction}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+For each $t\geq s$, the fundamental theorem of calculus gives
+\[
+ \nabla L_A(w_t)-\nabla L_A(w_A^\star)
+ =\bar H_t(w_t-w_A^\star),\qquad
+ \bar H_t=\int_0^1\nabla^2L_A(w_A^\star+
+        r(w_t-w_A^\star))\,dr .
+\]
+The assumed Hessian bounds imply
+$\mu I\preceq\bar H_t\preceq LI$. Therefore
+\[
+ w_{t+1}-w_A^\star=(I-\eta_t\bar H_t)(w_t-w_A^\star).
+\]
+All eigenvalues of $I-\eta_t\bar H_t$ lie in
+$[0,1-\eta_t\mu]$ because $\eta_t\leq1/L$. Hence its spectral norm is at most
+$1-\eta_t\mu$. Multiply these bounds from $s$ through $T-1$, then use
+$1-x\leq e^{-x}$ to obtain \eqref{eq:t2full}.
+
+For the directional statement, the added invariance premise makes $e$ an
+eigenvector of every $\bar H_t$. Its scalar multiplier is at most
+$1-\eta_t\lambda_e$; the same multiplication and exponential bound prove
+\eqref{eq:t2direction}. A Rayleigh-quotient lower bound alone does not imply
+this shared invariant-subspace premise.
+\end{proof}
+
+Thus T2 is a full-parameter result under explicit strong-convexity conditions.
+Its directional refinement is conditional and must not be inferred from
+observations in another model class.
+
+\subsection{T3: affine scalar conditional-mean product}
+\label{sec:t3}
+
+\begin{theorem}[T3]
+\label{thm:t3}
+Let $(u_t)$ be an integrable scalar process adapted to
+$(\mathcal F_t)$. Fix $\lambda>0$ and deterministic step sizes satisfying
+$0<\eta_t\lambda<1$. Suppose
+\begin{equation}
+ u_{t+1}=(1-\eta_t\lambda)u_t+\eta_t\xi_t,\qquad
+ \mathbb E[\xi_t\mid\mathcal F_t]=0.
+\label{eq:t3affine}
+\end{equation}
+Then for any $s<T$,
+\begin{equation}
+ \mathbb E[u_T]=\mathbb E[u_s]\prod_{t=s}^{T-1}
+ (1-\eta_t\lambda),\qquad
+ |\mathbb E[u_T]|
+ \leq|\mathbb E[u_s]|e^{-\lambda E_{s:T}}.
+\label{eq:t3product}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Taking conditional expectations in \eqref{eq:t3affine} and then total
+expectations yields
+\[
+ \mathbb E[u_{t+1}]=(1-\eta_t\lambda)\mathbb E[u_t].
+\]
+Repeated substitution gives the product identity in \eqref{eq:t3product}.
+Every factor is positive and $1-x\leq e^{-x}$ for $x\geq0$, so multiplying
+the inequalities gives the exponential upper bound.
+\end{proof}
+
+T3 is exact for the displayed scalar recursion. It does not assert that
+logistic-SGD, random reshuffling, or a nonlinear accuracy functional obeys
+\eqref{eq:t3affine}.
+
+\section{Empirical status and falsification path}
+\label{sec:empirical-status}
+
+No current empirical claim is made. PLAN-ENABLE-001 specifies a future
+falsification experiment for a training-visible enable policy in two real
+scenarios: natural human-label noise and a clean benign-hard cohort. It must
+freeze code, data and split hashes, comparator arms, seeds, environment,
+event schema, and forbidden-field checks before execution. Success on one
+scenario alone would not establish a deployment claim; failure is an
+informative boundary for that particular policy, not a refutation of T1--T3.
+
+\section{Related work}
+\label{sec:related}
+
+Influence functions \citep{koh2017understanding}, datamodels
+\citep{ilyas2022datamodels}, and TRAK \citep{park2023trak} provide relevant
+ways to relate training data to learned-model behavior. SISA
+\citep{bourtoule2021sisa} is a different retraining-based unlearning
+construction. Work on SGD noise and implicit regularization
+\citep{mandt2017sgd,smith2017bayesian,smith2021origin} motivates stating the
+conditional-mean premise in T3 rather than treating it as an SGD identity.
+Loss-mixture and noisy-label work \citep{arazo2019unsupervised,jiang2018mentornet,
+han2018coteaching,wei2022cifar10n} motivates the planned experiment, not a
+present policy result. The closest-work matrix records the checked metadata
+and the deliberately narrow relationship claims.
+
+\section{Limitations}
+\label{sec:limitations}
+
+The scope is mathematical rather than empirical. T1 is fixed quadratic. T2
+requires smooth strong convexity along the relevant segments, a stable
+step-size bound, and a separate invariant-subspace condition for its
+directional refinement. T3 requires the affine scalar recursion and
+conditional-zero-mean innovation. None of these assumptions automatically
+holds for logistic training, shuffled SGD, neural networks, noisy labels, or
+data-selection systems. The public package also lacks a same-version
+experiment evidence chain; remote candidate results are not attributed to
+this manuscript.
+
+\section{Conclusion}
+
+The three results establish exact or bounded product relations only within
+their stated regimes. Their shared form motivates careful future testing of
+path interventions, but it does not license a broader theory or a deployment
+recommendation. The next empirical step is a registered, matched-path
+falsification test, not recovery of unsupported historical numbers.
+
+\section*{Reproducibility Statement}
+
+This self-contained source package includes its TeX dependencies and
+bibliography and is built in isolation. Formal assumptions, statements, and
+proofs are active in this source. The separate execution-readiness audit names
+the artifacts required before PLAN-ENABLE-001 can produce evidence; no
+unexecuted protocol or remote-only result is reported as an observation.
+
+\section*{Ethics Statement}
+
+This revision reports no newly run human-subject or dataset study. Any future
+execution must verify dataset licenses, versions, and use conditions, and the
+policy must not access clean, protected, test, or oracle labels at decision
+time.
+
+\input{ai_use_statement}
+
+\bibliographystyle{iclr2027_conference}
+\bibliography{references}
+
+\appendix
+\section{Proof-scope checklist}
+
+T1 uses a fixed symmetric positive-definite Hessian and its eigendecomposition.
+T2 uses segment Hessians bounded between $\mu I$ and $LI$; its directional
+line is conditional on simultaneous invariance. T3 takes conditional
+expectations of the stated scalar recursion. These are the only proof
+dependencies used by the active manuscript. Historical figures, tables,
+scripts, and numerical claims are not imported, hidden, or compiled here.
+
+\end{document}

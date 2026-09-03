@@ -1,0 +1,182 @@
+{
+  "reviewer_id": "R20-TERRA-EXP",
+  "round": 20,
+  "snapshot_sha256": "802c99cf2ec462e41b5343dd204c463b3f4d27d0eb3c601e6489d2765e1e7a27",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The controlled factorial, lifecycle witnesses, and explicitly bounded claims are thoughtfully designed. However, the supplied PDF does not match the declared frozen SHA-256, and the paper itself reports that recursive code closure for the primary GPU aggregate failed (p. 9, Sec. 7). Moreover, the numerical checks are selected captured-input operator tests rather than independent end-to-end validation (pp. 8 and 18, Secs. 5.2-5.3 and Table 12). These are substantive limitations for an executable audit whose central value is evidence integrity.",
+    "presentation": "The paper is clear, well organized, and unusually candid about what is and is not established (pp. 2, 8-9, and 19). Figures and tables are legible and correctly distinguish explanatory schematics from evidence. Some dense audit terminology and the large number of cohorts/appendices make it difficult to identify which artifacts independently establish each headline claim, but this does not prevent evaluation.",
+    "contribution": "A phase-aware ownership-audit integration for hybrid KV/recurrent state is potentially useful, and the paper positions component mechanisms as prior art (pp. 3 and 17, Tables 9-10). The demonstrated contribution is nevertheless a narrow one-stack case study: one model/runtime/hardware family, sequential schedule, selected operator rows, and targeted positive-control faults. The evidence currently supports an interesting audit template more than a broadly validated systems contribution."
+  },
+  "paper_summary": "ForkAudit proposes an executable ownership-audit contract for hybrid LLM state, separating shared document KV from request-private append state and phase-dependent recurrent GDN ownership. It evaluates four KV-by-GDN setup cells over eight PG-19 books and fan-outs 1, 8, and 32, reports equality of registered digests, selected dense-FP32 attention and NumPy GDN-oracle checks, nine live fault injections, and allocator deltas. The stated scope excludes performance, scheduler, production-capacity, and broad transfer claims.",
+  "strongest_verified_contribution": "The strongest supported result is the carefully scoped four-cell ownership factorial: under one fixed Qwen3.5/vLLM configuration and sequential schedule, the reported storage-witness predicates and registered semantic digests agree across ownership cells, while shared-document KV lowers the reported final allocator delta at N=32 (pp. 7-8, Secs. 5.1 and 5.4; Table 2).",
+  "strengths": [
+    "The paper distinguishes logical state, page allocation, allocator counters, and unmeasured service/process capacity instead of conflating memory metrics (p. 6, Sec. 4.4; p. 8, Table 2).",
+    "The 2x2 ownership design and adjacent-fan-out comparisons make the tested invariances concrete (pp. 6-8, Secs. 4.2-5.1 and Figure 3).",
+    "It correctly labels eight books/ranks as distinct workloads rather than stochastic replicates and avoids unsupported confidence intervals (pp. 9 and 13, Sec. 6 and Table 3).",
+    "Limitations are unusually explicit: selected captured-input oracles, no compiled-binary identity, one runtime, sequential execution, and positive-control faults are all acknowledged (pp. 8-9 and 19)."
+  ],
+  "questions": [
+    "Can the authors provide an immutable, externally checkable source/container/manifest closure for the exact primary GPU run, and explain why Table 5 calls frozen identity 'full' despite the failed terminal recursive code closure reported in Sec. 7?",
+    "What held-out or independently generated fault set, including nontrivial common-mode and post-output semantic faults, can establish detection coverage beyond nine intended-gate positive controls?",
+    "Can the authors add at least one independent end-to-end validation path or substantially broaden numerical operator coverage across layers, requests, token positions, and model/runtime configurations?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R20-EXP-01",
+      "severity": "critical",
+      "dimensions": [
+        "reproducibility",
+        "citation_integrity",
+        "experimental_rigor"
+      ],
+      "location": "Artifact-level identity for the supplied manuscript PDF (whole file; PDF pp. 1-20)",
+      "claim_ids": [
+        "frozen-identity",
+        "executable-audit"
+      ],
+      "evidence_ids": [
+        "declared-snapshot-sha256",
+        "supplied-main.pdf-sha256"
+      ],
+      "observed_evidence": "The declared snapshot SHA-256 is 802c99cf2ec462e41b5343dd204c463b3f4d27d0eb3c601e6489d2765e1e7a27, but the PDF supplied at the mandated path hashes to 73f8628ae23119c6c964e5d86670c5c193162a36d22d320d478e249d74126683. Thus this review cannot verify that the inspected PDF is the declared frozen manuscript.",
+      "why_it_matters": "Artifact identity is central to the paper's audit contract. A mismatch prevents reliable attribution of the visible claims, tables, and limitations to the stated frozen snapshot.",
+      "required_fix": "Reissue a single immutable submission artifact whose published SHA-256 matches the bytes reviewers receive, and bind that PDF hash to the claimed package/replay manifest.",
+      "verification_test": "An independent reviewer downloads the submission PDF and manifest, computes SHA-256, and obtains the declared value before evaluating any replay output.",
+      "evidence_needed": "A matching PDF digest and a content-addressed manifest that binds the PDF, source closure, protocol, and primary-result receipts.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-02",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "PDF p. 9, Sec. 7; PDF p. 14, Table 5; PDF p. 20, Table 13",
+      "claim_ids": [
+        "frozen-identity",
+        "one-command-replay",
+        "full-contract-witness"
+      ],
+      "evidence_ids": [
+        "reproducibility-statement",
+        "decision-status-table",
+        "artifact-map"
+      ],
+      "observed_evidence": "Sec. 7 states that the primary GPU aggregate's terminal recursive code closure failed on post-ledger pycache files and that a new derivative manifest, rather than a closed original-run identifier, binds the raw aggregate and replay. In tension with this, Table 5 marks frozen identity as 'full.' Table 13 lists package paths but does not resolve, within the PDF, the executable-source closure of the original aggregate.",
+      "why_it_matters": "For a contribution framed as an executable ownership audit, replaying a derivative is weaker than establishing the exact code/environment that produced the primary GPU evidence. This leaves room for source/provenance ambiguity even if the derivative checks internal consistency.",
+      "required_fix": "Publish a reproducible, content-addressed source and environment closure for the primary run, explicitly define allowable generated-file exclusions before execution, and revise the target status if closure remains incomplete.",
+      "verification_test": "A clean independent environment reconstructs the primary aggregate from the declared source/container/lockfile and raw inputs; its source-tree and output receipt hashes match the registered manifest.",
+      "evidence_needed": "Immutable source-tree/container digests, dependency lockfiles, deterministic build instructions, and an independently reproduced primary aggregate.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 6-8, Secs. 4.3 and 5.2-5.3; PDF p. 18, Table 12; PDF p. 19, Sec. I",
+      "claim_ids": [
+        "independent-attention-oracle",
+        "independent-gdn-oracle",
+        "cross-arm-semantic-equivalence"
+      ],
+      "evidence_ids": [
+        "eight-attention-rows",
+        "four-gdn-transitions",
+        "captured-input-boundary"
+      ],
+      "observed_evidence": "The dense oracle covers eight pre-specified attention rows conditional on captured post-RoPE inputs, while the NumPy recurrence covers four layers and begins after native q/k normalization. The paper explicitly excludes upstream activation construction, normalization, most GDN layers, and end-to-end logits from independent validation. Cross-arm agreement otherwise relies on candidate-produced canonical hashes/digests.",
+      "why_it_matters": "Agreement among ownership arms is a useful relational check but cannot rule out shared implementation errors. The selected operator-level oracles do not independently validate the end-to-end semantics needed to elevate the audit from internal consistency to robust correctness evidence.",
+      "required_fix": "Add an independent end-to-end reference or differential implementation where feasible, and expand predeclared operator sampling across layers, token positions, queries, fan-outs, and at least one additional relevant runtime/model configuration.",
+      "verification_test": "Blindly selected held-out requests and layers are evaluated by the independent path; report raw numerical error distributions, threshold rationale, and any failures rather than only pass counts.",
+      "evidence_needed": "Archived independent-reference outputs or reproducible sidecars for a broader predeclared sample, plus cross-runtime/model results that separate common-mode errors from ownership-factor effects.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-04",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 6 and 8, Secs. 4.5 and 5.3; PDF p. 16, Table 7; PDF pp. 18-19, Sec. H and Sec. I",
+      "claim_ids": [
+        "fault-sensitivity",
+        "advertised-gate-sensitivity"
+      ],
+      "evidence_ids": [
+        "M1-M9-live-mutants",
+        "M8-M9-debug"
+      ],
+      "observed_evidence": "All nine injected faults are targeted positive controls designed to reach named gates, mostly at N=2. M8 reaches only an injected sentinel, and M9 reaches a later assertion after gate suppression; both abort before semantic outputs. While claims clearly scope sensitivity no detection completeness. Thus not grounds 4 maybe still major relative \"executable audit validates\", not a fault coverage claim.",
+      "why_it_matters": "Intended-gate reachability validates that these specific checks are live, but it does not establish sensitivity to realistic, unforeseen, common-mode, or output-level faults. The current evidence should not be read as broad validation of audit coverage.",
+      "required_fix": "Use a preregistered held-out mutation campaign with independently generated faults, include post-output semantic corruptions and benign perturbations, and report false positives, escapes, wrong-gate outcomes, and coverage by fault class.",
+      "verification_test": "Evaluate the frozen gate map on a concealed held-out fault suite and publish the full confusion matrix and per-class outcomes.",
+      "evidence_needed": "A held-out fault corpus and complete outcome matrix, including negative controls and output-level effects.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-05",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF p. 8, Table 2; PDF p. 9, Sec. 6; PDF pp. 13 and 15, Table 3 and Table 6",
+      "claim_ids": [
+        "allocator-delta",
+        "memory-denominator-result"
+      ],
+      "evidence_ids": [
+        "N32-median-allocator-deltas",
+        "eight-rank-deterministic-outcomes"
+      ],
+      "observed_evidence": "Table 2 reports medians over eight ranks and says rank values coincide, while Sec. 6 and Table 3 clarify that ranks are distinct workloads rather than stochastic replicates. The PDF gives no per-rank values, range, or workload-level sensitivity for the primary allocator deltas.",
+      "why_it_matters": "The deterministic allocator result is valid for the frozen setup, but summary medians across distinct books can be mistaken for replicated statistical evidence and make workload sensitivity difficult to assess.",
+      "required_fix": "Report the eight raw values or a compact range/min-max table, clearly label the estimand as a fixed-stack deterministic measurement, and add length/alignment or workload sensitivity sweeps if making any broader memory statement.",
+      "verification_test": "Recompute every summarized delta from the released per-rank measurements and confirm that conclusions remain under the added geometry/workload sweep.",
+      "evidence_needed": "Per-rank allocator endpoints and predeclared sensitivity measurements over meaningful prefix/page-tail conditions.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is established by the PDF. The ethics statement appropriately notes use of PG-19 and that broader deployment effects are outside scope (p. 12, Sec. A).",
+  "llm_usage_disclosure": "This review was generated by an LLM agent from the manuscript PDF and supplied rubric/schema; it must be treated as an internal automated review.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A supplied PDF whose SHA-256 matches the declared frozen snapshot, bound to an immutable manuscript/package manifest.",
+    "A clean, independently reproduced primary GPU aggregate from an exact source/container/environment closure.",
+    "Predeclared, broader independent validation that includes end-to-end or cross-implementation checks and reports all outcomes.",
+    "A held-out mutation campaign with realistic fault classes, false-positive/escape outcomes, and output-level consequences."
+  ],
+  "evidence_that_would_lower_score": [
+    "Confirmation that the PDF hash mismatch corresponds to untracked manuscript/result changes or cannot be reconciled to a frozen package.",
+    "Failure of an independent replay to reproduce the reported digest equalities, storage predicates, numerical-oracle bounds, or allocator endpoints.",
+    "Evidence that selected oracle rows, fault gates, or memory summaries were chosen after observing candidate outcomes without valid preregistration."
+  ],
+  "review_limitations": [
+    "This was a PDF-only blind review; no code, raw artifacts, manifests, or external evidence files were inspected.",
+    "The supplied PDF did not match the declared snapshot hash, so conclusions about the declared frozen manuscript are necessarily provisional."
+  ]
+}

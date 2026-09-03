@@ -1,0 +1,257 @@
+{
+  "schema_version": "r33-heldout-fault-freeze-v1",
+  "freeze_status": "definitions_frozen_no_experiments_run",
+  "frozen_at": "2026-08-25T19:04:48+08:00",
+  "author_role": "independent_held_out_fault_designer",
+  "source_audit": {
+    "sole_project_source_consulted": {
+      "path": "/Users/liuhanzuo/MacLLM-Bench/paper_autonomous_multifork_iteration/main.pdf",
+      "sha256": "a34f319550300d603db259a69c5685112009b2d0a3d92aa3096a121624fb6db3",
+      "pages": 24,
+      "access": [
+        "complete pdftotext extraction",
+        "visual inspection of rendered relevant pages"
+      ]
+    },
+    "not_consulted": [
+      "LaTeX or other paper sources",
+      "implementation code or scripts",
+      "pre-existing evidence directories or artifacts",
+      "old fault-definition files",
+      "review files",
+      "state files"
+    ],
+    "declaration": "The fault author inspected only the frozen PDF among project materials. The destination files in this new author_freeze directory were authored from that PDF alone."
+  },
+  "public_contract_basis": {
+    "assurance_boundary": "honest mandatory-event-complete capture with byte-bound records; replay is trace-relative and not an independent live observer",
+    "fixed_case_scope": {
+      "model": "Qwen3.5-35B-A3B",
+      "layers": "10 full-attention and 30 GDN layers",
+      "kv": "BF16/Q16 paged KV with 128-token pages",
+      "document_tokens": 4095,
+      "partial_tail_valid_tokens": 127,
+      "registered_transition_query_tokens": 32,
+      "generated_tokens": 8,
+      "state_appended_tokens": 39,
+      "fault_pair_resident_count": 2,
+      "schedule": "batch-one sequential round-major calls on one CUDA stream per rank"
+    },
+    "targets_used": [
+      "prefix immutability",
+      "private ownership and lifecycle binding",
+      "tail-safe append",
+      "Python-call-scope dispatch provenance",
+      "cross-arm equivalence"
+    ],
+    "excluded_unclaimed_capabilities": [
+      "per-call compiled-binary identity",
+      "autotuning-choice attestation",
+      "native continuous or ragged batching",
+      "per-kernel concurrency or overlap",
+      "in-flight cancellation",
+      "independent producer recapture",
+      "end-to-end correctness",
+      "transient mutation that is fully restored between registered snapshots"
+    ]
+  },
+  "common_protocol": {
+    "pairing": "For each fault, rebuild one clean control and one mutant from the same frozen N=2 case identity; apply exactly one named injection only to the mutant.",
+    "capture": "Keep all applicable gates enabled and require honest, mandatory-event-complete setup, registered-transition, ordered execution, and final records.",
+    "selection": "Freeze request, phase, layer/call ordinal, and payload before either member of a pair executes. The concrete selection rule is stated per fault.",
+    "clean_gate": "The matched clean member must have complete mandatory coverage for every applicable target, valid byte binding, passing replay predicates, Python-call-scope dispatch pass with compiled scope still labeled partial, and no operational exception.",
+    "mutant_success": "The clean gate passes; the exact injection receipt is present; the mutant reaches its expected primary predicate with all earlier unrelated predicates passing; and no missing record or unallowlisted exception substitutes for detection.",
+    "mutant_failure": "Any clean-gate failure, absent or ambiguous injection, missing mandatory record, earlier unrelated failure, unallowlisted exception, or mutant passage of the expected primary predicate is a failed fault trial.",
+    "semantics_policy": "Token/logit/logical-KV/GDN results are secondary localization evidence unless a fault explicitly names cross-arm equivalence as its primary port; unchanged semantics do not rescue a failed pre-output contract.",
+    "no_gate_suppression": true,
+    "no_experiments_run_by_author": true
+  },
+  "freshness_exclusions": {
+    "pdf_disclosed_live_faults_not_reused": [
+      "reservation alias",
+      "sequence swap",
+      "omitted tail COW",
+      "GDN-base alias",
+      "GDN-peer alias",
+      "position off-by-one",
+      "materialized mask",
+      "wrong callable",
+      "dense KV view",
+      "stale cancelled-slot lease",
+      "lease under another request",
+      "reclaim before zero scrub"
+    ],
+    "pdf_disclosed_numerical_controls_not_reused": [
+      "omitted GDN decay",
+      "complemented beta",
+      "pre-decay memory",
+      "rolled value heads",
+      "R30 per-row seeded wrong operators"
+    ]
+  },
+  "faults": [
+    {
+      "id": "HF01_DELAYED_TAIL_DETACH",
+      "title": "Write one append token before the private-tail copy",
+      "public_target": "tail-safe append, with prefix immutability as a redundant port",
+      "realistic_failure_mode": "A lazy COW path checks or performs detachment after issuing the first append store, so the shared document tail receives one write before the private page exists.",
+      "frozen_injection": {
+        "cell": "shared-document KV with borrowed GDN, N=2",
+        "request": "r0",
+        "locus": "the first full-attention layer in frozen model order at the registered 32-token transition",
+        "action": "Issue exactly the first append write to the still-shared 128-token last document page, then perform the otherwise correct 127-token valid-tail copy and continue normally.",
+        "do_not_change": [
+          "callable",
+          "query",
+          "mask",
+          "positions",
+          "scale",
+          "request identity",
+          "all other layers"
+        ]
+      },
+      "expected_invariants": [
+        "Exactly one private copy of the 127 valid tail tokens exists for the selected request/layer.",
+        "The tail-copy event ordinal is strictly smaller than every append-write ordinal touching its logical destination.",
+        "The shared physical document page digest is unchanged from setup through registered transition and final capture."
+      ],
+      "detection_ports": {
+        "primary": "ordered copied-tail and append receipts: copy_ordinal < first_write_ordinal",
+        "redundant": "physical document-KV setup digest equals transition/final digest"
+      },
+      "clean_gate": "The selected clean row has one role-correct private-tail copy before every append write and an unchanged shared-page digest.",
+      "success_criterion": "The mutant has an honest first-write ordinal less than or equal to the copy ordinal, while all earlier identity/storage-role checks pass.",
+      "failure_criterion": "The clean row fails; the mutant omits COW instead of delaying it; the shared page was already private; the required ordering records are missing; or the ordering predicate passes.",
+      "why_fresh": "Unlike the PDF's omitted-COW fault, a private copy is eventually made and the mutation isolates ordering rather than copy existence."
+    },
+    {
+      "id": "HF02_INACTIVE_DOCUMENT_LANE_SCRIBBLE",
+      "title": "Corrupt only the unused lane of the shared partial document page",
+      "public_target": "prefix immutability",
+      "realistic_failure_mode": "A page initializer or scrubber overruns its intended private allocation by one token lane and writes into the inactive lane of the shared document's 127-of-128 tail page.",
+      "frozen_injection": {
+        "cell": "shared-document KV with materialized GDN, N=2",
+        "request": "group-level shared document object",
+        "locus": "after setup capture and before any private-tail copy at the first full-attention layer in frozen model order",
+        "action": "Flip the lowest bit of the first byte in the one inactive token lane of that layer's shared K page only; do not alter any valid document token or any V bytes.",
+        "do_not_change": [
+          "page table",
+          "valid-token bytes",
+          "private reservations",
+          "call contract",
+          "GDN state"
+        ]
+      },
+      "expected_invariants": [
+        "The physical document page, including inactive/padding bytes bound by its archived artifact, has identical setup, transition, and final digests.",
+        "Logical valid-token KV may remain unchanged, but physical prefix immutability is not limited to currently read tokens."
+      ],
+      "detection_ports": {
+        "primary": "physical document-K digest equality across setup, registered transition, and final",
+        "secondary": "byte-bound artifact digest/manifest consistency for the captured mutated page"
+      },
+      "clean_gate": "All physical document K/V page digests, including the partial page backing bytes, remain identical across phases.",
+      "success_criterion": "Only the selected inactive lane differs and the prefix-immutability replay rejects the mutant; valid logical KV and semantics may remain identical.",
+      "failure_criterion": "The clean row changes; a valid token is modified; the mutation lands in a private page; capture excludes the mutated backing bytes; or the physical prefix digest remains equal.",
+      "why_fresh": "This is neither missing COW nor request aliasing; it tests whole-physical-prefix immutability against a one-lane bounds error that can be semantically silent."
+    },
+    {
+      "id": "HF03_DUPLICATE_COMMITTED_DISPATCH",
+      "title": "Commit one model call twice while discarding the first result",
+      "public_target": "dispatch provenance and frozen schedule",
+      "realistic_failure_mode": "A retry path treats a completed call as failed and reissues it without rolling back KV/GDN state, causing an extra committed state transition even though only one result is surfaced.",
+      "frozen_injection": {
+        "cell": "shared-document KV with borrowed GDN, N=2",
+        "request": "r0",
+        "locus": "the first generated-token feedback call after the registered query transition",
+        "action": "Execute and commit the frozen call once, discard only its returned output, then execute the same request/input call again before r1's call; retain both honest call and append receipts.",
+        "do_not_change": [
+          "request ID",
+          "input token bytes",
+          "callable",
+          "mask",
+          "positions presented by the retry path",
+          "scale"
+        ]
+      },
+      "expected_invariants": [
+        "The ordered call ledger has exactly the cardinality and request-round order fixed by the sequential round-major schedule.",
+        "Each scheduled state-appended input has exactly one committed append/call transition.",
+        "Discarding an output does not erase a committed call from the mandatory execution record."
+      ],
+      "detection_ports": {
+        "primary": "frozen ordered-call cardinality and request/round ordinal replay",
+        "redundant": "ordered append history and final logical-KV/GDN cross-arm equivalence"
+      },
+      "clean_gate": "The clean ledger contains exactly one call for every frozen request-round slot and exactly 39 state-appended inputs per completed request.",
+      "success_criterion": "The mutant contains one extra honest committed call receipt at the frozen locus and fails schedule/cardinality replay before any semantic comparison is used as rescue.",
+      "failure_criterion": "The clean schedule fails; the first call is rolled back or never committed; the extra call is omitted from capture; an unrelated exception occurs first; or exact schedule/cardinality replay passes.",
+      "why_fresh": "This duplicates a correctly bound request call; it does not swap sequence identities, alter positions, change a mask, or replace the callable."
+    },
+    {
+      "id": "HF04_EFFECTIVE_SCALE_DRIFT",
+      "title": "Use a doubled effective attention scale for one otherwise valid call",
+      "public_target": "Python-call-scope dispatch provenance",
+      "realistic_failure_mode": "A refactor or configuration cache supplies the effective scale for a different head geometry while preserving the same callable and all other call arguments.",
+      "frozen_injection": {
+        "cell": "shared-document KV with materialized GDN, N=2",
+        "request": "r0",
+        "locus": "the first full-attention call in frozen model order at the registered 32-token transition",
+        "action": "Pass effective_scale = 2 * frozen_effective_scale for this call only.",
+        "do_not_change": [
+          "callable identity",
+          "query bytes",
+          "mask bytes",
+          "position values",
+          "append history",
+          "paged-KV view type"
+        ]
+      },
+      "expected_invariants": [
+        "Every ordered attention call receipt binds the effective scale fixed by identity/protocol for that call geometry.",
+        "The two ownership controls use equal effective scale for the same query and schedule."
+      ],
+      "detection_ports": {
+        "primary": "ordered call receipt effective_scale equals the frozen protocol value bit-for-bit in its declared scalar encoding",
+        "secondary": "cross-arm canonical full-logit/logical-KV/GDN equivalence; a selected numerical sidecar may corroborate but is not required"
+      },
+      "clean_gate": "The matched clean call receipt carries the frozen scale and the Python-call-scope dispatch replay passes.",
+      "success_criterion": "The mutant receipt truthfully carries exactly twice the frozen scale and the scale-contract predicate rejects it with earlier identity/callable/query/mask/position/view checks passing.",
+      "failure_criterion": "The clean row fails; scale is not independently recorded; another call argument changes; an unrelated gate fires first; or the frozen-scale equality predicate passes.",
+      "why_fresh": "The PDF faults alter position, mask, callable, or view; none alters only the recorded effective scale that the public contract explicitly binds."
+    },
+    {
+      "id": "HF05_STALE_GDN_BINDING_TOKEN_AFTER_REBIND",
+      "title": "Allocate correct private GDN tensors but retain the borrowed-base binding token",
+      "public_target": "private ownership lifecycle binding",
+      "realistic_failure_mode": "Physical copy/rebind succeeds, but lifecycle metadata update is lost, leaving a completed request with the pretransition binding token even though its storage token/ranges changed.",
+      "frozen_injection": {
+        "cell": "shared-document KV with borrowed GDN, N=2",
+        "request": "r1",
+        "locus": "immediately after the registered 32-token transition has produced all 60 request-private GDN tensors",
+        "action": "Keep all 60 private tensor objects and contents unchanged, but retain r1's setup-phase binding token as its transition binding token; preserve the new physical storage token and honest range records.",
+        "do_not_change": [
+          "GDN tensor contents",
+          "GDN tensor shapes/strides/dtypes",
+          "base storage",
+          "peer storage",
+          "call contract",
+          "semantic outputs"
+        ]
+      },
+      "expected_invariants": [
+        "A completed borrowed request changes both binding and storage tokens at transition.",
+        "All 60 completed-request ranges are disjoint from base and peer ranges.",
+        "The lifecycle request ID is stable while its phase binding token advances exactly once for the rebind."
+      ],
+      "detection_ports": {
+        "primary": "completed-request setup_binding_token != transition_binding_token",
+        "redundant": "transition storage token differs from setup and all 60 normalized ranges are private, demonstrating the metadata/storage contradiction"
+      },
+      "clean_gate": "For both completed requests, binding and storage tokens change at transition and all 60 tensor ranges are disjoint from base and peers.",
+      "success_criterion": "The mutant's physical ownership predicates pass, but lifecycle replay rejects the unchanged binding token for r1 at the registered transition.",
+      "failure_criterion": "The clean row fails; any GDN range aliases base/peer; tensor contents change; the binding token is not a mandatory captured field; an unrelated gate fires first; or the token-change predicate passes.",
+      "why_fresh": "The PDF's GDN faults create physical base/peer aliases; this fault preserves correct disjoint storage and isolates stale rebind metadata explicitly required by the public pointer-free schema."
+    }
+  ]
+}

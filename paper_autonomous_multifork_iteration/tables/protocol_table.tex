@@ -1,0 +1,21 @@
+\begin{table}[H]
+\caption{Frozen protocol for the multi-resident case study. All values are replayed from E-MF-SHARDS.}
+\label{tab:protocol}
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}p{0.24\columnwidth}p{0.70\columnwidth}@{}}
+\toprule
+Component & Frozen setting \\
+\midrule
+Model & Qwen3.5-35B-A3B: 40 layers; 10 full-attention layers (3, 7, 11, 15, 19, 23, 27, 31, 35, 39) and 30 GDN layers. \\
+KV path & vLLM 0.26 Triton \texttt{unified\_attention}; BF16 KV (artifact label Q16, \texttt{KVQuantMode.NONE}); page size 128; batch size 1. \\
+Data & PG-19 train only; eight books (one per rank); 4,095-token document window; per-rank bank of 32 distinct, non-overlapping 32-token queries. \\
+Generation & Eight argmax tokens; 39 KV tokens appended per request because the final generated token is not fed back; document tail is 127 tokens. \\
+Fan-out & $N\in\{1,2,4,8,16,32\}$; execution order $1,32,2,16,4,8$. \\
+Residency & All request objects remain strongly referenced; round-major serial execution on one CUDA stream (not concurrent kernels). \\
+Hardware & Eight independent H20-3e GPUs (143,771 MiB each); one rank and one PG-19 book per GPU. \\
+Software & PyTorch 2.11.0+cu129; Transformers 5.14.1; vLLM 0.26.0+cu129; Triton 3.6.0. \\
+\bottomrule
+\end{tabular}
+\end{table}

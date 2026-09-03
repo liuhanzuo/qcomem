@@ -1,0 +1,43 @@
+{
+  "schema_version": "qcomem-gdn-transition-oracle-rerun-amendment-v1",
+  "experiment_id": "RR4-GDN-ORACLE-20260819A",
+  "attempt_id": "20260819c-corrected-capture-boundary",
+  "created_before_rerun_c_gpu_execution": true,
+  "parent_preregistration_raw_sha256": "f1a1091acbd946bd2e85657bbdf26bc5ff360c585928431d16d81f801bd0013e",
+  "parent_invalid_attempt": {
+    "job_id": 243971,
+    "trial_id": 1862695,
+    "capture_manifest_sha256": "3c9248dcd1f39b6a7ff36575c2abf2e563f54b14e57e93a23067cfb16e52dcbb",
+    "oracle_result_sha256": "295e4bea60cee27bfb36954550b48bfa945c05681c4f8fba52349d5b53a80fd6",
+    "scientific_status": "invalid_clean_control_failed"
+  },
+  "unchanged": {
+    "source_selection": true,
+    "selected_layers": true,
+    "selected_coordinates": true,
+    "seeded_faults": true,
+    "tolerances": true,
+    "model_and_revision": true
+  },
+  "mechanical_corrections": [
+    {
+      "field": "query_scale",
+      "invalid_value": 1.0,
+      "correct_value_rule": "1/sqrt(query_key_width)",
+      "query_key_width": 128,
+      "source": "native torch_chunk_gated_delta_rule implementation"
+    },
+    {
+      "field": "query_key_capture_boundary",
+      "invalid_boundary": "raw BF16 arguments serialized as FP32 then normalized by NumPy",
+      "correct_boundary": "post_native_qk_l2norm_pre_fp32_recurrence",
+      "reason": "The native kernel normalizes BF16 q/k before FP32 conversion; re-normalizing serialized FP32 values is a different floating-point program."
+    }
+  ],
+  "corrected_runner_sha256": "7d3821060df685bc5dc800761ca862ee88b703137b65f110e339b42b4b6c53ad",
+  "corrected_reference_sha256": "fa67941b2c7b822d7966e98aa3bf0b8a40610ff593cc020fa0b5f7e43ce50147",
+  "targeted_test_sha256": "28fe6fd042b3e8dc486b1c8339548152e17c723ba6d45b9202d14921d1a33713",
+  "targeted_test_count": 6,
+  "claim_boundary": "Selected recurrent-core transitions from frozen post-native-qk-normalization inputs only; q/k normalization and all downstream projections remain excluded.",
+  "scientific_scope": "Rerun only A6. Do not rerun or combine factorial, KV, detector, lifecycle, memory, or attention experiments."
+}

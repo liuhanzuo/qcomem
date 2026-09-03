@@ -1,0 +1,141 @@
+\section{Experimental Protocol and Claim Map}
+\label{sec:protocol}
+
+Everything in this paper is measured on a frozen, training-free stack: the
+36-layer Qwen3-8B backbone~\citep{qwen3} with chunk size $c=512$ and CoMem split
+$j=12$, in bfloat16, with no parameter update anywhere in the pipeline.  The qa1
+and RULER depth studies use a fixed $k=12$; the LongEval study uses the per-task
+BM25 settings of Appendix Table~\ref{tab:protocol-matrix} ($k\in\{4,6\}$), so its
+quality gap is not a $k{=}12$ operating-point claim.  The surviving artifacts
+document no clean validation split for the earlier best-$k$ sweeps, so rather than
+select $k$ on the test set we exclude those values from headline claims: our
+result is a single fixed-configuration test, not a claim that $k=12$ is optimal.
+How the depth cost changes with $k$ is unknown, and a matched $k$-sweep at the 4k
+decision cell remains future work.
+
+Table~\ref{tab:claim-map} is the map a reviewer should read first: each headline
+claim, its estimand, the control that identifies that estimand, the scope in
+which we assert it, and where its evidence lives.  We report three estimands and
+never merge them: the read-depth \emph{direction}
+(Section~\ref{sec:readdepth}), the depth \emph{attribution}
+(Section~\ref{sec:attribution}), and the \emph{serving} account
+(Section~\ref{sec:serving}).  The remaining protocol detail --- the RULER,
+LongEval and read-out-invariance studies, the depth-sweep protocol, the reader
+taxonomy, the five-arm cross-trial audit, and the reproducibility record --- is in
+Appendices~\ref{app:protocol-full} and~\ref{app:repro}.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.06}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.045\textwidth}
+>{\raggedright\arraybackslash}p{0.235\textwidth}
+>{\raggedright\arraybackslash}p{0.095\textwidth}
+>{\raggedright\arraybackslash}p{0.195\textwidth}
+>{\raggedright\arraybackslash}p{0.215\textwidth}
+>{\raggedright\arraybackslash}p{0.115\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Headline claim as stated here} & \textbf{Estimand} &
+\textbf{Identifying control} & \textbf{Supported scope} &
+\textbf{Evidence} \\
+\midrule
+C1 & one layer-$j$ activation per chunk; only $F_{[j,L)}$ re-forwards a
+fixed-$k$ pack of length $1{+}kc{+}|q|$ & mechanism (no estimand) &
+identical-position split/rejoin algebra & training-free, frozen Qwen3-8B,
+$c{=}512$; store is $O(\text{ctx})$ & \S\ref{sec:method}, Eq.~(1)--(2);
+App.~\ref{app:method-details} \\
+C2 & cached depth is an axis whose price must be measured, not assumed &
+framing only & the matched design of the rows below & no empirical claim
+attaches to this row & \S\ref{sec:intro}, \S\ref{sec:protocol} \\
+C3 & the fixed-$k$ short read keeps needle-style recall near-perfect &
+accuracy at a fixed read & shared backbone/scorer vs.\ full context &
+\texttt{niah\_single} serving sweep, $n{=}50$/cell; not every matched RULER cell
+& App.~Tab.~\ref{tab:factorized}; App.~Fig.~\ref{fig:system-tradeoff},
+Tab.~\ref{tab:ruler-percell} \\
+C4 & multi-hop composition (qa2) is \emph{not evaluable} under the registered
+adjudicator & registered non-result & floor gate and negative controls &
+no length-robust qa2 claim anywhere & App.~Tab.~\ref{tab:composition-app} \\
+C5 & a self-distilled read adapter is archived, not evaluated &
+none & --- & configuration only; no accuracy claim here &
+App.~Tab.~\ref{tab:selfdistill-config} \\
+C6 & at fixed $k$ the read length and GPU read-time working set are bounded
+while the store grows & serving working set & matched read length;
+median-of-3 CUDA peaks & one H20 through 128k; \emph{nearly} flat, not constant
+& App.~Tab.~\ref{tab:factorized}; App.~Fig.~\ref{fig:system-tradeoff} \\
+C7 & depth buys $0.3$\,GB at a 6{,}657-token read; read/prefill break-even
+near $26$ reads/document & serving, $Q^\star$ & same read length and hardware;
+decode excluded & read/prefill only; no end-to-end latency claim &
+App.~Tab.~\ref{tab:factorized}; \S\ref{sec:serving} \\
+C8 & cached $j{=}12$ reads are \emph{less accurate} than re-forwarding the same
+chunks from $j{=}0$ & read-depth direction & oracle selector, same chunks,
+query and decoder; paired exact McNemar on a content-hash-verified subset &
+qa1 single-fact, $n{=}100$/cell, two caps; magnitude convention-dependent &
+Tab.~\ref{tab:readdepth-main}; App.~Tab.~\ref{tab:depthcurve};
+App.~Fig.~\ref{fig:depthcurve} \\
+C8-D & the loss remains when the named encoding factors are frozen & depth
+attribution & five-arm A/D/R/C/E at fixed $j{=}12$; E--A varies cache depth
+with an acknowledged lower-band context-set boundary & decomposition on different
+samples from C8; not a replacement magnitude & Tab.~\ref{tab:e2-decomposition};
+\S\ref{sec:attribution} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Headline claims, estimands, identifying controls, scope, and
+evidence.}  C2 and C5 are listed precisely because they carry \emph{no}
+quantitative claim and C4 records a registered non-result, so a reader can check
+that nothing in the paper silently upgrades them.  The three estimands (C6/C7
+serving, C8 direction, C8-D attribution) come from different registered runs and
+are never pooled.}
+\label{tab:claim-map}
+\end{table}
+
+\paragraph{Matched read-depth study (direction estimand).}
+To isolate depth from retrieval, the decisive BABILong qa1
+study~\citep{babilong} uses an oracle selector, $k=12$, and the same selected
+chunks, query, greedy decoder, and Qwen3-8B checkpoint for $j=12$ and $j=0$;
+each registered context bucket contains positionally paired examples under the
+sample counts and generation caps of Appendix
+Table~\ref{tab:protocol-matrix}.  Paired differences use the two-sided exact
+McNemar test~\citep{mcnemar}, with $b$ the $j{=}12$-correct/$j{=}0$-wrong pairs
+and $c$ the reverse; the frozen primary reader extracts the first task label and
+the sensitivity reader first strips a leading model-generated option enumeration
+(full reader taxonomy in Appendix~\ref{app:protocol-full}).  Pairing is verified
+by content hash: the registered \texttt{sample\_id} is the 16-hex
+\texttt{sha256} prefix of the full formatted model input, and re-running the
+preregistered content-level join on it makes every decisive cell a complete
+$100/100$ overlap with no orphaned, duplicated, or question-mismatched context,
+reproducing every published cell exactly
+(Appendix~\ref{app:pairing-provenance}); a separately stored 64-hex document
+digest was never retained and is not claimed.
+
+\paragraph{Five-arm mechanism decomposition (attribution estimand).}
+At fixed $j=12$, length, selector, and decoder, we compare: A, the matched
+$j=0$ full re-forward; D, deployed chunk-local write plus fresh-contiguous
+read; R, chunk-local write with original document positions at read; C,
+contiguous cross-chunk write with fresh-contiguous read; and E, contiguous
+cross-chunk write with original document positions.  Thus E freezes both
+chunk-independent encoding and relocation when compared with A; the remaining
+lower-band context-set difference is stated with the attribution result rather than
+treated as eliminated.  Each 4k/16k arm has $n=100$ and uses the official
+\texttt{babilong.metrics.compare\_answers} qa1 scorer, Wilson intervals, and
+two-sided exact McNemar contrasts on the same content-hash key
+\texttt{sample\_id}.  Driver pins, the one-line argument repair, and the
+cross-trial audit of that deck are in Appendices~\ref{app:protocol-full}
+and~\ref{app:repro}.  No other experimental arm is introduced.
+
+\paragraph{Serving study (serving estimand).}
+The systems measurements use the same Qwen3-8B backbone on one H20 with
+97.8\,GB available memory, and all GPU peaks and prefill measurements are
+median-of-three.  We distinguish (i) full-context rereading, (ii) retrieved
+raw-token recomputation at $j=0$, and (iii) CoMem at $j=12$.  The registered
+record reports write, per-query read, GPU peak, and RULER/LongEval quality, but
+no end-to-end latency including decode, so the recorded read/prefill endpoints
+are tabulated as endpoints and never interpolated.  We therefore make the
+framing explicit: the system's benefit is a \emph{retrieval} benefit (a
+fixed-$k$ short read instead of a full-context read)---an operating point a
+matched $j{=}0$ short read also delivers without any depth cache---and depth
+caching is measured as a \emph{quality} cost, not a saving.  The matched $j=0$
+versus
+$j=12$ direction remains the load-bearing intervention; the depth curve locates
+$j{=}12$ within an overall downward trend (no tested deeper working point
+recovers accuracy), without asserting a strictly monotone curve.

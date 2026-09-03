@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Transparent for every RR2 launcher phase except the eight immutable shard
+# commands.  The old launcher remains byte-identical and continues to audit its
+# own code/inputs; only shard execution is routed through the mandatory hook.
+
+REAL_PYTHON=${R40_PRIMARY_REAL_PYTHON:?set R40_PRIMARY_REAL_PYTHON}
+EXPECTED_RUNNER=${R40_PRIMARY_EXPECTED_RUNNER:?set R40_PRIMARY_EXPECTED_RUNNER}
+WRAPPER=${R40_PRIMARY_RANK_WRAPPER:?set R40_PRIMARY_RANK_WRAPPER}
+CODE_ROOT=${R40_PRIMARY_CODE_ROOT:?set R40_PRIMARY_CODE_ROOT}
+RUNTIME_ROOT=${R40_PRIMARY_RUNTIME_ROOT:?set R40_PRIMARY_RUNTIME_ROOT}
+BASE_ROOT=${R40_PRIMARY_BASE_ROOT:?set R40_PRIMARY_BASE_ROOT}
+SOURCE_ROOT=${R40_PRIMARY_SOURCE_ROOT:?set R40_PRIMARY_SOURCE_ROOT}
+CAPTURE_ROOT=${R40_PRIMARY_CAPTURE_ROOT:?set R40_PRIMARY_CAPTURE_ROOT}
+RUNTIME_PREFLIGHT=${R40_PRIMARY_RUNTIME_PREFLIGHT:?set R40_PRIMARY_RUNTIME_PREFLIGHT}
+RUNTIME_PREFLIGHT_SHA256=${R40_PRIMARY_RUNTIME_PREFLIGHT_SHA256:?set R40_PRIMARY_RUNTIME_PREFLIGHT_SHA256}
+PRIMARY_LAUNCHER=${R40_PRIMARY_LAUNCHER:?set R40_PRIMARY_LAUNCHER}
+LAUNCH_IDENTITY_ROOT=${R40_PRIMARY_LAUNCH_IDENTITY_ROOT:?set R40_PRIMARY_LAUNCH_IDENTITY_ROOT}
+PYCACHE_ROOT=${R40_PRIMARY_PYCACHE_ROOT:?set R40_PRIMARY_PYCACHE_ROOT}
+LAUNCH_CONTRACT=${R40_PRIMARY_LAUNCH_CONTRACT:?set R40_PRIMARY_LAUNCH_CONTRACT}
+EXPECTED_LAUNCH_CONTRACT_SHA256=${R40_PRIMARY_LAUNCH_CONTRACT_SHA256:?set R40_PRIMARY_LAUNCH_CONTRACT_SHA256}
+EXPECTED_PRIMARY_LAUNCHER_SHA256=${R40_PRIMARY_EXPECTED_LAUNCHER_SHA256:?set R40_PRIMARY_EXPECTED_LAUNCHER_SHA256}
+EXPECTED_PROXY_SHA256=${R40_PRIMARY_EXPECTED_PROXY_SHA256:?set R40_PRIMARY_EXPECTED_PROXY_SHA256}
+EXPECTED_REAL_PYTHON_SHA256=${R40_PRIMARY_EXPECTED_PYTHON_SHA256:?set R40_PRIMARY_EXPECTED_PYTHON_SHA256}
+
+[[ "$EXPECTED_LAUNCH_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "primary launch contract digest is invalid" >&2
+  exit 2
+}
+[[ -f "$LAUNCH_CONTRACT" ]] || {
+  echo "primary launch contract is absent" >&2
+  exit 2
+}
+[[ "$(sha256sum "$LAUNCH_CONTRACT" | awk '{print $1}')" == "$EXPECTED_LAUNCH_CONTRACT_SHA256" ]] || {
+  echo "primary launch contract digest mismatch" >&2
+  exit 2
+}
+for digest in \
+  "$EXPECTED_PRIMARY_LAUNCHER_SHA256" "$EXPECTED_PROXY_SHA256" \
+  "$EXPECTED_REAL_PYTHON_SHA256"; do
+  [[ "$digest" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "primary executable contract digest is invalid" >&2
+    exit 2
+  }
+done
+[[ "$(sha256sum "$PRIMARY_LAUNCHER" | awk '{print $1}')" == "$EXPECTED_PRIMARY_LAUNCHER_SHA256" ]] || {
+  echo "primary launcher digest mismatch" >&2
+  exit 2
+}
+[[ "$(sha256sum "$0" | awk '{print $1}')" == "$EXPECTED_PROXY_SHA256" ]] || {
+  echo "primary Python proxy digest mismatch" >&2
+  exit 2
+}
+[[ "$(sha256sum "$REAL_PYTHON" | awk '{print $1}')" == "$EXPECTED_REAL_PYTHON_SHA256" ]] || {
+  echo "primary real Python digest mismatch" >&2
+  exit 2
+}
+[[ "${PYTHONDONTWRITEBYTECODE:-}" == "1" ]] || {
+  echo "primary Python invocation lacks PYTHONDONTWRITEBYTECODE=1" >&2
+  exit 2
+}
+[[ "${PYTHONPYCACHEPREFIX:-}" == "$PYCACHE_ROOT" ]] || {
+  echo "primary Python invocation pycache root drift" >&2
+  exit 2
+}
+[[ -d "$PYCACHE_ROOT" ]] || {
+  echo "primary result-owned pycache root is absent" >&2
+  exit 2
+}
+pycache_real=$(realpath "$PYCACHE_ROOT")
+for frozen_root in "$CODE_ROOT" "$SOURCE_ROOT"; do
+  frozen_real=$(realpath "$frozen_root")
+  case "$pycache_real/" in
+    "$frozen_real/"*)
+      echo "primary pycache root overlaps frozen source" >&2
+      exit 2
+      ;;
+  esac
+done
+
+route=false
+route_rank=""
+if [[ $# -ge 3 && "$1" == "$EXPECTED_RUNNER" ]]; then
+  previous=""
+  for value in "$@"; do
+    if [[ "$previous" == "--stage" && "$value" == "shard" ]]; then
+      route=true
+    fi
+    if [[ "$previous" == "--rank" ]]; then
+      route_rank=$value
+    fi
+    previous=$value
+  done
+fi
+
+if [[ "$route" == true ]]; then
+  runner=$1
+  shift
+  [[ "$route_rank" =~ ^[0-7]$ ]] || {
+    echo "routed shard lacks one exact rank" >&2
+    exit 2
+  }
+  [[ "${CUDA_VISIBLE_DEVICES:-}" == GPU-* && "${CUDA_VISIBLE_DEVICES}" != *,* ]] || {
+    echo "routed shard lacks one UUID-valued CUDA_VISIBLE_DEVICES" >&2
+    exit 2
+  }
+  [[ -d "$LAUNCH_IDENTITY_ROOT" ]] || {
+    echo "launcher identity root absent" >&2
+    exit 2
+  }
+  identity="$LAUNCH_IDENTITY_ROOT/rank-$route_rank.json"
+  temporary="$identity.tmp-$$"
+  [[ ! -e "$identity" && ! -e "$temporary" ]] || {
+    echo "launcher identity already exists for rank $route_rank" >&2
+    exit 2
+  }
+  umask 077
+  printf '{"cuda_visible_devices":"%s","parent_process_id":%d,"process_id":%d,"rank":%d,"runner":"%s","schema_version":"forkaudit-r40-proxy-rank-launch-v1"}\n' \
+    "$CUDA_VISIBLE_DEVICES" "$PPID" "$$" "$route_rank" "${runner##*/}" \
+    > "$temporary"
+  ln "$temporary" "$identity"
+  rm -f "$temporary"
+  identity_sha256=$(sha256sum "$identity" | awk '{print $1}')
+  exec env PYTHONDONTWRITEBYTECODE=1 PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" \
+    "$REAL_PYTHON" -I -B "$WRAPPER" \
+    --code-root "$CODE_ROOT" \
+    --runtime-root "$RUNTIME_ROOT" \
+    --r39-base-root "$BASE_ROOT" \
+    --primary-source-root "$SOURCE_ROOT" \
+    --runner "$runner" \
+    --capture-root "$CAPTURE_ROOT" \
+    --runtime-preflight-manifest "$RUNTIME_PREFLIGHT" \
+    --expected-runtime-preflight-sha256 "$RUNTIME_PREFLIGHT_SHA256" \
+    --primary-launcher "$PRIMARY_LAUNCHER" \
+    --launcher-rank-identity "$identity" \
+    --expected-launcher-rank-identity-sha256 "$identity_sha256" \
+    -- "$@"
+fi
+
+exec env PYTHONDONTWRITEBYTECODE=1 PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" \
+  "$REAL_PYTHON" -B "$@"

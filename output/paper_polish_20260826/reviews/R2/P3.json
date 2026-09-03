@@ -1,0 +1,157 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "c047b9974119a16a69aaf7981a3621e3dfcb0cf47672cabb075f6fad8cdf4b83",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文把种子作为推断单位，并用同一样本的早/晚进入对比避免把 B2 的横截面路由相关性直接误读为路径效应，这一核心设计是合理的。然而，集合有序 ridge 对照在四种分配上仅观察到非负偏差，并不能推出该偏差机制在 sine 载体上也不可能改变符号；摘要和结论中的“不能产生负向 sine 偏离”强于现有对照所支持的结论。另有若干关键实现与稳健性细节只以工件名/哈希指代，无法从论文独立核查。",
+    "presentation": "论文清楚区分了负的横截面 Kendall τ 与负的同样本 g 的相反语义，表格也把阈值判定、显著性和构造差异分开呈现。主要不足是中心统计量被称为“paired slope”但实际上是两个端点差异的种子内标准化均值，原始效应尺度和若干对照协议没有完整展示。",
+    "contribution": "同一样本、同一读出下改变进入位置，并把横截面路由混杂与路径敏感性分开的测量框架有一定方法学价值；但证据只来自两个小型合成逻辑回归载体，其中一个结果不确定，尚不足以支持更广的数据价值结论。"
+  },
+  "paper_summary": "论文研究数据样本的经验边际价值是否随其进入 WSD 优化日程的位置变化。作者在两个 24 维合成逻辑回归载体上比较三种进入构造，以种子级 Kendall τ 描述横截面关系，并用同一目标在 0.15T 与 0.85T 间移动的标准化配对差异 g 作为主要识别量。sine 载体得到 g=-0.186、95% CI [-0.258,-0.115]，linear 载体得到接近零且区间跨零的结果；B2 横截面信号还能在集合有序 ridge 中通过按参考价值路由重现。论文据此主张只有 sine 载体支持负向路径偏离，同时把结论限制为合成、载体依赖的测量。",
+  "strongest_verified_contribution": "在论文所给的 16 个种子上，同一 sine 目标的早/晚进入比较给出方向一致于负向的种子级标准化效应及跨种子区间，而 linear 结果明确保留为不确定；同时，B2 路由实验具体展示了强横截面 τ 可以由参考值条件化的排序构造产生，因而不能单独识别路径效应。",
+  "strengths": [
+    "把种子而非 40 个目标样本作为推断单位，避免明显的目标级伪重复。",
+    "明确区分横截面 τ 与同样本 g 的符号含义，撤回了一个由代码错误导致的旧解释，并对不确定的 linear 载体保持克制。",
+    "同时报告集合有序对照、路由压力测试、已知路径正对照和构造间同种子对比，形成比单一相关系数更完整的测量链。",
+    "局限部分没有把合成 GLM 结果外推到自然数据、TRAK/datamodels 全流程或语言模型。"
+  ],
+  "questions": [
+    "在同样本对比中，V(early;z)-V(late;z) 的 leave-one-out 基线是否逐目标完全相同并代数消去？若是，为什么仍将 g 称为边际价值“slope”，而不是两个端点训练效用差的标准化均值？",
+    "有什么理论或同载体匹配对照能够保证集合有序估计偏差的符号不会随数据几何、目标分布或优化器状态改变？若没有，是否愿意把“不能产生负向 sine 偏离”收窄为“所测 ridge 对照未复现该符号”？",
+    "能否给出每个种子的未标准化 mean_z Δ(z)、sd_z Δ(z) 和 g，说明结论不是由少数小分母种子放大，并预先定义 g 的最小有意义幅度？",
+    "路由置换 placebo 的精确定义、置换次数、种子级区间以及 B2 参考分数的计算规则是什么？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P3-R2-001",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第4页§4.3（行206-215）、第6页表6、第7页结论（行326-331），以及摘要第21-25行",
+      "claim_ids": [
+        "set-ordered-bias-sign-claim",
+        "sine-path-supported-neg"
+      ],
+      "evidence_ids": [
+        "表5",
+        "表6"
+      ],
+      "observed_evidence": "ridge 对照的四个分配点估计为 +0.102、+0.192、+0.049、+0.145，其中一个区间跨零；论文同时承认不允许跨载体搬运偏差幅度，却据此断言正向集合有序偏差不能产生 sine 的负向偏离。",
+      "why_it_matters": "只在一个不同数据生成机制的 ridge 基底上观察到正向偏差，不能排除估计器偏差随载体几何或训练动态翻转符号。该推断被用来加强摘要和结论中的中心识别主张，因此不是单纯措辞问题。",
+      "required_fix": "把结论严格收窄为所测 ridge 对照的经验结果；若要保留“不能产生”这一排除性表述，需要给出适用于相关估计器/载体类的符号定理，或增加与 sine 数据几何和优化日程匹配、但真值集合有序的负对照族。",
+      "verification_test": "在预先规定的一组与两个载体匹配的集合有序生成机制上重复完全相同的 g 流程，并检验偏差符号的跨种子区间；或者形式证明在所声明条件下 g 的估计偏差恒非负。只要存在一个合理匹配对照出现稳定负偏差，就必须撤销排除性主张。",
+      "evidence_needed": "匹配负对照的逐种子结果、生成机制与冻结分析代码，或完整符号证明。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R2-002",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "第2-3页§3与表1、第4页§4.2、第5-6页§4.4-5及附录B",
+      "claim_ids": [
+        "frozen-experimental-contract",
+        "bed-discriminating-verdict"
+      ],
+      "evidence_ids": [
+        "表1",
+        "表7",
+        "表8",
+        "表10",
+        "附录B哈希前缀列表"
+      ],
+      "observed_evidence": "论文给出了维度、样本量、步数和正则系数，但没有完整给出两种合成分布的参数、学习率及 WSD 曲线数值、B2 参考值的计算细节、ridge 基底与四种分配的生成规则、已知路径正对照的构造和 detector 的具体统计规则。附录只列文件名与哈希前缀。",
+      "why_it_matters": "这些缺项决定同一样本效应、ridge 偏差和所谓“DISCRIMINATING”证书，审稿人无法仅凭论文重建中心实验或判断对照是否与主实验匹配。",
+      "required_fix": "在论文或匿名补充材料中给出可执行的完整数据生成伪代码、所有优化超参数、B2/reference/positive-control/negative-control 定义、随机数映射和统计流程，并把每个表格单元映射到可复现命令。",
+      "verification_test": "独立环境从公开说明重新生成 16 个主实验种子和全部对照，核对表2、表5-10的逐种子摘要及哈希；数值容差和软件版本需预先规定。",
+      "evidence_needed": "匿名代码、冻结配置、逐种子输出和端到端重现记录。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R2-003",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "第4页公式(4)与§4.2、第5页表5",
+      "claim_ids": [
+        "paired-slope-estimand"
+      ],
+      "evidence_ids": [
+        "公式(4)",
+        "表5"
+      ],
+      "observed_evidence": "g_k 是目标级 Δ 的均值除以同一种子内标准差，只比较 0.15T 和 0.85T 两个端点；论文未报告未标准化均值或分母分布，也没有为 g 预设类似 τ_a 的实际意义阈值。",
+      "why_it_matters": "标准化会让不同种子按各自离散度隐式重权，g 的数值不能直接解释为效用斜率或实际效应量；区间排除零只支持方向，不说明影响大小。",
+      "required_fix": "将其重命名为标准化端点对比，同时报告逐种子原始均值、标准差、稳健标准化敏感性和未标准化总体效应；若主张实际重要性，应预先给出 g 的最小效应界。",
+      "verification_test": "比较原始差、当前 g、稳健尺度标准化以及按种子等权汇总的符号与区间，确认结论不由异常小分母驱动。",
+      "evidence_needed": "逐种子 Δ 分布和预先规定的效应量分析。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R2-004",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity"
+      ],
+      "location": "第5页表5及§4.4、第5-6页表7和表9",
+      "claim_ids": [
+        "routing-robustness",
+        "set-valued-agreement"
+      ],
+      "evidence_ids": [
+        "表5",
+        "表7",
+        "表9"
+      ],
+      "observed_evidence": "sine 的 routing placebo 仅给出 g=-0.176 点值；routing-only τ 和 set-valued agreement 也只给点值，论文明确说明后者缺少冻结区间。",
+      "why_it_matters": "这些结果被用于说明主效应对路由置换稳健、B2 可被集合有序世界重现及比较器“alive”，但没有种子级不确定性时无法判断其稳定程度。",
+      "required_fix": "补充预先规定的置换方案、所有种子结果和与主结果同口径的区间；若无法补充，应把这些证据降为单次诊断而非稳健性结论。",
+      "verification_test": "在固定置换种子集合上重跑并报告 g/τ/τ_AB 的种子级区间和 leave-one-seed-out 范围。",
+      "evidence_needed": "逐种子 placebo、routing-only 与 agreement 输出。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文使用合成数据、无人体参与者或个人信息；在当前材料中未发现需要单独伦理升级的问题。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；子代理只接收冻结 PDF、指定的 ICLR 2026 量表与输出 schema，未与任何其他评审通信，也未查看作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "同几何、同优化设置的集合有序匹配对照或一般性符号证明，能够真正排除负向估计偏差。",
+    "逐种子原始 Δ、g 分母与全部 placebo/路由诊断的冻结不确定性分析。",
+    "至少一个自然数据或更真实模型载体上的预注册同样本复现，且保留当前克制的范围声明。",
+    "匿名工件能够从完整配置端到端重现表2、表5-10。"
+  ],
+  "evidence_that_would_lower_score": [
+    "匹配集合有序对照出现稳定负向 g，说明 sine 方向可能由估计偏差产生。",
+    "未标准化 Δ 或 leave-one-seed-out 分析显示结论由少数小分母/异常种子驱动。",
+    "独立重现无法得到表5的 sine 效应或发现早/晚运行的非目标因素未保持一致。"
+  ],
+  "review_limitations": [
+    "仅审阅了指定冻结 PDF；按隔离要求未访问代码、原始日志、逐种子工件或论文中列出的哈希对象，因此实现与数值只能依据 PDF 判断。",
+    "按任务要求未联网，未核验参考文献元数据、引用对局部陈述的支持关系或更广泛的最近工作。"
+  ]
+}

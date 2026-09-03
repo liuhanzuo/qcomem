@@ -1,0 +1,174 @@
+kind: Training
+spec:
+  name: liuhanzuo-qcomem-forkaudit-rr2-a1-terminal-final-20260821c
+  description: "RR2 A1 final: unchanged W science, frozen FP32 test fixture, persistent fail logs"
+  image: "artifactory.devops.xiaohongshu.com/media/redaccel:0.9.1-gpu"
+  command: |
+    set -euo pipefail
+    CODE_ROOT=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_a1_terminal_final_20260821c
+    CODE_DIR="$CODE_ROOT/gpu"
+    BOOTSTRAP_DIR="$CODE_ROOT/bootstrap"
+    RUN_DIR=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/qwen35-forkaudit-rr2-a1-terminal-final-20260821c
+    PERSIST_DIR=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_debug/qcomem-forkaudit-rr2-a1-terminal-final-20260821c
+    SOURCE_URL=http://10.32.129.66:18082/a1-formal-source-linux-clean.tar
+    SOURCE_TAR_SHA256=e035b4185fd8452d6da7f5f50a9767f21e703475bf37a73ea75b74ca3db79208
+    EXPECTED_CODE_LEDGER_SHA256=c18d63c72acaf00d20006278998052c12b3894d116d1724ab855f77d04af011a
+    EXPECTED_RELEASE_MANIFEST_SHA256=b44ab0c3fadc7fe5a6e739d2a129355ffaa8804ea67d03ddee21d6433d9231bc
+    EXPECTED_RUNNER_SHA256=9da619fc037e2c670b146d778fd9f4d5344212b7e525f3d3f26a077f79d67775
+    FP32_ARCHIVE_SOURCE=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w/results/gpu-qwen35-vllm-paged-fair-v2-20260814c
+    FP32_ARCHIVE_DEST="$CODE_ROOT/results/gpu-qwen35-vllm-paged-fair-v2-20260814c"
+    EXPECTED_FP32_ARCHIVE_LEDGER_SHA256=2f8023f2ac7b615efabcb4414e64f4f12d9a03279dd69f4701c6915f8f3a4e24
+    TMP_TAR=/tmp/qcomem-forkaudit-a1-final-source-e035b418.tar
+
+    test ! -e "$CODE_ROOT"
+    test ! -e "$RUN_DIR"
+    test ! -e "$PERSIST_DIR"
+    mkdir -p "$PERSIST_DIR"
+    exec > >(tee -a "$PERSIST_DIR/job.stdout.log") \
+      2> >(tee -a "$PERSIST_DIR/job.stderr.log" >&2)
+
+    persist_terminal_state() {
+      terminal_rc=$?
+      set +e
+      date -u +%FT%TZ > "$PERSIST_DIR/terminal.utc.txt"
+      printf '%s\n' "$terminal_rc" > "$PERSIST_DIR/exit-code.txt"
+      if test -d "$RUN_DIR/stages"; then
+        find "$RUN_DIR/stages" -maxdepth 1 -type f -printf '%f\n' | sort \
+          > "$PERSIST_DIR/stages.txt"
+        cp -a "$RUN_DIR/stages" "$PERSIST_DIR/run-stages"
+      fi
+      if test -d "$RUN_DIR/logs"; then
+        cp -a "$RUN_DIR/logs" "$PERSIST_DIR/run-logs"
+      fi
+      if test -d "$RUN_DIR/receipts"; then
+        cp -a "$RUN_DIR/receipts" "$PERSIST_DIR/run-receipts"
+      fi
+      if test -d "$RUN_DIR"; then
+        find "$RUN_DIR" -type f -printf '%s\t%P\n' | sort \
+          > "$PERSIST_DIR/run-files.tsv"
+      fi
+      for high_value in \
+        "$RUN_DIR/forkaudit-summary.json" \
+        "$RUN_DIR/scientific-artifacts.sha256" \
+        "$RUN_DIR/receipts/execution-identity-verification.json" \
+        "$RUN_DIR/receipts/model-load-closure.json"; do
+        if test -f "$high_value"; then
+          sha256sum "$high_value" >> "$PERSIST_DIR/high-value-files.sha256"
+        fi
+      done
+      printf '%s\n' "$terminal_rc" > "$PERSIST_DIR/terminal-copy-complete.exit-code.txt"
+    }
+    trap persist_terminal_state EXIT
+
+    if pgrep -af '[p]ython.*http.server' > "$PERSIST_DIR/preflight-http-processes.txt"; then
+      echo "temporary HTTP server found on formal node" >&2
+      exit 2
+    fi
+    nvidia-smi --query-compute-apps=pid --format=csv,noheader \
+      > "$PERSIST_DIR/preflight-gpu-processes.txt"
+    if grep -Eq '[0-9]' "$PERSIST_DIR/preflight-gpu-processes.txt"; then
+      echo "GPU compute process found before formal preflight" >&2
+      exit 2
+    fi
+
+    mkdir -p "$CODE_ROOT" "$BOOTSTRAP_DIR"
+    curl --fail --location --retry 3 --connect-timeout 15 --max-time 300 \
+      "$SOURCE_URL" --output "$TMP_TAR"
+    printf '%s  %s\n' "$SOURCE_TAR_SHA256" "$TMP_TAR" | sha256sum -c - \
+      > "$BOOTSTRAP_DIR/source-transfer-integrity.log"
+    tar -tf "$TMP_TAR" > "$BOOTSTRAP_DIR/source-tar-files.txt"
+    if grep -Ev '^gpu(/|/[^/]+)?$' "$BOOTSTRAP_DIR/source-tar-files.txt" | grep -q .; then
+      echo "source tar contains a path outside the single gpu directory" >&2
+      exit 2
+    fi
+    tar -xf "$TMP_TAR" -C "$CODE_ROOT"
+    rm -f "$TMP_TAR"
+    test "$(find "$CODE_DIR" -type f | wc -l | tr -d ' ')" -eq 36
+    test "$(find "$CODE_DIR" -type l | wc -l | tr -d ' ')" -eq 0
+    test "$(find "$CODE_DIR" -type d -name __pycache__ | wc -l | tr -d ' ')" -eq 0
+    find "$CODE_DIR" -type f -exec chmod 0444 {} +
+    find "$CODE_DIR" -type d -exec chmod 0555 {} +
+    printf '%s\n' "$SOURCE_TAR_SHA256" > "$BOOTSTRAP_DIR/source-tar.raw.sha256"
+    printf '%s\n' "$EXPECTED_CODE_LEDGER_SHA256" > "$BOOTSTRAP_DIR/code-ledger.raw.sha256"
+    printf '%s\n' "$EXPECTED_RELEASE_MANIFEST_SHA256" > "$BOOTSTRAP_DIR/release-manifest.canonical-json.sha256"
+    printf '%s\n' "$EXPECTED_RUNNER_SHA256" > "$BOOTSTRAP_DIR/runner.raw.sha256"
+
+    test -d "$FP32_ARCHIVE_SOURCE/pg19-gate-shards"
+    printf '%s  %s\n' "$EXPECTED_FP32_ARCHIVE_LEDGER_SHA256" \
+      "$FP32_ARCHIVE_SOURCE/scientific-artifacts.sha256" | sha256sum -c - \
+      > "$BOOTSTRAP_DIR/fp32-archive-ledger-integrity.log"
+    test "$(find "$FP32_ARCHIVE_SOURCE" -type f | wc -l | tr -d ' ')" -eq 9
+    test "$(find "$FP32_ARCHIVE_SOURCE" -type l | wc -l | tr -d ' ')" -eq 0
+    mkdir -p "$(dirname "$FP32_ARCHIVE_DEST")"
+    cp -a "$FP32_ARCHIVE_SOURCE" "$FP32_ARCHIVE_DEST"
+    (
+      cd "$FP32_ARCHIVE_SOURCE"
+      find . -type f -print0 | sort -z | xargs -0 sha256sum
+    ) > "$BOOTSTRAP_DIR/fp32-archive-source.sha256"
+    (
+      cd "$FP32_ARCHIVE_DEST"
+      find . -type f -print0 | sort -z | xargs -0 sha256sum
+    ) > "$BOOTSTRAP_DIR/fp32-archive-copied.sha256"
+    diff -u "$BOOTSTRAP_DIR/fp32-archive-source.sha256" \
+      "$BOOTSTRAP_DIR/fp32-archive-copied.sha256" \
+      > "$BOOTSTRAP_DIR/fp32-archive-copy.diff"
+
+    mkdir -p \
+      "$CODE_ROOT/paper_autonomous_multifork_iteration/evidence" \
+      "$CODE_ROOT/paper_autonomous_multifork_iteration/review"
+    cp \
+      /mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/prior-fp32-context-manifest.json \
+      "$CODE_ROOT/paper_autonomous_multifork_iteration/evidence/forkaudit_fp32_calibration_manifest.json"
+    cp \
+      /mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/review-experiment-response-plan.json \
+      "$CODE_ROOT/paper_autonomous_multifork_iteration/review/experiment_response_plan.json"
+
+    env \
+      CODE_DIR="$CODE_DIR" \
+      MODEL_DIR=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/models/Qwen3.5-35B-A3B-59d61f3 \
+      MODEL_ARTIFACT_LEDGER_FILE=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/model-artifacts.formal.sha256 \
+      MODEL_WEIGHT_LEDGER_FILE=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/model-weights.canonical.sha256 \
+      PG19_DATA=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/data/pg19/qcomem_pg19_train_smoke64.jsonl \
+      PG19_MANIFEST=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/data/pg19/qcomem_pg19_train_smoke64.manifest.json \
+      PG19_INPUT_MANIFEST=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/rr2-pg19-input-manifest.json \
+      PRIOR_CAPACITY_MANIFEST=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w/gpu/qcomem_qwen35_vllm_paged_multifork_resident_protocol_manifest.json \
+      FROZEN_QUERY_BANKS_INPUT=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/rr2-frozen-query-banks.json \
+      PROTOCOL_SOURCE_MANIFEST=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w/gpu/qcomem_qwen35_vllm_paged_multifork_resident_protocol_manifest.json \
+      ORACLE_SELECTION_INPUT=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/rr2-oracle-selection-plan.json \
+      PRIOR_FP32_CONTEXT_MANIFEST=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/prior-fp32-context-manifest.json \
+      REVIEW_RESPONSE_PLAN=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_rr2_formal_20260818w-inputs/review-experiment-response-plan.json \
+      RUN_DIR="$RUN_DIR" \
+      ENV_DIR=/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/envs/vllm-cu129-v1 \
+      MODEL_ID=Qwen/Qwen3.5-35B-A3B \
+      MODEL_REVISION=59d61f3ce65a6d9863b86d2e96597125219dc754 \
+      EXPECTED_CODE_LEDGER_SHA256="$EXPECTED_CODE_LEDGER_SHA256" \
+      EXPECTED_MODEL_MANIFEST_SHA256=72c9e06109702dbca958a6a528d6686b68d6b8e3376d116c0261b4c319e3da29 \
+      EXPECTED_MODEL_ARTIFACT_LEDGER_SHA256=c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb \
+      EXPECTED_MODEL_WEIGHT_LEDGER_SHA256=8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014 \
+      EXPECTED_PG19_SHA256=ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c \
+      EXPECTED_PG19_MANIFEST_SHA256=5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c \
+      EXPECTED_PG19_WINDOWS_SHA256=39bc36bb2eb04d51122e66caaebfa72367c02b43b073f072a2da240ed068c166 \
+      EXPECTED_PG19_INPUT_MANIFEST_SHA256=9ab6f7b2c2fc91c457f61d6b869660a97364cc76383d28b28071627d7141c16c \
+      EXPECTED_PRIOR_CAPACITY_MANIFEST_SHA256=975bc6a12f43447024b889889d4156ca71c2f89b68de6157ac609b4a9687e9c0 \
+      EXPECTED_FROZEN_QUERY_BANKS_INPUT_SHA256=400921d147bc840e9802950dc542b002080f3f274661efbd5b4354ec364da7db \
+      EXPECTED_ORACLE_SELECTION_INPUT_SHA256=fcfa8a61f231c7faa7284ff81d89952e8b311ca7f70f3a552f628b3268bad59f \
+      EXPECTED_PRIOR_FP32_CONTEXT_MANIFEST_SHA256=fa64f663bb74a190a0a5c0898fda2a55528171c77a91af2b1321c24a5f310a1d \
+      EXPECTED_REVIEW_RESPONSE_PLAN_SHA256=e2be05e198d6c86276f229d4e862c3579c65e311d07c219e9e9c792a390cbfbb \
+      EXPECTED_PROTOCOL_SOURCE_MANIFEST_SHA256=975bc6a12f43447024b889889d4156ca71c2f89b68de6157ac609b4a9687e9c0 \
+      EXPECTED_RELEASE_MANIFEST_SHA256="$EXPECTED_RELEASE_MANIFEST_SHA256" \
+      EXPECTED_ORACLE_SELECTION_PLAN_SHA256=26d472140170f12dd53897456b09d57f247808576dd1e576023c6f710d90003b \
+      EXPECTED_FROZEN_QUERY_BANKS_SHA256=abb2037cbc4a2d364432423f88e79d0ad36a78f4b4678a3b670ddc05231b88e9 \
+      EXPECTED_RUNNER_SHA256="$EXPECTED_RUNNER_SHA256" \
+      bash "$CODE_DIR/launch_qcomem_qwen35_forkaudit_review_revision_8gpu.sh"
+  jobType: PytorchJob
+  workerNum: 1
+  priority: 0
+  restartNum: 0
+  overuse: false
+  resources:
+    queueId: 408
+    cloudId: 6
+    clusterId: 53
+    resourcePackageId: 183
+  mountPath:
+    - /mnt/tidal-alsh-hilab/dataset/diandian

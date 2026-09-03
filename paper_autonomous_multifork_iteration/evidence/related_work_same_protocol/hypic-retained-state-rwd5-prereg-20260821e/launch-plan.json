@@ -1,0 +1,91 @@
+{
+  "schema": "hypic-rwd5-frozen-launch-plan-v5",
+  "freeze_id": "hypic-retained-state-rwd5-prereg-20260821e",
+  "status": "stopped_pending_fresh_independent_audit",
+  "gpu_submitted": false,
+  "supersedes": [
+    "hypic-retained-state-rwd5-prereg-20260821a",
+    "hypic-retained-state-rwd5-prereg-20260821b",
+    "hypic-retained-state-rwd5-prereg-20260821c",
+    "hypic-retained-state-rwd5-prereg-20260821d"
+  ],
+  "invalid_attempt": {
+    "trial_id": 1876986,
+    "completed_cells": 0,
+    "paper_evidence": false,
+    "receipt": "invalid-attempt-trial-1876986.json"
+  },
+  "retired_freeze": {
+    "freeze": "D",
+    "gpu_submitted": false,
+    "paper_evidence": false,
+    "receipt": "retired-freeze-d.json"
+  },
+  "official_repository": "https://github.com/redai-infra/HYPIC",
+  "official_commit": "98147c01909004e66d98bcb18b886927d41b0ee5",
+  "sglang_version": "0.5.14",
+  "model": "Qwen3.5-35B-A3B",
+  "tensor_parallel_size": 1,
+  "hardware": "8 distinct idle NVIDIA H20-3e GPUs; one frozen workload per GPU",
+  "frozen_data_sha256": "1553739496b3c209988de56a4ccf574d407379b6b7937ddfafacbe66925069fe",
+  "modes": ["prefix_cache", "transition_rope_recompute"],
+  "rank_count_per_mode": 8,
+  "total_gpu_cells": 16,
+  "explicitly_forbidden_gpu_arms": [
+    "full_recompute", "CoMem", "RR2", "GDN", "vLLM",
+    "SGLang cache-on/off controls", "Marconi", "Palu", "Hydragen"
+  ],
+  "readiness": {
+    "model_info_poll_attempts": 240,
+    "model_info_single_timeout_seconds": 3,
+    "model_info_poll_interval_seconds": 5,
+    "server_info_single_timeout_seconds": 3,
+    "server_info_poll_interval_seconds": 1,
+    "server_info_total_deadline_seconds": 300,
+    "server_receipt_server_info_timeout_seconds": 120,
+    "cell_identity": ["mode", "rank", "base_url", "server_info_endpoint", "server_pid"],
+    "attempt_closure": "attempt numbers are exactly 1..N, only the last is ready, and frozen 300/3/1 polling parameters replay",
+    "evidence": "one per-cell readiness JSON; server receipt and blind replay bind its canonical hash and exact cell identity",
+    "forbidden_substitute": "unobserved fixed sleep or cross-rank readiness receipt"
+  },
+  "failure_lifecycle": {
+    "shell": "set -Eeuo pipefail",
+    "traps": ["EXIT", "ERR", "INT", "TERM"],
+    "cleanup_sources": ["tracked server PIDs", "exact run-directory PID files"],
+    "cleanup_order": ["TERM process groups", "bounded kill-0 polling", "KILL survivors", "final wait/reap"],
+    "failure_terminal": "remove COMPLETED and write nonzero FAILED before bounded cleanup",
+    "success_terminal": "bounded cleanup completes before COMPLETED is created; traps then explicitly disarmed"
+  },
+  "external_freeze_authority": {
+    "manifest_relative_path": "SHA256SUMS",
+    "required_environment_variable": "EXPECTED_FREEZE_MANIFEST_SHA256",
+    "verification": "launcher compares the manifest to the externally audited SHA-256 and verifies every entry before output"
+  },
+  "remote_paths": {
+    "python": "/tmp/round25-hypic-env/venv/bin/python",
+    "official_repo": "/tmp/HYPIC-98147c0",
+    "instrumented_repo_must_be_absent": "/tmp/HYPIC-98147c0-rwd5-store-e",
+    "freeze_root": "/tmp/rwd5-hypic-store-freeze-e",
+    "code_dir": "/tmp/rwd5-hypic-store-freeze-e/code",
+    "model": "/tmp/Qwen3.5-35B-A3B-hypic-model-view",
+    "run_dir_must_be_absent": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/hypic-retained-state-rwd5-20260821e"
+  },
+  "launch_command_after_audit": "FREEZE_ROOT=/tmp/rwd5-hypic-store-freeze-e EXPECTED_FREEZE_MANIFEST_SHA256=<independently-audited-SHA256SUMS-sha256> bash /tmp/rwd5-hypic-store-freeze-e/code/launch_hypic_retained_state_bytes_8gpu.sh",
+  "prelaunch_requirements": [
+    "fresh independent audit clears this exact E identity",
+    "copy complete frozen E bundle byte-for-byte",
+    "supply externally recorded SHA-256 of SHA256SUMS",
+    "official repository full HEAD and clean status match",
+    "instrumented repository and E run directory do not exist",
+    "exactly eight distinct idle H20-3e GPUs are visible",
+    "42 focused RW-D5 tests pass"
+  ],
+  "acceptance": [
+    "16/16 raw cells complete",
+    "all 16 exact-cell server_info readiness receipts pass and bind into server receipts",
+    "actual scheduler-worker identity and front-end lineage close",
+    "all C byte, topology, authority, target, pre-allocation, and terminal gates pass",
+    "all-artifact terminal hash closure passes"
+  ],
+  "failure_policy": "fail closed; cleanup all servers; retain n/r and make no storage-ordering claim"
+}

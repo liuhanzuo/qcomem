@@ -1,0 +1,157 @@
+{
+  "reviewer_id": "R3-EXPERIMENT-REPO",
+  "round": 3,
+  "snapshot_sha256": "a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The narrowly stated observations are internally consistent: four ownership cells match on tokens, full logits, logical KV, and GDN digests; phase-aware storage predicates pass; eight selected attention rows fall below the stated FP32 tolerance; and nine injected faults reach their named gates. However, two decision-relevant gaps remain. First, the mutation study does not establish that ForkAudit catches failures missed by conventional token/logit checks. Second, the frozen package contains only RR2 aggregates and detached hashes, not the raw shards, oracle sidecars, mutation receipts, or exact RR2 execution source needed to replay the central evidence. The misleading description of the RR2 books as held out further weakens the validation interpretation.",
+    "presentation": "The paper is unusually clear about estimands, lifecycle phases, common-mode limitations, deterministic rather than stochastic counts, allocator versus process-memory denominators, and excluded claims. The 14-page PDF is visually polished and readable; Figures 1–3 and Tables 1–8 render cleanly. Claim boundaries remain consistent from the abstract through the conclusion.",
+    "contribution": "An executable ownership-and-denominator audit for hybrid KV/recurrent state is useful and reasonably distinct as an integration of prior block-sharing, metamorphic-testing, and memory-accounting ideas. Yet the evidence does not currently isolate the incremental detection value of the proposed gates, demonstrate transfer beyond one engineered runtime, or make the central RR2 audit independently executable from the submitted snapshot. This leaves significance closer to a careful single-case artifact than a broadly validated evaluation standard."
+  },
+  "paper_summary": "ForkAudit proposes an executable audit contract for forked inference in hybrid LLMs containing token-indexed attention KV and recurrent GDN state. A Qwen3.5-35B-A3B case study crosses full-copy versus shared-document KV with materialized versus borrowed-immutable GDN bases at N in {1,8,32}. It records ownership transitions, callable and position/mask contracts, exact cross-cell trajectories, selected dense-FP32 attention comparisons, targeted live mutants, and explicitly separated memory denominators. The paper deliberately disclaims scheduler, throughput, capacity, downstream-quality, multi-model, and completeness claims.",
+  "strongest_verified_contribution": "Within the frozen aggregate evidence, the clearest contribution is the phase-aware ownership result: all four KV-by-GDN setup cells preserve recorded token, full-logit, logical-KV, and final-GDN trajectories, while completed requests' 60 mutable GDN tensors are reported disjoint from the persistent base and peers, including the non-vacuous N=1 request-to-base check (PDF pp. 5–7, Table 3 and Section 5.1; claims C-RR2-FACT-01 and C-RR2-GDN-01; evidence E-RR2-OWNERSHIP-MUTANTS).",
+  "strengths": [
+    "The 2x2 KV-by-GDN factorial targets the actual heterogeneous-state ownership question instead of conflating KV sharing with recurrent-state setup (PDF pp. 3–6, Figure 1 and Sections 3–4).",
+    "The paper separates logical payload, allocated pages, PyTorch allocated/reserved counters, and unmeasured process/service capacity, and avoids turning the 12.33x controlled-pool ratio into a production-capacity claim (PDF pp. 5, 8, and 12; Tables 5–6).",
+    "Exactness checks cover full-vocabulary tensors before CPU copying as well as tokens, logical KV, and GDN state; the paper explicitly acknowledges that most underlying tensors are retained only as digests and runtime equality flags (PDF pp. 5–8 and 14).",
+    "The independent FP32 calculation addresses one important full-attention common-mode risk, and the observed relative-L2 values 0.001484–0.001743 are comfortably below 0.005 (PDF p. 7, Figure 2 and Section 5.2; claim C-RR2-ORACLE-01).",
+    "Limitations and negative evidence are reported unusually honestly, including the single-stream schedule, lack of stochastic replication, Torch GDN path, failed cross-backend gate, missing NVML/capacity measurements, and failed terminal package closure (PDF pp. 8–9 and 13)."
+  ],
+  "questions": [
+    "For each M1–M9 mutant, do token trajectories or full logits remain unchanged over the measured horizon? Which faults are uniquely detected by the proposed ownership/dispatch gates rather than by ordinary output regression?",
+    "Why are the RR2 raw shards, phase timelines, oracle sidecars, mutation receipts, and exact RR2 execution/aggregation source absent from this frozen submission when the Reproducibility Statement says the full bundle contains them?",
+    "What exact layer, generation round, arm, query, and selection rule defined each of the eight FP32 oracle rows, and where was that selection and the 0.005 threshold committed before candidate outputs were observed?",
+    "In what sense are the RR2 books held out when the calibration manifest and the primary static plan list the identical eight PG-19 source books?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R3ER-01",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "significance"
+      ],
+      "location": "PDF p. 1 lines 22–26, p. 7 Section 5.3 and Table 4, and p. 13 Appendix C/Table 7; claim C-RR2-MUT-01; rr2_formal_w/mutant-outcomes.json",
+      "claim_ids": [
+        "C-RR2-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "Table 4 and mutant-outcomes.json report one matched-clean pass and one intended-gate detection for each of nine hand-designed mutants. They do not report a detector-ablation matrix, whether tokens/full logits also change, or whether each proposed gate detects a fault that simpler output-only or existing runtime checks miss.",
+      "why_it_matters": "The central motivation is that matching outputs is insufficient and that the new audit contract adds decision-relevant detection. Merely injecting a fault designed for a named assertion and observing that assertion fire establishes wiring sensitivity, but not the incremental value or necessity of the audit.",
+      "required_fix": "For every mutant, report outcomes under token-only, full-logit, cross-arm, cross-N, existing runtime assertions, and each ForkAudit gate. Include output-preserving ownership/dispatch faults where appropriate, and explain which audit components uniquely detect which failures.",
+      "verification_test": "A preregistered detection matrix must be reproducible from raw receipts and must contain at least one nontrivial fault per central audit category for which conventional output checks pass while the intended ForkAudit gate fails, with matched-clean controls and no wrong-gate classifications.",
+      "evidence_needed": "Raw mutant and matched-clean trajectories plus detector-level outcomes; new stealth-mutant runs if existing mutants do not preserve observable outputs.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3ER-02",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness",
+        "experimental_rigor"
+      ],
+      "location": "PDF p. 9 Reproducibility Statement lines 443–455 and pp. 13–14 Appendix E/Table 8; snapshot directories rr2_formal_w/ and supplement_anonymous/code/; claims C-RR2-FACT-01, C-RR2-GDN-01, C-RR2-ORACLE-01, and C-RR2-MUT-01",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-GDN-01",
+        "C-RR2-ORACLE-01",
+        "C-RR2-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "The frozen rr2_formal_w directory contains a 202,978-byte aggregate, a mutant extract, model/run receipts, and hashes for 536 raw artifacts and eight approximately 62 MB shards, but none of those raw shards, phase timelines, oracle binaries, or mutation receipts. Searches of the distributed 18-file source closure find none of the RR2 policy strings, mutant gate IDs, or oracle-sidecar implementation. Thus the reviewer can inspect conclusions and hashes but cannot replay the central RR2 claims.",
+      "why_it_matters": "The primary contribution is explicitly an executable, auditable evidence contract. Requiring trust in a detached aggregate for the paper's strongest ownership, oracle, and mutation claims undercuts both reproducibility and the claimed methodological standard.",
+      "required_fix": "Include an anonymous, hash-bound RR2 bundle containing the exact executed dependency closure, eight raw shards, phase timelines, oracle sidecars, mutation receipts, protocol/configuration, and a one-command offline replay that regenerates the aggregate and manuscript tables. Clearly distinguish this RR2 bundle from the earlier capacity cohort currently in supplement_anonymous/raw_primary.",
+      "verification_test": "Every path in all-raw-artifacts.sha256 and detached-receipt-manifest.json resolves locally and matches its digest; an offline clean-environment command reconstructs fork-audit-summary.json, Table 4, Table 5, and Figure 2 without accessing private paths.",
+      "evidence_needed": "Existing RR2 raw bytes and exact executed RR2 source/configuration; no new GPU experiment is required if those artifacts are available.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3ER-03",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims",
+        "clarity"
+      ],
+      "location": "PDF p. 1 Abstract lines 15–23, p. 2 contribution bullet lines 64–65, p. 4 Section 4.1/Table 2 lines 212–230, and p. 7 Section 5.2; forkaudit_fp32_calibration_manifest.json fields rr2_disjointness_from_prior_context and diagnostics; supplement_anonymous/raw_primary/static-dry-run.json",
+      "claim_ids": [
+        "C-RR2-FACT-01",
+        "C-RR2-ORACLE-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The calibration diagnostics and the RR2/static plan use the same eight source books: train/10.txt, train/10005.txt, train/10008.txt, train/10010.txt, train/10016.txt, train/10017.txt, train/10034.txt, and train/1004.txt. The calibration manifest establishes coordinate disjointness only because prior diagnostics used 1,025-token documents while RR2 used 4,095 tokens; it explicitly lacks prior document-start positions. Therefore the repeated description of eight held-out books is not supported.",
+      "why_it_matters": "Held-out language implies book-level separation from development or calibration. Reusing the same books creates avoidable selection/tuning ambiguity for the numerical-oracle evidence and overstates validation independence, even though the paper's correctness claims are not downstream-quality claims.",
+      "required_fix": "Either replace held-out with a precise description such as pre-specified longer-context windows from the same eight books and narrow the independence claim, or execute the frozen protocol on genuinely disjoint books selected and committed before inspecting results.",
+      "verification_test": "For a true held-out claim, the RR2 source-object set must be disjoint from every development/calibration source-object set and bound by a dated pre-result commitment. For a writing-only correction, all abstract, contribution, figure, and results references must consistently avoid held-out terminology.",
+      "evidence_needed": "Existing manifests for a claim-narrowing fix; new disjoint-book runs for retaining the held-out claim.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3ER-04",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF p. 5 Section 4.2/Table 3 lines 241–262, p. 7 Section 5.2 lines 347–356, and p. 8 Evidence limitations lines 423–431; claim C-RR2-ORACLE-01; rr2_formal_w/forkaudit-summary.json",
+      "claim_ids": [
+        "C-RR2-ORACLE-01"
+      ],
+      "evidence_ids": [
+        "E-RR2-OWNERSHIP-MUTANTS"
+      ],
+      "observed_evidence": "The manuscript reports one selected attention row per book and the aggregate exposes only eight relative-L2 values. Neither gives the actual layer/round coordinates, sampling rule, or a verifiable pre-result commitment. Coverage is one N=1 cell per rank rather than a stratified sample across ten attention layers, lifecycle steps, or fan-outs.",
+      "why_it_matters": "The oracle convincingly checks those eight rows but provides little information about numerical variation across layers and phases. Without a documented selection rule, readers cannot assess representativeness or exclude favorable row selection.",
+      "required_fix": "Publish the exact row coordinates and preselection rule. Prefer a preregistered stratified oracle sample spanning full-attention layers and query/decode phases; otherwise further narrow the interpretation to eight fixed spot checks.",
+      "verification_test": "The published coordinates must match raw oracle receipts and a pre-result protocol digest; any broader oracle claim must be supported by stratified rows whose error distribution is reported without post hoc filtering.",
+      "evidence_needed": "Existing raw oracle receipts and protocol commitment for documentation; new oracle sidecars for broader coverage.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No decision-relevant ethics concern is apparent. The study uses PG-19 training text for systems-level execution checks, makes no human-subject or downstream-safety claim, and includes a proportionate ethics statement on deployment-scale externalities.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. The subagent was given only frozen snapshot a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a, the frozen rubric/schema/calibration material, and the independent-review protocol; it did not inspect prior reviews, author responses, hidden plans, target scores, or repository paths outside the authorized snapshot.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A complete anonymous RR2 package whose raw shards, sidecars, exact executed source, and one-command replay independently regenerate all central results.",
+    "A detector-ablation study demonstrating that ForkAudit catches output-preserving ownership or dispatch faults missed by token/logit and existing runtime checks.",
+    "A genuinely held-out, preregistered validation set or fully corrected language describing same-book pre-specified windows.",
+    "Broader preregistered independent-oracle coverage across attention layers and query/decode phases, plus an independent recurrent-state oracle or second hybrid implementation for an overall score above 6.",
+    "Transfer evidence on another hybrid model/runtime or production-like lifecycle showing that the contract reveals a real issue or materially improves audit coverage."
+  ],
+  "evidence_that_would_lower_score": [
+    "Raw RR2 replay that fails to reproduce the aggregate, storage predicates, oracle values, or intended-gate mutation outcomes.",
+    "Evidence that the oracle rows, threshold, mutant set, or workload windows were selected after inspecting candidate results without disclosure.",
+    "Evidence that the four factorial cells do not use equivalent inputs, schedules, and callable contracts apart from the declared ownership factors.",
+    "Any positive throughput, scheduler-capacity, downstream-quality, or cross-model generalization claim added without corresponding measurements."
+  ],
+  "review_limitations": [
+    "The review was restricted to the frozen snapshot and did not use the internet or independently verify literature beyond the provided citation lock and calibration guide.",
+    "The snapshot omits the raw RR2 shards, oracle binaries, phase timelines, mutation receipts, and exact RR2 execution source, so central RR2 claims could be checked only against aggregates and detached hashes.",
+    "Model weights and PG-19 text are absent, and no H20 GPU rerun or independent numerical recomputation was possible.",
+    "Prior reviews, response letters, author plans, revision history, state files, and target scores were intentionally unavailable."
+  ]
+}

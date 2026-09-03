@@ -1,0 +1,153 @@
+{
+  "reviewer_id": "R23-TERRA-PDF-A",
+  "round": 23,
+  "snapshot_sha256": "bb4f8371b83d07fa1ffc0cfb6ea4c5648d82c86c9e152099053cac70aba54a62",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 3,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "The paper states a precise, appropriately conditional claim and supplies a coherent ownership contract, 96-cell relational factorial, selected independent FP32 attention/GDN checks, and targeted live faults (Sections 3-5; Figure 3; Tables 5, 7, and 18). However, the evidence remains conditional on honest capture and one frozen sequential implementation; most values are receipt digests, the numerical checks begin from captured internal inputs, and compiled dispatch is explicitly only partial (pp. 4, 8-9, 14, 21). These are substantive limitations, but they do not contradict the carefully narrowed central claim.",
+    "presentation": "The manuscript is polished, well structured, visually legible, and unusually candid about what each cohort does not establish (Figure 1; Tables 4-5; Sections 6-7). It is nevertheless very dense: many evidence classes, cohorts, abbreviations, and repeated caveats make the decision-critical distinction between complete receipt replay, selected numerical validation, and context-only experiments difficult to absorb quickly.",
+    "contribution": "ForkAudit's useful contribution is the integrated, phase-aware receipt contract for heterogeneous immutable KV and mutable recurrent state, including storage-range, lifecycle, dispatch, semantic, and fault receipts. The careful separation of ownership witnesses from memory denominators and relational equality is valuable (Sections 3-4; Tables 5, 14-15). Its demonstrated significance is limited by validation on one model/runtime/hardware family and a sequential execution schedule rather than a broadly representative serving setting."
+  },
+  "paper_summary": "This paper introduces ForkAudit, an audit contract for prefix-forked hybrid LLM inference where token-indexed KV and mutable GDN state have different ownership and lifetime rules. It evaluates a 2x2 full-copy/shared-document KV by materialized/borrowed-GDN setup factorial on Qwen3.5-35B-A3B, checks lifecycle/storage receipts and canonical semantic digests across N={1,8,32}, adds selected captured-input numerical oracles and nine positive-control faults, and reports explicitly scoped allocator and deployment-context results. The central conclusion is conditional receipt-level ownership evidence for one frozen sequential stack, not an end-to-end or production-serving claim.",
+  "strongest_verified_contribution": "The strongest supported contribution is the explicit, replayable separation of immutable document KV, private append pages, borrowed recurrent bases, and post-transition private recurrent state, with all four ownership cells reporting matching registered observables and phase-specific disjointness witnesses (Sections 3-5; Figure 3; Table 5).",
+  "strengths": [
+    "The claim boundary is unusually disciplined: relational equality, selected independent checks, positive controls, and deployment context are kept distinct rather than pooled (pp. 7-9; Table 4).",
+    "The ownership contract is concrete and technically useful, including tail COW, first-transition rebinding, pointer-free interval checks, and dispatch receipts (Sections 3-4; Appendix D, pp. 14-15).",
+    "The experimental design contains meaningful controls: four ownership cells, three fan-outs, selected dense-FP32/NumPy checks, and predeclared fault gates (Figure 3; Tables 7 and 18).",
+    "Memory results use named denominators and avoid turning allocator measurements into unsupported capacity claims (Section 4.4; Tables 6 and 15).",
+    "The manuscript is anonymous, readable, and includes a reproducibility statement and an ethics statement (Sections 7 and Appendix A)."
+  ],
+  "questions": [
+    "Can the authors show that a separately produced run, ideally from an independent implementation or verifier, recaptures the key ownership predicates and semantic outcomes rather than only replaying producer-generated receipts?",
+    "What changes are required to bind each attention call to a compiled binary and autotuning decision, and is there a practical path to making the currently partial dispatch-provenance target complete?",
+    "How does the contract behave under actual concurrent CUDA kernels, ragged/continuous batching, eviction, and scheduler-driven cancellation, rather than deterministic one-stream request-step interleaving?",
+    "Why were eight attention rows and four GDN transitions selected, and can the paper provide a held-out or coverage-oriented fault/operator study beyond the predeclared positive controls?"
+  ],
+  "issues": [
+    {
+      "issue_id": "I1-independent-evidence-ceiling",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Sections 3-5 and 6-7 (pp. 4-9); Table 5 (p. 14); Appendix I (p. 21)",
+      "claim_ids": [
+        "C1 receipt-level ownership evidence",
+        "C2 full contract-target status"
+      ],
+      "evidence_ids": [
+        "E1 Table 5",
+        "E2 Figure 3",
+        "E3 Table 18"
+      ],
+      "observed_evidence": "The paper explicitly conditions full receipt status on honest capture, stores most runtime content as digests, uses selected operator oracles beginning from captured inputs, and does not independently recapture producer execution. Dispatch provenance also lacks a per-call compiled-binary/autotuning binding.",
+      "why_it_matters": "Coherent replay of a producer's receipts is weaker than independently reproducing the state and execution. The current evidence strongly supports internal consistency of the registered case, but cannot rule out shared upstream capture or implementation errors and limits confidence in the contract's general practical assurance.",
+      "required_fix": "Add an independently produced recapture or independently implemented validation of the central ownership predicates and end-to-end outcomes for at least one representative configuration; clearly distinguish this from receipt replay. Where feasible, bind dispatch to binary/autotuning provenance.",
+      "verification_test": "A blinded external validator should generate fresh receipts from the frozen configuration, reproduce the storage/lifecycle predicates and semantic outcomes, and detect a held-out set of faults not used to design the gates.",
+      "evidence_needed": "Independent-run artifacts, validation protocol, raw or attested bindings sufficient for recapture, and results for clean and held-out-fault cases.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I2-serving-generalization",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Sections 4.1-4.3 and 5.5-5.6 (pp. 5-8); Sections 6 and Appendix I (pp. 9, 21); Tables 12 and 17 (pp. 19-20)",
+      "claim_ids": [
+        "C3 applicability to hybrid LLM fork auditing"
+      ],
+      "evidence_ids": [
+        "E4 Table 3",
+        "E5 Table 12",
+        "E6 Table 17"
+      ],
+      "observed_evidence": "The primary audit executes sequential round-major steps on one CUDA stream. The scheduler extension is deterministic request-step interleaving, and the vLLM/SGLang results are cache-off/on context only, not ownership-audit evidence under production scheduling.",
+      "why_it_matters": "The motivating use cases are serving workloads with concurrent kernels, continuous/ragged batching, scheduling, eviction, and cancellation. The paper carefully disclaims those claims, but this leaves the demonstrated usefulness of the method narrow.",
+      "required_fix": "Validate the contract under at least one realistic concurrent serving schedule with multiple request lengths and cancellation/eviction behavior, while retaining a matched ownership oracle.",
+      "verification_test": "Run a preregistered concurrent or continuous-batching suite with independent schedule perturbations and show storage/semantic predicates hold and targeted schedule-related faults fail their intended gates.",
+      "evidence_needed": "Per-schedule receipts, concurrency configuration, end-to-end semantic comparisons, allocator/process accounting, and fault outcomes.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I3-evidence-narrative-density",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Introduction and Sections 4-7 (pp. 1-9); Tables 4-5 (pp. 13-14)",
+      "claim_ids": [
+        "C4 reader-evaluable assurance levels"
+      ],
+      "evidence_ids": [
+        "E7 Figure 1",
+        "E8 Table 4",
+        "E9 Table 5"
+      ],
+      "observed_evidence": "The paper has many carefully separated cohorts and caveats, but the reader must synthesize scattered statements to determine which results are complete contract witnesses, selected support, or non-pooled context.",
+      "why_it_matters": "This distinction is central to the paper's credibility and should be immediately legible to a systems reviewer.",
+      "required_fix": "Add a compact main-text assurance-level summary mapping every headline result to its evidence type, scope, and unsupported extensions; reduce repeated prose caveats accordingly.",
+      "verification_test": "A reader should be able to identify, from one table/figure, the evidence status and permitted inference for every headline numerical claim.",
+      "evidence_needed": "A revised assurance matrix and streamlined main-text cross-references.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I4-llm-use-disclosure",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "citation_integrity"
+      ],
+      "location": "Reproducibility Statement (p. 9) and Ethics Statement (p. 12)",
+      "claim_ids": [],
+      "evidence_ids": [
+        "E10 Sections 7 and Appendix A"
+      ],
+      "observed_evidence": "The PDF contains reproducibility and ethics statements but no explicit disclosure of whether LLM tools were used in manuscript, code, experiment, or artifact preparation.",
+      "why_it_matters": "The supplied ICLR rubric requests a significant-LLM-use disclosure, and a short statement would make the submission record complete.",
+      "required_fix": "Add an explicit LLM-use disclosure, including a clear no-use statement if applicable.",
+      "verification_test": "The revised paper contains a concise, unambiguous disclosure statement.",
+      "evidence_needed": "Author disclosure.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics violation is apparent from the PDF. The paper uses PG-19 text and system measurements, and Appendix A appropriately notes that efficiency can affect deployment scale while not claiming safety, privacy, or downstream social evaluation.",
+  "llm_usage_disclosure": "This internal review was generated with LLM assistance from the frozen PDF-only snapshot; no repository, artifacts, prior reviews, or external sources were inspected.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A successful independent fresh recapture or independently implemented validation of the central ownership and semantic predicates.",
+    "Concurrent/continuous-batching serving evidence with schedule-relevant positive and held-out faults.",
+    "A per-call compiled-dispatch/autotuning provenance binding or a clear technical demonstration that it is unnecessary for the stated guarantee.",
+    "A concise assurance-level summary that makes the contract evidence and context-only results immediately separable."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any failed fresh replay or independent recapture of the claimed range, tail-COW, or semantic-equality predicates.",
+    "A mismatch in full logits/state outside the selected oracle rows, or evidence that the stored digests omit a relevant mutable state component.",
+    "A concurrency, cancellation, or compiled-dispatch failure that invalidates the paper's stated scope or contradicts the claimed lifecycle contract.",
+    "Evidence that the preregistration or mutation gates were changed after observing candidate outcomes."
+  ],
+  "review_limitations": [
+    "This assessment was intentionally limited to the supplied frozen PDF, rubric, manifest, and schema; it did not inspect the referenced artifact package or execute any replay.",
+    "Consequently, reported experimental outcomes are evaluated for methodological adequacy and claim alignment, not independently verified."
+  ]
+}
+

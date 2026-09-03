@@ -1,0 +1,72 @@
+{
+  "schema_version": "forkaudit-r39-compiled-dispatch-preregistration-v2",
+  "version": "20260826g",
+  "purpose": "Close the per-call dispatch evidence gap for the actual frozen R29 routes after 20260826e failed closed at a non-executed manual-GDN hook, while making detached package tests self-contained; no 20260826e scientific aggregate exists.",
+  "packaging_correction_from_20260826f": {
+    "scientific_protocol_changed": false,
+    "reason": "The f archive omitted three immutable R29 fixtures required by its formal-binding unit tests.",
+    "fixture_ledger": "r29-fixtures.sha256",
+    "detached_acceptance": "A fresh extraction must verify both ledgers and pass all seven tests without reading files outside the extracted tree."
+  },
+  "correction_from_20260826e": {
+    "non_executed_target_removed": "qcomem_qwen35_gdn_functional.dispatch_qwen35_decoder_layer",
+    "actual_gdn_entrypoint": "transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeGatedDeltaNet.forward",
+    "actual_selected_gdn_kernel": "transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.torch_chunk_gated_delta_rule",
+    "base_qwen_non_alias_note": "The frozen MoE modeling file defines its own GDN class and chunk rule; the base qwen3_5 class/chunk function are different non-executed callables.",
+    "actual_state_adapter": "qcomem_qwen35_native_cache functional conv/recurrent state rebinding",
+    "count_correction": "R29 rebuilds one document cache inside each of six run_pair calls: 6*30=180 document-prefill GDN calls plus 12*30=360 request-cell GDN calls, total 540. The earlier 390 assumed only one prefill and is rejected."
+  },
+  "scope": {
+    "attention_entrypoint": "vllm.v1.attention.ops.triton_unified_attention.unified_attention",
+    "attention_expected_compiled_launches_per_call": 1,
+    "required_selected_artifact_files": [
+      ".json",
+      ".ptx",
+      ".cubin"
+    ],
+    "required_compile_configuration": [
+      "num_warps",
+      "num_ctas",
+      "num_stages"
+    ],
+    "gdn_route": "native Transformers Qwen3.5 eager torch fallback plus qcomem functional cache rebind; no compiled GDN artifact is claimed",
+    "hook_ordering": "functional stack, qcomem native-cache module, and both Transformers Qwen3.5 base/MoE modeling modules must all be absent before hook installation; patching must precede entrypoint execution and model-instance callable binding"
+  },
+  "formal_call_closure": {
+    "attention_calls": 120,
+    "document_prefill_gdn": {
+      "pair_count": 6,
+      "calls_per_pair": 30,
+      "expected_calls": 180,
+      "sequence_length": 4033,
+      "cache_has_previous_state": false
+    },
+    "request_cell_gdn": {
+      "cell_count": 12,
+      "calls_per_cell": 30,
+      "expected_calls": 360,
+      "sequence_length": 16,
+      "cache_has_previous_state": true
+    },
+    "expected_gdn_calls": 540,
+    "linear_layer_order": "all indices 0..39 except 3,7,...,39, repeated exactly once per prefill/cell phase"
+  },
+  "success_criterion": "The valid frozen R29 execution closes exactly over 120 intercepted attention calls, 180 document-prefill GDN calls, and 360 request-cell GDN calls in their frozen phase/layer order; every attention call maps to exactly one fully hashed Triton cache artifact/configuration; every GDN call observes exactly one selected torch_chunk_gated_delta_rule invocation and exactly one qcomem conv plus recurrent functional state rebind; detached replay and all bound controls reject tampering/substitution.",
+  "negative_controls": [
+    "receipt compile-config tamper",
+    "receipt artifact-id tamper",
+    "missing required PTX artifact",
+    "extra unreceipted artifact",
+    "selected cubin byte substitution",
+    "Transformers selected-GDN-source byte substitution",
+    "qcomem cache-rebind-source byte substitution",
+    "one omitted attention call rejected by formal exact closure",
+    "one omitted GDN call rejected by total and phase exact closure"
+  ],
+  "out_of_scope": [
+    "compiled dispatch for the eager Transformers GDN path or underlying ATen/CUDA operators",
+    "runtime attestation or malicious-producer resistance",
+    "cross-model, cross-runtime, cross-hardware, or cross-input generality",
+    "QS resource creation, stopping, eviction, or deletion"
+  ]
+}

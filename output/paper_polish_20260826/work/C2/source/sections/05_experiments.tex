@@ -1,0 +1,240 @@
+\section{Results}
+\label{sec:experiments}
+
+The results are organised by the three estimands of Table~\ref{tab:claim-map}
+and are never pooled across them: the read-depth \emph{direction}
+(Section~\ref{sec:readdepth}), the depth \emph{attribution}
+(Section~\ref{sec:attribution}), and the \emph{serving} account
+(Section~\ref{sec:serving}).
+
+\subsection{Direction estimand: the cached read-out is not exact}
+\label{sec:readdepth}
+
+Under the same retrieved chunks, reading from cached $j{=}12$ states is less
+accurate than re-forwarding those chunks from $j{=}0$.  This qa1 intervention is
+the direct depth test, and Table~\ref{tab:readdepth-main} is its single canonical
+view: the mnt160 context sweep, the second registered cap (mnt512), and the
+pairing-free floor for the decision cell in one table.  The load-bearing result is
+the direction $j{=}0{>}j{=}12$ at both registered caps, and the two cap-specific
+estimates are not a single interval.  Every cell is computed on the
+content-hash-verified paired subset --- the two arms share all $100$ contexts with
+no orphaned, duplicated, or question-mismatched context
+(Appendix~\ref{app:pairing-provenance}) --- and the recompute reproduces each
+published value exactly.  The direction holds in every displayed convention cell
+and across the overlapping half-split audit, which is resampling stability, not
+independent replication; the full six-cell convention matrix, with the
+missing-excluded rows and the answer-anchored null cell, is preserved in Appendix
+Table~\ref{tab:readdepth-decisive}.
+
+Three caveats bound how much of this may be reused, and all three are kept
+rather than resolved.  First, generation-cap truncation does not explain the
+direction --- the better readout is cut more often, so truncation would compress
+rather than create the gap --- but the effect \emph{size} is
+convention-dependent, both endpoints of the conditional range use the stripped
+reader, and a wider independent strip rule can reverse the sign, so no
+convention-independent magnitude is load-bearing.  Second, the $+27.0$\,pp 4k
+value is a \emph{selected magnitude} rather than a pre-specified effect size: the
+preregistered anchor moved from 1k to 4k before the decision cell was inspected,
+and 4k is the largest significant gap among the valid displayed 2k/4k/8k cells.
+Third, the gap is not monotone in context length (Appendix
+Figure~\ref{fig:readdepth}), and the answer-anchored sensitivity preserves the
+sign on the same samples while remaining underpowered at the longer cap.  The
+supporting diagnostics (Appendix Tables~\ref{tab:invariance-diagnostics}
+and~\ref{tab:prereg-revisions}) sharpen but do not change the pinned direction
+and pair.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llccccl@{}}
+\toprule
+\textbf{root / cell} & \textbf{reader} & $j{=}12$ & $j{=}0$ &
+\textbf{re-fwd.} & $\Delta_{j0{-}j12}$ & \textbf{exact $p$ ($b/c$)} \\
+\midrule
+mnt160, 0k control & pinned & 96\% & 98\% & 98\% & $+2$\,pp & $0.50$ ($0/2$) \\
+mnt160, 1k & pinned & 76\% & 84\% & 84\% & $+8$\,pp & $0.115$ ($6/14$) \\
+mnt160, 2k & pinned & 62\% & 77\% & 81\% & $+15$\,pp & $5.9\times10^{-3}$ ($6/21$) \\
+mnt160, 4k \textbf{(decision)} & pinned & 48\% & 75\% & 73\% & $+27$\,pp & $4.6\times10^{-7}$ ($2/29$) \\
+mnt160, 4k & stripped & 40\% & 75\% & 73\% & $+35$\,pp & $7.9\times10^{-8}$ ($5/40$) \\
+mnt160, 8k & pinned & 57\% & 75\% & 79\% & $+18$\,pp & $5.3\times10^{-4}$ ($4/22$) \\
+\midrule
+mnt512, 4k \textbf{(decision)} & pinned & 52\% & 76\% & --- & $+24$\,pp & $8.4\times10^{-6}$ ($3/27$) \\
+mnt512, 4k & stripped & 57\% & 80\% & --- & $+23$\,pp & $1.17\times10^{-4}$ ($6/29$) \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Same decision cell with no pairing assumption (two independent binomial arms)}} \\
+mnt160, 4k (decision) & pinned & 48\% & 75\% & --- & $+27$\,pp &
+$8.7\times10^{-5}$ ($z{=}3.92$) \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Canonical matched read-depth gap: one view of the decisive
+cells.}  qa1, oracle selector, $k{=}12$, frozen Qwen3-8B, $n{=}100$ per
+cell/arm; $0\,k$ is a no-distractor empty-context control.  All cells are
+computed on the \texttt{sample\_id} content-hash-verified pairing subset
+($100/100$ contexts shared per cell, no mismatched or orphaned context;
+Appendix~\ref{app:pairing-provenance}), and every recomputed value matches the
+published one.  Exact McNemar $p$ is a deterministic function of $(b,c)$, so the
+printed $p$ and $b/c$ are mutually consistent.  The two \textbf{decision} rows
+are load-bearing; their exact conditional paired 95\% CIs are
+$[+17.7,+30.5]$\,pp (mnt160) and $[+14.1,+28.7]$\,pp (mnt512), both excluding
+zero (Appendix~\ref{app:paired-cis}).  The last row re-estimates that cell with
+\emph{no} pairing assumption (pooled $z{=}3.924$; square-and-add interval at zero
+pairing correlation $[+13.6,+39.1]$\,pp): the paired test is the efficient
+estimator, the unpaired result the assumption-free bound, and both exclude zero.
+\emph{re-fwd.}\ is the authors' full-depth re-forward without retrieval,
+\emph{not} an implementation of the published KV-Direct method (Qasim et al.,
+2026); mnt160 and mnt512 reuse the same 100 samples at caps 160 and 512 and are
+not independent replications.  Blank cells, the convention matrix and the
+answer-anchored null are in Appendix~\ref{app:secondary}.}
+\label{tab:readdepth-main}
+\end{table}
+
+\paragraph{Depth-partition curve.}
+A preregistered depth sweep provides a complete curve of cached depth versus
+accuracy under the pinned reader (Appendix
+Table~\ref{tab:depthcurve}, Appendix Figure~\ref{fig:depthcurve}).  Accuracy follows an overall downward trend in cached
+depth, and, pointwise without multiplicity correction, every tested point from
+$j{=}2$ onward is a significant paired loss against $j{=}0$ on the same samples
+(we claim no strictly monotone curve and run no ordered-trend test).  The 16k
+\texttt{dense} and \texttt{full-depth re-forward (no retrieval)} baselines show no
+significant difference from $j{=}0$ at $n{=}100$; this does not establish
+equivalence but is consistent with a depth-carried read-out cost within fixed
+retrieval.  The system benefit is the fixed-$k$ short read, not depth: the same
+runs produce the quality and the wall-clock numbers on matched operation points,
+and that run-level wall clock does not support a \emph{time} saving from depth.
+Per-depth memory peaks were not recorded (Appendix~\ref{app:depthcurve-cost}); the
+separate E1 check measures a 0.3\,GB read-length-scoped depth difference at 128k
+but yields neither a memory curve nor an end-to-end saving.
+
+\subsection{Attribution estimand: five-arm depth decomposition}
+\label{sec:attribution}
+
+Table~\ref{tab:e2-decomposition} freezes both write-position factors while
+varying depth.  Its primary contrast has a single change object: between arm E and
+matched arm A we hold the selector index (the same BM25 chunks in the same order),
+the relocation rule, the scorer, and the scored items --- the
+content-hash-verified paired subset --- fixed, and vary only the cache depth at
+which the read pack is materialized, $j{=}0$ raw re-forward versus $j{=}12$
+stored-residual re-forward.  Chunk-local write independence and position
+relocation are inherited from the deployed arms and held constant, so they are not
+the change object.  E is lower than A by 0.28 at 4k ($p=3\times10^{-5}$) and 0.36
+at 16k: depth itself costs a significant increment even when both encoding factors
+are frozen.
+
+The secondary controls localize that result, and one of them is a bounded null
+rather than a zero.  Relocation shows no discordant observations on the qa1
+endpoint: the paired D--R and C--E contrasts are both $0/100$ discordant, giving
+an exact one-sided 95\% upper bound of 2.95\% ($n{=}100$) on the endpoint
+discordance rate, so an endpoint effect up to roughly 3pp is not excluded.  This
+is a bounded endpoint null at $n{=}100$, not a measured zero effect and not a
+computational identity: at the generation layer E and C are distinguishable ---
+their raw outputs differ on 66/100 items at 4k and 59/100 at 16k (D vs R: 65/100
+and 72/100) --- and the $0/100$ agreement appears only after the scorer collapses
+those differences onto a label.  The null we claim is exactly this
+resolver-resolution statement, not that the ablation does nothing.  A is best at
+both lengths and the depth-varying arm captures most of the fidelity loss, but the
+depth loss is an arithmetic mirror of the A-vs-C contrast (same discordant cells,
+signs reversed) that the endpoint null forces: arm E serves identification, not a
+fresh effect estimate.  These runs use different samples and configuration from
+the pinned $+27$\,pp cell, so their magnitudes are a mechanism decomposition, not
+replacements for that result.
+
+\paragraph{The residual factor we do not control.}
+Freezing encoding and relocation still leaves one difference between A and E that
+the deck cannot remove: the two arms differ in what their \emph{lower} band
+attended to.  A's bottom layers see only the selected pack, whereas E's stored
+$h_{12}$ was written over the contiguous document region, so the lower-band
+context set is a third residual factor.  E--A therefore varies depth in the
+registered computation graph but is not a fully deconfounded causal contrast.
+The registered bound on that class of retrieval-side difference is the 16k
+\texttt{dense}/re-forward controls, within $6$\,pp of $j{=}0$ (Appendix
+Table~\ref{tab:depthcurve}) and well below the $28$\,pp E--A effect at 4k, so a
+residual context-set effect of that size cannot account for the attribution.  A
+confound-free arm that rewrites A's lower band over the same region is a forward
+pass we have not run.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}l*{5}{>{\centering\arraybackslash}X}cc@{}}
+\toprule
+\textbf{ctx} & \textbf{A: $j0$} & \textbf{D: deployed} &
+\textbf{R: reloc. only} & \textbf{C: chunk-indep.} &
+\textbf{E: depth-varying} & \textbf{$E-A$} & \textbf{exact $p$} \\
+\midrule
+4k  & .59 [.49,.68] & .16 [.10,.24] & .16 [.10,.24] & .31 [.23,.41] & .31 [.23,.41] & $-.28$ & $3\times10^{-5}$ \\
+16k & .52 [.42,.62] & .14 [.09,.22] & .14 [.09,.22] & .16 [.10,.24] & .16 [.10,.24] & $-.36$ & $<10^{-16}$ \\
+\bottomrule
+\end{tabularx}
+\caption{\textbf{E2 five-arm depth-attribution decomposition at fixed
+$j=12$.}  Accuracy with 95\% Wilson intervals, $n=100$ per length/arm, scored by
+the official \texttt{babilong.metrics.compare\_answers}; arms A/D/R/C/E are
+defined in Section~\ref{sec:protocol}.  Per arm the five-stage graph
+\textsc{write}$\to$\textsc{select}$\to$\textsc{reloc}$\to$\textsc{forward}$\to$\textsc{score}
+uses cache depth $j$ (stored $h_{12}$ residual versus raw re-forward) as its
+registered change object relative to A, with selector index, relocation rule, scorer,
+and paired inputs frozen (Appendix~\ref{app:pairing-provenance}).  The uncontrolled
+lower-band context set remains a stated attribution boundary rather than an eliminated
+factor.  The primary E--A test is
+paired exact McNemar.  For D--R and C--E, $b{=}0,c{=}0$ and hence
+\emph{discordant}${=}0$ at both lengths --- an endpoint result, not an identity of
+the forward computations (E--C raw generations differ on 66/100 and 59/100
+items).  D--C is $p=2.7\times10^{-4}$ at 4k and $p=0.77441$ at 16k; code
+snapshots and cross-trial provenance are in Appendix~\ref{app:repro}.  The
+16k E--A test serialized as $0.0$ at double precision and is reported as
+$<10^{-16}$: a finite-precision output, not a mathematical zero.}
+\label{tab:e2-decomposition}
+\end{table}
+
+\subsection{Serving estimand: what the fixed read costs and buys}
+\label{sec:serving}
+
+Across the separate \texttt{niah\_single} serving sweep, fixed-read CoMem retains
+perfect accuracy, whereas the full-context baseline's longest point was run
+\emph{outside} this Qwen3 checkpoint's enabled positional regime; that point is
+greyed and annotated in Appendix Figure~\ref{fig:system-tradeoff} rather than
+treated as a comparison, so its 128k cliff is a positional-regime artifact, not
+evidence of systems-level full-attention collapse.  At the longest context CoMem
+uses $3.9\times$ less GPU memory and its registered per-query read remains
+approximately length-invariant, while full attention stays feasible below the
+card's 97.8\,GB capacity rather than failing out of memory.  This memory
+contrast is \emph{read/prefill-only} --- decode rebuilds the upper pack at each
+token, so it is not an end-to-end win, and a matched $j{=}0$ short read
+(Section~\ref{sec:attribution}) delivers the same operating point.  The recorded
+read/prefill endpoints are tabulated in Appendix Table~\ref{tab:factorized}
+rather than plotted, because three endpoints are not a sweep; that table also
+prevents this comparison from being misread as a depth-cache ablation, since full
+context versus CoMem changes both selection and representation.  Retrieval keeps
+the read in-window; it is a whole-system retrieval comparison, not a depth
+saving.
+
+The matched E1 check instead holds the selected 6.7k-token read fixed: its
+median-of-three peaks are 18.2\,GB at $j=0$ and 17.9\,GB at $j=12$, reproduced
+in two trials (six of six measurements).  The resulting 0.3\,GB saving has
+0.1\,GB print granularity (range 0.2--0.4\,GB) and matches the analytic
+read-time band $(j/L)B_{\mathrm{KV}}\,\textit{read\_len}$ with $j/L=12/36$.  We
+call this a \emph{read-length-scoped analytic null}: weights and the 128k write
+transient dominate the 18.2\,GB peak, so it is not general evidence that depth
+caching is memory-free.  E1 is a memory endpoint and the direction estimand's
+primary endpoint is qa1 accuracy, so neither predicts the other.
+
+For one generation stream, that table's registered write/read times imply a
+balanced break-even of approximately $26$ repeated reads per written document
+($Q^{\star}=W/(t_{j0}-t_{j12})=6.65/0.26=25.58$ on the rounded serving
+endpoints).  The quotient is sensitive to that rounding: the $0.26$\,s numerator
+is a difference of two median-of-three endpoints at $0.01$\,s print granularity,
+so a $\pm0.01$\,s perturbation moves $Q^{\star}$ across roughly $25$--$27$
+reads/document, and we quote it as ``about $26$'' rather than a two-decimal
+constant.  Decode is excluded and the implementation recomputes the upper band at
+each generated token, so $Q^{\star}$ is read/prefill-only, has no established
+end-to-end analogue, and would shift under an accounting convention including
+decode.  We claim no end-to-end time saving from depth; the serving-time
+calculation and the E1 memory check remain different protocols, and neither turns
+the selected 4k quality loss into a universal Pareto frontier.
+
+\paragraph{Composition boundary.}
+The multi-hop qa2 probe is not load-bearing and the archived self-distilled read
+adapter is not evaluated here, so neither carries a quantitative claim; both
+records, with the registered generation-cap sensitivity runs, are in
+Appendix~\ref{app:extended-limitations}.

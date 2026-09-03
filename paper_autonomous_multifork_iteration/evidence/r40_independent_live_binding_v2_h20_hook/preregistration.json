@@ -1,0 +1,101 @@
+{
+  "schema_version": "forkaudit-r40-h20-prebinder-preregistration-v1",
+  "experiment_id": "R40-H20-PREBINDER-HOOK-20260827A",
+  "status": "frozen-before-any-gpu-execution",
+  "formal_gpu_execution": "not-run",
+  "selected_cell": {
+    "cell_role": "ownership_witness",
+    "resident_count": 8,
+    "kv_policy": "vllm-q16-shared-document-reuse",
+    "gdn_base_policy": "materialize-request-base-functional-rebind"
+  },
+  "geometry": {
+    "model_layers": 40,
+    "linear_layer_rule": "indices not congruent to 3 modulo 4",
+    "state_families": ["conv", "recurrent"],
+    "state_index": 0,
+    "challenge_seed_sha256": "84dae2ac609c79af246889bd5ba5e97da2229cd6c42bd0f0af068b45099cfbe9"
+  },
+  "selected_coordinates": [
+    {"owner_kind": "persistent", "request_index": null, "layer_index": 0, "state_family": "recurrent", "state_index": 0},
+    {"owner_kind": "request", "request_index": 0, "layer_index": 0, "state_family": "conv", "state_index": 0},
+    {"owner_kind": "request", "request_index": 0, "layer_index": 1, "state_family": "conv", "state_index": 0},
+    {"owner_kind": "request", "request_index": 0, "layer_index": 2, "state_family": "conv", "state_index": 0},
+    {"owner_kind": "request", "request_index": 0, "layer_index": 2, "state_family": "recurrent", "state_index": 0},
+    {"owner_kind": "request", "request_index": 1, "layer_index": 0, "state_family": "recurrent", "state_index": 0}
+  ],
+  "faults": [
+    {
+      "fault_id": "R40-H20-LB01",
+      "phase": "setup_pre_transition",
+      "kind": "coherent_slot_swap",
+      "targets": [
+        {"owner_kind": "request", "request_index": 0, "layer_index": 0, "state_family": "conv", "state_index": 0},
+        {"owner_kind": "request", "request_index": 0, "layer_index": 1, "state_family": "conv", "state_index": 0}
+      ],
+      "required_detection_codes": ["challenge_response_mismatch"]
+    },
+    {
+      "fault_id": "R40-H20-LB02",
+      "phase": "post_transition",
+      "kind": "stale_handle_after_rebind",
+      "targets": [
+        {"owner_kind": "request", "request_index": 0, "layer_index": 2, "state_family": "recurrent", "state_index": 0}
+      ],
+      "required_detection_codes": ["challenge_response_mismatch"]
+    },
+    {
+      "fault_id": "R40-H20-LB03",
+      "phase": "setup_pre_transition",
+      "kind": "cross_layer_substitution",
+      "targets": [
+        {"owner_kind": "request", "request_index": 0, "layer_index": 2, "state_family": "conv", "state_index": 0}
+      ],
+      "sources": [
+        {"owner_kind": "request", "request_index": 0, "layer_index": 1, "state_family": "conv", "state_index": 0}
+      ],
+      "required_detection_codes": ["challenge_response_mismatch", "storage_relation_mismatch"]
+    },
+    {
+      "fault_id": "R40-H20-LB04",
+      "phase": "setup_pre_transition",
+      "kind": "request_base_role_misbinding",
+      "targets": [
+        {"owner_kind": "request", "request_index": 1, "layer_index": 0, "state_family": "recurrent", "state_index": 0}
+      ],
+      "sources": [
+        {"owner_kind": "persistent", "request_index": null, "layer_index": 0, "state_family": "recurrent", "state_index": 0}
+      ],
+      "required_detection_codes": ["challenge_response_mismatch", "storage_relation_mismatch"]
+    }
+  ],
+  "registration_wire": {
+    "allowed_fields": ["schema_version", "operation", "owner_kind", "request_index", "layer_index", "conv_states", "recurrent_states"],
+    "forbidden_fields": ["manifest", "slot_manifest", "slot_id", "slot_tensors", "candidate_rows", "expected_verdict", "phase", "passed", "verdict"],
+    "registrar_derives_slot_ids": true,
+    "registrar_derives_expected_selected_set": true
+  },
+  "combination": {
+    "base_package": "r39_primary_compiled_dispatch_v6",
+    "base_archive_sha256": "306daba7b79b045a306f0b22d6434143dd568cf1f3b6af7114ad1a4ebe1d6f82",
+    "immutable_runner_sha256": "9da619fc037e2c670b146d778fd9f4d5344212b7e525f3d3f26a077f79d67775",
+    "immutable_launcher_sha256": "077a876b9849661135044c50cfdea272d302a48af0bb4e21ec640eca2ca85460",
+    "v6_rank_entrypoint_sha256": "5c5ffdac992b0ee0e4f5f8a42bba0a7ce25749d187f395924f6b34a43a484365",
+    "scientific_runner_or_argv_change_allowed": false,
+    "primary_memory_cell_hook_events_allowed": 0
+  },
+  "acceptance": {
+    "ranks_required": 8,
+    "clean_captures_required_per_rank": 4,
+    "mutants_required_per_rank": 4,
+    "all_clean_pass": true,
+    "all_mutants_fail_closed": true,
+    "exact_fault_codes_required": true,
+    "registrar_manifest_fields_received": 0,
+    "registrar_slot_id_fields_received": 0,
+    "independent_processes_required": true,
+    "v6_formal_result_must_pass": true,
+    "post_outcome_retry_allowed": false
+  },
+  "claim_boundary": "If a future formal run passes, it supports only one fixed Qwen3.5/H20/PyTorch stack and six selected GDN coordinates in one existing N=8 materialized-GDN witness cell per rank. It removes a shared producer slot manifest and candidate-binder-built oracle, but still trusts hook lifecycle metadata, hook installation integrity, PyTorch/CUDA IPC, and acknowledgement pauses; it is not malicious-producer, OS/driver/allocator/runtime, full-slot, cross-stack, or detection-rate evidence."
+}

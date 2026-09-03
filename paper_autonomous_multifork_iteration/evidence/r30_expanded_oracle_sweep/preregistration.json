@@ -1,0 +1,113 @@
+{
+  "schema_version": "forkaudit-r30-expanded-oracle-preregistration-v1",
+  "experiment_id": "R30-EXPANDED-CAPTURED-BOUNDARY-ORACLE-20260825A",
+  "created_at_utc": "2026-08-25T07:27:56Z",
+  "created_before_candidate_execution": true,
+  "post_execution_amendment_allowed": false,
+  "objective": "Expand the existing selected captured-boundary attention and GDN numerical checks across layers, inputs, and within-call token positions without changing either operator boundary or claiming end-to-end independence.",
+  "model_id": "Qwen/Qwen3.5-35B-A3B",
+  "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+  "model_weight_ledger_raw_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+  "input_manifest_raw_sha256": "6b5b92905a6a2b36daf57d38cae86c448225450ed59c19103de4eed7c460b74e",
+  "code_bindings": {
+    "producer_raw_sha256": "88e2aefb13d33601012347b5f278fa9911f77a94462b62ba0cfe44ec7af17ba8",
+    "reference_raw_sha256": "f9b234406db4226e9b7d96d00fa1165c7ab08ae2a29cfba52f7954fe6cad2e1c",
+    "launcher_raw_sha256": "c8fe7d4d6f519c46b63e2c0c972f8b042e4c0476c0caf5ce8ddaba5e4fee5173",
+    "targeted_test_raw_sha256": "832320eb7e70efc526e4bceab9235c6f2e1e312e077fe0a72cb7bfcb4d7d3ab8"
+  },
+  "configuration_basis": {
+    "no_candidate_pilot_or_smoke_before_this_preregistration": true,
+    "input_manifest_generated_without_loading_or_executing_the_candidate": true,
+    "attention_relative_l2_tolerance_reused_from_primary_oracle": 0.005,
+    "gdn_tolerances_reused_from_fully_preregistered_prior_oracle": true,
+    "thresholds_not_selected_or_tuned_on_this_experiment": true
+  },
+  "source_selection": {
+    "dataset": "PG-19 train-only frozen 64-book artifact",
+    "data_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "manifest_sha256": "5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c",
+    "windows_sha256": "cca6c3643b3e77178cac3c906ef0202c686a23de9578287adef95a5d8af16aa9",
+    "selection_rule": "two distinct deterministic windows and fixed query-bank rows from the frozen lifecycle-transfer window builder"
+  },
+  "document_tokens": 256,
+  "query_tokens": 8,
+  "input_cases": [
+    {"case_id": "PG19-W1-Q0", "window_index": 1, "query_bank_index": 0},
+    {"case_id": "PG19-W6-Q2", "window_index": 6, "query_bank_index": 2}
+  ],
+  "full_attention_layers": [3, 7, 11, 15, 19, 23, 27, 31, 35, 39],
+  "gdn_layers": [0, 1, 2, 4, 8, 12, 16, 20, 24, 28, 34, 38],
+  "coverage_denominators": {
+    "input_cases": 2,
+    "attention_operator_rows": 20,
+    "attention_query_positions": 160,
+    "gdn_operator_rows": 24,
+    "gdn_token_transitions": 192,
+    "clean_decisions": 44,
+    "seeded_wrong_operator_decisions": 44
+  },
+  "fault_assignment": {
+    "attention": [
+      {"row_id": "ATTN-PG19-W1-Q0-L03", "fault": "unit_scale"},
+      {"row_id": "ATTN-PG19-W1-Q0-L07", "fault": "roll_kv_heads"},
+      {"row_id": "ATTN-PG19-W1-Q0-L11", "fault": "drop_self_key"},
+      {"row_id": "ATTN-PG19-W1-Q0-L15", "fault": "reverse_kv_tokens"},
+      {"row_id": "ATTN-PG19-W1-Q0-L19", "fault": "unit_scale"},
+      {"row_id": "ATTN-PG19-W1-Q0-L23", "fault": "roll_kv_heads"},
+      {"row_id": "ATTN-PG19-W1-Q0-L27", "fault": "drop_self_key"},
+      {"row_id": "ATTN-PG19-W1-Q0-L31", "fault": "reverse_kv_tokens"},
+      {"row_id": "ATTN-PG19-W1-Q0-L35", "fault": "unit_scale"},
+      {"row_id": "ATTN-PG19-W1-Q0-L39", "fault": "roll_kv_heads"},
+      {"row_id": "ATTN-PG19-W6-Q2-L03", "fault": "drop_self_key"},
+      {"row_id": "ATTN-PG19-W6-Q2-L07", "fault": "reverse_kv_tokens"},
+      {"row_id": "ATTN-PG19-W6-Q2-L11", "fault": "unit_scale"},
+      {"row_id": "ATTN-PG19-W6-Q2-L15", "fault": "roll_kv_heads"},
+      {"row_id": "ATTN-PG19-W6-Q2-L19", "fault": "drop_self_key"},
+      {"row_id": "ATTN-PG19-W6-Q2-L23", "fault": "reverse_kv_tokens"},
+      {"row_id": "ATTN-PG19-W6-Q2-L27", "fault": "unit_scale"},
+      {"row_id": "ATTN-PG19-W6-Q2-L31", "fault": "roll_kv_heads"},
+      {"row_id": "ATTN-PG19-W6-Q2-L35", "fault": "drop_self_key"},
+      {"row_id": "ATTN-PG19-W6-Q2-L39", "fault": "reverse_kv_tokens"}
+    ],
+    "gdn": [
+      {"row_id": "GDN-PG19-W1-Q0-L00", "fault": "omit_decay"},
+      {"row_id": "GDN-PG19-W1-Q0-L01", "fault": "complement_beta"},
+      {"row_id": "GDN-PG19-W1-Q0-L02", "fault": "pre_decay_memory"},
+      {"row_id": "GDN-PG19-W1-Q0-L04", "fault": "roll_value_heads"},
+      {"row_id": "GDN-PG19-W1-Q0-L08", "fault": "omit_decay"},
+      {"row_id": "GDN-PG19-W1-Q0-L12", "fault": "complement_beta"},
+      {"row_id": "GDN-PG19-W1-Q0-L16", "fault": "pre_decay_memory"},
+      {"row_id": "GDN-PG19-W1-Q0-L20", "fault": "roll_value_heads"},
+      {"row_id": "GDN-PG19-W1-Q0-L24", "fault": "omit_decay"},
+      {"row_id": "GDN-PG19-W1-Q0-L28", "fault": "complement_beta"},
+      {"row_id": "GDN-PG19-W1-Q0-L34", "fault": "pre_decay_memory"},
+      {"row_id": "GDN-PG19-W1-Q0-L38", "fault": "roll_value_heads"},
+      {"row_id": "GDN-PG19-W6-Q2-L00", "fault": "omit_decay"},
+      {"row_id": "GDN-PG19-W6-Q2-L01", "fault": "complement_beta"},
+      {"row_id": "GDN-PG19-W6-Q2-L02", "fault": "pre_decay_memory"},
+      {"row_id": "GDN-PG19-W6-Q2-L04", "fault": "roll_value_heads"},
+      {"row_id": "GDN-PG19-W6-Q2-L08", "fault": "omit_decay"},
+      {"row_id": "GDN-PG19-W6-Q2-L12", "fault": "complement_beta"},
+      {"row_id": "GDN-PG19-W6-Q2-L16", "fault": "pre_decay_memory"},
+      {"row_id": "GDN-PG19-W6-Q2-L20", "fault": "roll_value_heads"},
+      {"row_id": "GDN-PG19-W6-Q2-L24", "fault": "omit_decay"},
+      {"row_id": "GDN-PG19-W6-Q2-L28", "fault": "complement_beta"},
+      {"row_id": "GDN-PG19-W6-Q2-L34", "fault": "pre_decay_memory"},
+      {"row_id": "GDN-PG19-W6-Q2-L38", "fault": "roll_value_heads"}
+    ]
+  },
+  "tolerances": {
+    "attention": {"relative_l2": 0.005},
+    "gdn_output": {"relative_l2": 0.005, "normalized_max_abs": 0.02},
+    "gdn_state": {"relative_l2": 0.0001, "normalized_max_abs": 0.001}
+  },
+  "success_gates": [
+    "20/20 attention clean rows pass the frozen relative-L2 tolerance",
+    "24/24 GDN clean rows pass the frozen output and state tolerances",
+    "20/20 preassigned attention wrong-operator controls are rejected",
+    "24/24 preassigned GDN wrong-transition controls are rejected",
+    "all sidecars pass SHA-256 replay",
+    "the numerical reference imports NumPy but no Torch, Transformers, vLLM, or qcomem module"
+  ],
+  "claim_boundary": "Conditional agreement at captured post-RoPE full-attention and post-native-q/k-normalization recurrent-core boundaries only; excludes capture honesty, projections, convolution, normalization, downstream logits, end-to-end semantics, unseen-fault coverage, and other stacks."
+}

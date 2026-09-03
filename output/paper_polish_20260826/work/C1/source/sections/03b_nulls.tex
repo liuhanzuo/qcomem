@@ -1,0 +1,51 @@
+% RELOCATED (2026-08-16, ICLR 9-page budget): this is the full development of the
+% four under-specifications. It is \input from sections/09_appendix.tex, AFTER the
+% bibliography. The main-text summary that replaces it in line-of-sight is
+% sections/03b_nulls_summary.tex. No content was deleted in the move.
+\subsection{Four Under-Specifications of the Reference}
+\label{app:nulls}
+
+This appendix develops the four degrees of freedom summarised in Section~\ref{sec:nulls}, one subsection each, and carries the two tables they are read from. The phrase ``compare to a baseline'' hides choices large enough to reverse a verdict. These choices are part of the measured construct and must be printed with the score (Table~\ref{tab:conventions}).
+
+\subsubsection{Tie convention}
+
+For a longest-option heuristic, tied maxima can be split fractionally, resolved by the first or last option, credited whenever gold belongs to the tied set, or counted as wrong. On ARC-Challenge, \texttt{split}, \texttt{first}, \texttt{last}, and \texttt{wrong} place all six OLMo-2 arms significantly above the content floor; \texttt{credit} moves five of six significantly below it. Table~\ref{tab:reference-degrees} aligns the MMLU-Pro oracle span, the defensible default span, and the intact-model comparator; Table~\ref{tab:conventions} gives every per-convention floor. A convention that lets an oracle harvest every tie is useful as a reductio, not as a neutral default.
+
+\subsubsection{Length unit}
+
+``Longest'' may mean characters or continuation tokens. Table~\ref{tab:reference-degrees} reports the matched-item shifts, the OpenBookQA contrast, and the ARC-Challenge tie-rate change in aligned columns. Their scale shows why printing the convention without the unit is not reproducible specification.
+
+The character-unit values were recomputed from raw parquet under $\mathrm{len}(\text{option text})$. Counting the continuation's leading space gives the same OpenBookQA value, 0.363500, because the shift is uniform across options. The character and token legs are item-matched by the shared loader and a 12/12 self-test.
+
+\subsubsection{Tokenizer}
+
+Within the token unit, the floor is tokenizer-valued. Table~\ref{tab:reference-degrees} consolidates the audited \texttt{split} and \texttt{credit} movements and the vocabulary-size comparison. This is a floor-level consequence of the known tokenizer dependence of length-based scoring \citep{oostermeijer2026length}; we make no vocabulary-size explanation because the ordering is not monotone.
+
+This degree of freedom creates an asymmetry. A token-based content floor is a property of $(\text{dataset},\text{convention},\text{unit},\text{tokenizer})$. A character-based floor is tokenizer-free under its stated character convention. By contrast, the letter floor is a pure property of the item set's gold labels: it is invariant across all 15 cross-family arms and bit-identical across all 21 MMLU-Pro cells.
+
+\subsubsection{What ``chance'' means when option count varies}
+
+MMLU-Pro is described as up to ten-way, but its option count varies item to item. Table~\ref{tab:reference-degrees} places the naive and item-average chance lines beside the same observed floor, including both additive and multiplicative gaps. Both are defensible descriptions of a chance line, so both must be reported. The floor remains a dataset property; its gap to an under-specified chance line does not.
+
+\input{sections/tab_reference_degrees}
+
+\subsubsection{The calibrating null must be realisable, and we initially failed this on our own largest construct}
+\label{sec:legality-aware-null}
+
+The four degrees of freedom above concern the \emph{floor}. A fifth concerns the null used to calibrate it, and our first calibration drew uniformly over letters that are not legal on every MMLU-Pro item. That null places mass \emph{outside the support of every legal labelling of the benchmark}: it is not a conservative approximation of the right experiment but a different experiment. Table~\ref{tab:null-repair-audit} records the affected item share and the unequal legal letter marginals. Their non-exchangeability raises the maximum marginal, which is precisely the quantity the floor must be compared against.
+
+The admissible null holds the observed \texttt{n\_opt} histogram fixed --- \texttt{n\_opt} is a property of the item set, not a random variable --- and draws each item's gold letter uniformly among \emph{its own} legal letters. Table~\ref{tab:null-repair-audit} aligns the expectation and $p$-value before and after this correction with the unchanged observed floor and downstream counts. The correction changes what the floor is compared \emph{to}, never the floor itself.
+
+\paragraph{Which rows moved, and in which direction.} We state this explicitly because a correction that a reader cannot audit for self-service is not a correction. Where \texttt{n\_opt} is constant the two nulls are the \emph{same distribution}, so no correction is possible and none is applied. The surviving constructs are therefore exactly those whose option count was never in question, while the lost row is the largest construct and the one carrying the power analysis. Where option count varies, narrower items concentrate mass on always-legal low letters and move MMLU-Pro against us; wider exceptional items move the two ARC rows slightly in our favour. Table~\ref{tab:null-repair-audit} gives the item counts, $p$-value changes, and standard-error distances side by side. Neither ARC verdict turns, but the two directions matter because they falsify the claim that the correction can only move against the authors.
+
+\paragraph{A rounding convention with the same sign problem.} Since $p=\Pr(\hat f\ge\text{floor})$ and the floor is an exact rational $\text{count}/n$, the threshold is an integer count. Comparing against a rounded decimal can demand an \emph{extra} count, exclude the observed outcome, and bias $p$ downward toward ``survives''. We therefore evaluate every $p$ at the exact rational floor. Table~\ref{tab:null-repair-audit} lists the affected rows, the rounded and exact values, and the clean counterexamples. No verdict changes, but the MMLU-Pro result moves away from significance rather than toward it.
+
+\input{sections/tab_null_repair_audit}
+
+\paragraph{What this leaves standing.} The protocol claim is unchanged and arguably strengthened: a null must be compatible with the construct it calibrates, and the failure mode is available to any author who writes ``uniform over $k$'' for a benchmark whose $k$ is not constant. What we withdraw is the quantitative claim for one construct. We no longer assert that MMLU-Pro's floor exceeds what a balanced null could produce; at $p=0.083$ it is unresolved at $n=12032$, close enough to the conventional line that a larger item set could plausibly settle it, and we decline to describe it as either significant or comfortably inside the noise.
+
+\input{sections/tab_nulls}
+\FloatBarrier
+\input{sections/tab_conventions}
+
+\FloatBarrier

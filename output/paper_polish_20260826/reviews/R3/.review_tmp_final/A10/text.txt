@@ -1,0 +1,803 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      Reporting Degenerate Emissions in a 135M Diffusion Lan-
+002   guage Model:
+003
+004   A Reproducible Negative-Control Pilot
+005
+006
+007
+          Anonymous authors
+          Paper under double-blind review
+008
+009
+010
+011                                                    Abstract
+012
+013              We examine a negative control on one 135M-parameter masked diffusion language
+014              model bed. Under a matched short budget, autoregressive initialization has a 2.26-
+015              nat lower last-logged loss than one fixed random initialization, with the same di-
+016              rection across four paired data-order seeds. Because the random initialization is a
+017
+                 single fixed draw, these repeats do not measure weight-draw variance. In a single-
+                 prompt generation pilot, both arms are visibly degenerate. Teacher perplexity
+018
+                 ranks them opposite to the paired loss benchmark, whereas effective length, alpha-
+019
+                 betic yield, and emitted-token concentration distinguish their emissions. Neither
+020              comparison establishes a quality ranking or metric capability because the pilot has
+021              no independent quality anchor. MAUVE is not recorded under this configuration,
+022              so we form no ratio and draw no MAUVE inference. The resulting engineering
+023              deliverable is a companion record that places emission length and degeneration
+024              beside per-token scores; it is not a new scalar metric, training method, or claim
+025              beyond this bed.
+026
+027
+028   1     Introduction
+029
+030   Masked diffusion language models generate by repeatedly denoising a canvas of masked tokens rather
+031
+      than extending a causal prefix one token at a time (Sahoo et al., 2024; Nie et al., 2025). This design
+      exposes intermediate signals—entropy, maximum probability, mask state, and changes in the current
+032
+      argmax—that can guide adaptive decoding (Li et al., 2025). Generated-text PPL, MAUVE, and
+033
+      trajectory summaries describe different projections of an emission; none is an independent human-
+034   quality anchor in our experiment. Wang et al. diagnose length, repetition, and punctuation as factors
+035   that can distort PLM-based perplexity (Wang et al., 2022). We therefore ask only whether two known-
+036   degenerate outputs in one small dLLM pilot differ on analogous emission fields that our initial report
+037   did not place beside each score.
+038   This paper turns a small training bed into a controlled negative-control pilot case study. The bed
+039   starts from SmolLM2-135M (Ben Allal et al., 2025) and converts the same architecture to a masked
+040   denoiser. One arm reuses autoregressive weights; the other uses a fixed random-initialization check-
+041   point. Data, optimizer, schedule, token count, hardware, sampler, and evaluation are held constant.
+042   This design does not estimate performance over the space of random initializations. It asks a nar-
+043   rower question: at a fixed 30.0M-token budget, how do the two degenerate arms differ on directly
+044   audited emission fields when the initialization is replaced by a constructive negative control?
+045   We treat reproducibility and engineering diagnosis as distinct from multisite replication or a new
+046   method. The paper makes three concrete, bed-scoped contributions:
+047
+048           1. A matched-budget calibration shows a same-signed loss separation over four paired data-
+049              order seeds: the mean last-logged loss gap is 2.262, with 95% CI [2.220, 2.305]. The result is
+050
+                 explicitly conditional on the two fixed initialization checkpoints and short 458-step horizon.
+051           2. In this single pilot, a report-level audit shows that the two degenerate arms differ in effective
+052              emission length and emitted-token degeneration. These fields are not part of the reported
+053              PPL value, while the attempted MAUVE value is not recorded; we place them beside each
+                 PPL cell only for this setting, not as a general requirement or new metric.
+
+
+                                                            1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+      Figure 1: Companion record for this single 135M pilot — the slots of Eq. (1). Both arms are
+      degenerate: AR-init stops after punctuation/newline remnants, whereas random-init continues as a
+072
+      repeated word stream. The panel matches Eq. (1) exactly: (i) median teacher PPL; (ii) distributional
+073
+      similarity, not exercised here because the attempted MAUVE measurement is not recorded under
+074   this configuration (Section 4.2); and (iii) E, comprising effective emission length, alphabetic-word
+075   yield, and emitted-token concentration. No ratio or quality inference is made on slot (ii). Argmax
+076   concentration is intentionally excluded because the final argmax and emitted distribution decouple
+077   in our data (Section 4.2). This descriptive audit accompanies existing measurements; it is neither a
+078   new scalar metric nor a quantitative result, and all measured values remain in the tables.
+079
+           3. A frozen signal schema and reproducible scripts record the denoising trajectory. Unigram,
+080
+              drift, sweep-tail, and cross-bed probes are engineering diagnostics rather than a proposed
+081
+              decoder or training method.
+082
+083   Together, these results show that two degenerate arms can differ on emission coordinates absent from
+084   this pilot’s PPL entry. The attempted MAUVE entry is not recorded, and no independent assessment
+085   supplies a quality ranking. Figure 1 summarizes the companion record for this single bed; it does
+086   not define a new evaluation method or support claims about other prompts or dLLMs.
+087
+088   2   Related Work and Evaluation Framing
+089
+090   Masked diffusion language modeling. Masked diffusion objectives can be written as mixtures of
+091   masked-language modeling losses and paired with iterative unmasking samplers (Sahoo et al., 2024).
+092   LLaDA demonstrated that the paradigm scales to an 8B parameter model trained from scratch (Nie
+093   et al., 2025); more recent systems span reusable training frameworks (Zhou et al., 2026), continuous
+094   embedded flows (Hu et al., 2026), and adaptive generation length (Li et al., 2025). AR-to-diffusion
+095   adaptation has already been studied systematically in the DiffuLLaMA family (Gong et al., 2025);
+096   PreDiff-LM studies pretrained masked diffusion with hybrid attention (Yao et al., 2026), and UNIFU-
+097
+      SION studies AR adaptation under a unified reverse-rate objective (Jiang et al., 2026). Accordingly,
+      our matched initialization arms are a small reproducible case study, not a new adaptation method or
+098
+      training discovery.
+099
+100
+      Metrics score different projections of emitted text. Generated-text PPL scores teacher likeli-
+101
+      hood; Wang et al. show that length, repetition, and punctuation can distort that score (Wang et al.,
+102   2022). MAUVE instead compares generated and human distributions (Pillutla et al., 2021); surface
+103   form also matters. Final-argmax share describes concentration of the generator’s decisions. Within
+104   the 11-source local verification ledger used for this paper, we did not establish that these sources
+105   report whether the emitted object is a short EOS stub or a long lexical loop. Our fields expose those
+106   factors on one dLLM bed. A within-arm, within-prompt before/after check (Section 4.2) establishes
+107   complementarity with teacher PPL only for that pair; discriminative evidence across initializations
+      and prompts remains unresolved. Here PPL ranks the arms opposite to the matched four-seed loss
+
+
+                                                       2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      Table 1: Scope comparison with the closest locally verified work. NR means that a field was not
+109   measured in this implementation or was not established by the frozen local verification ledger; no
+110   value is inferred from memory. Relative to Wang et al. (2022), this pilot audits the same confounding
+111   factors on a matched-initialization dLLM bed and adds the within-arm check in Table 6; no novelty
+112   claim rests on an NR cell.
+113   Work           Model scale   Training        Prompts    Reported evaluation Human        Emission
+114                                budget                                         anchor       reporting
+115   Wang et al.    PLM-PPL     Not a             NR         PPL; analyzes         NR         NR
+116   (2022)         study       generator-                   length, repetition,
+117                              training                     punctuation
+118
+                                 comparison
+      Gong et al.    DiffuLLaMA NR                 NR         AR-to-diffusion       NR         NR
+119   (2025)         7B family                                adaptation study
+120   Yao et al.     PreDiff-LM; NR                NR         Pretrained masked     NR         NR
+121   (2026)         NR                                       diffusion with
+122                                                           hybrid attention
+123
+      Jiang et al.   UNIFUSION NR                  NR         Unified reverse-rate NR          NR
+      (2026)         NR                                       AR adaptation
+124   This pilot     135M      30.0M               1          Two-teacher PPL,      None       Length,
+125                            tokens/arm;                    MAUVE, argmax                    alphabetic
+126                            458 steps                      and trajectory probes            yield, top-word
+127                                                                                            share
+128
+129
+      benchmark, but the pre-registered multi-init control reproduces only the loss-side sign while its de-
+      generation mode varies by draw (Section 6). The conflict therefore motivates the audit without estab-
+130
+      lishing a quality anchor, discriminative power, or a new metric. Table 1 positions this pilot against
+131
+      the closest locally verified work.
+132
+133
+134
+      3     Experimental Protocol
+135
+      3.1    Setup and configuration
+136
+137   We fix the training, initialization, generation, scoring, and signal-dump knobs in Table 2; Table 3
+138   separately records the pre-registered multi-initialization control. This moves reconstructive values
+139   out of prose while preserving their scope and provenance.
+140
+141   3.2    Matched arms and training budget
+142
+      Both arms use the converted SmolLM2-135M architecture (Ben Allal et al., 2025; Zhou et al., 2026).
+143   The AR-init arm retains pretrained weights; random-init is the fixed, audited from-scratch draw in
+144   Table 2. Crucially, the four paired repeats vary data order and training stochasticity, not this weight
+145   draw, so their loss variance cannot be transferred to independently drawn random initializations. To
+146   test that gap we ran a pre-registered multi-init negative control (Table 3) on three independently
+147   drawn random-initialization checkpoints, each trained under the same 30M-token / seed-42 data or-
+148   dering as the two principal arms (Section 5). On the loss side the negative control reproduces: the
+149   paired last-logged-loss gap (random − initR − AR − init) is positive on all three draws (bootstrap
+150   95% CI lower bound > 0), so the sign-consistency of the principal result does not collapse across
+151
+      random initializations. The emission-side degeneration mode, however, is initialization-dependent:
+      two draws degrade into a repeated-word lexical loop while the third is a shorter “gray” profile, so
+152
+      the emission narrative does not transfer across draws and is scoped to this effect (Section 5; evidence
+153
+      hash and verified fields are in paper/anonymous_artifact/data/reproducibility_
+154   anchors.json).
+155
+      All token accounting, runtime, logging, objective, scheduler, hardware, and provenance fields are
+156
+      frozen in Table 2; in particular, “final” means the step-450 log inside the 458-step run, not a separate
+157
+      step-458 evaluation.
+158
+159   3.3    Generation and metric protocol
+160
+161   Table 2 gives the complete generation grid. It is a single-checkpoint, single-prompt, 32-sample-per-
+      cell pilot rather than a multi-seed quality estimate. As preregistered, we report median causal PPL
+
+
+                                                         3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      Table 2: Controlled training and evaluation design. Only the initialization checkpoint differs
+163   between the two principal arms. The PPL teachers and MAUVE configuration are evaluation choices,
+164   not independent quality anchors.
+165
+      Training     Frozen setting                                   Evaluation Frozen setting
+166   field                                                         field
+167
+      Model /       SmolLM2-135M converted to masked                Checkpoint seed-42 checkpoint pair; one prompt,
+168   vocab         denoising; 49,152 base tokens plus              / prompt   “To be or not to be.”
+169                <|mask|> (49,153 total); tied
+170                 embeddings
+171   random-       Linear/embedding weights i.i.d.                 Generation τ ∈ {0.7, 1.0}; 32 continuations per
+      init draw     N (0, (1/24)2 ); LayerNorm gains 1,             grid       arm–temperature cell; 128 tokens; 128
+172
+                    biases 0; host ambient RNG (no seed                        denoising steps; block size 32;
+173                 argument), hence one fixed draw;                           low-confidence remasking as recorded
+174                 raw-HF A2D conversion uses                                 by the hashed sampler entry in the
+175                --random-init (state dict skipped)                          anonymous artifact
+176                 before appending the mask row
+      Init audit   Per-layer standard deviations within             Length /       Natural length plus caps
+177                 0.1% of 1/24; embedding normaltest              PPL            L ∈ {16, 32, 48} using min(nfull , L);
+178                 p = 0.92, skew −0.004, excess kurtosis                         prompt excluded; median PPL under
+179                 0.01 (n = 20,000); all 272 tensors                             GPT-2 (124M) and SmolLM2-135M
+180                 differ; no step-0 scalar was logged, so
+181
+                    the earliest step-10 losses, 9.6009 (A)
+                    and 11.2053 (B), are compared with
+182                 ln(49,153) ≃ 10.802
+183   Data /        FineWeb-Edu sample/10BT shards                  MAUVE          mauve-text==0.4.0; GPT-2-large
+184   budget        000/001/003/004;                                               features; holdout shard 005; p = 100,
+185                16×8×458×512 = 30,015,488                                       q = 32, num_buckets=auto→ 3
+                    tokens/arm; last logged value at step 450                      buckets; not recorded in this pilot; two
+186
+                    of 458                                                         random-init cells identical at
+187                                                                                frontier_integral=1.0
+188   Optimizer / AdamW; 10−4 peak LR; cosine; 10%                  Emission /     Median emitted and alphabetic-word
+189   hardware    warmup; bfloat16, ZeRO-2, 8× NVIDIA               signal         counts; corpus top-word share; schema
+190               H20-class accelerators; reference pair                           v3.1 mask, entropy, max-probability,
+191
+                  421 s / 0.94 GPU-h; three paired repeats                         top-k, commit, final-argmax, and drift
+                  2.40 GPU-h                                                       records
+192
+      MDLM        Uniform t ∈ [10−3 , 1); linear α;                 Argmax         Most frequent final-step strict top-1 over
+193   recipe      scheduler-weighted masked CE;                     diagnostic     32 × 128 = 4,096 records; distinct from
+194               loss_norm_type=token;                                            sampled-token frequency
+195               right_shift_logits=False;
+196               implementation hashes in
+                  paper/anonymous_artifact/
+197
+                  data/reproducibility_
+198               anchors.json
+199   Repeats /   Paired seeds 42, 2024, 2025, 2026 vary            Provenance Hashed driver, sampler, serialized
+200   seed scope data order and training stochasticity on                      training arguments, and exact
+201
+                  fixed initial weights; arm names were                        regeneration pointers in
+                  used during execution (label-coded, not                      paper/anonymous_artifact/
+202               human double-blind)                                          data/reproducibility_
+203                                                                            anchors.json and Appendix A
+204
+205   Table 3: Multi-random-init negative control (pre-registered). Fresh seeds 11, 22, and 33 use the
+206   principal arms’ 30M-token seed-42 data ordering. Loss gaps reproduce on all draws, whereas emis-
+207   sion mode is initialization-dependent (two loops and one shorter “gray” profile).
+208                  Draw                            Gap BR − A (nat)             Emission      Words (τ =0.7)
+209                  init-seed=11                           2.300                lexical loop       125.0
+210                  init-seed=22                           2.281                lexical loop       122.5
+211                  init-seed=33                           2.272                    gray            35.0
+212                  bootstrap 95% CI lower bound        2.272 (> 0)                 —               —
+213
+214   under GPT-2 and SmolLM2; the median prevents two catastrophic AR-init outliers at τ = 0.7 from
+215   dominating. SmolLM2 is weight-related to AR-init and may share FineWeb-Edu source-domain bias
+      with this experiment, so agreement with GPT-2 mitigates but does not remove teacher dependence.
+
+
+                                                                4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+                                             Matched-budget learning curves                                             Four paired data-order seeds
+217
+                                  11                                          AR-init
+218                                                                           random init                      7.0
+
+
+
+
+          Masked-denoising loss
+219                               10
+
+
+
+                                                                                            Last logged loss
+220                                9                                                                           6.5
+221
+                                   8
+222                                                                                                            6.0
+223
+                                   7
+224                                6                                                                           5.5
+                                                                                                                                mean gap = 2.262
+225                                5                                                                                           95% CI [2.220, 2.305]
+                                                                                                               5.0
+226
+                                       0      100       200            300      400                                  AR-init                           random init
+227                                                    Training step
+228
+229   Figure 2: Matched-budget training. Left: both arms receive the same 458-step, 30.0M-token bud-
+230   get. Right: last-logged losses and paired-difference CI over four data-order seeds; connectors reveal
+231   overlapping points.
+232
+      Table 4: Paired last-logged loss endpoints. All four differences have the same sign; mean B − A =
+233   2.2623 nats, paired-t 95% CI [2.2196, 2.3050], and nominal one-sided sign-test p = 0.0625.
+234
+                                                        Data-order seed AR-init random-init B − A
+235
+236                                                                2024      5.0687         7.3501                        2.2814
+                                                                   2025      5.0629         7.3522                        2.2893
+237
+                                                                   2026      5.1243         7.3637                        2.2394
+238                                                                  42      5.1159         7.3550                        2.2391
+239
+240   Each PPL cell is accompanied by emitted length, alphabetic-word count, and a pooled corpus top-
+241   word share. The share is an illustrative cell aggregate; the artifact does not contain a per-continuation
+242   concentration distribution, so we make no continuation-level concentration claim. These fields de-
+243   scribe the scored emission rather than its quality. The attempted MAUVE value and the final-step
+244   argmax diagnostic are retained under the same rule: both remain routine raw records, but neither is
+245   used for a pilot quality or capability inference. MAUVE is not recorded under Table 2, and strict
+246
+      top-1 remains separate from sampled-token frequency at nonzero temperature.
+247
+248   3.4                         Frozen signal layer and probes
+249
+250   Schema v3.1 records mask state, entropy, maximum probability, top-k identities and probabilities,
+251   commit step, final argmax, and masked-position drift with explicit dtypes and shapes; evaluation
+252   labels remain outside the trajectory layer. One dump therefore supports unigram concentration, tie-
+253
+      aware unresolved-position drift, and committed-position sweep-tail analyses without another model
+      run.
+254
+255   A fourth analysis applies one instrument to both 135M arms: among currently masked positions,
+256   entropy is scored against whether the current argmax differs from the eventual final token. Table 10
+257   reports the raw AUROC, trajectory-bootstrap interval (B = 2,000, seed 0), trajectory and step counts,
+258
+      row support, and permutation calibration (Monte Carlo B = 400, seed 0). The calibration estimand
+      is real/null95, where null95 is the 95th percentile of the permutation null; a value above one supplies
+259
+      at most a weak orientation check, not a quality label.
+260
+261
+262   4                   Results
+263
+264   4.1                         AR initialization preserves a large short-horizon loss advantage
+265
+266   Figure 2 shows the learning curves, and Table 4 gives every paired endpoint. The gap Lrandom − LAR
+267   is positive for all four data-order seeds, with mean 2.262 nats and paired-t 95% CI [2.220, 2.305]
+268   (n = 4). The nominal one-sided sign test attains only its minimum p = 0.0625 at n = 4. These
+269   statistics vary data order and training randomness conditional on fixed initialization checkpoints, not
+      independent weight draws.
+
+
+                                                                                 5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+      Table 5: Perplexity with required emission reporting. PPL is the prompt-excluded median over
+271   32 continuations. Length and content are median word counts; top-word share is pooled over the
+272   complete cell and is illustrative because no per-continuation distribution was retained. Short-stub
+273   counts report no-alphabetic-word and at-most-ten-word samples where audited. These coordinates
+274   describe the scored object, not a preferred arm.
+275                                   SmolLM2 GPT-2 Emitted Content          Top word    Short-stub
+276               Arm           τ       PPL    PPL   length words              share      counts
+277                                                                                      9 no-alpha
+278               AR-init       0.7    10.09    9.08      5.0       1.0    and / 38.0%    25 ≤ 10
+279               random-init   0.7     3.50    5.47     126.0     126.0    of / 56.8%       —
+280               AR-init       1.0    18.96    25.91     8.5       3.5    and / 17.5%       —
+281               random-init   1.0    15.08    20.44    117.0     115.5    of / 46.9%       —
+282
+      Table 6: Within-arm before/after discrimination check. Same prompt, seed, τ , and protocol; only
+283
+      training state differs. PPL is the SmolLM2 median and concentration fields use the complete emitted
+284
+      cell.
+285                      Coordinate                   Untrained (0-step)   Trained (458-step)
+286
+                         SmolLM2 median PPL           237,873.60                  3.50
+287
+                         Median emitted words             82                      126
+288                      Alphabetic-word yield          0.991                    1.000
+289                      Top word / share          crossings / 0.42%          of / 56.79%
+290                      Top-five cumulative share      1.25%                   98.16%
+291                      Distinct-token ratio           0.941                    0.023
+292
+293   Thus, under this recipe, autoregressive weights retain a roughly 2.26-nat short-horizon advantage
+294
+      after 30M tokens. Changing curves and one principal checkpoint per arm preclude convergence-
+      time or asymptotic claims.
+295
+296
+297   4.2   The degenerate arms differ on emission coordinates
+298
+      Table 5 reports the object scored by every perplexity cell. With no independent quality anchor, the
+299
+      natural-output medians do not identify a preferred arm. The accompanying fields establish only that
+300   the two degenerate arms differ on coordinates outside this pilot’s PPL entry; its attempted MAUVE
+301   entry is not recorded. At τ = 0.7, AR-init is predominantly a short punctuation/newline remnant,
+302   whereas random-init continues in a single-word lexical loop; the complete counts and shares appear
+303   in Table 5.
+304
+305   A within-arm discrimination check. Table 6 compares random-init before and after 458 steps un-
+306   der the same prompt, seed, τ = 0.7, and 32 × 128 protocol. Teacher PPL moves by nearly five orders
+307   of magnitude, while the untrained draw is a scattered high-entropy stream and the trained checkpoint
+308   a single-token loop. The PPL entry alone does not encode the loop, while the emission fields do
+309   not encode teacher fluency. This one-arm, one-prompt, one-checkpoint-pair check establishes com-
+310   plementary, non-redundant information only on that pair, not cross-initialization, cross-prompt, or
+311   cross-checkpoint discrimination power.
+312   For a common-length view, Table 7 caps each sample at min(nfull , L) while retaining shorter samples
+313   at natural length. The gap survives each SmolLM2 cap, nearly collapses for GPT-2 at L = 32, and
+314   can reverse at τ = 1.0. Only one of 32 AR-init, τ = 0.7 samples reaches 128 SmolLM2 tokens;
+315   its teacher-dependent score is not an estimate. Hence the ordering is not robust to teacher, cap, or
+316
+      temperature and supports no robust quality ranking.
+317   The frozen MAUVE configuration is listed in Table 2. Its two random-init cells are numerically iden-
+318   tical at the raw frontier integral, so MAUVE is not recorded: no ratio, quality ordering, or capability
+319   claim is formed, while the raw values remain in the artifact for reproduction.
+320   The concentration measurements describe the emitted object rather than an inferred quality label (Ta-
+321   ble 8). In random-init, the strict final-step top-1 is nearly a single token, while per-position predictive
+322   entropy remains high throughout — so a “de-facto argmax filter” reading of the committed stream
+323   is not supported by the data: the committed token can disagree with the strict final-step top-1, and
+      argmax concentration and the emitted distribution decouple.
+
+
+                                                          6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      Table 7: Length-capped median PPL at τ ∈ {0.7, 1.0}. AR-init and random-init use min(nfull , L)
+325
+      teacher tokens; “full” is the natural τ = 0.7 median. Gap is AR-init minus random-init.
+326
+                                                            SmolLM2-135M teacher                          GPT-2 teacher
+327
+                                                  τ     Cap AR-init random-init Gap              τ   Cap AR-init random-init        Gap
+328
+                                                 0.7 full       10.09     3.50      +6.59        0.7 full     9.08     5.47         +3.61
+329
+                                                 0.7 16         16.31     9.54      +6.77        0.7 16       39.54    14.52        +25.0
+330                                              0.7 32          9.93     5.29      +4.64        0.7 32        9.39     8.69        +0.70
+331                                              0.7 48         10.09     4.31      +5.78        0.7 48        9.08     5.92        +3.16
+332                                              1.0 16         58.19    54.67      +3.52        1.0 16      104.83    71.00        +33.8
+333                                              1.0 32         19.72    35.56      −15.8        1.0 32      44.50     47.09        −2.59
+                                                 1.0 48         23.54    23.21      +0.33        1.0 48       37.47    33.28        +4.19
+334
+335
+      Table 8: Argmax concentration and commitment coordinates. Final-step strict top-1 covers 4,096
+336   positions (τ = 0.7, seed 42, 128 steps); agreement is zero-tolerance integer-id equality between the
+337   committed token and strict final-step top-1.
+338
+                                                        Coordinate                                    AR-init         random-init
+339
+340
+                                                        Records with top-1 = token 260 (the)          —            4,094 / 4,096
+                                                        Final-step top-1 entropy (bits)              3.00              0.006
+341                                                     Final-step top-1 ties                      present              zero
+342                                                     Top word in τ = 0.7 emission             and / 38.0%        of / 56.8%
+343                                                     Per-position predictive entropy (nats) sweep tail (Fig. 3) ≈7.2–8.1 (flat)
+344                                                     Committed-vs-top-1 agreement                0.467              0.394
+345
+                                                Committed-position entropy over denoising, τ = 0.7 (descriptive; control is near-untrained)
+
+
+
+
+        Committed-position entropy (nats)
+346
+347
+                                            8    7.03
+348
+349
+                                            6
+350                                                                                                                                         4.29
+351                                         4
+352
+353                                         2         arm_a AR-init                          0.70
+354                                                   arm_b randinit
+355                                              0                20         40             60              80         100            120
+356                                                                                     Denoising step
+357
+358
+      Figure 3: Committed-position entropy over denoising. The AR-init arm develops a mid-trajectory
+      minimum and high-entropy residue; random-init remains high. Curves use frozen v3.1 stored-
+359
+      entropy fields at τ = 0.7 and do not use the failed scalar/top-k drift recomputation.
+360
+361   4.3                                   Trajectory records under a failed drift recomputation gate
+362
+363   The probes give three complementary views. First, random-init has the more concentrated final-step
+364
+      argmax (Table 8). Second, the original claim that low-confidence layers cause drift is unsupported:
+      the failed scalar/top-k gate leaves no quantitative error bound for drift localization. The passing tie-
+365
+      bound and decoding-alignment checks establish only that the serialization is internally bounded and
+366
+      aligned; they do not recover the failed counts or a directional mechanism. Third, AR-init falls from
+367   high entropy to a mid-trajectory minimum and rises to a high-entropy residue, whereas random-init
+368   stays nearly flat (Figure 3). This stored-entropy contrast does not use the failed drift field, but the
+369   nearly untrained control (458 steps, final loss 7.36) still cannot distinguish learned structure from the
+370   masking schedule.
+371   Table 9 reports the failed field and the two passing serialization checks; neither supplies a drift effect
+372   or error bound.
+373
+374   4.4                                   Masked-entropy orientation check
+375
+376   The two 135M masked-position entropy results are collected in Table 10. The previously explored
+377   8B row is omitted because its checkpoint, prompts, and sampling temperature are not fully specified
+      in the anonymous artifact. Off-axis calibration uses a near-one untrained-bed multiple as a null check.
+
+
+                                                                                            7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      Table 9: Drift recomputation gate. Specified top-k recomputation versus scalar totals at 1% toler-
+379   ance. The failed fields are shown only to diagnose the gate; the passing fields support serialization
+380   alignment, not a drift effect estimate.
+381
+                       Quantity                                   AR-init         random-init
+382
+383
+                       Aggregate scalar/top-k difference         12.6%              18.1%
+                       Worst single-record relative error 56.8% (57× tolerance)       —
+384                    Tie-bounded consistency gate               pass               pass
+385                    Decoding-alignment gate                    pass               pass
+386
+387   Table 10: Masked-entropy orientation, support, and calibration. Raw AUROC labels whether
+388   current argmax differs from the final token; CIs use trajectory bootstrap (B = 2,000, seed 0). Cali-
+389
+      bration uses 400 seed-0 permutations and is real/null95, where null95 is the permutation-null 95th
+      percentile; it is not an AUROC. NR denotes a field absent from the frozen local artifact.
+390
+391           Bed                          Traj. Steps Masked n     AUROC [95% CI]      Calib. multiple
+392           AR-init (135M)                 32   128   260,064 0.686 [0.652, 0.725]        1.334
+393           random-init trained (135M)     32   128   260,064 0.458 [0.453, 0.463]        1.074
+394           random-init untrained bed     NR    NR        NR           —                  1.009
+395
+      The raw random-init AUROC is 0.45785, with a roughly 0.010-wide interval over a pool of 260,064
+396
+      dependent masked-position rows; the resampling unit remains only 32 trajectories. We therefore
+397   read it as a weak, near-null negative orientation, not as strong anti-predictive behavior or an inverse
+398   quality signal. The AR-init contrast is 0.68593 [0.6520, 0.7255], also descriptive rather than a quality
+399   score.
+400
+401   5   Discussion
+402
+403   A negative control is a reporting unit test. The random-initialized arm is a unit test for describing
+404   distinct degeneration modes, not a competitive baseline. For this single 458-step, single-checkpoint
+405   pilot, the within-arm check in Section 4.2 supports only this companion bundle:
+406                            (median teacher PPL, distributional similarity, E),                         (1)
+407
+      where E is effective length, alphabetic yield, and emitted-token concentration. The attempted
+408
+      MAUVE value and argmax diagnostic follow the same retention standard: raw records remain, but
+409   neither supports inference. Slot (ii) is therefore unexercised; argmax is not an emission slot because
+410   it decouples from sampled emissions here (Section 4.2, Figure 1). These fields are not a new metric,
+411   and the multi-init control supports only the loss-side sign, not the PPL/loss ordering.
+412
+413   Loss calibration and generation quality answer different questions. The paired loss gap is sta-
+414   tistically repeated; generation uses only seed-42 checkpoints and diagnoses emission coordinates,
+415   not production quality. Neither implies good text, a MAUVE gap, or a quality ranking for AR-init.
+416
+      The signal layer is infrastructure, not a new decoder. The schema separates masked from com-
+417
+      mitted positions, current argmax from held token, and top-k ties. It diagnoses this control; adaptive-
+418
+      decoder accuracy or efficiency remains outside the evidence.
+419
+420
+421
+      6   Limitations
+422
+      Table 11 pairs each frozen boundary with its inferential ceiling.
+423
+424   Ethics and AI assistance. No human subjects are involved. The web corpus retains privacy, li-
+425   censing, and representational-bias risks. AI assisted reorganization and copyediting; quantitative
+426   claims remain artifact-bound and the authors responsible.
+427
+428   7   Conclusion
+429
+430   In this 135M negative-control pilot, autoregressive initialization retains a 2.262-nat last-logged loss
+431   advantage across four paired data orders, while one seed-42 generation check contrasts two degener-
+      ate emissions. Effective length, content yield, and concentration distinguish them; PPL is recorded
+
+
+                                                         8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      Table 11: Frozen scope and interpretation boundaries. Complete settings are in Table 2; each
+433
+      row states its inferential ceiling.
+434
+      Axis            Frozen support                                Interpretation boundary
+435
+436   Training        30M tokens/arm; losses still evolving;    No convergence-time speedup or asymptotic
+      horizon         last log at step 450 of 458               ordering.
+437   Paired          Four data-order/training seeds with fixed The paired CI does not estimate
+438   variation       initial weights                           random-weight-draw variance.
+439   Multi-init      Three fresh draws (seeds 11, 22, 33):     Loss-side sign consistency survives this
+440   control         positive loss gap on all three; two lexical
+                                                                low-power three-draw pilot; emission mode is
+                      loops and one shorter “gray” emission     initialization-dependent. This forward analysis is
+441
+                                                                non-gating and not a headline.
+442   Generation      135M bed; seed-42 checkpoint pair; one No extrapolation to other prompts, checkpoints,
+443                   prompt; τ ∈ {0.7, 1.0}; 32 samples/cell; dLLMs, or LLaDA-8B.
+444                   128-step sampler
+445
+      PPL /           Length-confounded teacher PPL; one        Ordering is teacher-, temperature-, and
+      MAUVE           full-length AR-init sample;               length-construction-dependent; no MAUVE
+446                   source-related SmolLM2 teacher; pinned capability or quality conclusion.
+447                   mauve-text==0.4.0 but automatic
+448                   three-bucket value not recorded
+449   Drift /         Scalar/top-k totals differ by 12.6–18.1%; No quantitative error bound, drift effect estimate,
+      causality       all probes observe one sampler            decomposition, or causal mechanism without a
+450
+                                                                corrected rerun.
+451   Upgrade         Only three independent random-weight      More weight draws and a corrected drift
+452   paths           draws; drift gate remains failed          recomputation are future evidence upgrades, not
+453                                                             results or conditions claimed here.
+454
+455
+      but the pinned MAUVE attempt is not. Without an independent quality anchor, this is only a compan-
+      ion record for this setting—not a quality ordering, metric capability, new metric, training discovery,
+456
+      or extrapolation to other dLLMs.
+457
+458
+459   Reproducibility Statement
+460
+      The anonymous bundle paper/anonymous_artifact/ has manifest SHA-256 10bde5412c17f2e6
+461   5b0ea1230f8a2b2db134c02b6eda8b92e560211bbae6e735. It contains emission data, four-seed
+462   endpoints, implementation hashes, regeneration pointers, and the pre-registered multi-init summary (source
+463   SHA-256 546af24c0267ceba08529081c0425d9f370e0ea0d02869dc3c98ad490905c1ee).
+464   No verified external anonymous URL is available at this freeze. The seed-42 principal safetensors checkpoints
+      have full SHA-256 values AR-init a618886a762eb8983cc0821fb43261ff27f4012738e240d0
+465
+      0827d0a81d7dd00d and random-init bbfbfb7fa4782dea8492412edd9bf30eedc1940d
+466   a599848bf86d39b8c942a509. Table 2 records the random draw’s distribution and scale; its ambient
+467   weight seed is missing and differs from training/data-order seed 42. Step 0 was not logged; the earliest step-10
+468   losses are 9.6009 and 11.2053, respectively, versus ln(49,153) ≃ 10.802.
+469   Source commit 6f21ee9 builds with Tectonic 0.17.0, the pinned ICLR 2026 template, and fixed
+470   SOURCE_DATE_EPOCH; the rebuild is recorded in paper/layout/deterministic.json.
+471   Runtime pins are transformers==4.57.0, datasets==4.2.0, accelerate==1.11.0,
+472   sentencepiece==0.2.0, and mauve-text==0.4.0 on PyTorch/bfloat16, ZeRO-2, and eight
+473   anonymized H20-class accelerators. The package pin does not make num_buckets=auto→ 3 byte-
+474   reproducible, so the attempted MAUVE value remains not recorded. Trajectory CIs use B = 2,000, seed
+      0; permutation calibration uses B = 400, seed 0, with null95 the permutation-null 95th percentile. All anchors
+475
+      are in paper/anonymous_artifact/data/reproducibility_anchors.json.
+476
+477
+478   References
+479   Loubna Ben Allal, Anton Lozhkov, Elie Bakouch, Gabriel Martín Blázquez, Guilherme Penedo, Lewis Tunstall,
+480     Andrés Marafioti, Hynek Kydlíček, Agustín Piqueres Lajarín, Vaibhav Srivastav, Joshua Lochner, Caleb
+481     Fahlgren, Xuan-Son Nguyen, Clémentine Fourrier, Ben Burtenshaw, Hugo Larcher, Haojun Zhao, Cyril
+        Zakka, Mathieu Morlon, Colin Raffel, Leandro von Werra, and Thomas Wolf. SmolLM2: When smol goes
+482
+        big—data-centric training of a small language model, 2025. URL https://arxiv.org/abs/2502.
+483     02737.
+484   Shansan Gong et al. Scaling diffusion language models via adaptation from autoregressive models. In In-
+485     ternational Conference on Learning Representations, 2025. URL https://arxiv.org/abs/2410.
+        17891.
+
+
+                                                             9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+      Keya Hu, Linlu Qiu, Yiyang Lu, Hanhong Zhao, Tianhong Li, Yoon Kim, Jacob Andreas, and Kaiming He.
+487      ELF: Embedded language flows. arXiv preprint arXiv:2605.10938, 2026. URL https://arxiv.org/
+488      abs/2605.10938.
+489   Xiaoyi Jiang et al. UNIFUSION: Adapting autoregressive language models into discrete diffusion under a
+490      unified reverse-rate objective, 2026. URL https://arxiv.org/abs/2607.24507.
+491   Jinsong Li, Xiaoyi Dong, Yuhang Zang, Yuhang Cao, Jiaqi Wang, and Dahua Lin. Beyond fixed: Training-free
+         variable-length denoising for diffusion large language models. arXiv preprint arXiv:2508.00819, 2025. URL
+492
+         https://arxiv.org/abs/2508.00819.
+493   Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai Lin, Ji-Rong Wen,
+494      and Chongxuan Li. Large language diffusion models. arXiv preprint arXiv:2502.09992, 2025. URL https:
+495      //arxiv.org/abs/2502.09992.
+496   Krishna Pillutla, Swabha Swayamdipta, Rowan Zellers, John Thickstun, Sean Welleck, Yejin Choi, and Zaid
+497      Harchaoui. MAUVE: Measuring the gap between neural text and human text using divergence frontiers. In
+         Advances in Neural Information Processing Systems, 2021. URL https://arxiv.org/abs/2102.
+498
+         01454.
+499   Subham Sekhar Sahoo, Marianne Arriola, Yair Schiff, Aaron Gokaslan, Edgar Marroquin, Justin T. Chiu,
+500      Alexander Rush, and Volodymyr Kuleshov. Simple and effective masked diffusion language models. arXiv
+501      preprint arXiv:2406.07524, 2024. URL https://arxiv.org/abs/2406.07524.
+502   Yequan Wang, Jiawen Deng, Aixin Sun, and Xuying Meng. Perplexity from PLM is unreliable for evaluating
+503      text quality. arXiv preprint arXiv:2210.05892, 2022. URL https://arxiv.org/abs/2210.05892.
+504
+      Zhengtao Yao et al. PreDiff-LM: Pretrained discrete masked diffusion language modeling with hybrid attention,
+         2026. URL https://arxiv.org/abs/2607.25157.
+505
+      Zhanhui Zhou, Lingjie Chen, Hanghang Tong, and Dawn Song. dLLM: Simple diffusion language modeling,
+506      2026. URL https://arxiv.org/abs/2602.22661.
+507
+508
+509   A    Reproducibility and Evidence Index
+510
+511   Table 12 maps every headline claim to an on-disk artifact; the companion paper/anonymous_
+512
+      artifact/README.md gives field-level JSON pointers, commands, and scope restrictions.
+513   Table 12: Claim-to-artifact evidence map. Each headline claim is bound to a primary on-disk ar-
+514   tifact and its regeneration or audit entry; paper/anonymous_artifact/README.md carries
+515   the field-level JSON pointers.
+516     Claim                 Primary artifact                          Regeneration / audit
+517     Training budget,      paper/anonymous_artifact/                 scripts/multiseed_
+518     curves, paired gap,   data/multiseed_summary.json               postprocess.py;
+519     and CI                                                          data/reproducibility_
+520                                                                     anchors.json
+521
+        PPL, degraded         paper/anonymous_artifact/                 scripts/phase2_emission_
+        MAUVE, emission       data/                                     coords.py;
+522     coordinates, and      phase2_summary.json;                      scripts/phase2_gen_ppl_
+523     length checks         emission_coords.json                      lengthmatched.py
+524     Argmax, drift, and    paper/anonymous_artifact/                 Frozen v3.1 fields; drift failure retained
+525     sweep-tail probes     data/                                     as a gate diagnostic
+                              unigram.json;
+526
+                              drift_layer.json;
+527                           sweep_tail.json
+528     Masked-entropy        paper/anonymous_artifact/                 data/reproducibility_
+529     AUROC                 results/cross_paradigm.json               anchors.json
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+
+
+
+                                                          10
+

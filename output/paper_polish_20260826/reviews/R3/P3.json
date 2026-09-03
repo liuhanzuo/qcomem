@@ -1,0 +1,148 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "c047b9974119a16a69aaf7981a3621e3dfcb0cf47672cabb075f6fad8cdf4b83",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文正确地区分了跨样本 Kendall 符号与同一样本早晚移动的配对符号，并以 seed 为推断单位；但承载路径敏感性结论的同一估计器在已知集合有序的 ridge 反事实臂上于四种分配中的三种显著触发。当前仅凭另一载体上的偏差为正，就排除 sine 载体上负向伪影，缺少同载体控制或可运输的符号界，因此核心识别仍有实质缺口。",
+    "presentation": "问题、估计量、符号方向和结论边界总体清楚，图表可读，局限也较坦率。主要可读性问题是第5–6页表8、表9先于表6、表7出现，且配对主结果没有展示16个 seed 的完整分布与原始差值尺度，使关键判断不如跨截面结果易核查。",
+    "contribution": "同一样本配对、显式区分路由选择信号与路径效应、并主动运行集合有序反事实臂，是有用的实验诊断框架；然而证据仅来自两个合成 logistic 载体，线性载体未识别，反事实臂又暴露估计偏差，当前知识增量较窄且尚不足以支持稳定的一般方法结论。"
+  },
+  "paper_summary": "论文研究训练样本的边际价值是否随进入 WSD 优化日程的位置而变化。作者在两个24维合成 logistic 载体上比较三种进入构造，以每个 seed 的 Kendall τ 描述跨样本关系，并用把同一目标从0.15T移动到0.85T的标准化配对差 g 作为主要路径读数。sine 载体得到 g=-0.186、95% CI [-0.258,-0.115]，linear 载体不确定；同时，B2 的跨截面负相关可由集合有序世界中的按参考值路由复现。集合有序 ridge 反事实臂对同一配对估计器给出非负偏差且规范分配显著触发，作者据此仅作符号层面的保守解释，并将结论限制为载体依赖的合成测量。",
+  "strongest_verified_contribution": "最可信的贡献是证明 B2 跨截面信号本身不能识别路径效应：第4–6页的同一样本移动与集合有序路由压力测试共同显示，参考值条件化的路由可以在集合有序世界中复现强负 Kendall τ，因此必须把样本身份固定后再检验进入位置。",
+  "strengths": [
+    "第2–4页明确给出 τ 与 g 的方向解释，并反复避免把负的跨截面 τ 误读为负的同一样本路径效应。",
+    "第3–5页以16个 seed 为推断单位，报告 Student-t 区间、Wilcoxon 检验、六个相关对比的 Bonferroni 家族控制以及预设的 τa=0.10 实质效应门槛。",
+    "第4–6页没有隐藏负控制失败：规范 ridge 分配触发封存的双侧规则，作者撤回了符号不敏感的后果条款，并拒绝做未经验证的跨载体幅度校正。",
+    "第6–8页清楚限制到两个合成 logistic 载体，并声明该研究不能普遍决定数据价值是路径有序还是集合有序。"
+  ],
+  "questions": [
+    "同一配对估计器为何会在严格集合有序的 ridge 上产生系统性正 g？能否给出该偏差关于载体、目标选择、优化精度和分配位置的解析分解，并证明其符号在 sine 构造上不能翻转？",
+    "第4页式(4)把每个 seed 的平均早晚差除以40个目标内的标准差。16个 seed 各自的原始 mean Δ、std Δ 和 g 是多少？结论对接近零的分母、稳健标准化或不标准化效应是否稳定？",
+    "为何 τ 有预设的最小有意义幅度 τa=0.10，而主配对量 g 没有相应的实际意义门槛？PATH-SUPPORTED-neg 的判定在冻结方案中是否只要求区间排除零？",
+    "547978c5、6b437ba5、397dd466 等工件是否会随匿名补充材料提供完整文件与全长 SHA-256，以便从数据生成到表5–7端到端重放？",
+    "sine、linear、路由置换及四个 ridge 分配在冻结前分别被指定为主检验、校准或探索分析吗？请给出覆盖这些选择的完整错误率家族。"
+  ],
+  "issues": [
+    {
+      "issue_id": "P3-R3-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第4–6页，§4.2–4.3，表5–7；摘要第21–25行与结论第326–331行",
+      "claim_ids": [
+        "PATH-SUPPORTED-neg"
+      ],
+      "evidence_ids": [
+        "547978c5",
+        "6b437ba5",
+        "b81168c4"
+      ],
+      "observed_evidence": "sine 主配对读数为 g=-0.186、CI [-0.258,-0.115]；但在按构造应当次序不变的 ridge 上，规范分配为 g=+0.102、CI [+0.028,+0.176]，另两种分配也显著为正，只有 Xs[80:120] 覆盖零。论文承认规范分配按封存双侧规则属于 fire，却据跨载体的正偏差方向断言其不能产生 sine 的负偏差。",
+      "why_it_matters": "负控制证明估计流程在真零路径效应下并不居中。偏差符号可能依赖载体几何、目标选择、优化收敛和分配构造；在没有同载体集合有序控制或解析符号界时，ridge 上的正号不能排除 sine 上的负向伪影。这直接决定主路径识别是否成立。",
+      "required_fix": "在尽可能保持 sine 数据几何、目标分布、样本数、日程和优化器不变的前提下构造可证明集合有序的匹配负控制，或给出并验证 g 偏差的解析表达与跨载体可运输符号界。若不能做到，应把 PATH-SUPPORTED-neg 降为与估计偏差未分离的探索性负向读数。",
+      "verification_test": "预先冻结匹配负控制和主载体的 seed、分配及判定规则；确认负控制 g 的区间覆盖零，或由经数值验证的上/下界证明任何集合有序伪影都不可能达到负的 sine 区间；随后在独立 seeds 上复现 sine 的负向效应并报告偏差界后的结论。",
+      "evidence_needed": "匹配载体负控制的逐 seed 原始 Δ 与 g、优化收敛诊断、解析或仿真偏差分解，以及独立冻结复验。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R3-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "第4页，§4.2式(4)及表5；第2页§2关于 τa 的定义",
+      "claim_ids": [
+        "PATH-SUPPORTED-neg"
+      ],
+      "evidence_ids": [
+        "547978c5"
+      ],
+      "observed_evidence": "主量 gk 是40个目标早晚差的均值除以同一组差值的样本标准差，最终仅给出16个 seed 上的 g 均值、t 区间和 Wilcoxon p。论文未给出原始 Δ 的量纲、每个 seed 的分母或 g 分布，也未为 g 预设类似 τa=0.10 的实际意义门槛。",
+      "why_it_matters": "标准化比值会把原始影响幅度与分母稳定性混合；区间排除零只能说明该定义下的方向，而不能说明实际影响大小。若少数 seed 的分母小或目标内分布重尾，n=16 的均值区间可能不稳，且 PATH-SUPPORTED 标签可能把统计非零误当作决策相关效应。",
+      "required_fix": "报告16个 seed 的原始 mean Δ、std Δ、g、目标级差值分布与稳健敏感性；预先定义 g 或原始 Δ 的最小有意义幅度，并说明多重分析家族。",
+      "verification_test": "在冻结代码上重算未标准化、稳健尺度和删除单 seed 的区间；要求方向、实际幅度门槛和结论在预先指定的敏感性分析中一致，并公开逐 seed 表。",
+      "evidence_needed": "逐 seed/逐目标配对输出、分母诊断、稳健区间以及事前的实际意义阈值。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "P3-R3-03",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "citation_integrity"
+      ],
+      "location": "第7–8页，附录A–B",
+      "claim_ids": [],
+      "evidence_ids": [
+        "61894856",
+        "2e08b7f9",
+        "547978c5",
+        "6b437ba5",
+        "397dd466"
+      ],
+      "observed_evidence": "附录A称精确历史 LaTeX 与绘图源不可用，定量图由冻结 PDF 忠实抽取；附录B只列工件名及8位 SHA 前缀，并明确本次编辑未独立执行。PDF 本身没有逐 seed 数据、完整配置或可执行重放说明。",
+      "why_it_matters": "主结论依赖多个历史轮次工件、标签修订和负控制分配。短哈希与转录表不足以排除版本混用、数值抄录错误或分析脚本与表格不一致，也不允许独立审稿人重建核心结果。",
+      "required_fix": "在匿名补充材料中冻结原始逐 seed/逐目标输出、数据生成器、配置、分析脚本、环境、完整 SHA-256 和一条端到端重放命令；由干净环境重新生成表2–10和图2。",
+      "verification_test": "独立环境从公开的冻结工件重放后，所有表格单元与图中点/区间逐值一致，完整哈希匹配，并生成包含 seed 数、日程位置、优化终止状态和输出路径的审计日志。",
+      "evidence_needed": "匿名可下载的完整工件包及独立重放记录。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P3-R3-04",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "第5–6页，表8、表9、表6、表7、表10的出现顺序",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "正文先展示表8和表9，下一页才出现表6、表7和表10；主配对结果只以汇总表出现，没有与图2同等级的逐 seed 可视化。",
+      "why_it_matters": "错序增加核查成本，并使最关键的配对异质性、离群 seed 和控制偏差不如次要跨截面结果透明。",
+      "required_fix": "按首次引用重排表格并增加16个 seed 的配对点图，明确连接同 seed 的 sine、linear 与匹配负控制读数。",
+      "verification_test": "逐页检查所有表格按编号和首次引用顺序出现，且图中点可由公开逐 seed 表一一对应。",
+      "evidence_needed": "逐 seed 汇总表和生成图脚本。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "研究使用合成数据、无人体参与者或个人信息；冻结 PDF 中未见需要单独伦理升级的内容。",
+  "llm_usage_disclosure": "本审稿由全新、隔离的 AI 子代理 R3 生成，仅用于内部投稿前质量控制；该子代理只读取指定的冻结 PDF、审稿协议、量表与 JSON schema，未与任何其他评审通信，也未接触作者计划、历史评审、目标分数或版本历史。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在保持 sine 载体关键几何和训练流程的匹配集合有序负控制上，配对估计量居中于零，或存在经验证的偏差界严格排除负向伪影。",
+    "在事前冻结的新 seeds 上复现 sine 的原始及标准化早晚差，并跨过预设的实际意义门槛，且对稳健尺度、删除单 seed 和多重性处理稳定。",
+    "公开完整匿名工件并由干净环境端到端重放所有主表与控制表，逐值匹配。",
+    "加入至少一个自然数据或更接近目标应用的载体，并在其中运行同样的配对与匹配负控制协议。"
+  ],
+  "evidence_that_would_lower_score": [
+    "匹配集合有序控制出现负 g，或其负向区间与 sine 主结果重叠。",
+    "逐 seed 原始差显示结论由小分母、单一 seed、未记录的选择或后验分析驱动。",
+    "重放工件不能复现表5–7，或完整哈希对应的配置与论文所述日程/目标不一致。"
+  ],
+  "review_limitations": [
+    "按隔离要求仅审阅了冻结 PDF，未读取论文源文件、附录中点名的 JSON/代码/预注册工件，因此无法独立重放或验证其内部完整哈希。",
+    "按任务要求未联网，参考文献的存在性、元数据与对局部陈述的支持未做外部核验；相关意见仅基于 PDF 中呈现的定位。",
+    "PDF 共8页，文本抽取完整且逐页视觉核查未发现影响内容读取的解析故障。"
+  ]
+}

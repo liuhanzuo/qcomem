@@ -1,0 +1,54 @@
+\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{The system is not constant-memory.}
+The fixed-$k$ pack is bounded, but GPU peak is not constant: it stays nearly
+flat through 128k and rises materially at the separate \mbox{one-million-token}
+serving point (Appendix~\ref{app:repro}).  The activation/text/index stores
+grow as $O(\text{context})$; index size and BM25 latency remain unmeasured.
+
+\paragraph{Depth caching loses information needed by the deployed read.}
+The same-retrieval $j=12$ arm is worse than $j=0$ on qa1 and the registered
+RULER/LongEval aggregates, and no tested deeper point recovers $j{=}0$ accuracy
+(Appendix Table~\ref{tab:depthcurve}); identical-position split/rejoin does not
+validate relocated chunks.  The answer-anchored 512-cap result is underpowered
+and the directional diagnostics are post-hoc, leaving a clean magnitude open.
+The quality cost is also task-dependent: the fixed read retains near-perfect
+recall on needle-style single-supporting-fact probes, so that claim does not
+extend to multi-hop composition, which is not evaluable under the registered
+adjudicator (Appendix~\ref{app:secondary}).  The 16k dense/re-forward controls
+are a non-rejection, not an equivalence test, so a retrieval-side deficit of a
+few pp is not excluded, though it remains far below the \emph{depth} effect.
+
+\paragraph{The result is training-free and therefore bounded.}
+Every number here comes from a frozen backbone with no parameter update, so the
+measured depth cost is what a \emph{training-free} deployment pays.  It is not a
+statement about what is achievable in principle: representations can be trained
+to be more cache-compressible~\citep{kvcat}, and a backbone or adapter optimized
+for reading relocated mid-depth states could recover part of the gap we measure.
+We ran no such training, so we neither claim nor exclude that recovery.
+
+\paragraph{Selection, uncertainty, and scorer resolution.}
+The archived best-$k$ sweeps lack a validation/test separation, so we report
+fixed $k=12$; primary RULER and qa1 cells have $n=50$ and $n=100$ under one
+checkpoint and seed, and overlapping half-splits diagnose resampling stability,
+not independent replication.  The pairing join is over the formatted model input
+rather than an independently stored 64-hex document digest, which was never
+retained, so the load-bearing cell also carries the pairing-free two-proportion
+floor.  The official scorer collapses roughly six in ten raw-generation
+differences onto one label, so the $0/100$ endpoint agreement between arms (e.g.\
+E and C) is indistinguishability \emph{at label resolution}, not identity or
+inertness of a deleted factor (Appendix~\ref{app:extended-limitations}).
+
+\paragraph{Mechanism-attribution boundary of the closest prior.}
+\texttt{NOT\_MEASURED}: the attributed-mechanism support of the closest prior citation(s)
+is not verified item-by-item by a human reader; the claim of mechanism
+attribution to those loci (Layer-Condensed KV, HCache, KV-Direct) is therefore
+bounded and not asserted as human-verified.
+
+\paragraph{Serving and data governance.}
+Full attention at 128k uses 71.4\,GB and remains feasible on the H20, CoMem
+recomputes the upper band per decoded token so 0.68\,s is read/prefill rather
+than end-to-end latency, and the 0.3\,GB E1 difference establishes no general
+depth-memory or end-to-end benefit.  Raw text and activations require encrypted
+storage, access control, and source-bound deletion.

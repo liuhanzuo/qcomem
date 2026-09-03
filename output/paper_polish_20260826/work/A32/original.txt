@@ -1,0 +1,954 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      L ENGTH -A SSOCIATED S IGNED C ONFIDENCE –
+002   ACCURACY G AP : A W ITHIN -I TEM C AUSAL C HECK ,
+003
+004   A T WO -C OMPONENT D ECOMPOSITION , AND
+005
+006
+      A H UMAN -A NCHORED C ROSS -B ED R EAD
+007
+008    Anonymous authors
+009    Paper under double-blind review
+010
+011
+012
+                                                 A BSTRACT
+013
+014
+               We report a corrected read of the length-associated signed conﬁdence–accuracy
+015
+               gap in masked-diffusion decoding. On GSM8K with LLaDA-8B-Instruct, the
+016
+               signed conﬁdence–accuracy gap is +0.2227 with a primary 95% cluster-bootstrap
+017            interval [0.169, 0.277], an observational contrast across prompt-length variants;
+018            accuracy falls much faster than conﬁdence (exact two-component decomposition
+019            with opposing-sign shares). A within-item randomized experiment (400 paired
+020            problems, content-free redundant ﬁller, ﬁxed decode budget) yields a within-
+021            item signed-gap contrast of −0.0075 [ −0.052, +0.039], and at the +37-token
+022            intervention dose that interval excludes the +0.2227 observational magnitude
+023            (dose-local, not dose-matched; §2); the preregistered verdict is NOT _ IDENTIFIED:
+024            content-free length is not detected to widen the signed gap, so the read is
+025
+               an association across prompt-length variants, not a demonstrated mechanism
+               for this bed. On MATH500, the post-repair v2 judge agrees with all 30 hu-
+026
+               man anchors, and the explicitly designated second-bed v2 estimate is +0.2382
+027
+               [0.1639, 0.3125]; the lenient judge with a 30-anchor pair-bias correction gives
+028            +0.1606 [ −0.059, +0.380] as an anchor-dependent design sensitivity interval
+029            (not a repeat-sampling conﬁdence interval) that contains zero, so the honest
+030            reporting-layer conclusion remains POWER _ LIMITED: cross-bed transportability
+031            is not established (§A). Within GSM8K, the point estimate also decays toward and
+032            through zero as the accuracy regime hardens, a boundary on the headline associa-
+033            tion rather than a mechanism claim.
+034
+035
+036   1   I NTRODUCTION
+037
+038
+      Masked-diffusion language models decode by iteratively unmasking tokens under a scheduled tran-
+      sition, and the decoder’s per-output self-reported probability at the commit step is the natural conﬁ-
+039
+      dence signal a downstream system would consume. Yet little is known about when that conﬁdence
+040
+      is trustworthy as input length varies, and in particular whether an observed “conﬁdent and long”
+041   regime coincides with a lengthening of the signed conﬁdence–accuracy gap. When a prompt is
+042   lengthened, accuracy and conﬁdence can move in opposite directions, and the signed gap between
+043   them—conﬁdence minus correctness—is the quantity that decides whether high conﬁdence is being
+044   bought at the cost of lower accuracy. We study the length-dependence of this signed gap in one ﬁxed
+045   GSM8K (Cobbe et al., 2021) / LLaDA-8B-Instruct (Nie et al., 2025) setting, and test whether an
+046   observed length association is causal. Our contributions are:
+047
+048
+            1. an exact two-component decomposition ∆SCE = ∆conf − ∆acc showing that a signed-
+               gap difference is almost entirely an accuracy-side effect (accuracy share 114.1%, conﬁ-
+049
+               dence share −14.1%);
+050
+051         2. a preregistered, within-item randomized intervention (N =400 paired problems, content-
+052
+               free redundant ﬁller) that returns an honest null on causal widening of the signed gap while
+               bounding the effect ([−0.052, +0.039]) tightly enough to exclude the +0.2227 observa-
+053
+               tional magnitude;
+
+
+                                                        1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+            3. an audited answer-matching judge and a human-anchor correction on a second, harder bed,
+055            reported conservatively as POWER _ LIMITED with the judge-convention dependence made
+056            explicit;
+057
+            4. a reproducibility apparatus in which every headline number links to a frozen artifact and to
+058
+               a one-command reproducer.
+059
+060   The remainder of the paper deﬁnes the estimand and reports the single-bed decomposition and causal
+061   check (§2), the second-bed read (§3), the accuracy-regime boundary (§4), the experimental setup
+062   (§5), the judge validation and anchor adjudication, related work, limitations, and the reporting-layer
+063   citable read.
+064
+065   2    L ENGTH - ASSOCIATED SIGNED GAP : THE SINGLE - BED DECOMPOSITION
+066
+           AND A WITHIN - ITEM CAUSAL CHECK
+067
+068
+      Deﬁnitions. A bed is one ﬁxed task–model–decoder evaluation setting. The signed calibration
+069   error is SCE = E[conf] − E[acc], the mean commit-step conﬁdence minus mean correctness;
+070   commit-step conﬁdence is the decoder’s ﬁnal self-reported probability at the commit step. The
+071   reporting grade set is four-valued: SUPPORT means evidence reproducible under the predeclared
+072   audit, POWER _ LIMITED means not established (here because of human-anchor volume, not GPU),
+073   NOT _ IDENTIFIED is the preregistered verdict for a causal check whose within-item interval con-
+074   tains zero, and NOT _ MEASURED means that no instrument is available. The V-gate is the count-
+075   form threshold on false-reject and false-accept counts. Prompt-length tertiles are formed by the
+076   lower/upper natural-language token terciles of each bed’s prompt lengths: bed 1 (t0≤62, t2≥80
+077
+      tokens) and bed 2 (t0≤48, t2≥77 tokens). MDLS-101 and FULL-193 are respectively the mini-
+      mum and full two-layer human-anchor ﬁlls (101 and 193 labels). Sealed or fragility-lineage marks
+078
+      bootstrap or agreement ﬁgures computed under an earlier pre-repair snapshot and retained for prove-
+079
+      nance, not as a v2 measurement.
+080
+081   We study the length-dependence of commit-step conﬁdence in one masked-diffusion bed; model
+082   conﬁdence is a calibration-relevant observable (Kadavath et al., 2022). Figure 1 summarizes the
+083
+      measurement narrative and the resulting read on each bed. On the single bed (GSM8K, Cobbe et al.,
+      2021; LLaDA-8B-Instruct, Nie et al., 2025; the bed carries 1,948 predictions from 974 problems,
+084
+      while the extreme-tertile contrast itself uses 1,340 predictions from 670 problems, Table 3), the gap
+085
+      ∆SCE = SCE(hi) − SCE(lo) = +0.2227 decomposes exactly as
+086
+087           ∆SCE = ∆conf − ∆acc,
+088           ∆conf = −0.0314 [−0.0396, −0.0236],             ∆acc = −0.2541 [−0.3107, −0.1987].
+089   Mean conﬁdence decreases with length, but accuracy decreases faster. Figure 2a carries the com-
+090   ponent magnitudes and exact signed-share accounting; the shares sum to 100% across opposite-sign
+091   terms because share(acc) = −∆acc/∆SCE and share(conf) = ∆conf/∆SCE. Both follow from
+092   a per-problem cluster (multiplicity) bootstrap (Davison & Hinkley, 1997): with R = 2000 resam-
+093   ples and the percentile 2.5/97.5 CI (seed 20260824), the primary 95% interval is [0.169, 0.277], SD
+094   0.0277; the registered implementation path is given in Data and reproducibility. This contrast is
+095   observational across prompt-length variants: bed 1’s g3_main A/B′ arms carry identical prompt
+096   lengths on the overlap pool, and the tertile split t0/t2 is a post-hoc length stratiﬁcation, not a within-
+097
+      problem manipulation.
+098
+      Within-item causal check. To test whether the length association is a causal length mech-
+099
+      anism, we ran the predeclared within-item intervention (prereg prereg/r198_length_
+100
+      intervention_prereg.md). Table 1 records the three arm deﬁnitions, ﬁxed decode budget,
+101   validity gate, and within-item outcome contrasts. Adding content-free length signiﬁcantly lowers
+102   conﬁdence and accuracy in tandem; the table carries both point estimates and intervals. The within-
+103   item signed-gap contrast is
+104
+                                ∆SCEwithin = −0.0075          95% [−0.052, +0.039],
+105
+106   which contains zero (preregistered verdict NOT _ IDENTIFIED): we do not detect a causal widening,
+107   and the interval bounds the effect to [−0.052, +0.039]—crucially, it excludes the +0.2227 obser-
+      vational contrast, which lies far outside this range, but does not exclude a small positive widening.
+
+
+                                                          2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125   Figure 1: Measurement narrative. As prompt length increases across prompt-length variants, accu-
+126   racy falls faster than conﬁdence and the signed conﬁdence–accuracy gap is associated with length; a
+127
+      within-item randomized intervention shows length lowers conﬁdence and accuracy in tandem while
+      the signed gap shows no detected widening, bounded to [−0.052, +0.039] (Table 1). The middle
+128
+      panel’s banner is shorthand for that preregistered NOT _ IDENTIFIED verdict—no widening was de-
+129
+      tected at the +37-token intervention dose—and not a claim that a causal widening has been ruled
+130   out. On the second bed, the validated judge supplies an uncorrected read before human-anchor cor-
+131   rection; the corrected transportability conclusion is POWER _ LIMITED. The separate difﬁculty strip
+132   summarizes the observed point-estimate boundary and makes no mechanism claim. This conceptual
+133   ﬁgure contains no generated experimental values.
+134
+135
+136   The L ONG arm applies the +37-token intervention dose as uniform ﬁller, whereas the observa-
+137   tional tertile separation is 38 tokens at the median and 45.5 at the mean (Table 3), so the exclusion
+138   is dose-local to roughly the realized observational dose—not to larger content-free doses—and is
+139   nevertheless not exactly dose-matched. Within the co-primary calibration family, family-wise mul-
+140   tiplicity is controlled by a simultaneous Bonferroni-4 correction on the {ECE, adaptive-ECE, Brier,
+141   NLL} set at two-sided 98.75%; that correction moves the endpoints but does not ﬂip either verdict:
+142
+      ECE and adaptive-ECE show no detected widening, whereas Brier and NLL worsen signiﬁcantly
+      under L ONG and remain so post-correction.
+143
+144   Critically, the Brier and NLL worsenings are proper-scoring-rule mixtures of accuracy and conﬁ-
+145   dence, so their movement in the same direction as the signiﬁcant accuracy drop is expected me-
+146   chanically and is not evidence of a signed-gap widening; they are reported as components of the
+147   co-primary family rather than as proof of a widening mechanism. Table 1 carries their per-arm val-
+148
+      ues and intervals and the Bonferroni-adjusted endpoints. We therefore read the observed “+0.2227
+      with length” as an association across prompt-length variants for content-free length on this bed, not
+149
+      as a demonstrated length→gap mechanism.
+150
+151
+152   3   T WO - COMPONENT READ ON A SECOND BED (MATH500)
+153
+154   On a second, harder bed (MATH500, n = 400, same decoder), the correctness label requires a
+155   validated matcher for free-form prose ﬁnals (the judge v2, §6). Under the post-repair, label-aligned
+156   v2 judge (Table 4), the primary v2 composite read is a two-component estimate with a conservative
+157
+      k=0 (se-bias ﬂoor) interval, positive and excluding zero:
+158                               ∆SCE2,v2 = +0.2382        [0.1639, 0.3125].
+159
+160
+      This single value is the designated second-bed v2 estimate; Table 6 also reports an isin-cluster
+      bootstrap lens on the same datum (+0.2308 [0.1588, 0.307]) as a separately-named sensitivity, never
+161
+      as a competing “same v2 point.” Table 6 collects every judge convention and its read (primary v2
+
+
+                                                       3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+163   Table 1: Within-item length-intervention result (N =400 paired problems, bed 1 GSM8K). Arms
+164   share each base prompt: S HORT is the base, L ONG adds 37 uniform tokens, and R ANDOM adds
+165   a 0..55-token dose. Within-item L ONG − S HORT and R ANDOM − S HORT deltas use paired per-
+166   problem outcomes, ﬁxed uniform schedule A (NFE=64), content-free redundant ﬁller, and a pre-
+167
+      declared 100-item gate with 0/200 drift (seed 20260824). Adding content-free length lowers conﬁ-
+      dence and accuracy in tandem; the signed gap is ∆SCE = −0.0075 [−0.052, +0.039] (preregistered
+168
+      verdict NOT _ IDENTIFIED — no detected widening, interval excludes the +0.2227 observational
+169
+      magnitude but not a small positive effect). The co-primary family: ECE and adaptive-ECE show no
+170   detected widening ([−0.014, +0.055] and [−0.032, +0.046]), while Brier (+0.0213 [0.011, 0.031])
+171   and NLL (+0.0452 [0.024, 0.067]) worsen signiﬁcantly.
+172
+173    quantity             Short      Long      Random                 L−S                            R−S
+174    ∆SCE               −0.0724 −0.0799 −0.0861 −0.0075 [−0.052, 0.039] −0.0137 [−0.065, 0.035]
+175    conﬁdence           0.630   0.543   0.574 −0.0875 [−0.098, −0.076] −0.0562 [−0.067, −0.046]
+176    accuracy            0.703   0.623   0.660 −0.0800 [−0.125, −0.033] −0.0425 [−0.088, 0.003]
+       ECE                 0.0889 0.1154 0.1276 +0.0264 [−0.014, 0.055]
+177
+       adaptive-ECE        0.1153 0.1248 0.1226 +0.0095 [−0.032, 0.046]
+178    Brier               0.1922 0.2135 0.2245   +0.0213 [0.011, 0.031]
+179    NLL                 0.5723 0.6175 0.6499   +0.0452 [0.024, 0.067]
+180    dose slope/tok                             +0.0009 [−0.002, +0.004] (cluster; see note)
+181    dose-bin ∆SCE                      {−0.073, −0.126, −0.081, −0.057} at dose {0, 12, 30, 48}
+182   Within-item L−S and R−S deltas are per-problem cluster-bootstrap contrasts (R=2000 per problem seed
+183   20260824; points: +0.0264, +0.0095, +0.0213, +0.0452). The R ANDOM arm is the predeclared 0..55-
+184   token uniform-dose arm, drawn once per problem at the r198 predeclared seed. The dose-response slope is a
+185   per-problem paired regression (not a naive per-decode i.i.d. ﬁt): the response is ∆SCE, the predictor is the
+      realized RANDOM-arm dose, and the problem-cluster bootstrap clusters all three arms of the same problem
+186
+      on the same resample, so the repeated-arm dependency is carried inside the cluster instead of inﬂating the ef-
+187   fective sample size of the SE computation. A naive per-decode (i.i.d.) ﬁt of the signed-gap dose-response gives
+188   +0.0022/token (p=0.0098); this naive per-decode model suffers from repeated-arm dependency (L arm draws
+189   the same problem-content seed effects across its per-item doses) and uses the wrong inference base, which ren-
+190   ders the naive positive slope a multiplicity/i.i.d.-SE artifact. Heterogeneity beyond a linear-dose trend is already
+      accounted for by the problem-cluster pairing: each problem carries its own base level implicitly, which the ﬁt-
+191
+      ted intercept (−0.109 with bootstrap interval [−0.196, −0.025]) absorbs rather than indicating a content-free
+192   violation. The paired-cluster estimate eliminates the heterogeneity source: the per-problem cluster-bootstrap
+193   slope is +0.0009/token (95% bootstrap interval [−0.002, +0.004], two-sided bootstrap p=0.535). At the re-
+194   alized mean dose of 25.2 tokens the ﬁtted model predicts a ∆SCE shift of +0.023, inside the R−S contrast CI
+195   [−0.059, +0.033] (per-decode cluster resampling; the per-item run tabulated in the R−S column above gives
+      [−0.065, +0.035], and +0.023 lies inside both); the dose-bin means also do not trend monotonically. Thus the
+196
+      clustered dose slope is consistent with the preregistered NOT _ IDENTIFIED verdict; we therefore read the naive
+197   positive slope as a multiplicity/i.i.d.-SE artifact, not as a dose effect. All intervals in this table are bootstrap
+198   percentile intervals (R=2000, per-problem cluster resampling) under the predeclared co-decision on the L−S
+199   family. “—” marks a metric kept descriptive because the within-item contrast was not part of the predeclared
+200   co-decision for that arm.
+201
+202
+      row 3, lenient row 2); the human-anchor-corrected read is shown here explicitly because it carries
+203   the reporting-layer conclusion
+204
+205                                  ∆SCE2,corr = +0.1606           [−0.059, +0.380],
+206   which contains zero. Sensitivity designation: because the 30 human anchors are purposive (not
+207   a probability sample), this interval is an anchor-dependent design sensitivity interval, not a clas-
+208   sical repeat-sampling conﬁdence interval; a fully-upgraded CI requires the predeclared FULL-
+209   193 two-strata probabilistic human annotation (future work). Figure 2 plots the decomposition
+210   (panel a) and the cross-bed reads with their intervals (panel b). The honest reporting-layer read
+211   is POWER_LIMITED (limited by human anchor volume, not GPU). The v2 estimate is an uncor-
+212   rected read, not a proven bound: the sign of full-bed judge error is not identiﬁable from the purposive
+213   anchor. Neither “transportable positive” nor “collapse” is citable until an expanded, two-layer hu-
+214
+      man anchor pins the corrected estimate; Table 4 separates the fragility-lineage diagnostics from the
+      post-repair v2-ﬁnal audit.
+215
+
+
+
+                                                               4
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+216
+                      (a) Two-component decomposition:                            (b) Cross-bed gap: raw uncorrected reads vs
+217                          ΔSCE = Δconf − Δacc                               human-anchored corrected read (POWER_LIMITED)
+218                   0.5                                                                         +0.231 [0.159,0.307]
+                                Δconf                                 v2 isin binned
+219                   0.4       −Δacc                           (sealed sensitivity)
+220                             ΔSCE                      lenient + human anchor                +0.161 [-0.059,0.380]
+                      0.3                            (corrected, POWER_LIMITED)
+
+      signed value
+221
+222                   0.2                                  lenient two-component                   +0.261 [0.163,0.359]
+                                                                      (uncorrected)
+223                   0.1                                       v2 two-component                  +0.238 [0.164,0.312]
+224
+                      0.0                                           (PRIMARY read)
+225
+                                                                 single bed GSM8K                +0.223 [0.169,0.277]
+226                  −0.1                              (primary cluster bootstrap)
+227
+                              bed-1       bed-2                                            0.0 0.1 0.2 0.3 0.4
+228                          GSM8K      MATH500                                           composite gap ΔSCE (hi−lo)
+229
+230
+231
+      Figure 2: Two-component decomposition (a) and cross-bed composite gap (b). Panel (a): ∆SCE =
+      ∆conf − ∆acc for the single bed and for the second-bed v2 lens; on the single bed the accuracy-
+232
+      and conﬁdence-side shares are 114.1% and −14.1%, respectively, and sum to 100% across op-
+233
+      posing signs. Panel (b) designates the multiplicity-preserving per-problem cluster interval as the
+234   primary single-bed read; the sealed isin interval is retained only as a sensitivity artifact. The pri-
+235   mary v2 two-component read (+0.2382), its isin-cluster sensitivity lens (+0.2308), and the lenient
+236   two-component uncorrected reads exclude zero, whereas the lenient human-anchor-corrected inter-
+237   val contains zero (POWER_LIMITED).
+238
+239
+240   The reporting layer applies the three-state grade deﬁned above. Its current cross-bed grade is
+241   POWER_LIMITED: the uncorrected judge reads disagree with the human-anchor correction, and
+242   nbeds = 2 is not universal. We therefore do not report the composite as a settled transportable
+243   read (in the causal-transportability sense of Bareinboim & Pearl, 2014 this two-bed design does not
+244   satisfy the needed sampling/selection conditions); we report each judge convention by name while
+245   awaiting an expanded human-label set.
+246   The conﬁdence component is label-free and thus immune to the judge issue. It is negative in
+247   both beds, but the cross-bed magnitudes shown in Figure 2a differ materially, so we report sign
+248   consistency only, not magnitude transportability. It is an exploratory, label-free byproduct and not a
+249   mechanism claim.
+250
+251   4               O UTCOME - STRATIFIED SENSITIVITY WITHIN GSM8K ( CORRECTED
+252
+                      BOOTSTRAP )
+253
+254
+      To check whether the within-bed composite is difﬁculty-sensitive, we sliced the frozen single bed
+255   (GSM8K g3_main A/B’, n=1,948, 974 problems) by per-problem accuracy (the table’s “acc” strat-
+256   iﬁcation variable) and recomputed the same estimator with a multiplicity-preserving per-problem
+257   cluster bootstrap (Davison & Hinkley, 1997) (Table 2):
+258
+259
+260
+      5               E XPERIMENTAL SETUP
+261
+      Beds. Table 3 separates the two evaluation beds, sampling units, prompt-length strata, and de-
+262
+      code plans. Bed 1 pairs GSM8K (Cobbe et al., 2021) with LLaDA-8B-Instruct (Nie et al., 2025);
+263
+      bed 2 uses the same decoder on the ﬁrst 400 MATH500 problems (Hendrycks et al., 2021), with
+264   decode_id equal to the problem index in data/math500/test.jsonl.
+265
+266   Estimator and interval. For each length set, conﬁdence is mean commit-step conﬁdence and cor-
+267   rectness is mean accuracy; therefore ∆SCE = ∆conf −∆acc is an identity, not a new estimator. Pri-
+268   mary intervals use a per-problem cluster (multiplicity) bootstrap with R = 2000, percentile 2.5/97.5
+269   endpoints, and seed 20260824, implemented in scripts/r167/bootstrap_core.py.
+
+
+                                                                      5
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+270
+271   Table 2: Outcome-stratiﬁed sensitivity within GSM8K (multiplicity-preserving per-problem cluster
+272   bootstrap; primary CI convention throughout). The rows are nested per-problem accuracy regimes
+273   (all ⊃ low-acc ⊃ acc=0), not a partition and not an exogenous difﬁculty control. Takeaway:
+274   point estimates decrease across these outcome-deﬁned subsets; at the accuracy ﬂoor, ∆acc ≡ 0
+275
+      by construction, so the composite equals ∆conf mechanically rather than empirically. This is an
+      acc-regime-driven limitation and boundary, not a demonstrated difﬁculty trend or a reproduction of
+276
+      the second-bed null. Conﬁdence is sign-consistent only; the sealed isin bootstrap is a sensitivity
+277
+      analysis, not a parallel main read.
+278
+279              tier                     nprob     acc        ∆conf        composite gap [95%]
+280              all                       974      0.69    −0.0314      +0.2227 [+0.169, +0.277]
+281              low-acc (acc ≤ q33 )      415      0.28    −0.0131      +0.0551 [−0.002, +0.107]
+282              acc = 0                   184      0.00    −0.0202      −0.0202 [−0.040, +0.001]
+283
+284
+285   Table 3: Evaluation-bed design ledger. Takeaway: bed 1 is a paired crossover over prompt-length
+286   extremes, whereas bed 2 has one decode per problem; counts, thresholds, and decode schedules are
+287   reported separately rather than pooled across beds.
+288
+      bed           corpus, model, and sampling unit              prompt-length strata and decode plan
+289
+290   1              GSM8K + LLaDA-8B-Instruct; g3_main t0≤62: 672 / 336, mean 53.1, med. 54 tok;
+                     A/B′ paired crossover; 1,948 decodes from t2≥80: 668 / 334, mean 98.6, med. 92 tok
+291
+                     974 problems (t1 excluded: 608 / 304)
+292   2              ﬁrst 400 MATH500 problems; same               t0≤48: 134; t1: 130; t2≥77: 136; A arm uses
+293                  decoder; one decode per problem               NFE=64, schedule (8, 8, 8, 8, 8, 8, 8, 8)
+294   Decode-plan expansion (bed 1 observational crossover). Each of the 974 problems in the frozen GSM8K
+295   g3_main A/B′ pool is decoded twice (once each under the crossover’s A and B′ variants, 1,948 = 2 × 974
+296   decodes); the pairing is within-problem, allocating no randomization between arms. The observational tertile
+      contrast is a post-hoc partition by realized prompt length: t0:672 decodes are the 336 problems with prompt
+297
+      length ≤ 62 tokens (mean 53.1, med. 54; 672= 2 × 336 decodes); t1:608 decodes are the 304 problems with
+298   prompt length in (62, 80) tokens (608 = 2 × 304; excluded from the t0/t2 contrast by the predeclared design);
+299   t2:668 decodes are the 334 problems with prompt length ≥ 80 tokens (mean 98.6, med. 92; 668 = 2 × 334).
+300   Selection by realized length is acknowledged post-hoc: the A/B′ crossover does not manipulate length, so
+301   content, format, and difﬁculty may co-vary with the strata; the within-item randomized intervention (Table 1)
+      is the load-bearing causal design. Bed 2 (MATH500) uses one decode per problem; “ﬁrst 400” is the frozen
+302
+      predeclared sample frame, not a post-hoc selection.
+303
+304
+305   Judge and reporting layer. Judge v2 gives priority to explicit ﬁnal-answer delimiters—balanced
+306   \boxed, display math, inline math, then ####-style markers— before treating raw prose as a candi-
+307   date. It is validated against 30 human anchors and a constructed oracle (Table 4). Every cross-bed
+308   report then receives the three-state SUPPORT/POWER _ LIMITED/NOT _ MEASURED grade under the
+309   V-gate.
+310
+311   6     T HE VALIDATED JUDGE ( V 2)
+312
+313   The MATH500 ﬁnals are free-form prose with a ﬁnal \boxed answer. A judge that feeds the whole
+314   prose tail to a LaTeX parser silently builds a bogus product of undetermined symbols. The frozen
+315   pre-repair lenient-judge snapshot is a fragility-lineage diagnostic, not a v2-ﬁnal measurement. The
+316   v2 judge prioritizes explicit ﬁnal-answer delimiters (balanced \boxed, then display, then inline
+317   groups, then ####-style markers) before ever treating the raw prose as a candidate. Table 4 sep-
+318   arates the pre-repair diagnostic, constructed-oracle validation, and post-repair human audit. Both
+319   apparent false accepts in the pre-repair workbook are machine-veriﬁed human mislabels whose
+320   boxed answer equals gold exactly. That the sampling anchor set contains such human mislabels
+321   matters for the pair-bias correction b̂ (Table 6, row 1): the two mislabels were corrected after ma-
+322   chine veriﬁcation, and the residual anchor-level mislabel rate after repair is 0/30 on the spot, so
+323
+      the correction’s input labels are taken as clean; any uncorrected residual anchor error would enter
+      b̂ directly and is audited here, not assumed away. To make the Table 4 counts reconstructible, each
+
+
+                                                           6
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+324
+      count is named by its judge and its human column, since the two ﬁgures on the pre-repair row come
+325   from two different judges on the same 30 items. (i) The pre-repair spot ledger results/r83_
+326   branchA_launch/spot_labelled.json is the authoritative source for the failure mode:
+327   against the pre-repair human column the pre-repair judge rejects the 7 items whose label reads “cor-
+328   rect” (FR=7), accepts only decodes 366 and 70 (both of which that column also calls correct, so
+329   FA=0), and therefore agrees on 23/30 items. (ii) The 0.933 = 28/30 ﬁgure is the v2 judge scored
+330   against that same pre-repair column in results/r109_judge_v2_validate.json: FR=0
+331   with 2 apparent false accepts, namely decodes 319 and 59. Those two are the machine-veriﬁed an-
+332   chor mislabels—the extracted ﬁnals equal the data/math500/test.jsonl golds (−128 and
+333
+      5) exactly, so the human labels, not the judge, were wrong, and they were repaired to “correct” in
+      processing/anchors/anchor_labels.csv. Against the repaired column the v2 audit is
+334
+      30/30 with 0 false rejects and 0 false accepts (Table 4, row “post-repair v2”). The 7/30 FR and
+335
+      the 0.933 agreement are thus not two views of one reconciliation, and neither number is a v2-ﬁnal
+336   measurement of the pre-repair judge.
+337
+338            2×2 confusion tables. Rows = judge verdict, columns = human reference; each cell is the
+339            count over the same 30-item anchor spot. Pre-repair judge vs. pre-repair labels 27 21
+                                                                                                   0
+
+340            (T P =2, F A=0, F R=7, T N =21; agreement 23/30). v2 judge vs. pre-repair labels
+                0 19 (T P =9, F A=2 on the anchor mislabels {59, 319}, F R=0, T N =19; agreement
+                9 2
+341
+               28/30). v2 judge vs. repaired labels 11 0
+                                                     0 19 (T P =11, F A=0, F R=0, T N =19;
+342            agreement 30/30). The apparent 7/30 vs. 28/30 gap is therefore two different judges on
+343            the same pre-repair human column, made explicit by cell count; it is not an internal
+344            inconsistency of this paper.
+345
+346
+347   Table 4: Judge-validation ledger. Takeaway: the pre-repair lenient snapshot exposes the prose-tail
+348   failure mode, whereas the post-repair v2 judge passes both the constructed-oracle check and the
+349   complete hand-labelled spot audit; pre-repair diagnostics are not v2-ﬁnal measurements.
+350   stage                  audit set                  recorded result
+351
+352
+      pre-repair lenient     30-item hand spot          fragility-lineage snapshot: 7/30 false rejects (FR)
+                                                        and 23/30 agreement for the pre-repair judge; the
+353
+                                                        v2 judge on the same 30 pre-repair labels agrees
+354
+                                                        0.933 = 28/30, its two disagreements being the an-
+355                                                     chor mislabels (a different judge’s agreement ﬁgure,
+356                                                     not the same count; §6)
+357   constructed oracle     500 golds × self +         maximum per-tier ϵ ≤ 0.05; oracle independence
+358                          perturbed                  held
+359   post-repair v2         30-item hand spot          0 false rejects; 30/30 agreement
+360   pre-repair accepted    2 apparent false           both are machine-veriﬁed human mislabels
+361   audit (v2 vs           accepts (decodes 319,
+362   pre-repair labels)     59)
+363
+364
+365
+      7   R ELATED WORK
+366
+367
+      Decoder family. Masked text diffusion includes structured, simpliﬁed, ratio-estimation, and repa-
+368   rameterized discrete formulations (Austin et al., 2021; Shi et al., 2024; Lou et al., 2024; Zheng
+369   et al., 2024) and the LLaDA family (Nie et al., 2025; 2026). Variable-length or conﬁdence-guided
+370   decoders (Li et al., 2025; Sun et al., 2026; Wang et al., 2026) and continuous language-ﬂow alterna-
+371   tives (Hu et al., 2026) delimit our ﬁxed single-bed setting: we make no decoder-generality claim.
+372
+373   Calibration. Language-model conﬁdence is a calibration-relevant observable (Kadavath et al.,
+374   2022). We study the signed conﬁdence–accuracy gap SCE = E[conf]−E[acc] (a signed calibration-
+375   in-the-large quantity, distinct from the binned expected calibration error) and its length contrast with
+376   per-problem cluster-bootstrap inference (Davison & Hinkley, 1997). For completeness Table 1 also
+377   reports expected calibration error (ECE) with ﬁxed 10 equal-width bins (Guo et al., 2017), adaptive
+      (equal-mass) ECE (Naeini et al., 2015), Brier score (Brier, 1950), and negative log-likelihood; each
+
+
+                                                         7
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+378
+      is computed on the same per-problem conﬁdence and correctness events as SCE. Because SCE is a
+379   ﬁrst-order mean gap, it is not a substitute for a full calibration curve, and we make no equivalence
+380   claim to ECE or temperature scaling; we report them as companion descriptors with the deﬁnitions
+381   above.
+382
+383   Answer matching. Free-form mathematics ﬁnals require an answer-matching judge. Our judge-
+384   and-human audit is anchored in GSM8K veriﬁer and matching methodology (Cobbe et al., 2021);
+385   the audited per-stratum failure ledger, including the separation of pre- and post-repair snapshots, is
+386   our reusable contribution.
+387
+388   Positioning. To our knowledge, prior work has not reported this exact two-component length con-
+389   trast inside a masked-diffusion decoder with a problem-multiplicity-preserving bootstrap, an audited
+390   judge, and a within-item causal check that separates the length association from a length mechanism.
+391
+      We report a boundary limited by the second bed, not a transportable law; our single-bed length
+      claim is scoped to the within-item causal check on this bed and does not extend to nearest-neighbor
+392
+      (non-masked-diffusion) decoders, which remain an open same-bed contrast. Outcome-stratiﬁed con-
+393
+      trols additionally require positivity/common-support and coefﬁcient-interpretation caution (Petersen
+394   et al., 2012; Westreich & Greenland, 2013).
+395
+396
+397   8   L IMITATIONS OF THIS CALIBRATION READ
+398          • Single-bed anchor. The uncorrected cross-bed read and its current human-anchor correc-
+399            tion are reported in Table 6; the corrected read is POWER_LIMITED. Four-state grading
+400            awaits the predeclared expanded two-layer human-label set, and two beds are not universal.
+401            Neither “transportable-positive” nor “collapse” is citable until then.
+402          • No single-bed control arm is included in the second bed, so we cannot fully separate
+403            cross-task transportability from a second-bed main effect (difﬁculty reconciliation is not
+404            clean; interpreting tier-stratiﬁed associations as the effect carries the usual coefﬁcient-
+405            over-interpretation (Westreich & Greenland, 2013) and positivity/coverage (Petersen et al.,
+406            2012) cautions).
+407          • The within-bed outcome-stratiﬁed sensitivity shows a point-estimate decrease through zero
+408            across nested accuracy subsets (Table 2, §4); the CIs retain signiﬁcance only at the all sub-
+409            set under the primary cluster bootstrap. At the accuracy ﬂoor (acc=0) ∆acc ≡ 0 by con-
+410            struction, so the equality ∆SCE = ∆conf there is mechanical; only the low-accuracy tier
+411            can move ∆acc, and under the wide primary intervals neither the collapse nor its ﬂatness is
+412            statistically pinned. We therefore report the collapse as an acc-regime-driven limitation and
+413            boundary, not a mechanism claim — and we do not use control-arm CI non-signiﬁcance
+414
+               to dismiss the difﬁculty explanation, as interpretation in either direction is convention-
+               sensitive.
+415
+416          • Content-free length only. The within-item manipulation adds semantically null redundant
+417            ﬁller (validity gate: 0/200 drift), whereas the observational contrast varies natural prompt
+418
+               lengths that co-vary with content and difﬁculty. The intervention therefore identiﬁes the
+               effect of content-free length on this bed, but does not exclude a length mechanism that acts
+419
+               through content-bearing or difﬁculty-changing length; a content-bearing-length arm is left
+420
+               as future work.
+421
+422
+             • The conﬁdence component is reported sign-consistently only; its cross-bed magnitude dif-
+               ference is summarized with Figure 2a and Table 2.
+423
+424
+425   9   C ONCLUSION
+426
+427   The supported single-bed result is an observational association across prompt-length variants; Fig-
+428   ure 2a reports the signed gap and its opposing accuracy- and conﬁdence-side shares. A within-
+429   item randomized experiment (Table 1) shows that adding content-free length lowers conﬁdence and
+430   accuracy in tandem, while we do not detect a widening of the signed gap (preregistered verdict
+      NOT _ IDENTIFIED ). Its interval excludes the observational magnitude but does not rule out a small
+431
+      positive effect, so we read the “widens with length” contrast as an association across prompt-length
+
+
+                                                        8
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+432
+      variants for content-free length, not as a demonstrated length→gap mechanism. Cross-bed trans-
+433   port is not established and remains POWER _ LIMITED. The reusable contribution is the judge audit
+434   and label-corruption repair trail that separates fragility-lineage diagnostics from the validated v2
+435   face, together with the predeclared within-item causal check that bounds the length-confound con-
+436   cern on this bed. The accuracy-regime result is a boundary and limitation, not a reproduction of a
+437   second-bed null. Deferred future work is the FULL-193 human ﬁll, an exogenous difﬁculty control,
+438   second-model generality, and a same-bed nearest-neighbor (non-masked-diffusion) contrast.
+439
+440   A    A DJUDICATION PROTOCOL : MINIMUM DECISIVE LABEL SET (MDLS-101)
+441
+           AND ONE - COUNT RULE
+442
+443
+      The decisive three-state read needs both strata of the predeclared two-layer anchor: Layer-1 = the
+444
+      judge-accepted set (deﬁnes FAt = P (human = incorrect | judge accepted)) and Layer-2 = the
+445   judge-rejected sample (deﬁnes FRt = P (human = correct | judge rejected)). Labeling Layer-2
+446   alone leaves FA undeﬁned and the read invalid. Table 5 collects the complete anchor-count design,
+447   the interval construction, and the decision gates. The interval construction is named explicitly. The
+448   t0–FR count is monotone-benign and cannot ﬂip the knife-edge rule.
+449
+450   Citable value is judge-convention-dependent (decode-398 single-point leverage). The folded
+451   citable value (Table 6, row 1) is the lenient-judge read with a human-anchor pair-bias correction,
+452   and it rides on the repaired decode 398 label (gold “Navin”; prose ﬁnal-answer credit). The answer-
+453   aware v2 judge accepts that case and shows zero observed disagreement on the t0∪t2 gradient subset
+454   (Table 6, panel b), so the zero is a ﬂoor, not a precision estimate. Rows 3–5 propagate the declared
+455
+      sampling ladder and show the ﬂip to POWER _ LIMITED; row 6 records the single-source fragile-gold
+      look-back. Thus row 1 remains the citable value, while the v2 rows remain convention sensitivities
+456
+      until accepted-stratum annotation publishes their FA/FR lists. The full-bed shift reported in the
+457
+      caption conﬁrms that the judge update is a two-term result.
+458
+459   Honest blind-spot and a certiﬁed hidden FA. The accepted-set blind spot is not hypothetical:
+460   decode 120 (t1; gold “even”, model boxes “neither”; composition always even) is a zero-label-
+461
+      provable hidden false accept. As summarized in Table 5, this case invalidates the assumed-clean
+      MDLS route, while the full-ﬁll tolerance envelope remains a separate sensitivity. Hence a decisive
+462
+      SUPPORT must be certiﬁed with the accepted-stratum FA ceiling. Neither route replaces the real
+463
+      human ﬁll: no model-generated pseudo-label is admitted into the decisive read.
+464
+465   Explicit count, not a black-box sixth participant. Every stratum that governs the correction and
+466   the V-gate is enumerated by an explicit count in the supporting tables, so the audit is recoverable
+467   from counts alone and the judge is never treated as an opaque aggregate participant. Each label set is
+468   declared with its own denominator: the 30-item hand spot (Table 4), its t0∪t2 gradient 20-subset and
+469   the full-30 rule-of-three bounds (van Belle, 2008) (Table 6, panel b), and the Layer-1 and Layer-2
+470   anchor sets together with the MDLS-101 and FULL-193 ﬁlls (Table 5). The frozen labels that ground
+471   these counts are stored at processing/anchors/anchor_labels.csv; the correction and
+472   its uncertainty follow from that ﬁle together with the per-stratum totals in those tables, without any
+473
+      recourse to an aggregate “sixth” quantity. The decisive read thus remains POWER _ LIMITED until
+      the predeclared FULL-193 probability ﬁll expands the labels; no number in this paper is backed by
+474
+      an un-enumerated label.
+475
+476
+477   B    C ITABLE - VALUE CONVERGENCE AND CITATION HYGIENE
+478
+479   The reporting-layer citable value for the second-bed analysis is the POWER_LIMITED, bias-
+480   corrected read (an anchor-dependent design sensitivity interval, not a repeat-sampling conﬁdence
+481   interval):
+482
+                                ∆SCE2,corr = +0.1606 [−0.059, +0.380] .
+483
+484
+      Explicit uncertainty propagation of the citable read. This estimate is an additive estimator
+485   of three random quantities, ∆SCE2,corr = ∆conf 2 + (neg ∆acc2 − b̂). Under independence its
+      variance decomposes as se2 = se2comp + se2b̂ . The bed2 component standard error is 0.05005
+
+
+                                                        9
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+486
+487   Table 5: Anchor design and count-form decision ledger. Takeaway: MDLS-101 is only a SUPPORT
+488   route under an assumed-clean accepted stratum; the certiﬁed hidden false accept violates that as-
+489   sumption, so a decisive read requires the accepted-stratum ceiling or the full two-layer human ﬁll.
+490   Grade-symbol clariﬁcation: this ledger uses the plain three-state
+491   SUPPORT / POWER _ LIMITED / NOT _ MEASURED set deﬁned in §1; every instance of the obsolete “SUPPORT*”
+492
+      badge that earlier drafts showed has been collapsed to SUPPORT (deﬁned identically: the predeclared audit
+      passed), and any route that previously claimed SUPPORT* under an unmeasured accepted stratum is now
+493   explicitly labelled POWER _ LIMITED (row “accepted-stratum blind spot” below). The plain SUPPORT grade is
+494   reserved for a measured two-layer ﬁll (FULL-193) and is not awarded to the current citable value.
+495
+      quantity                    declared value                 role / interpretation
+496
+497   Layer-1 reuse anchors       11 of 103 accepted;            pins FA= 0 only on the reuse frame
+498                               t0/t1/t2 = 7/3/1
+499   Layer-2 rejected            90 total; 30 per tertile       estimates FR
+500
+      anchors
+      MDLS-101 ﬁll                101 = 11 + 90 labels           SUPPORT route under assumed-clean
+501
+                                                                 accepted-set FA
+502
+      FULL-193 ﬁll                193 = 103 + 90 labels          complete two-layer human ﬁll
+503   primary                     +0.2382 [0.1639, 0.3125]       v2 point; Table 6, row 3
+504   two-component interval
+505   t2–FR knife edge            30 items; ≤ 3: SUPPORT;        authoritative count-form V-gate
+506                               ≥ 4: POWER_LIMITED
+507   accepted-stratum blind      92 outside reuse; certiﬁed     one hidden false accept already breaks
+508   spot                        FA ≥ 1                         MDLS-101 SUPPORT
+509   FULL-193 tolerance          k ≤ 5: SUPPORT; k ≥ 6:         label-free hidden-FA envelope
+510                               NOT_MEASURED
+511
+      current count-form FA       nincorrect = 19;               zero-count statement, not a calibration
+      gate                        ⌊0.05 × 19⌋ = 0                proof
+512
+513
+514
+      and the anchor-correction standard error is seb̂ =0.1, which together reproduce the reported inter-
+515                         √
+      val. Here seb̂ (k) = k/10, where k=1 is the count of discordant anchors over a 10-per-tier
+516
+      t0 ∪ t2 gradient subset under the lenient judge (the single divergent decode 398); the correction
+517
+      that suppressed two conﬁrmed human mislabels contributed approximately 80% of the variance,
+518   so the POWER_LIMITED verdict is driven by anchor uncertainty rather than by an uninforma-
+519   tive bed2 gap. The verdict is judge-convention-dependent: under the validated v2 judge the mea-
+520   sured anchor pair-bias is 0 (zero discordant anchors), so the v2 read is positive and excludes 0
+521   (+0.2382 [0.1639, 0.3125], row 3 of Table 6); the lenient-plus-correction read is the conservative
+522   one we report (row 1). A nested bootstrap is not run because the current anchors are purposive; the
+523   probability-sample FULL-193 ﬁll is the experiment that would make the correction identiﬁable.
+524   The uncorrected second-bed values in Figure 2b and Table 6 remain named convention sensitivities;
+525   neither is presented as a proven bound or as the corrected point estimate. The single-bed estimate
+526   and interval in Figure 2b remain the load-bearing zero-drift anchor.
+527
+528   Count-form limitation on the minimal anchor. The current count-form V-gate is summarized
+529   in Table 5: its FA threshold is unevaluable as a calibration proof because passing requires a zero
+530   count. This does not change the t2-FR knife-edge rule (it is FR-count, not FA-count, and governs
+531   SUPPORT vs. POWER_LIMITED); it only sharpens the honesty of the minimal FA-based gate: FA
+532   quality there is assumed-clean, not measured. A measured FA gate requires the full ﬁll or a larger
+533   accepted-set sample.
+534
+535   DATA AND REPRODUCIBILITY
+536
+537   Every headline number is linked to a frozen artifact and to the one-command reproducer
+538   python3 scripts/r167/reproduce_all_tables.py. Its report in results/r167_
+539   reproduction_gate/ records 94 checks (93 direct passes plus numbered ledger seams)
+      and zero failures; the machine-readable estimand map is processing/estimand_ledger_
+
+
+                                                         10
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+540
+      r881.csv, materialized from scripts/r167/aggregate_meta.json. The source bun-
+541   dles are:
+542
+543          • results/r37_data/ and results/r171_dacc_ci.json — single-bed point
+544            estimates, primary multiplicity-bootstrap intervals, and the component intervals and
+545            signed shares summarized in Figure 2a;
+546          • results/crossbed_math500/ — second-bed conﬁdence, accuracy, and composite
+547            inputs, including the primary v2 two-component read and the isin-cluster sensitivity lens;
+548          • processing/anchors/anchor_labels.csv — frozen human-anchor labels and
+549            post-repair v2 agreement;
+550
+             • results/r127_v2_harden/r127_v2_harden.json — the row-6 single-source
+551
+               fragile-gold look-back provenance;
+552
+553
+             • results/r103_difficulty_matched_control.json — difﬁculty-tier points,
+               sample counts, and primary cluster intervals in Table 2;
+554
+555          • results/r200_length_intervention/decisive_result_r204.json
+556            and results/len_intervention/ — within-item length-intervention co-primary
+557
+558
+559   Table 6: Reporting-layer sensitivity of the second-bed MATH500 composite gap to judge conven-
+560   tion and anchor-count uncertainty. Takeaway: the citable verdict is judge-convention-dependent.
+561   Under the lenient judge with the 30-anchor pair-bias correction (row 1) the read is POWER _ LIMITED
+562   (+0.1606 [−0.059, +0.380]). Under the validated v2 judge, the measured anchor pair-bias is 0 (v2
+563
+      agrees with all 30 human anchors; 0 discordant), so the v2 read (row 3) is positive and excludes 0
+      (+0.2382 [0.1639, 0.3125]). We report both honestly rather than ﬁxing a single convention;
+                                                                                       √           rows 3–
+564
+565
+      5 keep the v2 point and vary the anchor-uncertainty index k ∈ {0, 1, 2}; the k/10 propagation
+      is a conservative convenience
+                              √      bound on the purposive anchor, not an identiﬁed sampling standard
+566
+      error, with sebias (k) = k/10 where k is the count of discordant anchors over a 10-per-tier t0 ∪ t2
+567
+      gradient subset (row 1 is implicitly k=1). Panel (b) makes the denominator-sensitive audit explicit.
+568
+569                                        (a) Convention sensitivity
+570   #   convention / correction                          composite gap [sens. int.]    read
+571
+572
+      1   lenient + 30-anchor pair-bias correction        +0.1606 [−0.059, +0.380]       POWER _ LIMITED
+          (citable; k=1, sebias =0.1)
+573
+      2   lenient, uncorrected                            +0.2606 [0.1625, 0.3587]       excl. 0
+574
+      3   v2 answer-aware, measured bias 0 (k=0           +0.2382 [0.1639, 0.3125]       excl. 0
+575       se-bias ﬂoor); designated second-bed
+576       value
+577   4   v2 point, k=1 (sebias = 0.100) sensitivity      +0.2382 [0.029, 0.448]         sensitivity
+578   5   v2 point, k=2 (sebias = 0.141) sensitivity      +0.2382 [−0.049, 0.525]        POWER _ LIMITED
+579   6   v2, fragile-gold verdicts corrected             +0.2605 [0.186, 0.335]         sensitivity
+580       (single-source look-back)
+581   7   v2, isin-cluster binned variant (0.2308;        +0.2308 [0.1588, 0.307]        excl. 0
+582       sealed fragility-lineage, NOT the
+583
+          two-component 0.2382; sensitivity only)
+584                                            (b) Audit contrasts
+585
+      diagnostic                     values                             interpretation
+586
+587   gradient-subset rule of        0/20 observed; 3/20 ≈ 0.15         k=2 (sebias ≈ 0.141) lies inside
+588
+      three                          bound
+      full-anchor rule of three      0/30 observed; 3/30 ≈ 0.10         k=2 lies outside; retained design
+589
+                                     bound                              denominator
+590
+      judge gradient set             20-item subset of the              v2 zero observed disagreement on
+591                                  30-anchor spot                     it
+592                                  (t0 /t2 =10+10; t1 excluded)
+593   judge full-bed term            0.3151 → 0.2927                    update is a two-term result
+
+
+                                                      11
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+594
+                result and parquet data for Table 1 (predeclared in
+595             prereg/r198_length_intervention_prereg.md).
+596
+597   The primary interval protocol is R = 2000 resamples, percentile 2.5/97.5 CI, seed 20260824,
+598   per-problem cluster (multiplicity) bootstrap via scripts/r167/bootstrap_core.py. The
+599   sealed isin bootstrap is retained only as a documented sensitivity (e.g. the row 7 v2 isin-cluster lens
+600   on the second bed); it is never mixed into the primary single-bed reading or presented as a second
+601   primary v2 estimate.
+602
+603   R EFERENCES
+604   Jacob Austin, Daniel D. Johnson, Jonathan Ho, Daniel Tarlow, and Rianne van den Berg. Structured denoising
+605      diffusion models in discrete state-spaces. In Advances in Neural Information Processing Systems, volume 34, pp.
+606      17981–17993, 2021. URL https://arxiv.org/abs/2107.03006.
+607
+      Elias Bareinboim and Judea Pearl. External validity: From do-calculus to transportability across populations. Statis-
+         tical Science, 29(4):579–595, 2014. doi: 10.1214/14-STS486.
+608   Glenn W. Brier. Veriﬁcation of forecasts expressed in terms of probability. Monthly Weather Review, 78(1):1–3, 1950.
+609   Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry
+610      Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. Training veriﬁers to solve math
+         word problems. arXiv preprint arXiv:2110.14168, 2021. URL https://arxiv.org/abs/2110.14168.
+611
+      Anthony C. Davison and David V. Hinkley. Bootstrap Methods and their Application. Cambridge University Press,
+612      Cambridge, UK, 1997.
+613   Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. On calibration of modern neural networks. In Inter-
+614      national Conference on Machine Learning, pp. 1321–1330, 2017. URL https://arxiv.org/abs/1706.
+         04599.
+615   Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob
+616      Steinhardt. Measuring mathematical problem solving with the MATH dataset. In Advances in Neural Information
+617      Processing Systems (Datasets and Benchmarks), 2021. URL https://arxiv.org/abs/2103.03874.
+      Keya Hu, Linlu Qiu, Yiyang Lu, Hanhong Zhao, Tianhong Li, Yoon Kim, Jacob Andreas, and Kaiming He. ELF:
+618
+         Embedded language ﬂows. arXiv preprint arXiv:2605.10938, 2026. URL https://arxiv.org/abs/2605.
+619      10938.
+620   Saurav Kadavath, Tom Conerly, Amanda Askell, Tom Henighan, Dawn Drain, Ethan Perez, Nicholas Schiefer, Zac
+621      Hatﬁeld-Dodds, Nouha DasSarma, and Eli Tran-Johnson. Language models (mostly) know what they know. arXiv
+         preprint arXiv:2207.05221, 2022. URL https://arxiv.org/abs/2207.05221.
+622   Jinsong Li, Xiaoyi Dong, Yuhang Zang, Yuhang Cao, Jiaqi Wang, and Dahua Lin. Beyond ﬁxed: Training-free
+623      variable-length denoising for diffusion large language models. arXiv preprint arXiv:2508.00819, 2025. URL
+624      https://arxiv.org/abs/2508.00819.
+625   Aaron Lou, Chenlin Meng, and Stefano Ermon. Discrete diffusion modeling by estimating the ratios of the data
+         distribution. In International Conference on Machine Learning, 2024. URL https://arxiv.org/abs/
+626      2310.16834. arXiv:2310.16834.
+627   Mahdi Pakdaman Naeini, Gregory Cooper, and Milos Hauskrecht. Obtaining well calibrated probabilities using
+628      Bayesian binning into quantiles. In Proceedings of the AAAI Conference on Artiﬁcial Intelligence, volume 29, pp.
+         2901–2907, 2015.
+629
+      Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai Lin, Ji-Rong Wen, and
+630      Chongxuan Li. Large language diffusion models. arXiv preprint arXiv:2502.09992, 2025. URL https://
+631      arxiv.org/abs/2502.09992.
+632   Shen Nie, Qiyang Min, Shaoxuan Xu, Zihao Huang, Yuxuan Song, Yong Shan, Yankai Lin, Wayne Xin Zhao, Chongx-
+         uan Li, and Ji-Rong Wen. Improved large language diffusion models. arXiv preprint arXiv:2606.25331, 2026. URL
+633      https://arxiv.org/abs/2606.25331.
+634   Maya L. Petersen, Kristin E. Porter, Susan Gruber, Yue Wang, and Mark J. van der Laan. Diagnosing and responding
+635      to violations in the positivity assumption. Statistical Methods in Medical Research, 21(1):31–54, 2012. doi:
+         10.1177/0962280210386207.
+636
+      Jiaxin Shi, Kehang Han, Zhe Wang, Arnaud Doucet, and Michalis K. Titsias. Simpliﬁed and generalized masked
+637      diffusion for discrete data. arXiv preprint arXiv:2406.04329, 2024. URL https://arxiv.org/abs/2406.
+638      04329.
+639   Bian Sun, Kevin Zhai, Mubarak Shah, and Zhenyi Wang. Dystruct: Dynamically structured diffusion language model
+         decoding via bayesian inference. arXiv preprint arXiv:2605.09820, 2026. URL https://arxiv.org/abs/
+640
+         2605.09820.
+641   Gerald van Belle. Statistical Rules of Thumb. John Wiley & Sons, Hoboken, NJ, 2nd edition, 2008.
+642   Xinyun Wang, Min Zhang, Sen Cui, Zhikang Chen, Bo Jiang, Kun Kuang, and Mingbao Lin. Reversible diffusion
+643      decoding for diffusion language models. arXiv preprint arXiv:2602.00150, 2026. URL https://arxiv.org/
+         abs/2602.00150.
+644   Daniel Westreich and Sander Greenland. The table 2 fallacy: Presenting and interpreting confounder and modiﬁer
+645      coefﬁcients. American Journal of Epidemiology, 177(4):292–298, 2013. doi: 10.1093/aje/kws412.
+646   Lin Zheng, Jianbo Yuan, Lei Yu, and Lingpeng Kong. A reparameterized discrete diffusion model for text generation.
+         In Proceedings of the First Conference on Language Modeling, 2024. URL https://arxiv.org/abs/
+647
+         2302.05737. COLM 2024; arXiv:2302.05737.
+
+
+
+                                                               12
+

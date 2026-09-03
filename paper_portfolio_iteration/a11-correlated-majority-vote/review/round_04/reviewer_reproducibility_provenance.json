@@ -1,0 +1,109 @@
+{
+  "reviewer_id": "a11-r4-repro",
+  "round": 4,
+  "snapshot_sha256": "36a6e8c45f3c2aed3763f2ebb1efa07641e83957120cb31ac9cdba1bb234fd7d",
+  "role": "reproducibility_provenance",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "For the paper's stated count-exchangeable replay scope, the central OMR JSON was independently reproduced byte-for-byte from the supplied derived manifest, and the manuscript explicitly separates the true-H oracle identity from the FIT-frozen CAL-screened fitted rule. This does not establish provenance of the derived manifest from the raw carrier, nor reproduce the secondary results end-to-end.",
+    "presentation": "The manuscript, claim map, method-provenance map, recovered-runner ledger, and reproducibility statement make the conditional-replay boundary unusually clear. The active Figure 1 renderer nevertheless cannot run directly from this frozen snapshot because one hard-coded, hash-pinned input path is absent.",
+    "contribution": "The most credible empirical contribution is a narrowly scoped, independently replayable count-level FIT/CAL/TEST analysis coupled to an explicit oracle-versus-fitted guarantee distinction. Its broader empirical support remains limited because only the main table has a local conditional replay and the raw/secondary pipelines are unavailable."
+  },
+  "paper_summary": "The paper studies binary full-vote disagreement under a count-exchangeable random-prefix replay model. It proves an oracle conditional result under the true count law, and evaluates a distinct FIT-frozen BAYES-H score selected by CAL empirical-Bernstein/Bonferroni screening. Its principal OMR table is explicitly a descriptive TEST replay readout, not an ordered-online, gold-correctness, or operational-cost result.",
+  "strongest_verified_contribution": "Conditional on the anonymous OMR count-level manifest, the standard-library verifier independently reconstructs the main FIT/CAL/TEST result JSON with exact seeded split reconstruction, deduplication/hash checks, hypergeometric/DP calculations, and byte SHA-256 b114c72d9ab1cf1a6ba1d2bd734433c06bd4d5cbd19bf93be0964edf6fc8a5f7.",
+  "strengths": [
+    "VERIFY_SNAPSHOT passed for all 133 files and the specified snapshot root hash.",
+    "The 13-file reviewer-safe bundle passed its own SHA-256 manifest check. Its standard-library replay passed both semantic equality and byte equality for the main JSON without writing to the snapshot.",
+    "The manifest concretely records the row predicate, source-parquet digest and size, 22,230 raw rows, 12,423 valid rows, 11,607 deduplicated hashes, K=32, seed 20260815, and FIT/CAL/TEST=4000/4000/3607; the verifier checks the seeded split and unique retained problem hashes.",
+    "All four recovered secondary output hashes match their bundle records and corresponding frozen artifact outputs. They are correctly described as provenance records rather than locally rerun evidence.",
+    "Current-source checks passed: the hash-bound claim audit reported 49/49, the exact-rational monotonicity audit covered 21,824 cases, and an isolated latexmk rebuild reproduced the supplied manuscript PDF hash fefe25a93b212f89691372c9286b5873e4faa030839f70cda9110fbd3af5dbb3 with no final TeX, undefined-reference, or overfull-box gate failure.",
+    "All 14 active citekeys are present in the scoped citation lock with metadata and local-support status recorded; this supports citation traceability, not the paper's scientific claims.",
+    "The manuscript PDF has blank title/author/creator/producer metadata and visible anonymous authorship. The derived manifest contains only K, problem SHA-256, source-row index, and split fields, not problem text, answers, prompts, or author fields."
+  ],
+  "questions": [
+    "Can the authors release, or provide a deterministic public retrieval recipe for, the exact raw OMR parquet and a derivation script/environment lock that regenerates omr_problem_manifest.json and verifies its source hash, predicate, deduplication, and split?",
+    "Can the raw inputs, environment specifications, commands, and deterministic rerun checks for the shard-1, OpenR1, RLVE, and drift analyses be made reviewer-runnable rather than only runner/output-hash recoverable?",
+    "Can Figure 1's renderer be made directly runnable from the frozen package by correcting its drift-input path or including the exact hash-pinned file at that path, and can deterministic PDF metadata be controlled if byte-level PDF rendering is intended?"
+  ],
+  "issues": [
+    {
+      "issue_id": "RP-01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Paper pp. 6 and 9, Reproducibility Statement; evidence/repro_bundle_round4/README.md; evidence/experiment_registry.json (EXP-OMR-R469, EXP-DRIFT-R469, EXP-OPENR1-R473).",
+      "claim_ids": [
+        "C05",
+        "C06",
+        "C07",
+        "C10",
+        "C13"
+      ],
+      "evidence_ids": [
+        "EV-REPRO-R4",
+        "EV-OMR-R469",
+        "EV-OPENR1-R473"
+      ],
+      "observed_evidence": "The local replay succeeds only after taking omr_problem_manifest.json as a trusted derived input. The raw 220,414,147-byte parquet, raw evaluator/answer-extraction path, derivation program, and environment lock are absent. The recovered main runner requires the omitted parquet plus pandas and pyarrow; the drift, shard-transfer, OpenR1, and RLVE runners have hash-pinned outputs but were not locally rerun. The paper and bundle disclose each of these boundaries.",
+      "why_it_matters": "This is sufficient to verify the deterministic count-level calculation and its declared split contract, but it cannot independently establish that the anonymous counts, retained rows, deduplication, or secondary readouts were derived from the stated raw sources. Thus the empirical evidence is reproducible conditional on a derived manifest, not end-to-end from raw data.",
+      "required_fix": "Provide reviewer-safe raw-data access or a precise public retrieval recipe pinned by revision and SHA-256; include a derivation script, dependency/environment lock, and one-command clean-room verification of the main manifest. Provide equivalent input/configuration/environment material and rerun instructions for each secondary result, or keep those results explicitly provenance-only and reduce their evidentiary role.",
+      "verification_test": "In a clean environment, retrieve or access the pinned raw source, run the derivation, obtain a byte-identical manifest and main JSON, then execute each named secondary runner against its pinned inputs and compare all declared output hashes.",
+      "evidence_needed": "Raw or reproducibly retrievable inputs, derivation and runner configurations, and environment locks; this is new reproducibility evidence, not a wording-only change.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "RP-02",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "source/render_fig1_round4.py lines 24-29 and evidence/visual_asset_provenance.json, asset A11-FIG1-R4-ORACLE-FIT-CAL-SCHEMATIC.",
+      "claim_ids": [
+        "C12"
+      ],
+      "evidence_ids": [
+        "EV-FIG1-R4",
+        "EV-DRIFT-R469"
+      ],
+      "observed_evidence": "Direct execution of the Figure 1 renderer from the frozen snapshot fails because it requires remote_snapshot/results/drift_stress_r469_result.json, which is not packaged there. An identical-hash drift JSON is present at artifacts/results/drift_stress_r469_result.json; staging that byte-identical input in /tmp produced the registered PNG hash exactly. The regenerated PDF differed in bytes, consistent with uncontrolled PDF serialization metadata. Figure 2 rerendered byte-exactly from its packaged hash-pinned input.",
+      "why_it_matters": "Figure 1 is explanatory rather than the source of a scientific claim, so this does not invalidate the main result. Still, the advertised renderer is not directly reproducible from the reviewer snapshot and the visual-provenance record names an unavailable path.",
+      "required_fix": "Point the renderer and provenance record to the included drift JSON (or include it at the recorded path), and either make PDF metadata deterministic or state that the checked deterministic rendering target is the PNG/semantic label output rather than PDF byte identity.",
+      "verification_test": "Run render_fig1_round4.py directly in a clean copy of the frozen snapshot with no staged files; require successful input-hash checks and registered output checks under the documented determinism convention.",
+      "evidence_needed": "No new scientific experiment; a corrected self-contained asset path and regeneration record are sufficient.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No author-identifying metadata or obvious personal data was found in the PDF or derived manifest. The bundle correctly notes that stable problem hashes can permit candidate-text linkage by a party that already holds that text; this is a disclosed data-access caveat, not an observed author-anonymity leak.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A clean-room raw-parquet-to-manifest reconstruction, with pinned retrieval, derivation code, split/dedup tests, and environment lock, that reproduces the main JSON.",
+    "Locally rerunnable, pinned-input secondary analyses whose output hashes reproduce the reported shard-1, OpenR1, RLVE, and drift results.",
+    "A direct self-contained Figure 1 regeneration that passes its declared output checks."
+  ],
+  "evidence_that_would_lower_score": [
+    "A raw-data reconstruction that disagrees with the manifest row predicate, deduplicated membership, seeded split, or reported main JSON.",
+    "A secondary rerun that disagrees with a recovered output hash or reveals undeclared selection/configuration changes.",
+    "Evidence that the stated replay-only boundary is violated by an undisclosed ordered-online, correctness, or operational-cost claim."
+  ],
+  "review_limitations": [
+    "This isolated review inspected only the frozen Round-4 submission snapshot and did not access historical reviews, author plans, current working drafts, raw external datasets, or remote systems.",
+    "The main result was verified only conditional on the supplied derived manifest; clean-room raw-parquet reconstruction and local secondary-runner execution were not possible with the packaged materials.",
+    "Citation assessment is limited to the snapshot's metadata/local-support ledger because the snapshot-only review constraint precluded external source retrieval."
+  ]
+}

@@ -1,0 +1,190 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "b564bcaf9926acc12ba3c30bbf4ff09ab48b02dd88130b866bf3ef5eb432e625",
+  "role": "technical_soundness",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 1,
+    "presentation": 2,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "主结果的 correctness labels 无法由原 extraction stage 恢复，只能事后用 canonical parser 重建；n=200 人工 equivalence audit 中 canonical 与 last-number 规则有 30% 标签翻转，远大于主 AUROC 差 0.0278。与此同时，AUROC 对每个 decode 先跨 8 blocks 聚合，risk@coverage 却先逐 block 计算再平均，两者并非同一 aligned score/estimand。标签与 estimand 两项都动摇核心技术结论。",
+    "presentation": "稿件提供 readout 定义、配对 bootstrap、coverage 阈值和大量敏感性分析，14 页视觉版面完整可读，并较诚实地承认 post-hoc、单流和数据受限。但‘aligned’一词掩盖两个主 metric 的聚合层级差异，manual audit 的 30% label flip 没有在摘要与主结论中得到相称权重。",
+    "contribution": "将 commit/first/all 三种置信读出在同一 frozen event stream 上比较，属于有用的诊断性分析；但当前标签不可靠、解码流仅来自单模型单任务一次运行、没有 held-out calibration 或真实 risk-gated intervention，也没有展示可迁移的选择性预测增益。贡献因此停留在不可验证的事后档案分析。"
+  },
+  "paper_summary": "论文使用一个冻结的 LLaDA-8B GSM8K 解码事件流（n=974，每题一次 decode），比较 commit、first 与 all 三种块级置信读出。探索性的 paired AUROC 分析称 commit 相对 all 提高 0.0278（95% CI [0.0123, 0.0438]）；在 coverage 0.2、0.5、0.8 处，risk 差分别约为 -0.0058、-0.0067、-0.0008，仅 c=0.8 通过事后设定的 ±1 pp equivalence margin。原始 correctness labels 没有保留，作者改用 canonical parser 重建，并在 n=200 manual equivalence audit 中观察到 canonical 与 last-number 标签有 30% 翻转。稿件据此主张不同 in-decoding readout 具有构念不一致，并讨论离线 risk gating。",
+  "strongest_verified_contribution": "第 3–6 页在同一 frozen stream、同一后验标签下做的配对 readout 比较，至少可靠地显示 readout 定义不是无关实现细节：commit-all 的样本 AUROC 差为 +0.0278，且三个 coverage 点的样本 risk 差接近零。这个结论只能解释为该档案与该重建标签下的描述性敏感性，不能证明真实正确性预测或可部署的风险控制。",
+  "strengths": [
+    "使用同一 decode 的配对比较，避免把不同题目或不同生成样本误当成 readout 效果。",
+    "同时报告 AUROC 与固定 coverage 风险，而非只挑一个最有利的区分指标。",
+    "披露原始标签未保留、decoder 配置缺失、主 aligned 分析为事后引入，以及匿名数据发布仍受 provenance 审批。",
+    "对多个 coverage 点给出置信区间，并承认仅 c=0.8 满足事后 equivalence rule，未把其余点写成确定等价。"
+  ],
+  "questions": [
+    "原 extraction stage 的正确/错误标签为何未保留；能否由原始答案、target 与当时 parser 版本逐项恢复，而不是使用新的 canonical rule？",
+    "n=200 audit 中 30% label flips 的逐项来源是什么，且在人工 gold label 下 commit-all AUROC 与 risk 差分别是多少？",
+    "为什么 AUROC 使用每个 decode 跨 8 blocks 平均后的 S_d，而 risk@coverage 是每 block 排序后再平均；哪一个才是拟部署的 risk gate？",
+    "decoder remasking policy、prompt、generation seed 与 checkpoint 能否恢复；若不能，如何复现这 974 条 event stream？",
+    "能否在 held-out stream 上先校准阈值，再实际拒答/早停并检验 coverage 与 risk 保证，而不只做同一数据上的离线排序？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A23-R2-01",
+      "severity": "critical",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第 2–3 页 §2 标签定义；第 5–7 页主结果；第 8–10 页 manual equivalence audit",
+      "claim_ids": [
+        "commit-all AUROC improvement",
+        "risk equivalence",
+        "confidence construct validity"
+      ],
+      "evidence_ids": [
+        "post-hoc canonical labels",
+        "n=200 manual equivalence audit",
+        "30% canonical-versus-last-number flips"
+      ],
+      "observed_evidence": "原 extraction stage 的 labels 没有保留，全部主分析改用事后 canonical parser 重新标记。n=200 的所谓 canonical-independent audit 实际比较语义等价判断与 last-number heuristic，观察到约 30% 标签翻转；作者又说明该比例只是 upper bound，不能校准全体 n=974。主 AUROC 差仅 0.0278，risk 差约 0–0.7 pp。",
+      "why_it_matters": "标签不确定性远大于待解释效应，且可能与输出形态和置信 readout 系统相关，因此同一噪声标签下的精确配对区间不能证明对真实 correctness 的改进。当前核心结论可能由 parser choice 决定。",
+      "required_fix": "由不知道 readout 值的独立标注者对全部 974 个最终答案建立 adjudicated semantic gold labels，或恢复原冻结标签及其 parser；随后在 gold labels 上重算所有 AUROC、risk、coverage 和等价性结果。",
+      "verification_test": "至少双人盲标加冲突仲裁，报告一致性；比较 canonical、last-number 与 gold 的混淆矩阵，并证明 commit-all 的主效应在 gold label 下方向、大小和区间均保持。",
+      "evidence_needed": "全量盲审 gold labels、标注协议、分歧仲裁和完整重算。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 2 页 Eq. (1)；第 3–6 页 AUROC/risk 结果；第 11 页 Appendix A Algorithm 1 与 §A.2",
+      "claim_ids": [
+        "aligned paired analysis",
+        "common confidence score",
+        "AUROC-risk consistency"
+      ],
+      "evidence_ids": [
+        "decode-level score S_d",
+        "block-level risk-at-coverage",
+        "eight-block averaging"
+      ],
+      "observed_evidence": "Algorithm 1 的 AUROC 先将每个 decode 的 8 个 block readouts 平均成一个 S_d，再在 974 个 decodes 上排序；Eq. (1)/Appendix A.2 的 risk@coverage 则在每个 block 内按 block readout 排序、计算 risk 后再跨 8 blocks 平均。两者改变了分析单位与排序，不能称为同一个 aligned estimator 的两个指标。",
+      "why_it_matters": "不同聚合顺序可产生不同排名和选择集，因此 AUROC 提升与 risk 近等价并不构成同一 gate 的互补证据；其差异可能只是 estimand 不一致。",
+      "required_fix": "先定义实际部署单位：若每题一个 gate，则两类指标都使用相同 decode-level score；若每 block gating，则 AUROC 也在预先定义的 block estimand 上计算，并处理同题相关性。",
+      "verification_test": "对统一 score/analysis unit 同时重算 AUROC、risk-coverage 曲线与 selected sets；所有 bootstrap 必须在 decode 层聚类，且正文逐项核对相同 coverage 下的成员。",
+      "evidence_needed": "统一 estimand 的分析代码、选中样本清单与重算区间。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "第 7–9 页 provenance/限制；第 12–14 页 artifact 与 decoder 说明",
+      "claim_ids": [
+        "frozen-stream reproducibility",
+        "decoder provenance",
+        "analysis rerunability"
+      ],
+      "evidence_ids": [
+        "n=974 event stream",
+        "missing remasking/prompt/seed",
+        "conditional artifact release"
+      ],
+      "observed_evidence": "稿件无法给出生成该流的 remasking policy、generation seed 与完整 prompt，不能重新 decode；原始 event stream 是否匿名发布仍取决于 data-steward/provenance 批准，目前仅承诺 analysis layer。",
+      "why_it_matters": "没有 event stream 就无法核查 block readout、标签或聚合；没有生成配置也无法判断此流是否典型或复制结论。对单一、不可再生档案的分析难以作为可审计方法证据。",
+      "required_fix": "发布去标识的全部事件、targets、输出、标签和 analysis manifest，并恢复完整 checkpoint/prompt/decoder/seeds；若不能，明确把工作降格为不可复现实例报告。",
+      "verification_test": "独立方从发布包逐项重建三种 readout、974 个 labels 与全部表图；使用冻结配置重新生成一个独立 stream 并复现方向。",
+      "evidence_needed": "完整匿名 event-level artifact、生成配置和独立重放。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 1 页摘要；第 4–8 页主分析与敏感性；第 9–10 页讨论",
+      "claim_ids": [
+        "readout construct consistency",
+        "general risk-gating implication",
+        "paired AUROC confirmation"
+      ],
+      "evidence_ids": [
+        "single n=974 stream",
+        "revision-introduced aligned analysis",
+        "single model/task/temperature"
+      ],
+      "observed_evidence": "aligned paired AUROC、多个诊断和等价性框架均在已有 stream 上事后形成；没有 held-out stream、重复 generation seeds、另一模型或另一任务。全部证据来自同一模型、GSM8K 与一次 decode/题。",
+      "why_it_matters": "在同一档案上选择 readout、聚合和诊断会低估分析选择的不确定性。即使修复标签，也只能说明该流内的描述性差异，不能支持一般构念或稳定 risk ranking。",
+      "required_fix": "冻结标签、score aggregation、coverage grid、equivalence margin 与检验族，在独立 seeds 和未使用的数据上确认，并至少跨一个模型或任务重复。",
+      "verification_test": "确认集在任何分析前密封；主差值的方向与预设实质阈值需跨 seeds 保持，并报告异质性而非只汇总 pooled result。",
+      "evidence_needed": "独立预注册复制、多 seed 与跨场景结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-R2-05",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "significance",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 5–7 页 risk@coverage/TOST；第 9–10 页 risk-gating 讨论",
+      "claim_ids": [
+        "risk-gated decoding",
+        "risk equivalence at c=0.8",
+        "deployment relevance"
+      ],
+      "evidence_ids": [
+        "coverage 0.2/0.5/0.8",
+        "post-hoc ±1 pp margin",
+        "offline ranking only"
+      ],
+      "observed_evidence": "研究只在同一数据上离线排序，没有 held-out calibration、阈值迁移、选择性覆盖保证或实际拒答/早停 intervention。±1 pp 等价界是在查看效应后确定，且仅 c=0.8 通过；c=0.2 与 0.5 的区间不满足该界。",
+      "why_it_matters": "AUROC 或样本内 risk 差不能保证部署时 coverage/risk，事后 margin 也不能把未校准 selector 变成风险控制器。标题中的 risk-gated decoding 因而超过已实现证据。",
+      "required_fix": "若保留 risk-gating 主张，应在独立 calibration/test split 上预设可接受 risk 与 coverage，冻结阈值并执行实际 gate；否则将论文限定为 offline readout comparison。",
+      "verification_test": "只用 calibration set 选择阈值，在 untouched test set 报告带有限样本区间的 achieved coverage、risk 与 baseline；重复 seeds 验证稳定性。",
+      "evidence_needed": "预注册等价界、held-out calibration/test 与实际 gating 结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现涉及人类受试者、敏感个人数据或直接安全风险的问题；主要风险是科学标签与可复现性，不构成伦理升级。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审目录、作者计划、编辑上下文、旧稿或历史评分。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "对全部样本建立盲审 semantic gold labels，并在统一 decode-level 或 block-level estimand 上重算，主差异仍保持。",
+    "发布可逐项重建的 event stream 与完整 decoder 配置，并用多个独立 seeds 复制。",
+    "在 held-out calibration/test 上预注册并实际执行 risk gate，展示可靠的 coverage-risk 控制。"
+  ],
+  "evidence_that_would_lower_score": [
+    "gold labels 下 commit-all AUROC 差消失、反转或低于预设实质阈值。",
+    "统一聚合层级后 AUROC 与 risk 结论不再一致。",
+    "原始事件或生成配置最终不可提供，导致主结果无法独立审计。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、模型说明或相关工作。",
+    "仅审阅冻结 PDF，未读取或执行 event stream、代码、manual labels 或 artifact，因此文中重算与 provenance 声明只能按稿件评估。",
+    "PDF 共 14 页，已全文阅读并逐页视觉核查；未发现缺页或不可辨认页面。"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "forkaudit-method-v2-fault-set-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "designer_attestation", "faults"],
+  "properties": {
+    "schema_version": {"const": "forkaudit-method-v2-fault-set-v1"},
+    "designer_attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputs_limited_to_snapshot_sha256",
+        "no_prior_campaign_material_seen",
+        "no_detector_source_seen",
+        "no_execution_outcome_seen"
+      ],
+      "properties": {
+        "inputs_limited_to_snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "no_prior_campaign_material_seen": {"const": true},
+        "no_detector_source_seen": {"const": true},
+        "no_execution_outcome_seen": {"const": true}
+      }
+    },
+    "faults": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fault_id",
+          "mechanism_family",
+          "implementation_mutation",
+          "activation_call",
+          "fixed_payload",
+          "eligibility_witness",
+          "scientific_rationale"
+        ],
+        "properties": {
+          "fault_id": {"type": "string", "pattern": "^V2F(0[1-8])$"},
+          "mechanism_family": {"type": "string", "minLength": 1},
+          "implementation_mutation": {"type": "string", "minLength": 1},
+          "activation_call": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["request_index", "round_index"],
+            "properties": {
+              "request_index": {"type": "integer", "minimum": 0, "maximum": 1},
+              "round_index": {"type": "integer", "minimum": 0, "maximum": 7}
+            }
+          },
+          "fixed_payload": {"type": "object"},
+          "eligibility_witness": {"type": "string", "minLength": 1},
+          "scientific_rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
+

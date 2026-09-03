@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "forkaudit-method-v3-fault-set-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "designer_attestation", "faults"],
+  "properties": {
+    "schema_version": {"const": "forkaudit-method-v3-fault-set-v1"},
+    "designer_attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot_manifest_sha256",
+        "inputs_limited_to_snapshot",
+        "no_private_source_seen",
+        "no_prior_cases_or_outcomes_seen"
+      ],
+      "properties": {
+        "snapshot_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "inputs_limited_to_snapshot": {"const": true},
+        "no_private_source_seen": {"const": true},
+        "no_prior_cases_or_outcomes_seen": {"const": true}
+      }
+    },
+    "faults": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fault_id", "mechanism_family", "implementation_mutation",
+          "activation_call_index", "fixed_payload", "eligibility_witness",
+          "scientific_rationale"
+        ],
+        "properties": {
+          "fault_id": {"type": "string", "pattern": "^V3F0[1-8]$"},
+          "mechanism_family": {"type": "string", "minLength": 1},
+          "implementation_mutation": {"type": "string", "minLength": 1},
+          "activation_call_index": {"type": "integer", "minimum": 0, "maximum": 15},
+          "fixed_payload": {"type": "object"},
+          "eligibility_witness": {"type": "string", "minLength": 1},
+          "scientific_rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,154 @@
+{
+  "reviewer_id": "R3-TECHNICAL-PDF",
+  "round": 3,
+  "snapshot_sha256": "a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The paper carefully scopes its claims and reports a coherent ownership factorial, phase-aware range checks, exact cross-arm observables, matched-clean mutation controls, and a selected-row dense-FP32 check. Soundness is nevertheless short of excellent because the PDF does not formalize the pointer-free range-witness encoding enough to independently establish disjointness, and the numerical oracle reuses captured upstream state and does not cover GDN or end-to-end model semantics (Sections 3-6, pp. 3-8).",
+    "presentation": "The manuscript is exceptionally clear about contribution type, denominators, negative results, and non-claims. Figure 1 gives an effective lifecycle view, Tables 2-5 separate protocol from outcomes, and Section 6 sharply bounds interpretation. The rendered PDF is legible and the nine-page main text, anonymization, reproducibility statement, and ethics statement are all present.",
+    "contribution": "A phase-aware, mutation-tested ownership audit for mixed paged-KV and recurrent state is useful and more rigorous than output-only checking. However, the validation is one model, one runtime combination, one hardware family, one sequential single-stream schedule, one partial-tail geometry, and eight decode tokens, so the evidence establishes a strong reference case rather than broad new knowledge comparable in scope to the closest KV-cache evaluation anchors (Table 2, p. 5; Section 6, p. 8)."
+  },
+  "paper_summary": "The paper proposes ForkAudit, an executable audit contract for hybrid LLM request state containing token-indexed attention KV and recurrent GDN state. It separates document and request ownership, witnesses borrowed-to-private GDN rebinding and partial-tail copy-on-write, fixes callable and dispatch provenance, compares a 2 x 2 KV-by-GDN ownership factorial at N in {1,8,32}, checks selected fused-attention rows against dense FP32, runs nine live mutants with matched-clean controls, and reports allocator quantities under explicit denominators. The reference case uses Qwen3.5-35B-A3B on eight H20-3e ranks and deliberately disclaims scheduler, throughput, production-capacity, downstream-quality, and cross-runtime claims.",
+  "strongest_verified_contribution": "Within the PDF-accessible evidence, the strongest contribution is the explicit phase-aware ownership contract and its internally consistent validation: all four ownership cells reportedly preserve tokens, full logits, logical KV, and final GDN state while direct checks enforce a non-vacuous request-base separation at N=1 and nine separately rebuilt live mutants reach their intended gates (Sections 3-5, pp. 3-7; Figure 2; Tables 3-4).",
+  "strengths": [
+    "The paper distinguishes immutable document state, private append state, setup-time borrowed GDN aliases, and post-transition mutable GDN state instead of treating hybrid cache ownership as a single binary property (Section 3 and Figure 1, pp. 3-4).",
+    "The 2 x 2 ownership factorial and fixed-axis projections are well aligned with the causal question: KV setup and GDN setup can be changed separately while the recorded semantics and lifecycle of the other factor are held fixed (Sections 4.2 and 5.1, pp. 5-6).",
+    "The fault campaign uses fresh matched-clean controls and reports expected versus observed gate identity for nine live faults, which is substantially stronger than merely asserting that checks exist (Section 5.3 and Table 4, p. 7).",
+    "Memory claims are unusually disciplined: logical state, page allocation, allocator deltas, and unmeasured process/service capacity are separated, and the paper avoids claiming throughput or deployment capacity from allocator counters (Section 4.4, p. 6; Table 5, p. 8; Table 6, p. 12).",
+    "Limitations and negative evidence are reported candidly, including sequential rather than concurrent execution, the Torch GDN path, the failed cross-backend diagnostic, hash-only runtime tensors, and the incomplete nature of the mutation set (Section 6, p. 8; Reproducibility Statement, p. 9; Appendix D, p. 13)."
+  ],
+  "questions": [
+    "For the storage witnesses in Table 3, what exact pointer-free tuple identifies a backing allocation, view offset, shape, stride, element width, and lifetime, and can a third-party checker recompute every request-base and request-peer overlap predicate without trusting a producer-emitted boolean?",
+    "Which exact layer, request, step, factorial cell, and rank-specific row were preregistered for each of the eight dense-FP32 checks, and where is the immutable timestamp/hash that predates RR2 and fixes both row selection and the 0.005 tolerance?",
+    "Can the independent numerical check be extended to start from independently reconstructed upstream activations or to cover a GDN transition, so that a bug common to both ownership arms before the captured post-RoPE Q/K/V boundary is detectable?",
+    "How many RR2 cross-N comparisons were actually replayed for N in {1,8,32}, and can their per-observable counts and pass results be reported separately from the earlier capacity cohort summarized in Figure 3?",
+    "The accessible main.pdf hashes to 5fda9d35e822cb1fd9d2f97eab4969f83b45f64f8052f48c31b56a1d4b3ba356, whereas the supplied frozen snapshot identifier is a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a. Which object does the latter hash identify, and how should reviewers verify that the PDF belongs to that snapshot?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R3-TECH-PDF-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "Section 3, target 3 (p. 3); Section 4.2 and Table 3 (p. 5); Section 6, Evidence limitations (p. 8); Appendix E (pp. 13-14)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The central isolation claim relies on byte-range disjointness, but the paper only says that the archived witnesses are pointer-free normalized intervals plus an external raw-byte SHA. It does not define in the PDF how allocation identity, storage offset, view stride, alias equivalence, reuse across phases, or cross-tensor overlap are encoded and independently recomputed. Appendix E further states that most underlying tensors are not archived in full.",
+      "why_it_matters": "Mutable-state non-aliasing is the core technical property that distinguishes this audit from output-only equivalence. If the normalized receipts cannot reconstruct backing-storage identity and overlap independently, the most important result reduces to trusting producer-side booleans or hashes rather than auditing ownership.",
+      "required_fix": "Specify the storage-witness data model and overlap algorithm in the paper or supplement, including allocation identity, byte interval construction for non-contiguous views, phase/lifetime handling, and the exact distinction between measured fields and derived predicates. Include a minimal independently replayable example containing both disjoint and aliased tensors.",
+      "verification_test": "Give a fresh checker only the archived receipt schema and raw receipts, not producer-side pass booleans; require it to reconstruct all setup, first-transition, and post-generation request-base/request-peer predicates and to reject crafted exact-alias, partial-overlap, offset-view, and allocator-reuse adversaries.",
+      "evidence_needed": "A formal receipt schema, independent replay implementation, representative raw receipts, and adversarial replay results.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-TECH-PDF-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 3, targets 5-7 (pp. 3-4); Section 5.2 and Figure 2 (p. 7); Section 6 (p. 8)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The dense oracle consumes captured post-RoPE Q, physical BF16 K/V, live position values, mask, and scale, and it covers one selected full-attention row per book. Thus it independently recalculates the selected attention operation but shares all upstream activation and state-construction inputs with the candidate. The 30 GDN layers and end-to-end hybrid computation remain unchecked by an independent implementation.",
+      "why_it_matters": "A defect in prefill, RoPE, Q/K/V production, GDN recurrence, or another upstream component can affect all four ownership cells identically and still pass both cross-arm equality and this oracle. The paper mostly acknowledges this boundary, but statements that the result closes the principal common-mode-attention gap are stronger than the demonstrated independence.",
+      "required_fix": "Either narrow every common-mode claim to the selected attention operator conditional on captured inputs, or add an oracle that reconstructs inputs upstream of the currently shared boundary and independently checks at least one GDN transition or end-to-end step.",
+      "verification_test": "Inject upstream Q/K/V, RoPE, recurrent-state, and mask-construction faults that are shared by both ownership arms. The strengthened independent oracle should detect faults within its claimed scope, and faults outside scope should be explicitly labeled as such.",
+      "evidence_needed": "New independent-layer or end-to-end evidence, or a systematic claim audit showing that all independence language is conditional on captured inputs.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-TECH-PDF-03",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Introduction and contribution list (pp. 1-2); Table 2 (p. 5); Section 6 (p. 8); Conclusion (p. 9)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "All primary validation uses one Qwen3.5-35B-A3B model, vLLM 0.26 fused attention, a Transformers Torch GDN path, one H20 hardware family, 128-token BF16 pages, a single 4,095-token partial-tail geometry, sequential round-major execution on one CUDA stream, and eight generated tokens. The paper explicitly states that transfer to another runtime is not shown.",
+      "why_it_matters": "The manuscript's contribution is an audit contract and proposed evaluation standard rather than a new cache mechanism. Demonstrating that the contract captures only one implementation's invariants leaves uncertain which parts are reusable across hybrid architectures, optimized recurrent kernels, aligned and ragged prefixes, asynchronous execution, and real request lifecycle events.",
+      "required_fix": "Validate the core contract on at least one materially different hybrid model/runtime or optimized recurrent path and one additional lifecycle geometry, or narrow the contribution from a general evaluation standard to a rigorously documented single-runtime case-study artifact.",
+      "verification_test": "Apply the unchanged core contract and receipt schema to a second heterogeneous-state implementation and show that it both passes clean execution and detects at least one platform-specific ownership fault without introducing implementation-specific predicates into the common contract.",
+      "evidence_needed": "New cross-model or cross-runtime execution evidence with a documented contract-versus-adapter boundary.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R3-TECH-PDF-04",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "Abstract (p. 1); Section 4.2 (p. 5); Section 5.2 and Figure 2 (p. 7); Reproducibility Statement (p. 9)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The paper calls the eight oracle rows and 0.005 tolerance preregistered or pre-fixed, but the PDF does not identify the selected layers/steps/cells, state the selection rule, show an immutable registration timestamp/hash, or derive the tolerance. It also mentions an earlier 80-row diagnostic whose maximum was less than half the chosen threshold.",
+      "why_it_matters": "Because only eight rows are checked, post hoc row selection or tolerance tuning could materially overstate the strength of the independent numerical result. The earlier diagnostic may be legitimate calibration, but the chronology and separation between calibration and held-out evaluation are not independently assessable from the paper.",
+      "required_fix": "Report the complete row-selection rule and selected coordinates, tolerance metric and rationale, preregistration timestamp/hash, and the exact relationship between the 80-row calibration diagnostic and RR2 before exposing RR2 outcomes.",
+      "verification_test": "An auditor should derive the same eight row identifiers and 0.005 threshold from the immutable pre-RR2 record alone and then match those identifiers byte-for-byte to the executed sidecars.",
+      "evidence_needed": "Immutable preregistration record, row manifest, calibration record, and binding to RR2 sidecars.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R3-TECH-PDF-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "Section 3, target 7 (p. 4); Section 5.1 (p. 6); Appendix A and Figure 3 (p. 12)",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Cross-N prefix consistency is a named audit target and is said to pass, but the main RR2 result does not report its comparison counts by query, fan-out pair, or observable. Figure 3 reports a detailed comparison lattice only for the earlier capacity cohort and explicitly says it is not pooled with RR2.",
+      "why_it_matters": "The nested query design means many N=32 queries have no smaller-N counterpart. Without RR2-specific counts, readers cannot see the actual coverage of the N-dependent metamorphic relation.",
+      "required_fix": "Add an RR2 comparison lattice giving the number of overlapping queries and checks for N=1 versus 8, N=1 versus 32, and N=8 versus 32, separated by tokens, logits, KV, and GDN state.",
+      "verification_test": "Recompute the counts from the stated nested query sets and confirm that every eligible RR2 query contributes exactly the advertised comparisons and that ineligible N=32-only queries are not counted.",
+      "evidence_needed": "RR2-specific comparison counts and pass/fail aggregates.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics issue is apparent from the PDF. The study uses PG-19 text for systems behavior rather than human-subject evaluation, makes no downstream safety or quality claim, and acknowledges the general dual-use effect that cheaper inference can increase deployment scale (Ethics Statement, p. 9).",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent, reviewer R3-TECHNICAL-PDF, for internal pre-submission quality control. It evaluated the whole paper with primary emphasis on technical soundness and did not communicate with other reviewers or inspect prior reviews, author plans, target scores, repository files, or evidence artifacts.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "An independently replayable storage-receipt format that reconstructs backing-storage identity and catches exact aliases, partial overlaps, offset views, and allocator reuse without trusting producer-side pass fields.",
+    "An oracle crossing the current captured-input boundary, including at least one independently implemented GDN transition or end-to-end hybrid step, with injected common-mode faults demonstrating sensitivity.",
+    "A second hybrid model/runtime or optimized recurrent backend showing that the common audit contract transfers while implementation-specific details remain confined to adapters.",
+    "An immutable pre-RR2 manifest fixing all eight oracle row coordinates and the 0.005 threshold, with byte-level binding to the executed sidecars.",
+    "RR2-specific cross-N coverage counts and raw aggregate bindings consistent with the nested query geometry."
+  ],
+  "evidence_that_would_lower_score": [
+    "Evidence that the pointer-free ownership receipts preserve only producer-computed booleans or per-tensor normalized offsets and cannot reconstruct shared backing-storage identity across requests.",
+    "Evidence that the eight oracle rows or 0.005 tolerance were selected after inspecting RR2 outcomes, or that unreported rows fail the same criterion.",
+    "Evidence that the four ownership cells differed in attention callable, compiled kernel/configuration, state-transition implementation, query/mask/position inputs, or scheduling beyond the stated ownership factors.",
+    "Any raw-shard, detached-receipt, or independently recomputed trajectory mismatch contradicting the exactness, mutation, or allocator aggregates reported in Sections 5 and Appendix E.",
+    "Confirmation that the supplied snapshot identifier and accessible PDF mismatch because the PDF was modified after the review snapshot was frozen."
+  ],
+  "review_limitations": [
+    "This was a PDF-only review. I did not inspect the supplement, code, model/data manifests, raw shards, oracle sidecars, storage receipts, experiment registry, citation-lock files, or any repository evidence, so quantitative and provenance claims are treated as reported rather than independently reproduced.",
+    "The accessible main.pdf has SHA-256 5fda9d35e822cb1fd9d2f97eab4969f83b45f64f8052f48c31b56a1d4b3ba356, which does not match the supplied frozen snapshot identifier a93b867a25c3f380c2770e2c1bd19487b135619edf28a39e53dd0bd08c01361a; therefore I cannot verify that the reviewed PDF is the intended frozen object.",
+    "Citation metadata and the completeness of related-work coverage were not independently checked beyond the supplied ICLR KV-cache calibration document.",
+    "The PDF itself states that most runtime tensors are retained only as hashes/equality flags and that independent numerical recomputation requires the pinned model and data environment (Appendix E, p. 14)."
+  ]
+}

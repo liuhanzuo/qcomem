@@ -1,0 +1,196 @@
+{
+  "reviewer_id": "r00-repro",
+  "round": 0,
+  "snapshot_sha256": "691d902c895efbc2a85bc13d08b072d02cf33b81aa967c3c6fd5e9fa0f7cec58",
+  "role": "reproducibility_provenance",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The ownership design is plausible, the page arithmetic is correct, and the primary raw ledgers are unusually detailed and internally consistent. Confidence is nevertheless materially reduced because the supplied implementation is not executable from the snapshot, the claimed kernel provenance identifies a Python callable rather than the compiled Triton dispatch, and full tensor equality cannot be independently recomputed offline.",
+    "presentation": "The manuscript is clear, well scoped, and unusually explicit about denominators, non-claims, and evidence limitations. Presentation of the artifact is weaker: manuscript, registry, and provenance paths do not resolve in the snapshot, and the claimed buildable source package is incomplete.",
+    "contribution": "An executable ownership contract combining cross-arm equivalence, cross-fan-out invariance, immutable-state checks, and denominator-aware accounting is useful. Its demonstrated scope remains one model, one hardware family, one sequential schedule, and no production scheduler, factorial KV/GDN sharing analysis, external semantic oracle, or independently reproduced run."
+  },
+  "paper_summary": "ForkAudit proposes an ownership and measurement contract for shared-prefix inference in hybrid attention-recurrent language models. A frozen Qwen3.5-35B-A3B case study compares materialized and shared ownership across eight PG-19 books and resident fan-out up to 32, recording exact token, logit-digest, logical-KV, and recurrent-state agreement plus cross-fan-out invariance. It also contrasts a 12.33× controlled page-pool ratio with a 3.83% PyTorch allocated-peak reduction and explicitly disclaims scheduler, concurrency, latency, and broad generalization claims.",
+  "strongest_verified_contribution": "The primary evidence ledger is unusually auditable: all 71 manifest-listed files matched their recorded SHA-256 values and sizes, and the eight raw shards support offline reconstruction of the reported 504 paired requests, 4,032 generation steps, 5,040 logical-KV layer comparisons, 80,640 fused-call records, page equations, and N=32 allocator arithmetic.",
+  "strengths": [
+    "The manuscript separates logical payload, allocated pages, PyTorch allocator peaks, and unmeasured service-level capacity instead of conflating their ratios.",
+    "Cross-arm equality is complemented by cross-fan-out invariance, source-state immutability, private-storage checks, and raw per-call ledgers.",
+    "The primary shards preserve generated tokens, per-step logit digests, per-layer KV digests, recurrent-state digests, allocator snapshots, storage accounting, schedules, and callable descriptors.",
+    "Claim boundaries are unusually candid: the paper disclaims concurrency, speedup, production scheduling, NVML capacity, downstream quality, and generalization beyond the frozen case.",
+    "All 17 citation keys used by the manuscript have local bibliography entries, and the citation lock records what each source does and does not support.",
+    "The PDF and manuscript hashes match the build record, the PDF has ten pages with seven main-text pages before references, and its metadata author field is empty."
+  ],
+  "questions": [
+    "Will the authors regenerate the entire supplementary snapshot after removing personal usernames, internal hostnames, institution-revealing URLs, and absolute machine paths?",
+    "Can the authors provide a canonical, self-contained source tree containing every directly imported module, launcher, protocol manifest, data-preparation script, environment lock, style file, and a clean-room reproduction command?",
+    "Does same-kernel mean the same Python `unified_attention` callable or the same compiled Triton kernel and autotuned configuration? What stable dispatch fingerprint supports the stronger interpretation?",
+    "Can every claim/evidence identifier and every path in the manuscript artifact table, method provenance table, and experiment registry be made resolvable relative to one artifact root?",
+    "Will the raw trials for E-FAIR-SUMMARY and the PG-19 gate shards for E-HF-NEG be supplied, or will claims that those results are replayable be narrowed?",
+    "Can the authors provide either representative persisted tensor pairs or an independent rerun/oracle so the headline full-tensor equality is not supported solely by runtime booleans and hashes produced by the same harness?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R00-REPRO-001",
+      "severity": "critical",
+      "dimensions": [
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "MANIFEST.json:8-9 and all subsequent `source_path` entries; generated/artifact_metrics.json:198-230; evidence/local_governance_tests.log:2-3; gpu-qwen35-vllm-paged-multifork-resident-20260814a/static-dry-run.json:87-91; gpu-qwen35-vllm-paged-multifork-resident-20260814a/code.sha256:1-135; failure-summary.json/failure-summary.json:5; analogous fields in all eight resident shards",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "A read-only scan found identity- or organization-revealing strings in 32 files. The personal username `liuhanzuo` occurs in 31 files through `/Users/liuhanzuo/...` and cluster paths containing `/user/liuhanzuo/`. The negative-run summary exposes an internal `xiaohongshu.com` production-job URL. The visible PDF is anonymous, but the supplementary evidence is not.",
+      "why_it_matters": "This violates the double-blind requirement and could make the submission administratively ineligible regardless of scientific merit. It also discloses personal and internal infrastructure information unnecessarily.",
+      "required_fix": "Regenerate the package from a sanitizing export that uses package-relative logical paths, removes personal usernames and internal URLs, strips private job links and machine locations, and preserves only scientific identifiers and hashes. Recompute every affected ledger, manifest entry, and snapshot hash.",
+      "verification_test": "Run a case-insensitive recursive anonymity scan over every submitted file for author names, usernames, `/Users/`, `/home/`, `/mnt/.../user/`, internal domains, email addresses, repository remotes, and affiliations; require zero unexplained hits. Recheck PDF and figure metadata and confirm anonymous author text.",
+      "evidence_needed": "A newly hashed anonymous snapshot plus the exact zero-hit scan log and metadata audit.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R00-REPRO-002",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness",
+        "experimental_rigor"
+      ],
+      "location": "main.tex/main.tex:1-3, 449-455, 465-466; run_qcomem_qwen35_vllm_paged_multifork_resident.py/run_qcomem_qwen35_vllm_paged_multifork_resident.py:25-55; qcomem_vllm_paged_multifork_resident.py/qcomem_vllm_paged_multifork_resident.py:23-30 and 648-654; test_launch_qcomem_qwen35_vllm_paged_multifork_resident.py/test_launch_qcomem_qwen35_vllm_paged_multifork_resident.py:10-18; MANIFEST.json:350-430; gpu-qwen35-vllm-paged-multifork-resident-20260814a/code.sha256:43,48,52,55,63,134-135",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-EXACT-01",
+        "C-ISOLATE-01",
+        "C-CALL-01",
+        "C-MUT-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN",
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "The runner directly imports `qcomem_joint_policy`, `qcomem_qwen35_functional_stack`, `qcomem_qwen35_vllm_paged_integration`, `qcomem_vllm_paged_fair_control`, and `run_downstream`, none of which is included. The launcher and protocol manifest are also absent even though their hashes appear in `code.sha256`, and the included launcher test therefore cannot run. Every selected top-level code file is additionally nested under a directory named after itself, so normal imports fail without manual restructuring. The manuscript source requires `iclr2026_conference.sty`, `math_commands.tex`, the bibliography style, figures, tables, and `references.bib` at paths that do not form a buildable tree. This contradicts the Reproducibility Statement's claim that official style files and executable checks are included. No README, requirements lock, container recipe, or clean-room command is present.",
+      "why_it_matters": "A reviewer can inspect fragments and archived outputs but cannot import the core implementation, rerun its tests, build the manuscript, reconstruct the exact input pipeline, or reproduce the central GPU experiment from the submitted package. Hashes of unavailable files establish identity, not reproducibility or auditability.",
+      "required_fix": "Export a canonical source tree containing all transitive project dependencies, the launcher, protocol and data-preparation manifests, tests, ICLR style and math files, bibliography assets, and a dependency lock or container. Add public model/data acquisition instructions with exact revisions and checksums, plus one documented sequence for paper build, CPU tests, static preflight, raw-shard generation, aggregation, and claim replay.",
+      "verification_test": "In a fresh environment with no external project checkout and no `PYTHONPATH` pointing outside the artifact, build the PDF, import every shipped module, run the claimed CPU suite, run static preflight, reproduce derived tables from the archived shards, and execute at least a documented smoke run. The complete experiment command must resolve all inputs using only documented public downloads and package-relative paths.",
+      "evidence_needed": "A clean-room transcript with exit codes, environment lock digest, resulting PDF and output hashes, and a closure report showing that every project import and manuscript input resolves inside the package.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R00-REPRO-003",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "main.tex/main.tex:535-550; evidence/claim_evidence_map.tsv:2,9-10; evidence/method_provenance.tsv:2-10; evidence/experiment_registry.json:5-65; scripts/validate_manuscript_evidence.py:17-23",
+      "claim_ids": [
+        "C-OWN-01",
+        "C-FAIR-01",
+        "C-BACKEND-NEG-01"
+      ],
+      "evidence_ids": [
+        "E-CODE-KERNEL",
+        "E-CODE-MF",
+        "E-CODE-GDN",
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS",
+        "E-FAIR-SUMMARY",
+        "E-HF-NEG",
+        "E-CPU-TESTS"
+      ],
+      "observed_evidence": "Every `raw/...` path printed in the manuscript artifact table is absent. The actual primary files are under `gpu-qwen35-vllm-paged-multifork-resident-20260814a/...`; the governance log uses an underscore rather than the manuscript's hyphenated name. Method provenance points to nonexistent `../gpu/...` files, and the experiment registry points outside the snapshot to `../results/...` and missing reports. C-OWN-01 cites E-CODE-KERNEL, E-CODE-MF, and E-CODE-GDN, but none is registered in `experiment_registry.json`. C-FAIR-01 promises raw-trial replay although only a summary is present; C-BACKEND-NEG-01 calls for PG-19 gate shards that are absent. The manuscript validator itself hard-codes a parent workspace layout rather than the snapshot layout.",
+      "why_it_matters": "The advertised claim-to-evidence graph is not mechanically resolvable. Reviewers must guess path translations, central code evidence IDs have no registry records, and supporting claims cannot be replayed at the granularity promised by the claim map.",
+      "required_fix": "Choose one package-relative artifact layout and update the manuscript table, registry, method provenance, scripts, and manifest to agree with it. Register every evidence ID, include all evidence promised by each extraction test, or narrow the corresponding claim. Add a fail-closed closure checker for evidence IDs, paths, globs, hashes, and manuscript references.",
+      "verification_test": "Automatically enumerate every claim-map evidence ID and every registry/provenance/manuscript path; require each ID to resolve exactly once and every required file or glob to exist and match its recorded hash. Then execute each listed extraction or replay command successfully from the package root.",
+      "evidence_needed": "Repaired maps and registry, a machine-readable closure report, and either the missing fair-control and negative-gate raw artifacts or revised non-replayability statements.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R00-REPRO-004",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "main.tex/main.tex:38-46, 76-82, 172-174, 257-265 and 387-399; qcomem_vllm_paged_multifork_resident.py/qcomem_vllm_paged_multifork_resident.py:701-712 and 724-780; run_qcomem_qwen35_vllm_paged_multifork_resident.py/run_qcomem_qwen35_vllm_paged_multifork_resident.py:772-842; gpu-qwen35-vllm-paged-multifork-resident-20260814a/multifork-resident-summary.json:70-74",
+      "claim_ids": [
+        "C-CALL-01",
+        "C-EXACT-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The ledger records a process-local Python object ID, module, qualname, and signature for `vllm.v1.attention.ops.triton_unified_attention.unified_attention`; the aggregate retains only the latter three strings. It does not record an installed-package or source hash for vLLM, a Triton compilation/cache key, autotuned configuration, PTX/cubin hash, driver/runtime fingerprint, or another stable identifier of the compiled GPU dispatch. Process-local `id()` values are not portable across ranks or reruns. Thus the artifacts strongly support use of the same Python callable within each paired run, but not the manuscript's stronger language of exact or identical fused-kernel provenance.",
+      "why_it_matters": "Holding execution fixed is central to the paper's causal interpretation. A wrapper may select different compiled variants based on shapes, runtime, or autotuning, so callable equality alone leaves an unresolved confound and is insufficient provenance for independent reproduction.",
+      "required_fix": "Either consistently narrow the claim to same Python callable and pinned version within one process, or record a stable per-call dispatch fingerprint that binds the relevant implementation source, compilation parameters, selected Triton configuration, and compiled artifact. Explain which parts of that fingerprint are expected to match across arms, ranks, and reruns.",
+      "verification_test": "For the stronger claim, verify that every fresh/reuse paired call has an identical stable dispatch fingerprint and that an independent rerun reproduces it. For claim narrowing, search the manuscript and artifact labels to ensure no statement implies compiled-kernel identity beyond the recorded callable evidence.",
+      "evidence_needed": "Either revised bounded wording using the existing callable ledger or new compiled-dispatch provenance fields and their clean rerun.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R00-REPRO-005",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "main.tex/main.tex:294-301, 424-429 and 553-557; run_qcomem_qwen35_vllm_paged_multifork_resident.py/run_qcomem_qwen35_vllm_paged_multifork_resident.py:441-478 and 794-820; all resident shards under each arm's `generation.trajectories`, `request_logical_kv_after_generation`, and `request_gdn_after_generation`",
+      "claim_ids": [
+        "C-EXACT-01",
+        "C-ISOLATE-01"
+      ],
+      "evidence_ids": [
+        "E-MF-SUMMARY",
+        "E-MF-SHARDS"
+      ],
+      "observed_evidence": "The harness retains full logits temporarily and records `torch.equal` booleans plus SHA-256 digests, but the snapshot archives no full logits, logical-KV tensors, recurrent tensors, or exact query token IDs. Offline inspection can compare the two recorded digests and replay cardinality, but cannot independently recompute numerical equality or audit tensor serialization. The manuscript accurately discloses this limitation.",
+      "why_it_matters": "The headline zero-mismatch claim remains dependent on the correctness of the same runtime instrumentation that produced its booleans and hashes. This is not evidence of an observed mismatch, but it limits independent verification of the paper's strongest empirical statement.",
+      "required_fix": "Preserve the current limitation language. Additionally provide a size-bounded independent witness, such as representative raw tensor pairs with dtype/shape/byte-order metadata and a separate checker, or an independent clean rerun that regenerates the published hashes. Avoid describing the equality as independently recomputable from the current archive.",
+      "verification_test": "Run an independent checker that loads the persisted witness tensors and reproduces both equality and hashes, or regenerate every published digest from a clean pinned rerun and compare it with the frozen ledger.",
+      "evidence_needed": "Representative tensor fixtures and independent-checker output, or a clean rerun ledger with matching input and output hashes.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No research-ethics concern was identified for the systems experiment on PG-19. The personal and internal infrastructure disclosures are treated as a critical anonymity and submission-integrity defect rather than an ethics concern.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A fully sanitized, self-contained archive that builds and replays successfully in a clean environment with no private filesystem dependencies.",
+    "A closed, machine-validated claim-to-evidence graph with all promised raw supporting artifacts or appropriately narrowed claims.",
+    "Stable compiled-dispatch provenance, or consistent claim narrowing to same callable and runtime version.",
+    "An independent rerun or tensor witness that reproduces the primary exactness hashes and ownership invariants.",
+    "For a score above 6, new decision-relevant evidence from a real scheduler with KV-share/GDN-share factorial controls, concurrency and reclamation faults, additional hybrid models or geometries, and an external semantic oracle."
+  ],
+  "evidence_that_would_lower_score": [
+    "Any mismatch between a manifest entry and its submitted file, or any raw-shard replay contradiction.",
+    "Evidence that materialized and shared arms used different compiled dispatches despite the same callable label.",
+    "Evidence of recurrent-state aliasing, overlapping private storage, prefix mutation, or cross-fan-out drift on a clean rerun.",
+    "Failure to reconstruct the exact PG-19 inputs and query banks from the documented public data pipeline.",
+    "Evidence that reported allocator peaks include exactness diagnostics or that supposedly coincident rank values differ.",
+    "Continued author or institution disclosure in the blind supplementary package."
+  ],
+  "review_limitations": [
+    "Under the isolation requirement, I did not inspect prior reviews, the current author workspace, external repositories, or unrelated history.",
+    "I did not independently verify citation targets on the internet; citation assessment is limited to the locally supplied bibliography, citation lock, and closest-work matrix.",
+    "I did not execute the submitted Python or rerun the eight-GPU experiment; the implementation and artifact assessment is static, supplemented by read-only checksum, structure, metadata, and arithmetic checks.",
+    "I checked PDF page count, hash, and metadata but did not independently render and visually inspect every page."
+  ]
+}

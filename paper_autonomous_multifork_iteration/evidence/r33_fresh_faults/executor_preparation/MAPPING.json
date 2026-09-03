@@ -1,0 +1,74 @@
+{
+  "schema_version": "forkaudit-r33-frozen-fault-executor-map-v1",
+  "run_id": "R33-FRESH-FAULTS-20260825A",
+  "author_faults_raw_sha256": "b1f4d6c544c30fccc32370a03e170aee38596a370d02c0db4a6748c83cc34dff",
+  "author_protocol_raw_sha256": "b85995e180732588ac6ee09fc33181d9c276980795a7288a23feb4c94ad3925c",
+  "formal_protocol_raw_sha256": "7d0cc087b6b529aa41a8003cf748121b3adedc7433cb6c75dbde50da5ba62fb7",
+  "faults": [
+    {
+      "rank": 0,
+      "fault_id": "HF01_DELAYED_TAIL_DETACH",
+      "fault_definition_sha256": "2ee27893a09cc9198f227422ec9fda1de1bebf97cc31b35fc1cfce67f773b8f2",
+      "kv_policy": "vllm-q16-shared-document-reuse",
+      "gdn_policy": "borrow-immutable-base-functional-rebind",
+      "target_request": 0,
+      "expected_primary_gate": "TAIL_COPY_BEFORE_FIRST_APPEND_WRITE",
+      "implementation": "instance-scoped Q16 append: one premature K/V token write to the shared tail, then the exact 127-token detach and ordinary continuation",
+      "invalidity_risk": "custom append adapter must remain behaviorally aligned with the frozen Q16 append; any mismatch is operational-invalid, never a catch"
+    },
+    {
+      "rank": 1,
+      "fault_id": "HF02_INACTIVE_DOCUMENT_LANE_SCRIBBLE",
+      "fault_definition_sha256": "20bbf518f3d2f66577db3e850400407658c8029975e03f6509a3e08f75d18970",
+      "kv_policy": "vllm-q16-shared-document-reuse",
+      "gdn_policy": "materialize-request-base-functional-rebind",
+      "target_request": null,
+      "expected_primary_gate": "PHYSICAL_DOCUMENT_PREFIX_IMMUTABLE",
+      "implementation": "XOR 0x01 into the first byte of K at inactive token lane 127 of the first full-attention source page",
+      "invalidity_risk": null
+    },
+    {
+      "rank": 2,
+      "fault_id": "HF03_DUPLICATE_COMMITTED_DISPATCH",
+      "fault_definition_sha256": "6e2b0b4cca4f8a3b72d26e2f13aa6a2a47c5791dd8df44c452fb99bd7d42f282",
+      "kv_policy": "vllm-q16-shared-document-reuse",
+      "gdn_policy": "borrow-immutable-base-functional-rebind",
+      "target_request": 0,
+      "expected_primary_gate": "ORDERED_CALL_CARDINALITY",
+      "implementation": "commit r0 round-1 input once with discarded output, then commit the same input again before r1; preserve both call/logit/append records",
+      "invalidity_risk": "the second committed call advances live state; any capacity or ordinary runtime exception is preserved as operational-invalid"
+    },
+    {
+      "rank": 3,
+      "fault_id": "HF04_EFFECTIVE_SCALE_DRIFT",
+      "fault_definition_sha256": "24c88a88ea2991d16f4e7e63c457fcf92d2a95650ef23232fcf2a1c24d7a64f7",
+      "kv_policy": "vllm-q16-shared-document-reuse",
+      "gdn_policy": "materialize-request-base-functional-rebind",
+      "target_request": 0,
+      "expected_primary_gate": "ATTENTION_EFFECTIVE_SCALE",
+      "implementation": "ledger subclass changes only the first full-layer r0 query call scaling from float.hex(0.0625) to float.hex(0.125)",
+      "invalidity_risk": null
+    },
+    {
+      "rank": 4,
+      "fault_id": "HF05_STALE_GDN_BINDING_TOKEN_AFTER_REBIND",
+      "fault_definition_sha256": "6dfbea24d869efeb4881155dfae1d710109a40017cb25bb3e80f621c266ec80a",
+      "kv_policy": "vllm-q16-shared-document-reuse",
+      "gdn_policy": "borrow-immutable-base-functional-rebind",
+      "target_request": 1,
+      "expected_primary_gate": "GDN_COMPLETED_BINDING_TOKEN_ADVANCE",
+      "implementation": "after honest transition capture and physical replay, replace exactly 60 r1 observed binding tokens with setup tokens while preserving new storage tokens/ranges",
+      "invalidity_risk": null
+    }
+  ],
+  "shared_guards": {
+    "clean_before_mutant": true,
+    "clean_replay_process_is_candidate_import_free": true,
+    "sidecars_are_size_and_sha256_bound": true,
+    "earlier_predicates_must_all_pass": true,
+    "unexpected_or_unallowlisted_exception_is_operational_invalid": true,
+    "aggregate_requires_exactly_five_pairs": true,
+    "aggregate_emits_no_summary_on_any_missing_or_invalid_pair": true,
+    "negative_or_escape_outcomes_retained": true
+  }
+}

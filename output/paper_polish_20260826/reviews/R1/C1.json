@@ -1,0 +1,131 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "319da71b563edd52d9f4d3e6303bcedcc188048744461a33c9d87c7bebb866dc",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "v1 的最佳常数基线和 v2 的分层置换零假设定义清楚，作者也修复了 variable-option 非法标签抽样、对称化了 chance/floor 的区间标准，并明确报告多重校正后 0/12 个单元仍显著。核心描述性事实可信，但 v1 区间条件化于观察到的获胜字母且未做选择感知重采样，v2 对现有 27 个单元是看到塌缩形态后的事后重分析，家族、损伤方式与修复暴露又相互混杂。",
+    "presentation": "主张边界总体诚实，关键表格包含点估计、区间和多重校正三层读法。然而 28 页中充斥 repaired/withdrawn/sealed、多个 judge tier、旧/新统计族和大量完整单元表，主线需要跨主文与多个附录才能重建；这已实质阻碍读者判断哪个结果具有确认性。逐页视觉上无裁切，但表格字号与信息密度很高。",
+    "contribution": "“输入盲基线应匹配输出接口”是有用的报告原则，variable-k 分层和三段式 gate 也有实务价值。不过最佳常数分类器、Cohen's-kappa 等价的观测减置换期望以及 option-count 校正均被论文自己承认为已有成分；当前创新主要是把它们组合成报告协议并在一个结构损伤语境中展示，增量较窄。"
+  },
+  "paper_summary": "论文主张多选评测中的 nominal chance 可能低于一个输入盲预测器可达到的基线，因此提出两个零参考：v1 是由经验金标签边际得到的、与模型臂无关的最佳常数 floor，用于接口可比性筛查；v2 是在可变选项数分层内保持模型预测边际的置换零假设，用于测量逐题信息。实验覆盖 MMLU-Pro、MMLU/BoolQ 及若干小型多选基准，在 OLMo-2 剪枝后愈合与 Llama/Qwen 前 N 层截断模型上比较 chance 与 floor。点估计层面 advertised above-chance 单元大幅减少，但匹配区间后差距很小，且多重校正后两侧均为 0/12；v2 还撤回两项 below-floor competence 标签。",
+  "strongest_verified_contribution": "第 5.1 节表 1 把 chance 与最佳常数 floor 放在同一配对区间和多重校正标准下，显示 MMLU-Pro 非 OLMo 单元从点估计 10/12 对 3/12，收缩到区间 3/12 对 1/12，并在 BH/Bonferroni 后均为 0/12；这种对称证据标准纠正了更强但不成立的早期叙述。",
+  "strengths": [
+    "明确区分 arm-independent 的接口 floor 与 arm-conditional 的 item-information null，并说明二者都不证明 construct validity。",
+    "主动披露 variable-option 校准错误、事后 v2 状态、赢家选择条件化和多重校正后的零结果。",
+    "实验协议列出模型、损伤方式、候选评分、精度、截断检查、分片完整性和统计种子，PDF 内可追踪性较强。",
+    "负面对照、常数发射器和 fp32 tie 检查帮助区分接口失败、数值精度与残余任务信息。"
+  ],
+  "questions": [
+    "当一个非恒定预测器低于经验最佳常数 floor、但相对 arm-conditional 置换零假设显著为正时，v1 gate 为什么应阻断臂间比较而不只是阻断绝对能力表述？",
+    "能否给出与 Balepur majority baseline、kappa/options correction 和 null-model gaming 的逐项算法比较，明确 variable-k 分层与前置 gate 中哪一项是新的？",
+    "表 1 的 aggregate direction 在共享题目、嵌套深度和同家族单元相关的情况下，预先规定的总体 estimand 和有效独立单位是什么？",
+    "若在至少两个模型家族都使用相同的 prune-then-heal 或相同训练预算，当前“只有 OLMo healed arms 过 floor”的模式是否仍成立？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C1-I1",
+      "severity": "major",
+      "dimensions": ["novelty", "significance", "citation_integrity"],
+      "location": "第 2–4 页第 2 节 Related Work、第 3.1–3.2 节；第 9 页第 6 节 Discussion",
+      "claim_ids": [],
+      "evidence_ids": ["Eq. 2 best-constant floor", "Eq. 3 arm-conditional permutation null", "Table 2"],
+      "observed_evidence": "论文明确承认多数类基线、constant-rater property、kappa 的分子形式及 option-count correction 均非新概念；当前差异主要是 variable-k 分层、materiality bar 和在比较前设置 gate。相关工作以段落列举为主，没有展示这些成分与最接近协议在输入、零分布、决策输出和新增能力上的不可替代差异。",
+      "why_it_matters": "如果核心是已知统计量的重新命名与组合，方法新颖性和 ICLR 影响力不足。实际价值可能来自审计案例，但这需要被定位为经验/报告贡献而非新的 null-calibration 原理。",
+      "required_fix": "增加逐轴最近工作比较，明确每个组件是复用、修改还是新增；把 v1/v2 的数学新颖性主张收窄，并用一个现有方法会做出错误决策、而完整协议能预先避免的外部案例证明组合价值。",
+      "verification_test": "相关工作应可让审稿人对每个公式找到最接近先例，并能用一张表唯一识别本文新增的输入、假设、输出与验证证据；摘要和结论不再把组合包装成全新统计原理。",
+      "evidence_needed": "完整的邻近方法对照；若主张 gate 本身显著更好，需要在预先定义的外部评测上比较错误决策率或覆盖率。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-I2",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "limitations_responsible_claims"],
+      "location": "第 6 页第 4 节 Designated damaged cells and multiplicity；第 7 页第 5.1 节表 1 及其后两段；第 12 页 Reproducibility Statement",
+      "claim_ids": [],
+      "evidence_ids": ["Table 1", "Tables 11 and 15"],
+      "observed_evidence": "标题性单元计数采用每单元 α=0.05 且不做族内校正；MMLU-Pro 的匹配区间只剩 3/12 对 1/12，多重校正后两侧都是 0/12。最佳常数 floor 的 bootstrap 又条件化于观察到的获胜字母，论文说明因缺少 per-item shards 未运行 selection-aware joint resample。共享题目与嵌套损伤臂使单元计数并非独立重复。",
+      "why_it_matters": "“校准后大幅减少可宣称单元”的强度主要由点估计计数驱动，而正式单元证据在校正后消失；未处理赢家选择与单元依赖会进一步低估边界不确定性。描述性方向可以保留，但不能承担强确认性主张。",
+      "required_fix": "把预先定义的家族/数据集层总体 estimand 设为主结果，采用保持题目与嵌套臂相关结构的联合重采样或层级模型，并纳入 floor winner 的重新选择；在做不到时，将点计数明确降为探索性并从标题性论据中移除。",
+      "verification_test": "主结果必须有单一预设总体检验/区间，重采样中每次重新选择最佳常数，并以模型家族或独立训练实体而非单元行作为适当的推断单位；报告调整前后结论是否改变。",
+      "evidence_needed": "逐题预测与金标签、完整损伤臂层级、选择感知联合 bootstrap/permutation 输出及预设总体检验。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-I3",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "novelty", "limitations_responsible_claims"],
+      "location": "第 4–5 页第 3.2 节 Pre-registration status；第 7–9 页第 5 节；附录 A.9 第 23–24 页",
+      "claim_ids": [],
+      "evidence_ids": ["Figure 2", "Tables 16–18", "v2 permutation null"],
+      "observed_evidence": "v2 的规则、分层和 0.10 materiality constant 虽在重新判定前冻结，但设计者已看过现有 27 个单元的塌缩形态；论文据此也称现有 v2 分析为 post-hoc。家族 materiality bar 依赖同一家族 intact anchor，Llama-2 因 anchor 过弱而整体被阻断。",
+      "why_it_matters": "v2 是论文最有区分力的统计层，但当前数据既参与了问题发现又用于展示修复效果；materiality 决策还会随一个噪声较大的完整模型锚点变化。它目前是有根据的诊断，而非外部验证。",
+      "required_fix": "在未用于设计 v2 的新模型×数据集单元上冻结并执行协议；预先规定 materiality anchor 失败时的处理，并比较绝对效应阈值、同家族相对阈值等合理选择的稳健性。",
+      "verification_test": "新评测单元在任何结果可见前完成时间戳冻结；论文分别报告预注册确认集和旧 27 单元探索集，且所有阈值敏感性遵循事前规则。",
+      "evidence_needed": "真正 held-out 的多家族多数据集 v2 结果，以及阈值/锚点协议的冻结记录。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-I4",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "第 6 页第 4 节 Models and structural damage；第 7 页第 5.1 节末；第 9 页 Discussion",
+      "claim_ids": [],
+      "evidence_ids": ["Table 1 off-MMLU rows", "Table 12", "Table 15"],
+      "observed_evidence": "OLMo-2 使用 prune-then-heal checkpoint，而 Llama-2/Llama-3/Qwen3 只是运行时前 N 层截断；同时家族、深度、训练语料、愈合暴露和保留比例都不同。所有 interval-level off-MMLU clearance 都来自唯一经过愈合的 OLMo-2 家族。",
+      "why_it_matters": "这个模式无法区分“愈合使模型高于 floor”“OLMo 家族特性”“损伤强度不同”或数据适配。它可以描述当前 ladder，但不能验证协议在多种实际压缩/修复系统上的价值。",
+      "required_fix": "至少在两个家族上建立相同损伤与相同愈合预算的交叉设计，或将结果彻底改写为 OLMo ladder 的案例研究，不再用跨家族模式暗示一般性。",
+      "verification_test": "交叉设计应报告家族×损伤制度×深度交互及同预算配对；若不新增实验，摘要、结果和结论均必须只陈述 measured ladder。",
+      "evidence_needed": "匹配的跨家族 prune/heal 或截断控制、多个独立 checkpoint/seed，以及相同评测协议。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-I5",
+      "severity": "minor",
+      "dimensions": ["clarity", "reproducibility"],
+      "location": "第 1–9 页主文与第 13–28 页附录，尤其表 15–23",
+      "claim_ids": [],
+      "evidence_ids": ["Tables 15–23"],
+      "observed_evidence": "同一单元的 v1/v2、点估计/区间/多重校正、旧/修复 judge 和多个 tie convention 分散在主文及长附录中；大表虽未视觉溢出，但字号和密度使结果层级难以快速审计。",
+      "why_it_matters": "协议论文的核心价值是让错误参考更难被误用；如果论文自身需要跨十余张表才能确定可引用结果，就削弱了这一目标。",
+      "required_fix": "增加一张不含历史谱系的最终结果矩阵，按研究问题列出唯一主 null、推断单位、校正方法、结论与限制；将修复史和完整单元表留在附录。",
+      "verification_test": "独立读者只凭摘要、方法定义、最终矩阵和结论即可复现所有标题性计数并知道哪些数值是探索性。",
+      "evidence_needed": "不需要新实验；需要结果层级和交叉引用重构。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未见人类受试者、敏感数据或直接部署决策；主要风险是错误的能力标签被下游误用，论文已部分通过限定语言缓解。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R1 生成，仅用于内部投稿前质量控制；该子代理只读取冻结 PDF 与指定审稿规则，未与其他评审通信，也未读取其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在真正 held-out 的模型×数据集单元上预注册验证 v2，并展示相对 chance/constant baselines 的稳定决策增益。",
+    "用选择感知、保持题目与嵌套臂相关结构的总体推断确认 headline direction。",
+    "在至少两个模型家族上运行匹配的损伤与愈合制度，解除 OLMo-only 解释。",
+    "明确证明完整 gate 相对最接近既有 null/baseline 协议新增了可验证能力。"
+  ],
+  "evidence_that_would_lower_score": [
+    "选择感知或依赖感知分析使 chance 与 floor 的总体差异消失或反向。",
+    "held-out v2 评测显示高假阳性/假阴性，或 materiality 结论对合理阈值高度不稳定。",
+    "匹配损伤制度后 OLMo 与非 OLMo 的模式不再成立，且论文仍保留一般性叙述。"
+  ],
+  "review_limitations": [
+    "本评审严格只读取指定冻结 PDF；未读取代码、逐题 shard、artifact、源文件或任何旧稿/修订日志。",
+    "按任务要求未联网，未核验外部引文或进行补充文献检索；新颖性判断仅相对于 PDF 自身列出的相关工作。",
+    "逐页视觉核查覆盖全部 28 页；未发现裁切、重叠或缺页，但若干附录表字号和信息密度较高。"
+  ]
+}

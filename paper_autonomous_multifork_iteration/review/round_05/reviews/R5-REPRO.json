@@ -1,0 +1,150 @@
+{
+  "reviewer_id": "R5-REPRO",
+  "round": 5,
+  "snapshot_sha256": "90c20e84de6080c96e38e7bd0f95323159f71e6607a951504b9b938bbe89b60f",
+  "role": "reproducibility_provenance",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 3, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The deliberately bounded ownership, exactness, memory-accounting, attention-oracle, and GDN-oracle claims are technically plausible and unusually well instrumented. I independently ran the shipped RR2 and GDN offline replays successfully. Confidence remains below excellent because most live tensors are represented by producer-generated hashes or equality receipts, both numerical oracles begin at captured internal boundaries, and the live GPU experiment cannot be regenerated directly from the frozen snapshot.",
+    "presentation": "The paper is readable, visually sound, within the main-text page limit, and exceptionally explicit about denominators and limitations. Evaluation is nevertheless made harder by historical identifiers such as RR2 and round_04, broken paths in the supplied provenance map, and a source-to-PDF header mismatch under the documented build command.",
+    "contribution": "The integration of phase-aware heterogeneous-state ownership, mutation-tested gates, bounded numerical oracles, and denominator accounting is useful. However, most components have clear precedents, and the purported runtime-independent audit contract is validated only on one Qwen3.5/vLLM adapter; the lifecycle cohort uses the same adapter. Thus the current evidence establishes a rigorous case-specific artifact more clearly than a broadly reusable ICLR-level methodology."
+  },
+  "paper_summary": "ForkAudit is an executable audit contract for ownership and memory claims when requests fork from a shared prefix in a hybrid model with paged attention KV and recurrent GDN state. The paper evaluates four KV-by-GDN ownership cells on one Qwen3.5-35B-A3B setup, records phase-aware storage witnesses and exact cross-cell trajectories, checks selected attention and recurrent transitions against bounded FP32 references, injects nine targeted faults, studies one cancellation/reclamation lifecycle, and separates logical, page-pool, allocator, and unmeasured service-level memory denominators.",
+  "strongest_verified_contribution": "The strongest verified contribution is the manifest-first RR2 artifact: from an isolated temporary copy, its one-command replay verified the 628-file package and 536 raw artifacts, reconstructed all 96 factorial configurations and 96 ownership timelines, recomputed eight attention-oracle rows and nine matched fault pairs, and passed seven storage-witness adversarial tests. The separate 48-file GDN package also reproduced all four clean decisions and all four seeded-fault rejections.",
+  "strengths": [
+    "Claims are unusually well scoped: the paper repeatedly distinguishes ownership evidence from end-to-end semantic correctness, targeted mutants from completeness, and allocator counters from NVML or production capacity.",
+    "The top-level 813-entry snapshot manifest has no hash mismatches in my independent verification.",
+    "The primary RR2 replay and independent GDN replay both execute successfully without modifying the frozen snapshot.",
+    "The pointer-free storage schema gives explicit interval equations, lifecycle predicates, identifier rules, and adversarial tests rather than relying only on output equality.",
+    "The four-cell factorial separates KV ownership from GDN setup ownership, includes the otherwise-vacuous N=1 request-to-base check, and records fixed-axis projections.",
+    "The paper reports negative and missing evidence candidly, including the absence of speedup, end-to-end oracle coverage, compiled-kernel identity, stochastic replication, scheduler evidence, and cross-runtime transfer.",
+    "The compiled 18-page PDF is legible, anonymous, and places references after eight pages of main text; figures and tables have no visible clipping or overlap.",
+    "The citation lock uses primary or explicitly qualified sources and states both supported and unsupported local uses."
+  ],
+  "questions": [
+    "Can the authors regenerate the claim and method provenance maps against the exact frozen reviewer snapshot, with every evidence ID and source path resolving to a file in its 813-entry manifest?",
+    "Can the authors provide a parameterized, containerized live-run command that replaces private paths with documented inputs and regenerates the primary GPU shards from the pinned Qwen revision and PG-19 preparation procedure?",
+    "Can the lifecycle-transfer cohort be given a package-specific manifest and one-command independent validator that recomputes its predicates from the shipped raw shards rather than asking reviewers to trust validation_report.json?",
+    "Are the raw shards and an executable replay for the earlier capacity cohort available? If not, why should its model-inclusive ratios remain quantitative paper results rather than clearly labeled archival context?",
+    "Can the runtime-independent decision rule be demonstrated on a second independently implemented adapter, runtime, or at least a non-Qwen synthetic conformance implementation?",
+    "Which TeX/fancyhdr environment produced the shipped headers? With the documented latexmk command and supplied source, I obtained substantively identical text and 18 pages but no 'Under review as a conference paper at ICLR 2026' header."
+  ],
+  "issues": [
+    {
+      "issue_id": "R5-REPRO-01",
+      "severity": "major",
+      "dimensions": ["reproducibility", "technical_soundness"],
+      "location": "evidence/method_provenance.tsv; evidence/package_closure_audit.json; Appendix K, Table 12 (PDF p.18; source lines 1063-1092)",
+      "claim_ids": ["C-OWN-01", "C-EXACT-01", "C-RR2-FACT-01"],
+      "evidence_ids": ["E-CODE-KERNEL", "E-CODE-MF", "E-CODE-GDN", "E-MF-SUMMARY", "E-MF-SHARDS"],
+      "observed_evidence": "The first ten method-provenance rows, M-KV-ARENA through M-CROSSN, point to nonexistent supplement_anonymous/code paths. The package closure audit reports checks over evidence/experiment_registry.json and supplement_anonymous/ANONYMOUS_MANIFEST.sha256, neither of which is present in the frozen snapshot. Equivalent code often exists under evidence/round_04_rr2_package/executed_source/gpu, but the delivered provenance graph does not point to it.",
+      "why_it_matters": "Self-resolving provenance is central to the paper's contribution. A closure audit generated against a different repository root cannot establish closure of the actual blind snapshot, and reviewers cannot follow several declared evidence IDs or method mappings without guessing replacements.",
+      "required_fix": "Regenerate the experiment registry, claim map, method map, and closure audit relative to the frozen submission root. Replace every missing source path with its exact packaged executed-source path and bind the audit to the submission manifest hash.",
+      "verification_test": "Starting only from the frozen snapshot, automatically resolve every claim evidence ID and every method source_path; require all referenced files to appear in MANIFEST.json with matching hashes and require the closure report to record the reviewed snapshot hash.",
+      "evidence_needed": "A corrected self-contained provenance graph and a new closure report over the exact reviewer snapshot; no new GPU experiment is required.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-REPRO-02",
+      "severity": "major",
+      "dimensions": ["reproducibility", "experimental_rigor", "technical_soundness"],
+      "location": "Appendix A Reproducibility Statement (PDF p.12; source lines 706-717); evidence/round_04_rr2_package/README.md; evidence/round_04_rr2_package/configuration/executed_configuration.anonymous.json",
+      "claim_ids": ["C-RR2-FACT-01", "C-RR2-GDN-01", "C-RR2-ORACLE-01", "C-RR2-MUT-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS"],
+      "observed_evidence": "The shipped command is an offline replay of frozen producer artifacts. The live command is represented only by a SHA-256 because it contained private paths; weights and PG-19 text remain external, and no clean environment recipe regenerates the GPU shards. Most logits, KV, and GDN tensors are retained only as equality booleans and digests, so the offline replay cannot independently redo those comparisons from numerical values.",
+      "why_it_matters": "The replay strongly checks artifact consistency but is not an independent reproduction of the central live execution. For a paper whose main contribution is an executable audit, a third party should be able to instantiate the audit and generate a new evidence bundle rather than only verify the authors' bundle.",
+      "required_fix": "Provide a parameterized end-to-end live command, environment or container lock including CUDA and driver requirements, public model/data acquisition and tokenization steps, and a clean-run procedure that emits a new package accepted by the same offline replay.",
+      "verification_test": "On a clean compatible machine, obtain the pinned public inputs, execute the documented command without private paths, produce fresh shards and manifests, and run the existing replay successfully. Report any expected cross-machine nondeterminism separately from within-run cross-cell equality.",
+      "evidence_needed": "A fresh independently initiated live run and its replay report constitute new evidence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-REPRO-03",
+      "severity": "major",
+      "dimensions": ["reproducibility", "experimental_rigor"],
+      "location": "Section 5.3 lifecycle result (PDF pp.7-8; source lines 488-499), Appendix I/Table 10 (PDF p.17; source lines 960-982), evidence/lifecycle_transfer_reviewer_package/",
+      "claim_ids": ["C-RR4-LIFECYCLE-01"],
+      "evidence_ids": ["E-RR4-LIFECYCLE-TRANSFER"],
+      "observed_evidence": "The lifecycle package contains frozen code, raw shards, logs, a summary, and validation_report.json, but unlike the RR2 and GDN packages it supplies no documented package-specific manifest-first replay entry point that independently reconstructs the stated exactness, scrubbing, reclamation, and stale-handle predicates.",
+      "why_it_matters": "The lifecycle result appears in the abstract and contribution list, so relying on a precomputed validation report creates uneven reproducibility across headline evidence.",
+      "required_fix": "Add a one-command CPU validator that verifies a lifecycle package manifest, reconstructs all eight rank predicates from raw shards, and includes corruption tests for stale-lease, scrub, and reservation-reassignment receipts.",
+      "verification_test": "Run the validator from a copied package with no access to author state; require 8/8 predicate reconstruction, then mutate one raw receipt at a time and require manifest or semantic rejection.",
+      "evidence_needed": "A validator and manifest over the currently shipped raw lifecycle artifacts may suffice without a new GPU run.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-REPRO-04",
+      "severity": "minor",
+      "dimensions": ["reproducibility", "limitations_responsible_claims"],
+      "location": "Section 5.4 final paragraph (PDF p.8; source lines 517-520), Appendix F/Table 5 (PDF p.15; source lines 864-883), evidence/claim_evidence_map.tsv entries C-MEM-01 and C-DENOM-01",
+      "claim_ids": ["C-MEM-01", "C-DENOM-01"],
+      "evidence_ids": ["E-MF-SUMMARY", "E-MF-SHARDS"],
+      "observed_evidence": "The earlier capacity cohort's 12.33x, 1.0398x, and 1.0306x values are retained in the paper and a derived audit JSON, but the snapshot does not include the referenced E-MF experiment registry, raw cohort shards, or an executable replay for these values.",
+      "why_it_matters": "These are secondary, carefully qualified results, but they are not independently reconstructible to the standard achieved by the primary factorial.",
+      "required_fix": "Ship the raw capacity evidence and replay, or label the table and ratios as non-replayable archival context and remove them from the verified claim set.",
+      "verification_test": "Recompute every Table 5 entry and ratio from manifest-bound raw allocator and page-geometry records using one documented command.",
+      "evidence_needed": "Raw capacity shards plus a replay, or claim narrowing.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-REPRO-05",
+      "severity": "major",
+      "dimensions": ["significance", "experimental_rigor", "reproducibility"],
+      "location": "Runtime-independent decision rule in Section 3 (PDF p.4; source lines 263-280), related-work boundary (PDF p.3; source lines 211-215), and expanded limitations (PDF p.18; source lines 1034-1061)",
+      "claim_ids": ["C-OWN-01", "C-RR4-LIFECYCLE-01"],
+      "evidence_ids": ["E-RR2-OWNERSHIP-MUTANTS", "E-RR4-LIFECYCLE-TRANSFER"],
+      "observed_evidence": "All positive validation uses one Qwen3.5 model family and essentially one Qwen/vLLM adapter. The additional lifecycle cohort changes geometry and events but explicitly remains on the same adapter. The paper acknowledges that transfer to another runtime is untested.",
+      "why_it_matters": "The abstract decision rule may be runtime-independent syntactically, yet the current evidence cannot distinguish a generally usable audit interface from a careful but bespoke instrumentation of one implementation. This limits the scientific contribution relative to established KV-cache and LLM-serving work.",
+      "required_fix": "Implement the typed-record interface and independent aggregate for a second adapter, runtime, or hybrid model, or provide a genuinely independent synthetic conformance implementation that exercises all mandatory records and representative failures.",
+      "verification_test": "A fresh implementation written without importing the Qwen adapter should emit conforming records, pass clean predicates, reject predeclared ownership and dispatch faults, and expose any adapter-specific assumptions in the abstract contract.",
+      "evidence_needed": "New cross-implementation evidence is needed to support portability; otherwise the contribution should remain explicitly case-specific.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R5-REPRO-06",
+      "severity": "minor",
+      "dimensions": ["reproducibility", "clarity"],
+      "location": "README.md manuscript build command; source/main.tex lines 26-35; source/iclr2026_conference.sty lines 78-102; manuscript/main.pdf",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Using the documented latexmk command on an isolated copy produced a valid 18-page PDF whose substantive extracted text matches the shipped PDF, but every 'Under review as a conference paper at ICLR 2026' header was absent. In the supplied style, the lhead assignment occurs inside the grouped vbox defining the title.",
+      "why_it_matters": "The source does not exactly regenerate the submitted venue-formatted PDF under the documented current TeX environment, creating a localized artifact and formatting discrepancy.",
+      "required_fix": "Set the anonymous running header outside the local title group or document and pin the TeX/fancyhdr environment that reproduces the distributed PDF.",
+      "verification_test": "Build from a clean source copy and compare rendered pages or normalized PDF content, requiring the anonymous header, 18-page structure, references, and all figures and tables to match.",
+      "evidence_needed": "A corrected style/build recipe and rebuilt PDF; no experimental evidence is required.",
+      "expected_impact": "low",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern was identified. The study uses PG-19 and systems telemetry rather than human-subject data, and it appropriately avoids downstream safety or quality claims while acknowledging deployment-scale externalities.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A clean, independently initiated live GPU reproduction from a public parameterized command whose fresh outputs pass the existing manifest-first replay.",
+    "A self-contained provenance graph and closure audit over the exact frozen snapshot with zero unresolved evidence IDs or source paths.",
+    "Reviewer-executable lifecycle and capacity replays that reconstruct their quantitative and semantic claims from raw artifacts.",
+    "A second independently implemented adapter or runtime demonstrating that the abstract typed-record contract transfers beyond the current Qwen/vLLM stack."
+  ],
+  "evidence_that_would_lower_score": [
+    "A fresh live run fails the registered ownership, exactness, mutation, or oracle predicates under the documented environment.",
+    "Rebuilding the provenance graph reveals that claimed raw artifacts or executed sources cannot be bound to the reported aggregates.",
+    "Independent inspection shows that equality booleans or storage receipts can be generated without the claimed live comparisons or that the replay trusts such producer pass fields.",
+    "A second implementation exposes Qwen-specific assumptions that invalidate the stated runtime-independent decision rule rather than merely narrowing it."
+  ],
+  "review_limitations": [
+    "I did not run the original H20 live experiment because the model weights, PG-19 corpus, and parameterized live command are not supplied as an executable frozen workflow.",
+    "Per the isolated-review constraint, I did not browse beyond the frozen snapshot and supplied calibration materials, so broader literature completeness was not independently re-audited.",
+    "The lifecycle cohort was inspected through its shipped artifacts and reports but could not be run through an analogous packaged independent replay entry point.",
+    "The PDF rebuild observation was made with the locally available TeX Live 2026 environment; the substantive text and page count matched after excluding the missing anonymous header."
+  ]
+}

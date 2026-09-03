@@ -1,0 +1,119 @@
+{
+  "reviewer_id": "R20-TERRA-NOV-R",
+  "round": 20,
+  "snapshot_sha256": "802c99cf2ec462e41b5343dd204c463b3f4d27d0eb3c601e6489d2765e1e7a27",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "For the explicitly narrow frozen-stack scope, the contract, factorial comparison, selected independent operator checks, and fault controls are carefully specified and candidly bounded (Sections 3--6, PDF pp. 4--9). However, the central audit validation still relies substantially on captured producer records and selected, captured-input checks; the paper itself notes that replay cannot establish producer honesty and that neither numerical oracle is end-to-end (Section 6, PDF p. 9; Appendix I, PDF p. 19). This is a substantive but not fatal gap because the paper does not claim complete verification.",
+    "presentation": "The paper is well organized, unusually explicit about scope, and its figures/tables make the factorization and results readily inspectable (Figures 2--3, PDF pp. 5 and 8; Tables 2 and 5, PDF pp. 9 and 14). Presentation remains somewhat dense: the distinction among a full witness for a target, partial dispatch provenance, and bounded supporting checks must be assembled across Sections 3--5 and Appendix C--D (PDF pp. 4--8 and 14--15).",
+    "contribution": "The contribution is a disciplined integration of ownership witnesses, metamorphic comparisons, bounded numerical oracles, mutation checks, and memory denominators for hybrid state. The paper forthrightly identifies block sharing, prefix reuse, hybrid-cache policy, metamorphic testing, independent checking, and denominator accounting as prior art (Section 2, PDF p. 3; Appendix Tables 9--10, PDF pp. 17--18). The remaining distinction is therefore a useful but currently narrow reference-stack audit rather than a clearly general new systems capability."
+  },
+  "paper_summary": "ForkAudit proposes an executable audit contract for request isolation and memory accounting when shared token-indexed KV state coexists with mutable Gated DeltaNet state. It evaluates four KV/GDN ownership policies on one Qwen3.5-35B-A3B/vLLM-plus-Transformers stack, reports equality and storage witnesses across 96 configurations, selected attention and GDN numerical-oracle checks, nine live fault controls, and allocator measurements (Sections 4--5, PDF pp. 5--9).",
+  "strongest_verified_contribution": "Within the frozen Qwen3.5 reference configuration, the paper provides a concrete, phase-aware evidence bundle that distinguishes shared immutable document KV from GDN state that must become request-private after its first transition, with matched ownership-factorial and targeted-fault checks (Sections 3--5, PDF pp. 4--8).",
+  "strengths": [
+    "The paper states a crisp and worthwhile verification problem: output agreement alone does not establish ownership isolation, and cache-memory denominators must not be conflated (Introduction, PDF pp. 1--2).",
+    "Positioning is unusually candid. Appendix Tables 9--10 explicitly identify the established precedents for each component and limit the claimed novelty to their integration (PDF pp. 17--18).",
+    "The experimental claims are bounded rather than inflated: sequential execution, one runtime/model, sampled operator boundaries, allocator rather than NVML measurements, and absence of scheduler claims are all explicit (Sections 4.1--4.4 and 6, PDF pp. 5--7 and 9).",
+    "The ownership mechanism is easy to follow visually, and Figure 3 separates oracle agreement, cross-cell equality, and intended-gate reachability instead of treating them as one metric (Figures 2--3, PDF pp. 5 and 8)."
+  ],
+  "questions": [
+    "Can the authors demonstrate that ForkAudit is portable rather than a bespoke validation harness by applying the same contract and replay interface to an independent hybrid runtime or a materially different hybrid architecture?",
+    "What evidence would establish that an audit target labeled \"full\" is robust against errors before capture, rather than only internally consistent producer-side receipts, given the limitation acknowledged in Section 6 and Appendix I (PDF pp. 9 and 19)?",
+    "Can the paper provide a concise side-by-side account of the engineering effort, reusable interface, and defect-finding value relative to a conventional targeted test suite for the same adapter?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R20-TERRA-NOV-1",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "Section 2, especially PDF p. 3; Appendix Tables 9--10, PDF pp. 17--18; Sections 4--6, PDF pp. 5--9",
+      "claim_ids": [
+        "executable audit contract",
+        "ownership/call/accounting ledger"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "The manuscript accurately documents that its individual mechanisms are established: paged block sharing and COW, prefix reuse, hybrid-cache management, metamorphic/differential testing, numerical checking, and memory accounting. The claimed novelty is their integration as an evidence-gated audit. Yet validation is confined to one Qwen3.5 stack, one adapter combination, one page geometry, and sequential execution; the paper explicitly disclaims transfer beyond that stack.",
+      "why_it_matters": "A systems/audit integration can be an ICLR contribution, but its decision-relevant value depends on whether it transfers beyond the exact implementation for which its receipts, gates, and storage schema were engineered. The current case study establishes a careful local audit, but does not show that ForkAudit yields a reusable capability rather than a high-quality bespoke test plan.",
+      "required_fix": "Apply the contract, including a predeclared object-role mapping and replayable witnesses, to at least one independently implemented hybrid serving/runtime stack or materially different hybrid model. Report what must remain invariant, what adapter-specific fields are needed, and whether the audit exposes a defect, incompatibility, or previously unobserved ownership ambiguity. If this cannot be done, narrow the contribution and title/abstract framing to a reference-stack audit methodology.",
+      "verification_test": "A blinded replay of the second stack's package should recompute the stated contract predicates. A table should compare the two integrations' receipt schemas, supported targets, open targets, engineering changes, and any discovered divergence; it must distinguish portability evidence from another same-stack workload.",
+      "evidence_needed": "A preregistered second-stack execution with raw replay receipts and a transparent cross-integration comparison.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-TERRA-NOV-2",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Section 3 decision rule, PDF p. 4; Sections 5.2--5.3, PDF p. 8; Section 6, PDF p. 9; Appendix Table 5, PDF p. 14; Appendix I, PDF p. 19",
+      "claim_ids": [
+        "fully witnessed ownership targets",
+        "fault sensitivity",
+        "independent numerical validation"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "The full-status target witnesses are recomputed from captured storage/content/call records. The numerical oracles cover eight attention rows and four post-normalization GDN transitions, not the full model. The paper explicitly acknowledges that pointer-free replay does not prove an honest producer before capture, that dispatch provenance lacks compiled-binary/autotuning identity, and that the checks are not end-to-end.",
+      "why_it_matters": "These boundaries limit what \"full\" evidence means in practice. The current text is responsible about them, but the strongest status labels and central framing can be read as stronger assurance than the captured-input, producer-record evidence supports. This constrains scientific confidence in the audit as a correctness guarantee.",
+      "required_fix": "Make the assurance hierarchy explicit in the main contract: distinguish independently recomputable receipt consistency, runtime-instrumentation trust, selected operator equivalence, and end-to-end semantic validation. Rename or qualify full status where it denotes completeness of a receipt predicate rather than protection against pre-capture/common-mode failure. Add a concrete threat model mapping each unaddressed failure mode to an open target.",
+      "verification_test": "Readers should be able to take each headline assurance phrase and map it to a threat-model row specifying trusted components, independent evidence, coverage, and remaining common-mode paths. An adversarial pre-capture or upstream-activation corruption test should remain classified as uncovered unless a new independent check detects it.",
+      "evidence_needed": "Either end-to-end or broader independent checks, or a revised claim boundary that makes the evidence level unambiguous.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-TERRA-NOV-3",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "novelty"
+      ],
+      "location": "Figure 2 and its caption, PDF p. 5; Figure 3, PDF p. 8; Appendix Table 5, PDF p. 14",
+      "claim_ids": [
+        "audit architecture",
+        "contract-target status"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "The visual overview is helpful, but Figure 2's audit rail and evidence bundle do not visibly encode which checks are full, partial, relational, sampled, or supporting; that qualification appears later in Table 5 and prose. Figure 3 also places qualitatively different evidence forms beside each other without a compact assurance legend.",
+      "why_it_matters": "Because the paper's novelty is evidence composition rather than a new cache policy, readers need to immediately see the hierarchy and non-equivalence of the evidence classes.",
+      "required_fix": "Add a compact legend or annotation to Figures 2--3 that marks contract target status and the evidence level of each check, with a direct pointer to the limitations/threat model.",
+      "verification_test": "A reader should be able to determine from the main-paper figures, without consulting the appendix, that dispatch provenance is partial and numerical checks are selected captured-input checks rather than end-to-end validation.",
+      "evidence_needed": "No new experiment is required; a clearer evidence-status visualization is sufficient.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics concern is apparent from the PDF. The paper uses existing PG-19 training text for systems evaluation and appropriately notes that it does not assess downstream safety, bias, privacy, or deployment effects (Appendix A, PDF p. 13).",
+  "llm_usage_disclosure": "This is an LLM-assisted internal automated review. I reviewed only the specified frozen PDF and supplied venue rubric/schema; I did not inspect repository, evidence, prior-review, or revision materials.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A replayable application of the audit contract to an independent hybrid runtime or architecture, showing which contract elements transfer and exposing meaningful additional value.",
+    "A sharper main-text assurance/threat hierarchy, plus broader independent evidence or appropriately narrower target-status claims.",
+    "A direct comparison against a conventional targeted validation workflow that establishes practical benefit beyond organizing existing checks."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of a second implementation to support the claimed contract without extensive unprincipled, stack-specific redesign.",
+    "Evidence that producer-side receipts, captured inputs, or callable metadata can be manipulated or corrupted while all current predicates continue to pass.",
+    "Discovery that the claimed integration substantially duplicates an existing audit or validation framework not distinguished in the paper."
+  ],
+  "review_limitations": [
+    "This was a PDF-only blind review. I did not execute artifacts, inspect source code, verify citations externally, or inspect any hidden evidence package.",
+    "My novelty assessment is based on the manuscript's positioning and references; undisclosed or uncited closely related work could change it."
+  ]
+}

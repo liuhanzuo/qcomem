@@ -1,0 +1,166 @@
+{
+  "schema_version": "qcomem-forkaudit-r29-live-overhead-preregistration-v1",
+  "evidence_id": "E-R29-LIVE-AUDIT-OVERHEAD-A",
+  "created_at": "2026-08-25T12:00:00+08:00",
+  "created_before_gpu_execution": true,
+  "gpu_execution_had_started": false,
+  "prior_live_overhead_outcome_read": false,
+  "scientific_question": "On one frozen Qwen3.5-35B-A3B/H20 vLLM-Q16 request step, what paired end-to-end wall-time, CUDA peak-allocated, and audit-artifact-byte increments are introduced by enabling the existing live ForkAudit capture and ownership/receipt path?",
+  "model": {
+    "model_id": "Qwen/Qwen3.5-35B-A3B",
+    "revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "dtype": "bfloat16",
+    "attention_operator": "vLLM 0.26 unified_attention over the frozen ForkAudit Q16 block pools",
+    "full_attention_layers": [3, 7, 11, 15, 19, 23, 27, 31, 35, 39]
+  },
+  "frozen_runtime_reuse": {
+    "upstream_code_ledger_raw_sha256": "7620f05821fc5435a9aaa260ae82577988a5a20eff0f42901b66e6c6871fd2b9",
+    "required_existing_components": [
+      "Qwen35VllmPagedHitLedger as the capture-disabled mandatory functional adapter",
+      "MultiForkHitLedger with call_observer for the instrumented adapter",
+      "Q16PagedSequence.append_observer pre-write CPU-clone hook",
+      "validate_runtime_kv_ownership",
+      "capture/verify persistent and request GDN binding guards",
+      "frozen vLLM unified_attention kernel resolver"
+    ],
+    "toy_or_approximate_path_allowed": false,
+    "infeasibility_rule": "If the two arms cannot be switched on the same frozen live runtime without changing the semantic model step, the experiment must report infeasible and must not substitute a toy path."
+  },
+  "input_binding": {
+    "source_split": "PG19 train",
+    "source_object": "train/10047.txt",
+    "source_id": "10047",
+    "windows_sha256": "67e7bc9ff621732e6d65e44c8a4b2fafd7aa3ef2d2f24669704e843c3d153e51",
+    "document_token_ids_sha256": "09ab51882be802887c481d0f54583bd734baccbdd5c9022452772fa3cc49ecc4",
+    "query_token_ids_sha256": "386c16255f673f7286c78d26f3e0eef15a6f073a150876e67344488dfa188d9d",
+    "query_source_token_offset": 4575,
+    "synthetic_markers_used": false
+  },
+  "geometry": {
+    "document_tokens": 4033,
+    "query_tokens": 16,
+    "page_size": 128,
+    "resident_requests_per_pair": 2,
+    "generated_tokens_per_arm": 1,
+    "window_stride": 263,
+    "candidate_windows_per_book": 8,
+    "window_books": 8,
+    "seed": 20260821
+  },
+  "timing_population": {
+    "discarded_warmup_pairs": 1,
+    "measured_pairs": 5,
+    "warmup_order": ["instrumented", "baseline"],
+    "measured_pair_schedule": [
+      {"pair_index": 0, "execution_order": ["baseline", "instrumented"], "baseline_slot": 0, "instrumented_slot": 1},
+      {"pair_index": 1, "execution_order": ["instrumented", "baseline"], "baseline_slot": 1, "instrumented_slot": 0},
+      {"pair_index": 2, "execution_order": ["baseline", "instrumented"], "baseline_slot": 1, "instrumented_slot": 0},
+      {"pair_index": 3, "execution_order": ["instrumented", "baseline"], "baseline_slot": 0, "instrumented_slot": 1},
+      {"pair_index": 4, "execution_order": ["baseline", "instrumented"], "baseline_slot": 0, "instrumented_slot": 1}
+    ],
+    "pair_construction": "Each pair rebuilds one persistent document and one two-request shared-reuse group outside the timed region. Both requests consume byte-identical frozen query tokens. Arm order alternates and physical request slot is preregistered; the odd pair count is reported rather than presented as perfectly slot-balanced.",
+    "document_prefill_in_timed_region": false,
+    "model_load_in_timed_region": false,
+    "estimand_scope": "one live request step from arm-specific adapter/instrumentation setup through synchronized model completion and, for the instrumented arm, completed live ownership/capture receipt persistence"
+  },
+  "arms": {
+    "baseline": {
+      "label": "capture-disabled",
+      "definition": "Run the same Q16 request and unified attention through the existing Qwen35VllmPagedHitLedger with no append_observer, no call_observer, no source-content hashing, no KV/GDN ownership receipt, and no audit artifact write. Mandatory functional-adapter checks remain enabled because disabling them would create a different or unsafe runtime path.",
+      "audit_disabled_interpretation": "The optional ForkAudit live capture/ownership/receipt layer is disabled; this is not a claim that all fail-closed functional adapter validation is removed."
+    },
+    "instrumented": {
+      "label": "full-live-capture-receipt",
+      "definition": "Within the timed region, enable every full-layer append_observer, a MultiForkHitLedger call_observer, pre/post persistent KV content digests, live KV ownership checks, persistent GDN immutability guard, request GDN out-of-place-rebind guard, tensor sidecar writes, ledger verification, and an atomic pointer-free receipt.",
+      "captured_tensor_families_per_full_layer": [
+        "pre-write appended key",
+        "pre-write appended value",
+        "post-RoPE query",
+        "unified-attention candidate output",
+        "position IDs"
+      ],
+      "expected_full_layer_append_events": 10,
+      "expected_full_layer_call_events": 10,
+      "expected_binary_tensor_records": 50
+    }
+  },
+  "timing_and_memory_protocol": {
+    "clock": "time.perf_counter_ns",
+    "cuda_synchronize_before_each_arm": true,
+    "cuda_synchronize_before_timer_stop": true,
+    "reset_peak_memory_stats_before_each_arm": true,
+    "common_timed_work": [
+      "construct the arm-specific existing Q16 attention adapter/ledger",
+      "register the backend and switch the frozen backbone to that registered backend",
+      "execute one full-model 16-token request step over one already-built resident request",
+      "synchronize CUDA after the model step",
+      "verify that all ten full-attention layers used the fused operator exactly once",
+      "restore and unregister the backend",
+      "synchronize CUDA immediately before stopping the timer"
+    ],
+    "instrumented_only_timed_work": [
+      "create/open the experiment-private capture files",
+      "hash persistent Q16 source pages before and after the request",
+      "capture and verify live KV ownership",
+      "capture and verify persistent/request GDN ownership and rebind receipts",
+      "enable append/call observers and synchronously copy/write fifty captured tensors",
+      "hash the closed capture binary and atomically write/hash the pointer-free receipt"
+    ],
+    "baseline_excluded_work": "The optional ForkAudit capture/ownership/receipt operations listed above are absent; no baseline audit artifact is created. Mandatory Q16 adapter safety/shape/operator checks remain common in spirit, using the existing lighter functional ledger.",
+    "wall_time_includes_backend_setup_and_teardown": true,
+    "wall_time_includes_instrumented_capture_hashing_and_atomic_receipt_write": true,
+    "common_final_full_logit_copy_occurs_after_timer_stop": true,
+    "peak_baseline_definition": "Immediately before each arm timer, while that pair's persistent document and both resident requests remain live, run Python GC, empty only free CUDA cache blocks, synchronize CUDA, reset peak-memory statistics, then record memory_allocated and memory_reserved. Incremental peak is max_memory_allocated during the timed arm minus this recorded allocated-before value; absolute peak and before/after values are also retained. The first arm's completed request state remains live for the second arm, so order and slot are recorded and alternated rather than hidden.",
+    "memory_fields": [
+      "allocated_before_bytes",
+      "peak_allocated_bytes",
+      "incremental_peak_allocated_bytes",
+      "allocated_after_bytes"
+    ],
+    "artifact_bytes": "For the instrumented arm, sum the closed binary capture and receipt files and record their SHA-256 values. Baseline audit-artifact bytes are exactly zero by arm definition."
+  },
+  "validity_gates": [
+    "exactly one discarded warmup pair and five completed measured pairs follow the frozen alternating schedule",
+    "each pair uses two distinct request objects over one shared immutable document arena and byte-identical frozen query tokens",
+    "both arms reach every one of the ten full-attention layers exactly once through the frozen vLLM unified_attention operator with no dense fallback and no materialized attention mask",
+    "baseline has no append observer, call observer, ownership receipt, or audit artifact",
+    "instrumented arm has ten unique append captures, ten call captures, fifty binary tensor records, valid KV and GDN ownership receipts, immutable persistent KV/GDN state, and hash-valid closed artifacts",
+    "baseline and instrumented full-vocabulary float32 logits are torch.equal and their generated token IDs are identical for every warmup and measured pair",
+    "all measured wall and allocator fields are finite non-negative values",
+    "independent replay verifies result, semantic sidecar, capture binaries, receipts, schedule, validity gates, and recomputed paired summaries"
+  ],
+  "estimands": {
+    "primary": "median over five measured pairs of instrumented_wall_ms minus baseline_wall_ms",
+    "secondary": [
+      "five raw paired wall-time deltas and ratios",
+      "median paired wall-time ratio",
+      "five raw paired incremental-peak-allocated byte deltas and their median",
+      "instrumented audit artifact bytes per pair and their median"
+    ],
+    "uncertainty": "Report all five pairs plus median/min/max; do not claim statistical significance from n=5.",
+    "negative_result_policy": "Retain and report instrumented slowdowns, speedups, memory increases, memory decreases, semantic mismatches, receipt failures, and incomplete attempts. A semantic/receipt failure invalidates the overhead estimand but is not silently removed; a negative or counterintuitive numeric delta remains a valid measured outcome when all validity gates pass."
+  },
+  "resource_requirement": {
+    "gpu_count": 1,
+    "gpu_type": "NVIDIA H20",
+    "assigned_logical_gpu": 7,
+    "exclusive_visible_gpu": true,
+    "process_count": 1,
+    "server_port_required": false,
+    "collective_required": false,
+    "estimated_wall_minutes": 15,
+    "isolated_triton_and_torchinductor_caches": true,
+    "shared_state": "model and PG19 assets are read-only; output, audit artifacts, and compiler caches are experiment-private"
+  },
+  "claim_boundary": {
+    "established_only_if_valid": "paired request-step overhead of this exact live ForkAudit capture/ownership/receipt configuration on one frozen Qwen3.5-35B-A3B vLLM-Q16 H20 stack and one frozen PG19/query input",
+    "not_established": [
+      "model loading or document-prefill overhead",
+      "throughput, QPS, serving capacity, or concurrency scaling",
+      "native vLLM-engine continuous batching or production server latency",
+      "cross-model, cross-runtime, cross-hardware, or cross-input generality",
+      "zero-cost auditing",
+      "statistical significance from five pairs"
+    ]
+  }
+}

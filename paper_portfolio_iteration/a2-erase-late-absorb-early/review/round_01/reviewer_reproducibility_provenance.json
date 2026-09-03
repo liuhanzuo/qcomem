@@ -1,0 +1,84 @@
+{
+  "reviewer_id": "erase-r1-repro",
+  "round": 1,
+  "snapshot_sha256": "1f3f98c93b58c99a54295828a73c9d748f143c8b62ae2c82231189f94a6db708",
+  "role": "reproducibility_provenance",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The active claims are explicitly restricted to three formal regimes and include proofs, but C-THEORY-001 through C-THEORY-003 remain marked active_proof_pending_independent_audit. The supplied build/provenance record also does not reproducibly bind the stated source bundle to the supplied PDF.",
+    "presentation": "The manuscript is concise, readable, anonymous in visible text and PDF metadata, and clearly distinguishes formal results from unrun empirical plans. However, internally conflicting audit and citation artifacts obstruct verification of its reproducibility claims.",
+    "contribution": "The clearest verified contribution is careful claim narrowing and withdrawal of unsupported empirical/deployment assertions. The mathematical statements may be useful in their stated scopes, but their independent audit is still pending and no empirical evidence supports broader relevance."
+  },
+  "paper_summary": "The paper presents three deliberately bounded formal results: a fixed-quadratic exposure-product identity with a finite-step remainder (T1), clean-tail contraction for smooth strongly convex gradient descent with an additional invariant-subspace condition for a directional rate (T2), and an affine scalar conditional-mean product law (T3). It explicitly makes no present empirical or deployment claim and describes PLAN-ENABLE-001 only as an unexecuted falsification path.",
+  "strongest_verified_contribution": "The submission reliably separates present formal statements from historical remote-only material and the unrun PLAN-ENABLE-001: C-EMP-001, C-EMP-002, and C-DEPLOY-001 are respectively withdrawn or planned rather than presented as current experimental evidence.",
+  "strengths": [
+    "The source bundle contains the manuscript, bibliography, local style files, and AI-use statement; a local rebuild completes and produces a five-page PDF.",
+    "The manuscript, claim map, experiment registry, and limitations consistently avoid transferring remote-only numerical results to active claims.",
+    "Visible PDF/source anonymity checks are favorable: the PDF metadata author field is blank and the manuscript uses anonymous authors.",
+    "The AI-use statement explicitly discloses substantial LLM assistance and says unexecuted plans and remote results are not observations."
+  ],
+  "questions": [
+    "Can the authors provide a regenerated, content-addressed build record that names the exact ai_use_statement.tex hash, TeX/BibTeX versions, and the PDF produced from this frozen source bundle?",
+    "Why does the claimed deterministic build produce manuscript/paper.pdf SHA-256 9ae91d... while rerunning the recorded command on the frozen source produces SHA-256 5b5416..., with different header/ruler layout in extracted text?",
+    "Which citation artifact is authoritative for the five active citation groups described as pending final BibTeX lock in closest_work_matrix.md but as primary/officially verified in citation_lock.json?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R1-PROV-001",
+      "severity": "major",
+      "dimensions": ["reproducibility", "clarity"],
+      "location": "audit/build_record.json:dependencies.ai_use_statement_tex and isolated_build; source/ai_use_statement.tex; manuscript/paper.pdf",
+      "claim_ids": ["C-DOC-001", "C-THEORY-001", "C-THEORY-002", "C-THEORY-003"],
+      "evidence_ids": ["REV01-TEX"],
+      "observed_evidence": "The frozen MANIFEST.json and direct SHA-256 computation give source/ai_use_statement.tex hash e1c0232dff13c604b1af56213e05b485c26bb7075d2db259143a66510db00233, whereas build_record.json records 89101b36ca2c47a82df4ba5f6471572867bdf8b7f284cbefc96f9b6a648d9941. Moreover, rerunning the recorded SOURCE_DATE_EPOCH/pdflatex/bibtex/pdflatex x2 command in an isolated copy of the frozen source succeeded and produced a five-page PDF, but its SHA-256 was 5b54161e094feb09ff79557f634dac96946e0b6949fded1e8409547ee8a7a24d rather than the supplied PDF hash 9ae91d8520be670ad0667fff62b4ab50e25bdd7fc09ccf279948aacbf13d2fa6. Extracted text also differs in page-header/ruler placement.",
+      "why_it_matters": "The package asserts an isolated deterministic build and uses the audit record as its reproducibility evidence, but the record contains a wrong hash for an included input and does not reproduce the archived PDF. This prevents an independent reviewer from verifying that the visible submission PDF is the claimed build product.",
+      "required_fix": "Regenerate the PDF and build record from one frozen source tree, record hashes for every consumed input including ai_use_statement.tex, record the TeX/BibTeX environment or a pinned container, and publish a manifest that binds those inputs and the regenerated PDF together. Remove the deterministic-build assertion unless the recorded procedure reproduces the archived artifact under the declared environment.",
+      "verification_test": "In a clean pinned environment, copy only the frozen source bundle, execute the recorded command, and require the resulting PDF SHA-256 to equal the manifest/build-record PDF hash; independently recompute every listed dependency hash and require an exact match.",
+      "evidence_needed": "A clean-build log, pinned toolchain/container identity, regenerated PDF hash, and complete input/output manifest.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R1-CITE-001",
+      "severity": "minor",
+      "dimensions": ["citation_integrity", "reproducibility"],
+      "location": "literature/citation_lock.json: active_revision_01_citation_keys and entries; literature/closest_work_matrix.md: citation-group rows and final paragraph",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "citation_lock.json states that all 11 active keys are locked and labels Jiang, Han, Mandt, Smith & Le, and Smith et al. as primary-metadata-verified. In contrast, closest_work_matrix.md says the MentorNet/Co-teaching and Mandt/Smith groups have metadata pending final BibTeX lock and that copied bibliography entries still require per-entry final lock. The two in-snapshot provenance records therefore disagree on whether active citations are fully locked.",
+      "why_it_matters": "This inconsistency does not show that an individual reference is false, but it leaves the citation-verification status non-auditable and undermines the claimed active-citation gate.",
+      "required_fix": "Reconcile the citation lock and closest-work matrix so each active citekey has one status, an immutable primary/official metadata record, and an explicit local-sentence support note. Remove or correct the pending-lock language for keys that are in fact locked.",
+      "verification_test": "Extract all citekeys used by source/paper.tex; verify that each has exactly one consistent non-pending status across the citation artifacts and that its recorded source and support note are present.",
+      "evidence_needed": "A corrected per-citekey citation lock with source identifiers and sentence-level support mapping.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No active human-subject or dataset experiment is claimed. The stated future-policy constraints against access to protected, test, clean, or oracle labels are appropriate, but must be enforced before any planned experiment is run.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. The manuscript includes a substantial-LLM-assistance disclosure.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean, hash-reproducible build binding the frozen source, declared toolchain, and archived PDF.",
+    "A reconciled active-citation provenance record with per-citation primary metadata and local support locks.",
+    "An independent audit of T1-T3 that verifies the stated assumptions and proofs; no empirical claim should be restored without a separate registered execution evidence chain."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure to reproduce the supplied PDF after a pinned-environment build, or discovery that the supplied PDF was built from unrecorded source inputs.",
+    "Evidence that a remote-only numerical result, hidden archive, or unexecuted plan was used to support an active manuscript claim.",
+    "A failed independent proof audit for any of T1-T3 or an unresolved anonymity/identity leak."
+  ],
+  "review_limitations": [
+    "I reviewed only the specified frozen snapshot and its bundled rubric/schema.",
+    "I did not browse external sources, inspect parent-repository material, or independently validate the cited papers' metadata beyond the snapshot's internal records.",
+    "The local source rebuild verified successful compilation and page count, but the supplied snapshot lacks a pinned compiler/container sufficient to attribute the PDF-hash mismatch to a specific environmental difference."
+  ]
+}

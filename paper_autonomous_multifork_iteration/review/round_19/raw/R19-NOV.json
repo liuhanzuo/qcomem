@@ -1,0 +1,160 @@
+{
+  "reviewer_id": "R19-NOV",
+  "round": 19,
+  "snapshot_sha256": "78fbe618c81777dc0834e33a9a14f6d5efec996fa5e7294cf1625680b6f1a3b7",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The bounded empirical claims are unusually careful: the paper separates ownership factors, uses exact canonical digests, reports sampled independent operator oracles, retains negative results, and does not convert relational checks into end-to-end correctness claims. Confidence is reduced by the unresolved original-run code-closure discrepancy in Section 7 and by the inability to interpret the Transformers clean-oracle failure as either a runtime incompatibility, an adapter defect, or an overly runtime-specific oracle.",
+    "presentation": "The manuscript is dense but well structured, with readable figures, explicit cohort-to-claim authorization in Table 4, target status in Table 5, and unusually clear limitations in Sections 6 and Appendix I. The main remaining presentation problem is conceptual: the precise increment over the closest executable audit or testing framework is distributed across Tables 9 and 10 rather than demonstrated through a direct comparator.",
+    "contribution": "The phase-aware ownership contract, typed replay records, and pointer-free range predicates form a potentially useful systems-audit artifact. However, the manuscript itself acknowledges that block sharing, recurrent-state ownership constraints, metamorphic testing, independent numerical checks, and denominator separation are prior art. With one bespoke positive adapter, target-aligned seeded faults, no direct executable audit baseline, and no clean cross-runtime validation, the evidence currently establishes a rigorous integration and case study more clearly than substantial new general knowledge."
+  },
+  "paper_summary": "The paper proposes ForkAudit, an executable audit contract for shared-prefix forking in hybrid LLMs containing token-indexed attention KV and recurrent GDN state. The contract records frozen identities, lifecycle bindings, storage ranges, dispatch information, semantic digests, allocator measurements, and fault outcomes. A Qwen3.5-35B-A3B case study evaluates four KV-by-GDN ownership policies over eight PG-19 books and three fan-outs, reports exact registered cross-arm and cross-fan-out observables, checks selected attention and GDN transitions against FP32 references, injects nine targeted faults, measures memory under explicit denominators, exercises a same-adapter cancellation lifecycle, and reports a failed Transformers-runtime transfer cohort.",
+  "strongest_verified_contribution": "The strongest contribution supported by the PDF is the operationalization of a subtle phase-dependent ownership rule: borrowed recurrent bases may alias persistent state at setup, but every mutable GDN tensor must be rebound to request-private, base-disjoint, peer-disjoint storage after that request's first transition. Sections 3-5 and Appendix D turn this rule, together with KV tail COW and dispatch obligations, into replayable typed records and pointer-free interval predicates, and report that these predicates hold throughout the 96-configuration RR2 factorial.",
+  "strengths": [
+    "The paper states its contribution type and boundary candidly: ForkAudit is an audit contract and reporting template, not a new caching policy, kernel, scheduler, speedup, or portability result (pp. 2-3, Sections 1-2; p. 17, Table 9).",
+    "The lifecycle formulation is concrete and technically useful. Sections 3-4 distinguish setup aliases, first-transition rebinding, final ownership, private partial-tail copies, and immutable document state instead of treating all cache sharing as one static property.",
+    "The cohort-to-claim discipline is strong. Table 4 separates the primary factorial, earlier capacity cohort, lifecycle cohort, GDN oracle, Transformers negative, and debug runs, substantially reducing accidental pooling or overgeneralization.",
+    "The evidence combines relational equivalence with sampled independent attention and recurrent oracles, matched clean controls, live mutations, and explicit negative results rather than relying on token agreement alone (Sections 5.1-5.3; Tables 7, 12, and 13).",
+    "The memory discussion carefully separates logical payload, allocated pages, allocator current/peak counters, and unmeasured process or service capacity (Section 4.4, Table 2, and Appendix E).",
+    "The limitations are unusually explicit about the one-model, one-positive-runtime, sequential-schedule, selected-operator, non-production scope (Section 6 and Appendix I)."
+  ],
+  "questions": [
+    "What is the closest existing executable cache-correctness, ownership, or lifecycle-audit framework—not merely a caching mechanism or generic testing paradigm—and which ForkAudit obligations or diagnoses can it not express on the same case?",
+    "Were any live mutants or real defects designed independently after the seven targets and their assertion implementations were frozen? If so, what were the clean false-positive, intended-gate, wrong-gate, and escape outcomes on that held-out set?",
+    "Which parts of the claimed runtime-independent decision rule are genuinely adapter-neutral, and how much Qwen/vLLM-specific code or manual role mapping is required to instantiate each mandatory record class?",
+    "What is the root cause of the Transformers DynamicCache clean-oracle relative-L2 errors of 0.377545-0.933235 in Table 12? How is an adapter or oracle-construction error distinguished from a legitimate runtime semantic difference?",
+    "Section 7 reports that terminal recursive code closure failed on post-ledger pycache files, while Table 5 labels frozen identity as full. Which exact files changed, could any changed bytecode have been imported during execution, and what runtime import evidence closes that possibility?",
+    "How much did the earlier 80-row attention diagnostic and discarded GDN diagnostic overlap with the final books, windows, layers, or implementation, and which final oracle cases, if any, remained untouched holdouts after tolerances and capture boundaries were selected?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R19-NOV-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "citation_integrity"
+      ],
+      "location": "pp. 3-4, Sections 2-3; p. 17, Table 9; p. 18, Table 10",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The manuscript explicitly assigns every component to prior work: block sharing and tail COW, hybrid recurrent state, metamorphic relations, cross-backend checking, and denominator separation. Tables 9 and 10 then define ForkAudit's novelty as their integration, but they compare primarily against caching mechanisms and broad testing precedents. No closest executable LLM-serving correctness or ownership-audit baseline is instantiated on the same obligations, lifecycle, or faults.",
+      "why_it_matters": "Because the paper disclaims a new cache policy or scheduler, the integration itself carries nearly the entire novelty claim. Without a direct closest-system comparison, it is difficult to determine whether ForkAudit supplies a new audit abstraction or mainly packages checks already present in runtime test suites and generic differential or metamorphic frameworks.",
+      "required_fix": "Identify the closest executable audit, validation, or runtime-testing systems using primary sources and compare their record model, lifecycle coverage, heterogeneous-state ownership checks, numerical oracles, fault handling, and replay guarantees against ForkAudit. Instantiate the strongest feasible baseline on the frozen case or provide an auditable obligation-by-obligation mapping. If no direct predecessor exists after a documented search, state that search boundary and narrow the novelty claim to the specific interface or artifact properties actually established.",
+      "verification_test": "A reviewer should be able to map each of the seven targets and the reported lifecycle/fault cases to both ForkAudit and the closest baseline, reproduce any claimed coverage gap, and identify at least one decision-relevant obligation or diagnosis uniquely enabled by ForkAudit.",
+      "evidence_needed": "Verified primary-source citations plus either same-case baseline results or a source-grounded executable coverage analysis.",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "R19-NOV-02",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor"
+      ],
+      "location": "p. 7, Figure 3 and Section 5.1; p. 16, Tables 7-8; pp. 18-19, M8/M9 debug and Appendix I",
+      "claim_ids": [],
+      "evidence_ids": [
+        "RR2"
+      ],
+      "observed_evidence": "The nine live mutants correspond directly to named audit gates, and all are detected at their intended gate under matched clean controls. The manuscript correctly calls these targeted positive controls rather than a completeness result. M8's downstream debug reaches only an injected sentinel, and the paper reports neither a complete detector matrix nor an incremental detection rate.",
+      "why_it_matters": "This establishes that the advertised assertions are wired to reject faults constructed to violate them, but it does not yet show that the audit discovers nontrivial, composed, naturally occurring, or independently designed defects. That distinction is central to whether ForkAudit contributes a practically valuable auditing capability rather than a well-engineered conformance harness.",
+      "required_fix": "Evaluate a preregistered held-out mutation suite designed independently of the gate implementation, including composed and indirect ownership or lifecycle faults, or audit documented historical defects from a relevant runtime. Report passing-clean, intended-gate, wrong-gate, and escaped cases without suppressing negatives. If such evidence is unavailable, explicitly narrow the contribution to gate conformance and avoid presenting mutation success as broader audit effectiveness.",
+      "verification_test": "Freeze the audit and target definitions before an independent injector supplies faults; then replay all cases and publish the complete outcome matrix, including misses and clean false positives.",
+      "evidence_needed": "New held-out mutation or real-defect evidence, with preregistration and complete classifications.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R19-NOV-03",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "p. 4, Section 3 claim of a runtime-independent decision rule; pp. 8-9, Section 5.3; p. 18, Table 12; pp. 19-20, Appendices I-J",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "All positive end-to-end ownership evidence comes from one Qwen3.5 case and one vLLM-attention/Transformers-GDN adapter. The only different-runtime cohort fails the clean dense oracle on all eight ranks, with very large relative-L2 errors despite top-1 agreement. The paper responsibly denies positive runtime transfer, but still describes the abstract rule and concluding reporting template in runtime-general terms.",
+      "why_it_matters": "A clean independent instantiation is needed to distinguish a reusable audit abstraction from a specification reverse-engineered around one adapter. The failed cohort currently cannot show whether the abstraction transfers, because the manuscript does not identify whether the runtime, adapter mapping, or oracle contract caused the clean failures.",
+      "required_fix": "Either add one clean independently implemented hybrid-runtime or hybrid-model instantiation that maps the mandatory record classes without importing the primary ownership helpers, or narrow all runtime-independent and reusable-template language to a proposed interface validated only on the frozen Qwen case. Diagnose the Transformers failure before treating it as informative boundary evidence beyond the statement that this particular instantiation failed.",
+      "verification_test": "For the evidence-expansion option, a second implementation must pass matched-clean gates and independent numerical checks under a preregistered mapping, while injected negatives remain detectable. For the claim-narrowing option, an audit of the abstract, introduction, Section 3, and conclusion should find no empirical transfer implication.",
+      "evidence_needed": "A clean second implementation and root-cause analysis, or a complete claim-narrowing revision using current evidence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R19-NOV-04",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "p. 9, Section 7; p. 14, Table 5 frozen-identity row; p. 20, Table 14",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Section 7 states that the primary GPU aggregate is valid but its terminal recursive code closure failed on post-ledger pycache files, and that the derivative binds the raw aggregate and offline replay under a new package manifest rather than a closed original-run identifier. Table 5 nevertheless assigns frozen identity the status full.",
+      "why_it_matters": "Frozen execution identity is the first normative audit target and part of the paper's core credibility claim. A post-hoc derivative can bind archived outputs without proving which executable source or bytecode produced them. The PDF does not establish that the closure difference was semantically inert.",
+      "required_fix": "Publish a path-level closure diff and import-time provenance showing that every loaded source and bytecode module matched the frozen version and that the added pycache files could not alter execution. Otherwise downgrade frozen identity to partial and propagate that qualification to the abstract, target-status table, results, and conclusion.",
+      "verification_test": "An independent verifier should reconstruct the original execution's imported-module set, validate source or bytecode hashes against a pre-execution ledger, and demonstrate that a substituted executable module is rejected.",
+      "evidence_needed": "Original-run manifest, path-level closure diff, runtime import trace, and loaded-module hashes.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R19-NOV-05",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "p. 6, Section 4.3; p. 8, Section 5.2; p. 18, Table 13",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The attention tolerance is contextualized using an earlier 80-row diagnostic, and the final GDN capture boundary and scale were selected after a discarded diagnostic exposed normalization and scaling ambiguities. The successful executions were preregistered afterward, but the terminology around independent and pre-fixed checks can be read as implying stronger holdout independence than the chronology provides.",
+      "why_it_matters": "Preregistration after diagnostic adaptation is legitimate when disclosed, but it is not equivalent to choosing the oracle boundary and tolerance without observing related outcomes. The distinction affects how strongly the small selected oracle samples support numerical correctness.",
+      "required_fix": "Give a compact chronology identifying what data, layers, windows, implementation outputs, and tolerances were seen before each final preregistration. Describe the checks as independently implemented and prospectively frozen after calibration, unless an untouched holdout supports the stronger independence wording.",
+      "verification_test": "Verify immutable timestamps or hashes for the diagnostic and final plans, confirm whether final cases overlap calibration cases, and, if holdout independence is claimed, run the frozen oracle on previously untouched windows or layers.",
+      "evidence_needed": "Preregistration chronology and overlap table; new untouched cases only if stronger holdout claims are retained.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No specific ethics violation is apparent from the PDF. The work uses an existing language-model checkpoint and PG-19 training text for systems measurements, makes no human-subject or downstream safety claims, and includes an appropriate bounded ethics statement on p. 13.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A source-grounded comparison with the closest executable cache or runtime audit showing a reproducible, decision-relevant capability unique to ForkAudit.",
+    "A preregistered held-out mutation suite or historical-defect study demonstrating detection beyond one-to-one assertion violations, with all false positives, wrong gates, and escapes retained.",
+    "A clean second hybrid runtime or model instantiation that satisfies the contract without importing the primary adapter's ownership helpers.",
+    "A root-cause analysis of the Transformers clean-oracle failures that separates runtime semantics, adapter construction, and oracle portability.",
+    "Original-run import provenance resolving the pycache closure discrepancy and justifying the full frozen-identity status."
+  ],
+  "evidence_that_would_lower_score": [
+    "A direct prior audit or existing runtime test framework is shown to provide the same lifecycle, heterogeneous-state, replay, and fault obligations with no material ForkAudit increment.",
+    "Held-out or composed faults frequently escape while clean executions trigger the same gates, indicating that the reported 9/9 result reflects only target-aligned construction.",
+    "A second clean implementation cannot satisfy the record model because supposedly runtime-independent obligations depend on Qwen/vLLM-specific internals.",
+    "Artifact replay or import provenance reveals that executable code used for the primary run was not bound by the claimed frozen identity.",
+    "The large Transformers oracle discrepancy is traced to an error in ForkAudit's adapter or reference construction rather than a documented runtime-semantic difference."
+  ],
+  "review_limitations": [
+    "This was a PDF-only review of the complete 20-page manuscript. The artifact package, source code, raw sidecars, manifests, and machine-readable claim maps listed in Appendix J were not accessible and therefore were not independently executed or inspected.",
+    "Novelty and citation assessment was limited to the literature presented in the PDF; the fixed-snapshot restriction did not permit an external literature search or independent verification of citation metadata and local support."
+  ]
+}

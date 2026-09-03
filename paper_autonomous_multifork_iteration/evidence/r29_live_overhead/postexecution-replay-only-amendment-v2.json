@@ -1,0 +1,118 @@
+{
+  "schema_version": "qcomem-forkaudit-r29-live-overhead-postexecution-replay-only-amendment-v2",
+  "created_at": "2026-08-25T12:49:05+08:00",
+  "created_after_formal_gpu_execution": true,
+  "created_after_first_offline_replay_failure": true,
+  "created_before_offline_replay_v2_execution": true,
+  "experiment_id": "E-R29-LIVE-AUDIT-OVERHEAD-A",
+  "classification": "transparent postexecution repair of an offline replay schema bug; no scientific design, GPU computation, formal result, or raw audit artifact is changed",
+  "immutable_scientific_inputs": {
+    "design_preregistration_raw_sha256": "2114d2cd85bedc1eafa5d1398fd0afd0d57819c0360c3be3f9ec20f1b2878939",
+    "runner_sha256": "d4d6e04ba07e90438472b72412a6cb302c431e0626f495cae8ce18b2344c825b",
+    "formal_launcher_sha256": "dd8a248d09c496dc572b27b5ddafee552a1de56cdbe3773a835dd7ffeb4381c5",
+    "v2_source_ledger_raw_sha256": "10ad91ece5bfc08e4608a0d059fc0804081ef6d34307ffe1be8194b09817f1d0",
+    "upstream_source_ledger_raw_sha256": "7620f05821fc5435a9aaa260ae82577988a5a20eff0f42901b66e6c6871fd2b9"
+  },
+  "completed_formal_attempt_b": {
+    "staged_package_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_r29_live_overhead_20260825b",
+    "run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-live-overhead-20260825b",
+    "observed_stages_before_replay_v2": [
+      "00-started",
+      "01-preflight-passed",
+      "02-formal-complete"
+    ],
+    "formal_result": {
+      "raw_sha256": "3ccf86e2233b560f003d965fdae05a8e3b0773e15976a05c8d70af881338bc22",
+      "runner_reported_status": "completed",
+      "runner_reported_scientific_run_valid": true,
+      "runner_reported_formal_evidence_eligible": true,
+      "discarded_warmup_pairs": 1,
+      "measured_pairs": 5
+    },
+    "formal_stdout_sha256": "717c93f37b5e2e2b7313b694606ee629bb87fb7330258d74d13546d88ba6e76a",
+    "formal_stderr_sha256": "78b2e4662b8fbf3729516e7ad2fe00d1c0de64d18d0455abc8a9714589081a8c",
+    "formal_launcher_log_sha256": "0ea7cf1d885ad4976e0150df9dce6ffc37f00cf7db07e24b2b2e886ad0493c46",
+    "pre_replay_v2_raw_audit_ledger": {
+      "entry_count": 13,
+      "raw_sha256": "995a7cdfb0f502e4a0b4d603e59482f479d400c46e090ac7ff6908ca4d4b14fe"
+    },
+    "immutability_rule": "The formal result and every raw/audit byte bound by the 13-entry ledger are inputs to replay v2 and must not be edited, regenerated, renamed, or replaced."
+  },
+  "first_offline_replay_failure": {
+    "replay_source_sha256": "43eb9deaf45352ff30d8aada2a38ae2e820c19e2c88a7a11dd486815781fc5cb",
+    "test_source_sha256": "e589ce8c68df7e93321108a29a991ae0344fc3cc908d5ea9656d57f0fc1faa8b",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "eee313d85c24b5f23f21e633a1973890d388e04f77cc8fd3b0de0b38d427ce97",
+    "exception": "RuntimeError: request GDN receipt failed",
+    "failure_location": "gpu/r29_replay_live_overhead.py old lines 173--177 in verify_capture_artifact",
+    "independent_replay_json_generated": false,
+    "stage_03_generated": false,
+    "terminal_completed_stage_generated": false,
+    "classification": "offline verifier implementation failure after a complete formal run; not a failed live receipt and not a reason to rerun the GPU computation"
+  },
+  "root_cause": {
+    "runner_record": "The runner stores verify_request_gdn_binding_guard's raw pointer-free witness under live_receipts.request_gdn. Its legal fields are guard_id, capture_id, policy, layer_indices, state_index, resident_count, completed_request_indices, expected_tensor_count_per_owner, rows, and rows_sha256.",
+    "derived_summary": "rebound_tensor_count is not a raw witness field. It is derived by offline witness replay as len(completed_request_indices) multiplied by expected_tensor_count_per_owner.",
+    "old_replay_bug": "The old replay read the raw witness but directly required request_gdn.rebound_tensor_count == 60, so it rejected every legal raw witness that correctly omitted that derived field.",
+    "test_gap": "The old fake receipt incorrectly inserted completed_request_indices and rebound_tensor_count as if request_gdn were already a derived summary; it therefore masked the raw-versus-derived schema mismatch."
+  },
+  "replay_v2_change": {
+    "replay_source": {
+      "path": "gpu/r29_replay_live_overhead.py",
+      "before_sha256": "43eb9deaf45352ff30d8aada2a38ae2e820c19e2c88a7a11dd486815781fc5cb",
+      "after_sha256": "53e70a1f1af5989c5e3a2a18d7097b37fcc83fa9821c18a54d05953328d7c54d",
+      "change": "Add a candidate-import-free raw request-GDN witness replay that checks exact record and row schema, canonical 30-layer geometry, row cardinality and coordinate order, lowercase SHA-256 token syntax and legal rebound/unchanged token relations, and a full canonical rows_sha256 recomputation; then derive rebound_tensor_count and require the frozen one-resident/one-completed/60-rebound contract."
+    },
+    "focused_test_source": {
+      "path": "gpu/test_r29_live_overhead.py",
+      "before_sha256": "e589ce8c68df7e93321108a29a991ae0344fc3cc908d5ea9656d57f0fc1faa8b",
+      "after_sha256": "b39a203793f686a0f18c7a1c2944f9e0e8dae4ce292f06dc7f5e302d1d8c38e6",
+      "change": "Replace the impossible derived-summary fixture with the exact raw witness shape and add fail-closed digest, coordinate-order, storage-token, malformed-token, and extra-schema-field tamper tests plus a candidate-import-free static gate."
+    },
+    "offline_launcher": {
+      "path": "gpu/launch_r29_live_overhead_replay_v2.sh",
+      "sha256": "c528fca28ecc509dc31a48383a56cbb3ea6515b22f6896b9b4504e71a15524d9",
+      "change": "New replay-only launcher binds the immutable design/runner/formal result/log/pre-replay ledger and repaired replay/test hashes, hides all GPUs, preserves the failed replay logs, and writes only v2-named replay/log/stage/ledger files."
+    }
+  },
+  "unchanged": {
+    "scientific_question": true,
+    "model_revision_and_runtime": true,
+    "pg19_document_and_query": true,
+    "warmup_and_pair_schedule": true,
+    "timed_regions_and_estimands": true,
+    "semantic_and_operator_oracles": true,
+    "negative_result_policy": true,
+    "formal_result_bytes": true,
+    "raw_audit_artifact_bytes": true,
+    "runner_source": true,
+    "gpu_execution": true
+  },
+  "outcome_disclosure": {
+    "formal_result_and_numeric_overhead_outcome_had_been_read_before_this_amendment": true,
+    "formal_internal_semantic_and_receipt_validity_labels_had_been_read": true,
+    "first_replay_exception_had_been_read": true,
+    "blinded_repair_claimed": false,
+    "selective_gpu_rerun_permitted": false,
+    "disposition": "The repair must be applied to the one immutable completed formal result regardless of whether its numeric overhead is favorable, unfavorable, or counterintuitive."
+  },
+  "replay_v2_execution_contract": {
+    "gpu_count": 0,
+    "gpu_rerun_permitted": false,
+    "formal_runner_permitted": false,
+    "input_formal_result_sha256": "3ccf86e2233b560f003d965fdae05a8e3b0773e15976a05c8d70af881338bc22",
+    "input_raw_audit_ledger_sha256": "995a7cdfb0f502e4a0b4d603e59482f479d400c46e090ac7ff6908ca4d4b14fe",
+    "new_output": "replay/independent-replay-v2.json",
+    "new_logs": [
+      "logs/focused-tests-replay-v2.log",
+      "logs/replay-v2.stdout.log",
+      "logs/replay-v2.stderr.log"
+    ],
+    "new_stages": [
+      "stages/03-independent-replay-v2-complete",
+      "stages/COMPLETED-v2"
+    ],
+    "new_terminal_ledger": "receipts/raw-and-replay-v2.sha256",
+    "failure_policy": "Preserve any replay-v2 pass or failure and its logs. A replay-v2 failure does not authorize a GPU rerun or modification of the formal inputs."
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": "qcomem-forkaudit-true-concurrent-lifecycle-design-v1",
+  "created_before_gpu_execution": true,
+  "experiment_id": "E-R29-TRUE-CONCURRENT-LIFECYCLE-A",
+  "question": "On the frozen Qwen3.5/ForkAudit vLLM-Q16 stack, do two request-local full-model steps enqueued by two host workers onto two distinct CUDA streams preserve the ownership, lifecycle, and exact-output invariants of an otherwise identical serialized execution across cancel, zero-scrub, and same-slot replacement?",
+  "model": {
+    "model_id": "Qwen/Qwen3.5-35B-A3B",
+    "revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "dtype": "bfloat16",
+    "full_attention_layers": [3, 7, 11, 15, 19, 23, 27, 31, 35, 39],
+    "attention_operator": "vLLM 0.26 unified_attention over ForkAudit Q16 block pools"
+  },
+  "geometry": {
+    "resident_count": 2,
+    "cancel_slot": 1,
+    "document_tokens": 4033,
+    "page_size": 128,
+    "query_tokens": 16,
+    "query_stride": 64,
+    "window_stride": 263,
+    "candidate_windows_per_book": 8,
+    "window_books": 8,
+    "seed": 20260821
+  },
+  "input_binding": {
+    "source_split": "PG19 train",
+    "source_object": "train/10047.txt",
+    "source_id": "10047",
+    "windows_sha256": "67e7bc9ff621732e6d65e44c8a4b2fafd7aa3ef2d2f24669704e843c3d153e51",
+    "document_token_ids_sha256": "09ab51882be802887c481d0f54583bd734baccbdd5c9022452772fa3cc49ecc4",
+    "query_token_ids_sha256": [
+      "386c16255f673f7286c78d26f3e0eef15a6f073a150876e67344488dfa188d9d",
+      "448da6d195ab47ebe0be85c9aa8d66248bfd0801e2b7206315172ca325ba598c"
+    ],
+    "query_source_token_offsets": [4575, 4639],
+    "synthetic_markers_used": false,
+    "prior_static_manifest_raw_sha256": "2c7480e9301860fd24a87fa8aa05b25360456824181cc9b456b0ee0b855a85eb",
+    "prior_static_manifest_role": "input-only reuse; no Round-23 output is reused"
+  },
+  "arms": [
+    {
+      "arm": "serialized",
+      "execution": "one host thread and the default CUDA stream; synchronize after every request step",
+      "role": "same-input full-vocabulary, token, final logical-KV, and final GDN oracle"
+    },
+    {
+      "arm": "concurrent",
+      "execution": "two host worker threads released by one barrier, each enqueuing one complete request-local model step on its own non-default CUDA stream",
+      "role": "true CUDA-stream concurrency treatment"
+    }
+  ],
+  "lifecycle_schedule_per_arm": [
+    "Acquire initial slots 0 and 1 and verify pairwise-disjoint private reservations.",
+    "Execute one step for both initial requests; the concurrent arm must show positive overlap between the two CUDA-event intervals.",
+    "Close and cancel slot 1, require the pre-scrub RECLAIM_NOT_ZERO positive control, zero-scrub every private K/V page, increment its epoch, and reject the stale lease.",
+    "Rewind only the cancelled suffix slot, acquire one replacement in slot 1, and require exact physical-reservation reuse plus live disjointness from survivor slot 0.",
+    "Execute survivor round 1 and replacement round 0; the concurrent arm must again show positive overlap between the two CUDA-event intervals.",
+    "Replay the lifecycle receipt and compare both arms."
+  ],
+  "success_rule": {
+    "minimum_overlap_ms_exclusive": 0.0,
+    "positive_overlap_required_in_both_concurrent_phases": true,
+    "distinct_host_workers_per_concurrent_phase": 2,
+    "distinct_cuda_streams_per_concurrent_phase": 2,
+    "full_vocab_logits_torch_equal": true,
+    "generated_tokens_equal": true,
+    "final_logical_kv_equal": true,
+    "final_gdn_state_equal": true,
+    "source_document_pages_immutable": true,
+    "ownership_receipts_pass": true,
+    "cancel_scrub_reclaim_receipts_pass": true,
+    "all_full_attention_calls_use_same_frozen_vllm_q16_operator": true,
+    "dense_fallback_calls": 0,
+    "full_kv_concatenations": 0
+  },
+  "outcome_policy": {
+    "no_positive_stream_overlap": "completed treatment-validity failure; do not cite as concurrency evidence",
+    "positive_overlap_with_output_or_state_mismatch": "valid scientific negative outcome",
+    "positive_overlap_with_all_success_gates": "valid positive outcome",
+    "pre-model or infrastructure failure": "invalid operational attempt, not scientific evidence"
+  },
+  "resource_requirement": {
+    "gpu_count": 1,
+    "gpu_type": "NVIDIA H20",
+    "process_count": 1,
+    "exclusive_visible_gpu": true,
+    "estimated_wall_minutes": 8,
+    "isolated_triton_and_torchinductor_caches": true,
+    "shared_state": "model and PG19 assets are read-only; output and compiler caches are experiment-private"
+  },
+  "claim_boundary": {
+    "established_only_if_positive": "two request-local full-model steps on one frozen Qwen3.5/ForkAudit vLLM-Q16 H20 stack retain exact semantics and auditable private-page/lifecycle invariants while their distinct CUDA-stream execution intervals overlap before and after cancel--zero-scrub--same-slot replacement",
+    "not_established": [
+      "simultaneous execution of individual CUDA kernels",
+      "native vLLM-engine scheduling or continuous batching",
+      "production server end-to-end correctness",
+      "throughput, latency, QPS, capacity, or memory savings",
+      "cross-model, cross-runtime, or cross-hardware generality",
+      "safety for arbitrary cancellation timing or in-flight reclamation"
+    ]
+  }
+}

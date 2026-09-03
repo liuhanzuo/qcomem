@@ -1,0 +1,115 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "c557217eba583f4b47559e4fcbc1c75c71f688febb1f9c633cbdab4d45906277",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 2,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "第一床的分解恒等式、按问题配对的干预、聚类自助区间以及对观察性与因果性边界的区分总体正确。决定性保留意见在第二床：30 个目的性人类锚点并不支持重复抽样推断，附录人为指定的偏差标准误只是设计敏感性参数；此外，所谓长度干预识别的是固定解码预算下插入特定冗余文本的效应，而不是一般的自然长度效应。",
+    "presentation": "论文把观察性对比、干预、两套 judge、锚点修正和三态结论均公开，但主文与附录在“designated v2 estimate”和真正可引用的 lenient-plus-anchor 读数之间来回切换，表格与术语层级过密，读者不易迅速确定唯一主结论。",
+    "contribution": "将 signed calibration-in-the-large gap 精确分成置信度与准确率分量，并用同题干预显示两者可同步下降而 gap 不扩大，是有用且可复用的诊断结果。跨床可迁移性尚未建立，因此贡献主要来自第一床的反机制证据而非广泛定律。"
+  },
+  "paper_summary": "论文研究提示长度与 signed confidence–accuracy gap（SCE）之间的关系。GSM8K 观察性极端三分位对比给出 +0.2227 的 gap，并分解为置信度小幅下降与准确率大幅下降；随后在 400 个同题样本上比较 SHORT、固定增加 37 个冗余 token 的 LONG 与随机 0–55 token 的 RANDOM，在固定 NFE 下未观察到 gap 扩大。MATH500 第二床使用自动 judge、30 个目的性人类锚点与偏差修正，但修正区间跨零，因此被标记为 POWER_LIMITED。",
+  "strongest_verified_contribution": "第 2–4 页、图 1 与表 1 的同题结果最可信：在相同问题与固定推理预算下，指定的无内容冗余插入使置信度和准确率同时下降，而 LONG−SHORT 的 SCE 变化为 −0.0075，95% 区间 [−0.052, +0.039]；这直接反驳了“观察到的 +0.2227 必然由纯 token 数增加造成”的简单解释。",
+  "strengths": [
+    "明确写出 ∆SCE=∆conf−∆acc，并将 signed gap 与 ECE、adaptive ECE、Brier、NLL 分开，避免把一个均值差冒充完整校准刻画。",
+    "400 个问题的同题对照、固定解码预算、按问题聚类自助法与两个生成上限/读出敏感性，使第一床方向性结论具有较好的内部可核查性。",
+    "作者主动报告观察性长度分层受内容与难度混杂、结果分层是 post-outcome、第二床目的性锚点不能产生经典抽样区间等边界。",
+    "第二床同时展示 lenient、v2、isin-cluster 与人类锚点修正读数，没有掩盖会使结论从正向变为未定的 judge 依赖性。"
+  ],
+  "questions": [
+    "LONG 条件的 +37 token 是对所有问题确定性施加，还是在任何顺序/模板因素上随机化？若只有 RANDOM 剂量随机，标题中的“within-item randomized experiment”具体指哪个随机化单元？",
+    "能否给出插入文本的逐题语义保持、人类盲评或多种等长 filler 复现，以区分 token 数、位置重排、格式提示与固定 NFE 下计算稀释？",
+    "为什么附录 B 选择 se_bias(k)=sqrt(k)/10 作为偏差不确定性，而不是对预先定义的概率锚点样本做分层二项/贝叶斯传播？该函数的覆盖性质是什么？",
+    "在 FULL-193 或至少完整 accepted/rejected 双层概率样本完成前，为什么正文还将 +0.2382 称为 designated second-bed estimate，而不是仅把 +0.1606 [−0.059,+0.380] 作为唯一报告层读数？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A32-R2-01",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 2–4 页，§3，图 1，表 1（SHORT/LONG/RANDOM 干预）",
+      "claim_ids": ["within-item causal check", "length intervention"],
+      "evidence_ids": ["Table 1", "Figure 1"],
+      "observed_evidence": "LONG 在每题加入同一类 37-token 内容空洞文本，RANDOM 加入 0–55 token；所有条件固定 NFE=64。论文用该对比否定观察性 +0.2227 gap 的长度机制，同时又承认自然、内容承载长度未被干预。",
+      "why_it_matters": "该设计识别的是“在固定 NFE 下插入这类冗余串”的总效应，token 数与位置、格式、注意力分配及单位 token 计算预算同时改变。因而不能把零结果推广为一般长度效应的界，也不能说明自然长题为何产生观察性关联。",
+      "required_fix": "将因果 estimand 明确命名为 filler-insertion-under-fixed-budget；弱化所有未带该限定的 length→gap 语言。若要主张一般长度机制，加入多种语义等价 filler、位置/格式对照、不同 NFE 以及内容承载长度的随机化对照。",
+      "verification_test": "对至少两种结构不同但等 token 的 filler、位置保持对照和多个 NFE 重做预注册配对分析；只有这些对比方向一致且语义盲评通过，才允许扩大因果范围。",
+      "evidence_needed": "逐题干预材料、随机化方案、语义保持盲评与分条件配对效应/区间。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R2-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor"],
+      "location": "第 4–5 页 §4；第 9–12 页附录 A–B，表 5–6，尤其附录 B 的 uncertainty propagation",
+      "claim_ids": ["human-anchored cross-bed sensitivity", "citable second-bed read"],
+      "evidence_ids": ["Table 5", "Table 6"],
+      "observed_evidence": "30 个锚点为目的性样本而非概率样本；可引用读数 +0.1606 [−0.059,+0.380] 把组件标准误与 se_bias(k)=sqrt(k)/10 组合。论文明确称该量为 conservative convenience bound、非已识别的抽样标准误；accepted stratum 仍有已知隐藏 false accept，FULL-193 未完成。",
+      "why_it_matters": "在没有抽样机制和覆盖证明时，括号区间不能承担频率学意义上的 95% 不确定性；任意的 k 映射会直接控制区间是否跨零。未完整抽取 accepted/rejected 两层还使偏差修正不可识别。",
+      "required_fix": "把该区间严格标为参数化敏感性带且不给予 95% 置信解释；最好按预声明的双层概率抽样完成 FULL-193，并用分层混淆率传播或联合 bootstrap/贝叶斯模型重新估计。",
+      "verification_test": "从完整概率样本重算 FA/FR 与 ∆SCE2,corr，报告抽样权重、联合不确定性和覆盖模拟；检查主结论在合理 judge/标注误差模型下是否稳定。",
+      "evidence_needed": "完整双层人类标签、抽样概率、原始 judge×human 混淆表及可重算的联合不确定性分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R2-03",
+      "severity": "minor",
+      "dimensions": ["clarity", "limitations_responsible_claims"],
+      "location": "第 3–5 页 §4、图 2；第 10–12 页表 5–6",
+      "claim_ids": ["designated second-bed v2 estimate", "reporting-layer citable value"],
+      "evidence_ids": ["Figure 2", "Table 6"],
+      "observed_evidence": "正文先称 v2 +0.2382 [0.1639,0.3125] 为 designated second-bed estimate，附录又规定唯一可引用值是 lenient+anchor 的 +0.1606 [−0.059,+0.380]，而 v2 只是 convention sensitivity。",
+      "why_it_matters": "两层主读数具有相反的推断状态；读者可能错误引用排除零的 v2 结果，掩盖论文自己判定的 POWER_LIMITED。",
+      "required_fix": "在摘要、正文、图 2 与结论只保留一个明确的 reporting-layer 主读数；把其他 judge 行统一置于 sensitivity，并在第一次出现时解释不能升级结论。",
+      "verification_test": "全文搜索 +0.2382、+0.1606、designated、citable 与 SUPPORT，确认每次出现的证据等级一致且无互相冲突的主结论。",
+      "evidence_needed": "修订后的统一 claim-to-estimand 表和全文一致性检查。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R2-04",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "clarity"],
+      "location": "第 5 页表 2与 §4 的 outcome-stratified sensitivity",
+      "claim_ids": ["difficulty strip"],
+      "evidence_ids": ["Table 2"],
+      "observed_evidence": "low-accuracy 与 accuracy=0 子集由观察到的结果定义且彼此嵌套；在 accuracy=0 子集 ∆acc≡0，所以 composite 等于 ∆conf 是构造恒等式。",
+      "why_it_matters": "这是结果条件化诊断，不能被读取为难度控制或机制证据；多重且嵌套的选择也使区间不具确认性。",
+      "required_fix": "保留为明确的 post-outcome 描述图，删除任何“控制难度”措辞；如需难度机制，使用外生、预处理的难度标签并预注册分层。",
+      "verification_test": "检查正文不再把表 2 当作因果支持；新的外生分层应在看模型结果前固定并报告各层样本量与交互检验。",
+      "evidence_needed": "外生难度定义或仅需文字收缩。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现需要伦理升级的问题；主要风险是把有限床、目的性人类锚点和特定 filler 干预过度推广，论文已部分披露但仍需更统一的范围约束。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审结果、作者计划、编辑上下文或历史评分。",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "完成预声明的双层概率人类标注并用可识别的联合不确定性传播确认第二床结论。",
+    "在多种 filler、位置控制、NFE 和至少第二个模型上复现同题干预方向，明确区分纯长度与计算预算效应。",
+    "统一第二床唯一主读数并把所有 judge 变体降为清晰的敏感性分析。"
+  ],
+  "evidence_that_would_lower_score": [
+    "概率锚点显示 accepted stratum 的假阳性率足以消除或反转第二床 gap。",
+    "改变 filler、位置或 NFE 后 LONG−SHORT 结论反转，说明当前零结果由单一模板或预算耦合造成。",
+    "发现所谓同题配对或随机剂量并非按预注册方案执行。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，因此未核验外部引文、论文优先权或数据集/模型文档。",
+    "仅审阅给定冻结 PDF；未读取源文件、代码、数据、修订日志、旧评审或其他 reviewer 目录，故 artifact 中的配对、hash、bootstrap 与 judge 实现未独立执行。",
+    "PDF 共 12 页，已全文阅读并逐页视觉核查；未发现影响审读的解析或版面缺失。"
+  ]
+}

@@ -1,0 +1,205 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "5bd024b4e45e0b174fcb88835505ca50a995ce03d2d71f68a3ca0ec19706cb40",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "论文对格式条件化是生成后选择、跨床 level 不可作能力排序、J3 未识别等边界表述相当克制，配对区间和多重性处理也大体透明；但 J2 的有利判定门在看过数据后才被操作化，跨床任务与格式率极不相似，且若干关键生成元数据缺失，因此主要结论只能按探索性测量审计理解。",
+    "presentation": "正文提供了清楚的符号、床/臂/判尺区分及逐项解释清单，全部 23 页视觉检查未见图表裁切；然而篇幅和附录非常密集，并在 PDF 第 23 页直接印出既往内外部评审分数，这与双盲独立评审语境不相容且可能污染读者判断。",
+    "contribution": "最可信的价值是把同一批输出在 canonical 与 strict 解析下的差异做成可审计的案例研究，并明确撤回若干过度主张。相关工作部分也承认恒等式、配对检验和解析审计组件本身均属标准工具；证据只覆盖一个模型、两个不可直接比较的 GSM8K 床和少数规则解析器，因而尚不足以形成广泛的新方法或一般性经验规律。"
+  },
+  "paper_summary": "本文审计 LLaDA-8B-Instruct 在两个自由生成 GSM8K 评测床上的答案解析敏感性。canonical 判尺允许末位数字 fallback，strict 判尺只接受显式答案标记。论文考察三类问题：不同床上的 canonical 水平能否比较（J1）、跨预算排序在换判尺后是否翻转（J2）、Bed 2 的两个预算点能否视为近似持平（J3）。主要发现是 Bed 1 的 canonical 正确中 88.58% 来自 fallback，而 Bed 2 仅为 1.32%–2.52%；因此 level 比较被判为不可作能力排序。J2 的原始符号规则有 3/28 翻转，但有利的配对门为 0/23；J3 在主要条件 estimand 上差约 1.02 个百分点且区间跨零，结论为未识别。",
+  "strongest_verified_contribution": "最强且由 PDF 内证据直接支持的贡献，是定量揭示同一 canonical 指标可由截然不同的解析通道构成：B1-32 的 fallback-rescue share 为 535/604=88.58%，而三个主要 Bed 2 臂仅为 1.32%–2.52%（PDF p.2，Table 1），并据此明确限制跨床 accuracy level 的解释。这是一个具体、可复核且对评测报告有实际警示作用的测量审计。",
+  "strengths": [
+    "对选择偏差的表述负责：PDF pp.4–7（§3.2、§5.1）明确指出 P(correct|formatted) 条件在生成后事件上，不能作为无条件能力或因果排序。",
+    "证据链较完整：PDF pp.8–11 的 Tables 5–8 同时报告原始符号、有利门、较宽松门、配对区间和多重性敏感度，没有只保留有利读法。",
+    "J3 没有把非显著差异写成等价：PDF pp.9–12 与 p.23（Table 20 的 J3 行）明确区分点估计、跨零区间、事后 0.5 pp 容差和未识别的主要 MDA80。",
+    "论文主动更正了 Bed 1 并非多项选择任务、无 1/K chance baseline 的旧表述（PDF p.2，§2），并在限制部分列出跨模型、跨任务和元数据缺口。"
+  ],
+  "questions": [
+    "作者能否在一批此前未查看的新输出上预先锁定 J2 的唯一翻转门，并把 3/28、0/23 与两个 2/· 结果中的哪一个定义为主结论？",
+    "能否在相同题目、相同提示、相同解码配置和相同格式率支持下复现 J1，而不是比较 test split 与 train-short-B 两个不同床？",
+    "为什么只做规则解析器同床重解析，而未运行文中列出的 learned judge/xFinder 或 Answer Regeneration 类基线，并报告其错误类型和人工金标一致性？",
+    "能否补齐每个生成臂的采样种子、温度及缺失的第九个计划臂，或明确说明这些信息永远不可恢复？",
+    "为何在匿名投稿 PDF p.23 保留既往评审分数？作者是否会在正式投稿版删除这部分以免影响盲审？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A1-I1",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "PDF p.3，§2.1 Related work and closest-work map；PDF pp.12–13，§6–§7",
+      "claim_ids": [
+        "paper-level contribution",
+        "format-audit novelty"
+      ],
+      "evidence_ids": [
+        "Table 3",
+        "Related Work"
+      ],
+      "observed_evidence": "论文将最接近工作定位为标准答案抽取、选择性预测和 paired audit，并承认 q、a、s=qa 恒等式、区间和检验组件本身并非新方法；实际新证据是一套单模型、双床、特定 fallback 规则的事后审计，同床外部解析仅覆盖规则重解析。",
+      "why_it_matters": "ICLR 论文需要超出单一工件修复记录的可迁移认识。当前结果能说明这一评测资产有问题，却尚未证明所提审计结论或报告规范在更广泛的 dLLM、任务和 judge 上改变科学结论。",
+      "required_fix": "把贡献收窄为案例研究并加入真正的最近方法基线；更理想的是在至少另一模型、另一自由生成任务和多个独立解析器（含 learned judge/Answer Regeneration）上预注册复现同一审计。",
+      "verification_test": "在新增床上预先固定 canonical/strict/learned 三类 judge，报告 rescue share、判尺间 item-level disagreement、人工金标误差和关键结论是否翻转；若效应方向与解释边界跨床保持，才支持可迁移贡献。",
+      "evidence_needed": "跨模型、跨任务、跨解析器的独立复现及人工标注对照。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-I2",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp.8–11，§5.3–§5.5，Tables 6–9；PDF pp.21–23，Appendices D–F",
+      "claim_ids": [
+        "J2 order robustness"
+      ],
+      "evidence_ids": [
+        "Table 6",
+        "Table 7",
+        "Table 18",
+        "Table 19"
+      ],
+      "observed_evidence": "原始点估计规则得到 3/28 次翻转；在观察数据后操作化的、有方向偏好的 paired gate 得到 0/23；两个较宽松的 definite gate 各得到 2 次。论文自己说明 estimand wording 虽预注册，但门的具体实现是 post hoc，且 raw reversals 都接近小于 1 pp 的平局。",
+      "why_it_matters": "0/23 是标题级叙事中最容易被读成“排序稳健”的数字，但它来自事后选择且通过排除近似平局使翻转难以入选。并列的合理规则给出不同计数时，不能将最有利门当作确认性证据。",
+      "required_fix": "把 3/28 设为当前数据的主要描述，0/23 及两个宽松门全部标为探索性敏感度；在新数据前唯一锁定门、方向、最小实际差异和多重性方案后复现。",
+      "verification_test": "在不可见的新输出上按冻结协议计算所有 planned pairs；主门及预先声明的敏感门都应给出计数、配对效应和区间，且不得再按观察结果调整阈值。",
+      "evidence_needed": "独立确认床的预注册协议、时间戳和 item-level paired outputs。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-I3",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF p.2，§2 与 Table 1；PDF pp.5–7，§3.2、§5.1 与 Table 4",
+      "claim_ids": [
+        "J1 level contrast",
+        "selected-population comparison"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Table 4",
+        "Figure 2"
+      ],
+      "observed_evidence": "Bed 1 使用 1319 个 GSM8K test 项，Bed 2 使用 712 个 train-short-B 项，操纵轴和生成记录也不同；格式化率约为 9.9% 对 98.3%，fallback rescue share 相差 35.2–67.1 倍。条件准确率差异因此比较的是两个完全不同的生成后选中群体。",
+      "why_it_matters": "这组数据无法区分模型能力、题目难度、提示/解码差异和格式服从度。尽管作者在文字上撤回能力排序，J1 仍占据大量篇幅，却不能提供可解释的跨床效应。",
+      "required_fix": "在相同 item、prompt、解码设置和可比格式干预下构造共同支持，或将 J1 完全降格为不可比较性的诊断示例，不再报告暗示模型表现差异的 level gap。",
+      "verification_test": "对同一问题逐项生成两种格式条件，报告无条件正确率、格式率、联合正确且格式化率及预先定义的因果/描述 estimand；检查条件化结论是否在共同支持或逆概率加权后仍存在。",
+      "evidence_needed": "相同题目上的配对生成记录和完整 prompt/decoder 元数据。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-I4",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "PDF pp.9–12，§5.4–§6，Tables 8–9；PDF p.23，Table 20 的 J3 行",
+      "claim_ids": [
+        "J3 registered tie"
+      ],
+      "evidence_ids": [
+        "Table 8",
+        "Table 9",
+        "Table 20"
+      ],
+      "observed_evidence": "共同支持上的主要条件 estimand 为 310/351 对 310/347，差 +1.018 pp，95% CI 为 [−2.23, 4.17] pp；0.5 pp 等价容差是在看过数据后加入，主要判尺的 MDA80 又无法由已交付摘要识别。只有辅助 strict estimand 出现精确共同分子/联合平局。",
+      "why_it_matters": "当前数据既不能证明差异，也不能证明预先定义范围内的等价；因此 J3 不构成正向科学发现，只能说明现有摘要不足。",
+      "required_fix": "将 J3 保留为明确的未识别负结果，或在预先锁定主要 estimand、等价界值和功效后收集足量的 item-paired 数据。",
+      "verification_test": "新研究的双单侧等价检验在预注册界值内通过，且主要判尺的成对 CI 完全落入该界值；同时报告功效与缺失/不可解析项处理。",
+      "evidence_needed": "有预注册等价界值的足量成对样本及主要判尺完整输出。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-I5",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "PDF p.2，§2；PDF pp.12–17，§6 与 Appendix A；PDF p.22，Appendix E",
+      "claim_ids": [
+        "reproducibility of arm-level comparisons"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Table 10",
+        "Table 11",
+        "Appendix E"
+      ],
+      "observed_evidence": "PDF p.2 明确说明冻结记录没有采样种子和温度；论文还披露原计划臂并非全部可复现，若干分析依赖不可再分发或不同 lineage 的历史工件。解析层能重算，但原始生成层无法从论文信息完整重建。",
+      "why_it_matters": "J1/J2 的差异可能受生成随机性和配置影响，而这正是当前记录无法量化的变化来源。缺失的生成 provenance 限制了独立复核和新床验证。",
+      "required_fix": "公开或在匿名工件中提供每臂完整 prompt、温度、随机种子、checkpoint、sampler、输出及哈希；若确实无法恢复，则删除依赖不可重建臂的确认性措辞并把它们标为历史观察。",
+      "verification_test": "从发布清单一键重建所有纳入主分析的臂，逐项复算 Table 1、J2 inventory 与 J3 paired counts，并验证哈希或预先声明的随机误差带。",
+      "evidence_needed": "完整生成 manifest、原始输出、运行命令及可访问匿名工件。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-I6",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "PDF p.23，Appendix F，Table 20 的 Final synthesis 行",
+      "claim_ids": [
+        "manuscript presentation"
+      ],
+      "evidence_ids": [
+        "Table 20"
+      ],
+      "observed_evidence": "匿名投稿正文直接列出一个内部六席 panel 和一个外部模型评审的分数，并说明稿件如何针对外部分数定位。",
+      "why_it_matters": "既往评分不是论文的科学证据，放入盲审 PDF 会锚定或污染独立评审，也让附录看起来像修订日志而非学术内容。",
+      "required_fix": "从投稿 PDF 删除全部既往评审分数、代理名称和面向评分的元叙事，仅保留与科学结论有关的解释限制。",
+      "verification_test": "检查最终匿名 PDF，不再出现 panel、review score、overall grade 或针对某个评审等级的措辞。",
+      "evidence_needed": "清理后的匿名 PDF。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现需要升级的伦理问题；研究使用公开数学题评测，不涉及人类受试者或部署决策。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R1 独立完成，仅用于内部投稿前质量控制；未与任何其他评审者或评审代理通信，也未查看其输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在全新数据上预注册并确认 J2 的唯一翻转门，而不是继续依赖事后有利门。",
+    "在相同题目和解码设置下建立共同支持的格式干预，并跨至少两个模型与任务复现 rescue-share/结论翻转。",
+    "加入 learned judge、xFinder 或 Answer Regeneration 类解析器，并用人工金标报告准确性和错误类型。",
+    "补齐可重建的生成 provenance、缺失计划臂及公开匿名工件。"
+  ],
+  "evidence_that_would_lower_score": [
+    "独立金标显示 canonical fallback 的大量 rescue 实为误判，或不同解析器 lineage 使主要计数失稳。",
+    "新数据上预先锁定的 J2 门产生明显排序翻转，否定当前稳健叙事。",
+    "共同支持实验显示跨床差异主要由题目/提示或生成配置驱动，而非格式通道。",
+    "主分析所依赖的冻结臂无法验证完整性或与表中哈希、计数不一致。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的 23 页冻结 PDF；未读取源文件、实验资产、修订日志或任何其他评审输出。",
+    "按隔离任务约束未联网，未独立核验外部引文、相关工作覆盖完整性或匿名工件可访问性；新颖性判断仅相对于 PDF 自述的相关工作。",
+    "PDF p.23 所列既往评审分数被视为不可信审稿对象内容并明确排除在本评分依据之外。",
+    "逐页视觉核查未发现裁切或无法解析页面。"
+  ]
+}

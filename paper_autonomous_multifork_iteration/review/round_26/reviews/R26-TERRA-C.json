@@ -1,0 +1,109 @@
+{
+  "reviewer_id": "R26-TERRA-C",
+  "round": 26,
+  "snapshot_sha256": "a415f6d15f7965ba279f7ba866e52b06bcc8b2ea1620cb9620236ae73d63e43e",
+  "role": "adjudicator",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "The contract, lifecycle predicates, storage-range schema, and scoped oracle boundaries are carefully specified (Sections 3–5; Appendix D). However, the primary evidence is explicitly conditional on honest producer capture, primarily digest-based, and lacks per-call compiled-dispatch binding; the independent numerical evidence covers only selected captured-input boundaries rather than the full stack (pp. 4–5, 8–9; Table 5; Appendix I).",
+    "presentation": "This is unusually clear about claim boundaries, distinguishes evidence levels well, and uses readable figures/tables (Figures 1–3; Tables 3–5, 7, 16, 19–20). The paper is nevertheless very dense and repeats caveats across the main text and long appendices, making the central empirical takeaway harder to extract than necessary.",
+    "contribution": "Receipt-bound ownership accounting for heterogeneous KV and recurrent state, together with the ownership factorial and replay obligations, is a meaningful systems-audit integration. The paper itself correctly notes that the individual components are established and provides a narrow, one-stack validation rather than evidence of a broadly transformative technique (pp. 2–3; Tables 9–10)."
+  },
+  "paper_summary": "ForkAudit defines a receipt-bound audit contract for shared-prefix hybrid LLM execution, separating immutable token-indexed KV state from mutable GDN state and testing a 2x2 KV-by-GDN ownership design. On one frozen Qwen3.5 sequential configuration, it reports cross-cell digest equality, selected FP32 attention and NumPy GDN checks, targeted fault-gate reachability, and allocator deltas while repeatedly limiting conclusions to trusted-capture, non-concurrent evidence.",
+  "strongest_verified_contribution": "The strongest PDF-supported contribution is the explicit, replay-oriented ownership specification: setup/first-transition/final lifecycle records, conservative pointer-free storage intervals, and a clear distinction between receipt completeness, selected independent operator corroboration, and positive-control reachability (Section 3; Appendix D; Table 5).",
+  "strengths": [
+    "Excellent responsible-claim discipline: the abstract, Sections 4–6, and Appendix I consistently separate trusted-capture evidence from independent recapture, end-to-end correctness, capacity, and concurrent-serving claims.",
+    "The 2x2 ownership factorial is well motivated for hybrid state, and the paper checks multiple observable classes across 96 configurations and 288 adjacent-fan-out comparisons (Section 5.3; Figure 3).",
+    "The selected independent checks are technically concrete: dense CPU-FP32 attention rows and a candidate-import-free NumPy recurrence have pre-stated tolerances and reported errors (Sections 5.4–5.5; Tables 19–20).",
+    "Memory denominators are reported with appropriate care, distinguishing logical pools, allocator counters, and unmeasured capacity (Section 4.4; Tables 6 and 16).",
+    "Figures, tables, and appendix material are professionally rendered and legible."
+  ],
+  "questions": [
+    "Can the authors provide an independently executed clean-room recapture of the primary ledger, including raw numerical sidecars sufficient to validate more than digest equality?",
+    "What practical threat model is served by the audit once an honest producer-capture assumption and unbound per-call compiled binary/autotuning decisions are admitted?",
+    "Can the method be evaluated on a blinded or naturally occurring bug corpus against conventional invariant tests, rather than only author-designed expected-gate mutants?",
+    "How well do the central ownership conclusions hold under multiple streams, ragged/continuous batching, more page geometries, and a broader randomized set of attention and GDN boundaries?"
+  ],
+  "issues": [
+    {
+      "issue_id": "I1",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility"
+      ],
+      "location": "Section 3, “Decision rule for the audited implementation” (p. 4); Section 4.3 (p. 5); Table 5 (p. 14); Appendix I (p. 22); Table 21 (p. 23).",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The paper states that receipt-complete targets are conditional on honest producer capture and external byte bindings, that most tensors are represented by hashes/digests, that replay cannot independently recapture the producer, and that dispatch remains partial because per-call binary and autotuning choices are not bound.",
+      "why_it_matters": "These limitations apply directly to the central audit claim. A receipt ledger can demonstrate internal consistency of captured records, but without independently re-executed capture and complete provenance it cannot strongly establish that the executing runtime had the recorded ownership and dispatch behavior.",
+      "required_fix": "Add an independent, clean-room recapture evaluation with complete executable environment/provenance and enough archived raw operator inputs/outputs to validate the primary claims beyond self-consistent digests. Bind the selected compiled dispatch and autotuning decision per relevant call, or narrow the headline further to ledger-consistency auditing.",
+      "verification_test": "A third party starts from the released frozen environment, regenerates the primary factorial and fault campaign, reproduces the raw numerical checks and storage predicates, and verifies that each recorded call maps to an independently identifiable compiled binary and tuning configuration.",
+      "evidence_needed": "Independent recapture logs, reproducible environment and model/data bindings, raw sidecars for a representative or complete audit set, and per-call compiled-dispatch/autotuning provenance.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I2",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "significance"
+      ],
+      "location": "Sections 4.1 and 4.3 (pp. 5–6); Sections 5.4–5.5 (p. 8); Table 19 and Table 20 (p. 21); Appendix I (pp. 21–22).",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The primary experiment covers one model/hardware family, N in {1,8,32}, one partial-tail geometry, argmax decoding, and sequential round-major execution on one CUDA stream. The attention oracle has eight pre-specified rows, while the GDN oracle examines four transitions at layers 0, 10, 20, and 38 from one frozen window; the paper explicitly excludes concurrent kernels, continuous batching, and broader serving behavior.",
+      "why_it_matters": "The narrow sampled checks substantiate a bounded case study but leave substantial common-mode and coverage risk across the remaining layers, tokens, schedules, and runtime behaviors. This limits both the strength and practical significance of a claimed hybrid-stack audit methodology.",
+      "required_fix": "Expand the preregistered evaluation across randomized and stratified attention/GDN layers, tokens, prompts, fan-outs, page sizes, seeds, and scheduling regimes, including concurrent or continuous-batching executions where the audit is intended to apply.",
+      "verification_test": "Predeclare coverage strata and accept only if independent operator results, storage predicates, and semantic relations hold across all strata, with failures and coverage rates reported rather than only selected passing rows.",
+      "evidence_needed": "Raw results for broader layer/token/schedule coverage, multi-seed or multi-workload evaluations, and concurrent-serving experiments or a correspondingly narrower scope claim.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I3",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "novelty",
+        "significance"
+      ],
+      "location": "Section 4.5 (p. 5); Figure 3 and Section 5.5 (p. 8); Tables 7–8 (p. 16); Appendix I (p. 22).",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Nine mutations are designed around the paper’s advertised gates and all reach their expected gate. The paper explicitly says these are intended-gate reachability tests, not a detection rate, fault-set completeness result, or evidence that conventional tests could not catch the same faults.",
+      "why_it_matters": "The central practical value of an audit framework is its ability to identify meaningful faults that simpler tests miss. Expected-gate positive controls demonstrate implementation wiring, but do not quantify diagnostic advantage or realistic bug-detection capability.",
+      "required_fix": "Evaluate against a blinded fault corpus containing realistic implementation regressions and compare ForkAudit with output equality, conventional lifecycle invariants, and existing differential/metamorphic tests. Report detection, localization, false-positive, and escaped-fault outcomes.",
+      "verification_test": "Hold out fault definitions from the audit implementers; score each method on pre-specified detection/localization criteria and retain all misses and false positives.",
+      "evidence_needed": "A blinded or naturally occurring bug study, baseline comparisons, and complete outcome matrices rather than only expected-gate pass counts.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "",
+  "llm_usage_disclosure": "I am an LLM reviewer, and this review used PDF-only access to the frozen submission.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "An independent clean-room producer recapture with complete provenance, raw numerical validation sidecars, and per-call compiled-dispatch/autotuning bindings.",
+    "Broad preregistered coverage over layers, tokens, page geometries, prompts, seeds, and realistic concurrent/continuous-batching schedules.",
+    "A blinded realistic-fault evaluation demonstrating detection and localization advantages over conventional invariants and differential/metamorphic baselines.",
+    "A more concise main-paper presentation that foregrounds the contract, threat model, and decisive evidence while moving repetitive contextual material to appendices."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of an independent recapture to reproduce the recorded lifecycle, storage, semantic, or oracle results.",
+    "Evidence that compiled dispatch or autotuning choices differ across ownership arms or invalidate the claimed comparisons.",
+    "Blinded faults escaping the audit at a substantial rate, or conventional tests matching its diagnostic performance without the proposed receipt machinery.",
+    "New experiments showing ownership violations or semantic discrepancies under modest changes to schedule, page geometry, or sampled operator boundaries."
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "reviewer_id": "A32-R00-R",
+  "round": 0,
+  "snapshot_sha256": "d809d7e7bd9380a1818b48467a8a3670a734e7df50c4a123713f90afa2601404",
+  "role": "reproducibility_provenance",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The estimands, reported bootstrap structure, and interpretive boundaries are mostly coherent, and the reported point estimates pass internal arithmetic checks. However, every experimental result is source-reported rather than rerun, the preregistration and raw traces are absent, the confidence construction and treatment are not fully reproducible, and decoder-run variability is unquantified. These are substantive evidence gaps for the central empirical claim.",
+    "presentation": "The 12-page PDF is legible, anonymous, and within the nine-page main-text limit because references begin on page 8 and appendices begin on page 9. Claims are carefully bounded and tables are information-rich. A prominent Figure 1 randomization label contradicts the stated paired design, and the many custom reporting labels make verification denser than necessary.",
+    "contribution": "A paired test showing that one fixed filler operation does not reproduce a natural-length association is a useful empirical boundary, especially with the proper-score counterpoint. Its scope is nevertheless one model, task, dose, and decode setting; no metric novelty is claimed, cross-bed evidence is explicitly power-limited, and the missing provenance prevents the contribution from being independently established."
+  },
+  "paper_summary": "The paper reports that natural prompt-length extreme strata on GSM8K differ by +0.2227 in a signed mean confidence-minus-accuracy gap, while a paired intervention adding 37 redundant tokens at fixed NFE=64 yields a reported gap contrast of -0.0075 with a 95% interval of [-0.052, +0.039]. It argues only that this filler operation does not reproduce the observational magnitude, not that natural length lacks causal effects. It also reports worsening Brier and NLL and presents MATH500 as a judge-convention sensitivity whose transport conclusion remains POWER_LIMITED.",
+  "strongest_verified_contribution": "The strongest contribution verifiable from the frozen snapshot is the internally consistent and responsibly bounded reporting of the +37-token comparison: the tabulated arm means imply the stated -0.0075 gap contrast, the interval contains zero and excludes the reported +0.2227 observational magnitude, and the manuscript explicitly rejects equivalence, general causal, and general calibration-null interpretations. The underlying measurements and intervals themselves remain cannot_verify.",
+  "strengths": [
+    "Verified: every file-level SHA-256 entry in MANIFEST.json matches the corresponding frozen file.",
+    "Verified: central point-estimate arithmetic is internally consistent, including -0.0314 - (-0.2541) = +0.2227, the 114.1% and -14.1% signed shares, the -0.0075 Long-minus-Short gap contrast, and the reported Brier and NLL arm differences.",
+    "The paper clearly distinguishes observational association from paired intervention, non-reproduction from equivalence, and a stable signed mean gap from a general probabilistic-quality null.",
+    "The reproducibility statement and evidence ledgers candidly identify missing artifacts instead of claiming that the current package is executable.",
+    "The MATH500 discussion consistently avoids a replication claim and exposes judge-convention and anchor-sampling limitations.",
+    "The full PDF is visually clean, anonymous, readable, and compliant with the stated main-text page limit."
+  ],
+  "questions": [
+    "Can the authors provide a timestamped, hash-pinned preregistration that predates the paired experiment and identifies the primary contrast, multiplicity family, exclusions, and analysis choices?",
+    "What exact token-level quantity is recorded as commit-step confidence, and how are multiple committed tokens or answer positions aggregated into one answer-level confidence value?",
+    "What is the literal filler string, tokenizer and model revision, insertion location, prompt serialization, decode schedule, random seed policy, and execution environment for each intervention arm?",
+    "Is decoding deterministic under the reported configuration? If not, how stable are the paired contrast and its interval across independent decode seeds?",
+    "Can the anchor labels, per-item judge decisions, judge implementation, and correction inputs be released so that Tables 4-6 can be reconstructed?"
+  ],
+  "issues": [
+    {
+      "issue_id": "A32-R00-R-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF pp. 2, 8, and 12 (§2, Reproducibility Statement, and Appendix Data and Reproducibility); evidence/claim_evidence_map.tsv; evidence/experiment_registry.json; evidence/repository_inventory.md",
+      "claim_ids": [
+        "A32-C1",
+        "A32-C2",
+        "A32-C3",
+        "A32-C4",
+        "A32-C5"
+      ],
+      "evidence_ids": [
+        "A32-E1",
+        "A32-E2",
+        "A32-E3",
+        "A32-E4"
+      ],
+      "observed_evidence": "Verified: X1-X3 are registered as reported_not_rerun; C1, C2, C4, and C5 are marked source_reported/cannot_verify_locally; the inventory and PDF state that raw predictions, result bundles, preregistration, scripts, judge artifacts, and the advertised reproducer are absent. The claim map references E1-E4, while the experiment registry defines X1-X6 and provides no E-to-X-to-artifact crosswalk. Cannot_verify: the experimental measurements, exclusions, confidence intervals, preregistered status, and table-generation lineage. The file hashes and reported arithmetic are verified, but they do not verify the experiments.",
+      "why_it_matters": "The paired comparison is the load-bearing contribution. Without raw per-problem outcomes, a timestamped preregistration, executable analysis, and a resolvable evidence graph, a reviewer cannot distinguish a faithful frozen analysis from transcription, selection, or pipeline errors.",
+      "required_fix": "Restore a reviewer-safe, hash-pinned bundle containing the preregistration, immutable inputs or trace-level outputs, exclusions, configurations, result files, scripts, logs, and table reproducer. Define each A32-E identifier and map it to an experiment, exact artifact hashes, and manuscript claims.",
+      "verification_test": "In a clean environment, resolve every claim through the evidence registry, execute the documented reproducer, and verify that all point estimates, bootstrap intervals, sample counts, table cells, and figure values match the PDF within declared tolerances.",
+      "evidence_needed": "Timestamped preregistration; raw per-problem arm outputs; confidence and correctness traces; analysis code; environment lock; run logs; artifact hashes; completed check report; explicit E-to-X-to-file crosswalk.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-R-02",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF p. 2 (§2 Definitions and paired intervention), pp. 5-6 (§5 Experimental Setup), p. 8 (§8), and p. 12 (Data and Reproducibility); evidence/method_provenance.tsv entries A32-M1, A32-M3, and A32-M5; evidence/repository_inventory.md",
+      "claim_ids": [
+        "A32-C1",
+        "A32-C2",
+        "A32-C3",
+        "A32-C4"
+      ],
+      "evidence_ids": [
+        "A32-E1",
+        "A32-E2",
+        "A32-E3"
+      ],
+      "observed_evidence": "Verified: the method ledger says the commit-score trace is not located, the paired-intervention preregistration/results are not located, and companion-metric code is not located; the repository inventory also reports the model revision and decode launcher as missing. Cannot_verify: the precise token-to-answer confidence aggregation, literal filler and insertion procedure, schedule-A definition, tokenizer, model checkpoint revision, NLL numerical handling, and software/hardware environment.",
+      "why_it_matters": "The intervention and response variable are not specified precisely enough for an independent implementation. Small differences in tokenization, insertion position, confidence aggregation, checkpoint revision, or probability clipping could materially alter the reported contrasts and proper scores.",
+      "required_fix": "Provide an exact algorithmic definition of answer-level confidence and each companion metric, the literal serialized prompts for representative fixtures, the filler string and token counts, arm construction, model/tokenizer revision, full decode configuration, dependency lock, and numerical conventions.",
+      "verification_test": "An independent implementation using only the documented specification must reproduce the serialized arm inputs, token counts, per-item confidence/correctness records, and metric values for fixed public fixtures exactly or within declared floating-point tolerances.",
+      "evidence_needed": "Method pseudocode, fixture inputs and expected outputs, model and tokenizer hashes, decode configuration, metric implementation, probability clipping convention, and environment specification.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-R-03",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF p. 4 Table 1, p. 8 §8 bullet “Decode randomness,” and evidence/experiment_registry.json entry A32-X4",
+      "claim_ids": [
+        "A32-C2",
+        "A32-C3",
+        "A32-C4"
+      ],
+      "evidence_ids": [
+        "A32-E2",
+        "A32-E3"
+      ],
+      "observed_evidence": "Verified: the manuscript states that there is one decode per item-arm and that its problem-cluster bootstrap does not quantify within-item decoder randomness unless decoding is deterministic. X4, the deterministic replay or multi-seed audit, is not_run. Cannot_verify: whether the launcher is deterministic and whether the reported contrast and interval are stable across decoder draws.",
+      "why_it_matters": "If decoding is stochastic, the current interval conditions on a single realization per arm and may not characterize run-to-run uncertainty in the load-bearing comparison. The missing launcher and seed policy also prevent exact replay.",
+      "required_fix": "Either demonstrate bitwise or outcome-level determinism under a frozen launcher and seed configuration, or run multiple independent decode seeds per item-arm and propagate both item and decoder variability with a prespecified hierarchical analysis.",
+      "verification_test": "Repeated clean launches must either yield identical per-item output hashes or produce a multi-seed estimate whose direction, magnitude comparison, and uncertainty support the same non-reproduction conclusion.",
+      "evidence_needed": "Frozen launcher, seed policy, repeated-run output hashes, or multi-seed per-item traces with hierarchical uncertainty analysis.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-R-04",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 3-4 (§3), pp. 6-7 (§6 and Table 4), and pp. 9-12 (Appendices A-B); evidence/claim_evidence_map.tsv entry A32-C5; evidence/experiment_registry.json entries A32-X3 and A32-X6; evidence/method_provenance.tsv entry A32-M4",
+      "claim_ids": [
+        "A32-C5"
+      ],
+      "evidence_ids": [
+        "A32-E4"
+      ],
+      "observed_evidence": "Verified: the manuscript consistently labels MATH500 as a convention sensitivity and POWER_LIMITED, X3 is reported_not_rerun, X6 is not_run, and A32-M4 says the judge and anchor artifacts are not located. Cannot_verify: individual human labels, judge decisions, repaired cases, confusion matrices, pair-bias correction, the claimed hidden false accept, and the resulting sensitivity intervals.",
+      "why_it_matters": "An “audited” judge-sensitivity contribution requires item-level audit provenance. The manuscript's cautious interpretation is appropriate, but the current package cannot substantiate the audit or allow reconstruction of Tables 4-6.",
+      "required_fix": "Release the reviewer-safe judge implementation, immutable per-item judge outputs, deidentified anchor IDs and labels with repair provenance, correction code, and sampling protocol. Keep the POWER_LIMITED boundary unless the probability-sampled FULL-193 study is completed.",
+      "verification_test": "Reconstruct all three 2-by-2 tables, every Table 4 count, the Table 6 correction and intervals, and the identified leverage cases directly from released item-level artifacts.",
+      "evidence_needed": "Judge code and version; pre- and post-repair label files; adjudication records; per-item outputs; correction script; anchor sampling frame; artifact hashes.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-R-05",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "reproducibility"
+      ],
+      "location": "PDF p. 3 Figure 1 and caption, versus p. 6 Table 3 decode-plan expansion",
+      "claim_ids": [
+        "A32-C2"
+      ],
+      "evidence_ids": [
+        "A32-E2"
+      ],
+      "observed_evidence": "Contradicted: Figure 1 prominently labels the central comparison “WITHIN-ITEM RANDOMIZATION,” while its caption says this is inherited conceptual shorthand and only the RANDOM arm randomizes dose; Table 3 states that the paired crossover allocates no randomization between arms.",
+      "why_it_matters": "Randomization is a design property, not a stylistic synonym for pairing. The current visual can cause readers to infer stronger assignment guarantees than the experiment provides.",
+      "required_fix": "Replace the banner with “WITHIN-ITEM PAIRED INTERVENTION” or another exact design label and depict the randomized-dose arm separately.",
+      "verification_test": "Check every figure, caption, abstract statement, and design table for consistent use of paired, crossover, and randomized terminology; no randomization label should apply to the fixed Long-versus-Short contrast.",
+      "evidence_needed": "A corrected deterministic figure asset and a terminology consistency check.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-R-06",
+      "severity": "minor",
+      "dimensions": [
+        "reproducibility",
+        "clarity"
+      ],
+      "location": "PDF p. 8 Reproducibility Statement; submission/MANIFEST.json; evidence/repository_inventory.md",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Contradicted relative to the frozen package supplied for review: the PDF states that “This source package contains the manuscript, bibliography, and frozen figure assets,” but MANIFEST.json contains only the compiled PDF, evidence summaries, citation lock, and reviewer materials—no TeX, BibTeX, or figure assets. The repository inventory says those assets were located elsewhere but does not include or hash them in this snapshot.",
+      "why_it_matters": "Ambiguous artifact scope makes it unclear what a reviewer or future reproducer is expected to possess, and the manifest's ephemeral private temporary source paths do not provide persistent provenance.",
+      "required_fix": "Either include and hash the stated source, bibliography, and figure assets in the released package or revise the statement to name the separate author-side directory explicitly. Replace ephemeral source paths with stable artifact identifiers or omit them.",
+      "verification_test": "Compare the final reproducibility statement against the release manifest and confirm that every claimed included asset exists, has a stable path, and passes its recorded hash.",
+      "evidence_needed": "Final public manifest containing all claimed assets, stable provenance identifiers, and matching hashes.",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-R-07",
+      "severity": "minor",
+      "dimensions": [
+        "citation_integrity",
+        "reproducibility"
+      ],
+      "location": "PDF pp. 7-9 (§7 Related Work and References); literature/citation_lock.json",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "Verified: the citation lock records support checks for Ao et al. 2023, Seligmann et al. 2023, and Cruz et al. 2024 for metric positioning. Cannot_verify: metadata and local claim support for the remainder of the bibliography, including dataset, model-family, decoder, bootstrap, transportability, and 2026 related-work citations, because no comprehensive citation ledger is included and outside literature was excluded from this blind review.",
+      "why_it_matters": "The three verified sources support only part of the metric-positioning discussion. A complete provenance package should establish that all bibliographic metadata and nearby claims are accurate, particularly for recent work used to delimit novelty.",
+      "required_fix": "Expand the citation lock to every cited source, recording metadata verification, primary-source locator, exact supported manuscript sentence, and support status.",
+      "verification_test": "Independently open each primary source, verify title/authors/year/venue or preprint identifier, and confirm that it directly supports the associated manuscript statement without broader inference.",
+      "evidence_needed": "A complete citation-support ledger covering all bibliography entries and all citation-bearing claims.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent from the frozen submission. The human-anchor collection lacks recruitment and compensation provenance, but in this snapshot that is primarily a reproducibility and reporting gap rather than evidence of an ethics violation.",
+  "llm_usage_disclosure": "This review was produced by reviewer A32-R00-R, an isolated AI subagent, for internal pre-submission quality control. The manuscript does not state whether generative AI was used in authoring, and this review does not infer such use.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A clean, hash-pinned rerun that reproduces all central point estimates, confidence intervals, counts, tables, and figures from released raw outputs.",
+    "A timestamped preregistration that predates the intervention outcomes and matches the reported primary contrast, multiplicity correction, exclusions, and analysis.",
+    "Exact method fixtures and immutable model, tokenizer, prompt, filler, launcher, and environment specifications that let an independent implementation reproduce per-item records.",
+    "A deterministic replay audit or multi-seed hierarchical analysis showing that decoder-run variability does not change the paired non-reproduction conclusion.",
+    "Item-level judge and anchor artifacts that reconstruct Tables 4-6; a completed probability-sampled FULL-193 audit would further raise confidence in any expanded cross-bed claim.",
+    "A complete citation-support ledger and a release manifest whose contents match the reproducibility statement."
+  ],
+  "evidence_that_would_lower_score": [
+    "A clean rerun that fails to match reported effects, intervals, sample counts, or multiplicity-adjusted decisions.",
+    "A preregistration timestamp or content showing that primary analyses, exclusions, or decision rules were selected after outcomes were observed.",
+    "Multi-seed decoding results showing material run-to-run instability or uncertainty compatible with reproducing the observational magnitude.",
+    "Raw traces showing that commit-step confidence was aggregated inconsistently across arms or is not the quantity described in the manuscript.",
+    "Anchor-level reconstruction that changes the reported confusion matrices, repaired-label counts, or judge-sensitivity conclusions.",
+    "Any mismatch between released artifact hashes and the files used to generate the manuscript."
+  ],
+  "review_limitations": [
+    "This was an isolated blind review restricted to the frozen submission, supplied rubric and instructions, and supplied schema; no outside literature or repository history was inspected.",
+    "Because the raw experiments, preregistration, scripts, model revision, and judge artifacts are absent, experimental claims are classified as cannot_verify rather than contradicted.",
+    "The review directly checked all 12 rendered PDF pages, file-level manifest hashes, layout, anonymity, page-limit compliance, internal arithmetic, and cross-section consistency."
+  ]
+}

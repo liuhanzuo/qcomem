@@ -1,0 +1,157 @@
+{
+  "reviewer_id": "R20-TERRA-EXP-C",
+  "round": 20,
+  "snapshot_sha256": "802c99cf2ec462e41b5343dd204c463b3f4d27d0eb3c601e6489d2765e1e7a27",
+  "role": "experimental_rigor",
+  "overall_score": 6,
+  "confidence": 3,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "For its deliberately narrow fixed-stack scope, the paper has a coherent factorial design, explicit ownership predicates, matched controls, and well-separated memory denominators. It is also candid that its independent checks cover selected captured-input operator boundaries rather than end-to-end behavior (pp. 8-9 and 19). The remaining substantive gap is that the primary GPU run lacks a closed original-run source identity and the numerical/fault evidence remains limited relative to the broad practical importance of the audit concept.",
+    "presentation": "The paper is clear, carefully structured, and unusually precise about evidence boundaries. Figures and tables are readable, distinguish schematics from evidence, and make the fixed scope apparent. The substantial audit vocabulary and many supporting cohorts make the paper dense, but do not obstruct evaluation.",
+    "contribution": "The integration of phase-aware ownership witnesses, callable/accounting receipts, relational checks, and live fault sensitivity for hybrid KV/GDN state is useful. However, the paper itself positions the components as established ideas, and the empirical evidence is limited to one model/runtime/hardware family and sequential schedule. This supports a narrow but potentially reusable audit methodology rather than a broad systems advance."
+  },
+  "paper_summary": "ForkAudit presents an executable ownership-audit contract for hybrid LLM state. It separates shared document KV, request-private append state, and phase-dependent recurrent GDN ownership; evaluates four KV-by-GDN ownership cells on a fixed Qwen3.5/vLLM stack; reports equality of registered semantic digests, selected independent attention and GDN checks, nine live injected faults, and allocator accounting at N up to 32. The paper explicitly excludes scheduler, throughput, production-capacity, and broad transfer claims.",
+  "strongest_verified_contribution": "The strongest supported contribution is the tightly scoped four-cell ownership factorial: in the stated Qwen3.5/vLLM configuration, storage-witness predicates and registered token/logit/KV/GDN observables agree across ownership policies, while shared-document KV reduces the reported final allocator delta at N=32 (pp. 7-8, Secs. 5.1 and 5.4; Table 2).",
+  "strengths": [
+    "The paper clearly separates logical state, allocated pages, PyTorch allocator measurements, and unmeasured process/service capacity (p. 6, Sec. 4.4; p. 8, Table 2).",
+    "The 2x2 ownership factorial, fixed-axis projections, and adjacent-fan-out comparisons directly test the stated relational invariances (pp. 6-8, Secs. 4.2-5.1).",
+    "The selected dense-FP32 attention oracle and candidate-import-free NumPy GDN recurrence provide more evidence than output-token matching alone, while accurately stating their boundaries (pp. 8 and 18, Secs. 5.2-5.3; Table 12).",
+    "The paper properly avoids treating eight books/ranks as stochastic replicates and explicitly limits the deterministic allocator conclusions (pp. 9 and 13, Sec. 6 and Table 3).",
+    "Limitations and fault-campaign boundaries are stated plainly rather than converted into overbroad performance or correctness claims (pp. 8-9 and 19)."
+  ],
+  "questions": [
+    "Can the authors provide an immutable source/container/environment closure for the exact primary GPU aggregate, and reconcile the failed terminal recursive code closure in Sec. 7 with the 'full' frozen-identity status in Table 5?",
+    "Can the authors add a predeclared held-out or independently generated fault suite, including output-level semantic corruptions, to quantify sensitivity beyond intended-gate positive controls?",
+    "Can the authors broaden independent numerical validation across layers, positions, requests, and at least one additional model/runtime, or add an end-to-end differential reference where feasible?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R20-EXP-C01",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor",
+        "technical_soundness"
+      ],
+      "location": "PDF p. 9, Sec. 7; PDF p. 14, Table 5; PDF p. 20, Table 13",
+      "claim_ids": [
+        "frozen-identity",
+        "one-command-replay",
+        "full-contract-witness"
+      ],
+      "evidence_ids": [
+        "reproducibility-statement",
+        "decision-status-table",
+        "artifact-map"
+      ],
+      "observed_evidence": "Sec. 7 reports that the terminal recursive code closure for the primary GPU aggregate failed on post-ledger pycache files, and says a new derivative manifest binds the raw aggregate and offline replay rather than a closed original-run identifier. Table 5 nevertheless marks frozen identity as full.",
+      "why_it_matters": "The central contribution is an executable audit with strong provenance aspirations. Replay of a derivative can establish internal consistency of retained artifacts but is weaker than a content-addressed closure of the exact source and environment that produced the primary GPU evidence.",
+      "required_fix": "Release a content-addressed source tree, dependency lockfile/container, and clearly defined pre-execution exclusion policy for generated files; revise the target status if exact original-run closure remains unavailable.",
+      "verification_test": "A clean external environment rebuilds the primary aggregate from the declared source/container and raw inputs, reproducing the registered receipt hashes and manifest bindings.",
+      "evidence_needed": "Immutable source/environment digests and an independently reproduced primary aggregate.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-C02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 6-8, Secs. 4.3 and 5.2-5.3; PDF p. 18, Table 12; PDF p. 19, Sec. I",
+      "claim_ids": [
+        "independent-attention-oracle",
+        "independent-gdn-oracle",
+        "cross-arm-semantic-equivalence"
+      ],
+      "evidence_ids": [
+        "eight-attention-rows",
+        "four-gdn-transitions",
+        "captured-input-boundary"
+      ],
+      "observed_evidence": "The attention oracle covers eight selected rows conditional on captured post-RoPE inputs. The GDN oracle covers four layers and starts after native q/k normalization. The paper excludes upstream activation construction, normalization, most GDN layers, and end-to-end logits from independent validation; most remaining comparisons use candidate-produced canonical hashes/digests.",
+      "why_it_matters": "The current evidence supports the paper's narrow conditional claims, but cross-arm agreement cannot detect common-mode implementation errors. The selected operator checks leave substantial untested semantic surface for a method intended as a reusable audit pattern.",
+      "required_fix": "Expand preregistered numerical sampling across layers, token positions, requests, and fan-outs, and add an independent end-to-end or cross-implementation validation path where feasible.",
+      "verification_test": "Evaluate concealed, preselected held-out layers and requests with the independent path; report full error distributions, thresholds, and failures.",
+      "evidence_needed": "Broader archived independent-reference outputs or reproducible sidecars, ideally including another relevant model/runtime.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-C03",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp. 6 and 8, Secs. 4.5 and 5.3; PDF p. 16, Table 7; PDF pp. 18-19, Sec. H and Sec. I",
+      "claim_ids": [
+        "fault-sensitivity",
+        "advertised-gate-sensitivity"
+      ],
+      "evidence_ids": [
+        "M1-M9-live-mutants",
+        "M8-M9-debug"
+      ],
+      "observed_evidence": "The nine faults are targeted positive controls intended to reach named gates, generally at N=2. M8 reaches an injected sentinel and M9 reaches a later assertion only after suppression of its named gate; both abort before outputs. The paper correctly states that this is not a detector-completeness claim or rate.",
+      "why_it_matters": "Intended-gate reachability establishes that selected checks are live, but it provides limited evidence about unanticipated faults, escapes, false positives, and output-level failures.",
+      "required_fix": "Add a preregistered held-out fault campaign with independently generated faults, benign controls, output-level corruptions, and all wrong-gate/escape outcomes.",
+      "verification_test": "Run the frozen audit on a concealed held-out mutation suite and report a full per-class outcome matrix.",
+      "evidence_needed": "A held-out fault corpus with false-positive, false-negative, escape, and wrong-gate results.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R20-EXP-C04",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "clarity"
+      ],
+      "location": "PDF p. 8, Table 2; PDF p. 9, Sec. 6; PDF pp. 13 and 15, Table 3 and Table 6",
+      "claim_ids": [
+        "allocator-delta",
+        "memory-denominator-result"
+      ],
+      "evidence_ids": [
+        "N32-median-allocator-deltas",
+        "eight-rank-deterministic-outcomes"
+      ],
+      "observed_evidence": "Table 2 reports medians over eight ranks and says rank values coincide; Sec. 6 and Table 3 correctly clarify that ranks are distinct workloads rather than stochastic replicates. The PDF does not show the per-rank values or a sensitivity summary for the primary allocator deltas.",
+      "why_it_matters": "The stated deterministic measurement is acceptable for the fixed stack, but raw values or ranges would make the workload sensitivity and the meaning of the reported median easier to assess.",
+      "required_fix": "Show the eight values or min/max range, label the estimand consistently as deterministic, and add relevant prefix-length/page-tail sensitivity measurements if expanding the memory claim.",
+      "verification_test": "Recompute the table from released per-rank endpoints and confirm the conclusion under the added sensitivity sweep.",
+      "evidence_needed": "Per-rank allocator endpoints and predeclared geometry/workload sensitivity results.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is established by the PDF. The ethics statement appropriately describes the PG-19 systems study and limits broader deployment implications (p. 12, Sec. A).",
+  "llm_usage_disclosure": "This is an internal automated review produced by an LLM agent from the supplied PDF, rubric, and review schema. No repository, raw evidence, prior review, or revision-history material was inspected.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "An independently reproducible primary aggregate from an immutable source/container/environment closure.",
+    "Broader predeclared independent validation, preferably including end-to-end or cross-implementation checks and complete numerical outcomes.",
+    "A held-out mutation campaign reporting coverage across fault classes, escapes, wrong gates, and output-level semantic consequences.",
+    "Evidence that the contract transfers to another relevant hybrid runtime or model while retaining equally rigorous ownership/accounting witnesses."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of an independent replay to reproduce the registered digest equalities, storage predicates, numerical-oracle bounds, or allocator endpoints.",
+    "Evidence that the source-closure failure changes code or environment relevant to the primary aggregate.",
+    "Evidence that selected oracle rows, gate thresholds, faults, or memory summaries were chosen after observing candidate outputs without valid preregistration."
+  ],
+  "review_limitations": [
+    "This was a PDF-only blind review; no source code, manifests, raw artifacts, or external evidence package were inspected.",
+    "Assessment of reproducibility is based only on the manuscript's own description of its artifacts and closure boundary."
+  ]
+}

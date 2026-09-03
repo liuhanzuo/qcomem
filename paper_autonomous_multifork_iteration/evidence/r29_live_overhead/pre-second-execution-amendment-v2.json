@@ -1,0 +1,118 @@
+{
+  "schema_version": "qcomem-forkaudit-r29-live-overhead-pre-second-execution-amendment-v2",
+  "created_at": "2026-08-25T12:32:27+08:00",
+  "created_before_second_gpu_execution": true,
+  "second_gpu_execution_had_started": false,
+  "experiment_id": "E-R29-LIVE-AUDIT-OVERHEAD-A",
+  "design_preregistration_raw_sha256": "2114d2cd85bedc1eafa5d1398fd0afd0d57819c0360c3be3f9ec20f1b2878939",
+  "retained_v1_history": {
+    "source_ledger": {
+      "path": "source-code.sha256",
+      "raw_sha256": "402c7006e0cb36dc51bab5cf172996c96a44b9c4e48fccb2ed5d4d1c7af387f7",
+      "disposition": "retained as the exact executable ledger used by first attempt a; superseded for any second attempt"
+    },
+    "remote_preflight_receipt": {
+      "path": "remote-preflight-receipt.json",
+      "raw_sha256": "5a223fa1b34aa466f7d1079a9fe07fae1a1e14bb7099d5eb5d97b1d36d6ea879"
+    },
+    "executed_sources": {
+      "runner_sha256": "48cbd2ad3a218d63063c86aa3e7b0ded6087122c55f1c6ea2011c5542f5842a0",
+      "replay_sha256": "891bcaca49d1186d1a93a6edde7db922418a427dfcbad8d0ad5e5ce6f8ea423e",
+      "test_sha256": "2079a7921eb194d06c412b13546cc99cb1b27368285dfc7dc0aeac3e77cf8658",
+      "launcher_sha256": "b14dd58104f95cac3ee50d6491a052d12f5d0a89f96943b6f49e7874c62cb561"
+    }
+  },
+  "first_attempt": {
+    "qs_job_id": 249885,
+    "qs_trial_id": 1898483,
+    "staged_package_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_r29_live_overhead_20260825a",
+    "run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-live-overhead-20260825a",
+    "assigned_gpu_uuid": "GPU-2645e3a2-b265-9923-19c5-c3a1fc537ec0",
+    "observed_stages": [
+      {"stage": "00-started", "timestamp": "2026-08-25T04:23:20Z"},
+      {"stage": "01-preflight-passed", "timestamp": "2026-08-25T04:23:38Z"}
+    ],
+    "formal_result_generated": false,
+    "independent_replay_generated": false,
+    "terminal_ledger_generated": false,
+    "audit_artifact_files_generated": 0,
+    "failure_classification": "pre-arm implementation failure during the first warmup pair's common document prefill; not a scientific negative result and ineligible as overhead evidence",
+    "exception": {
+      "type": "torch.OutOfMemoryError",
+      "location": "run_gpu -> warmup run_pair -> _build_document_cache -> Qwen GDN forward, before Q16 conversion, resident-request construction, either arm timer, or artifact creation",
+      "failed_allocation_bytes": 67108864,
+      "device_total_gib_reported": 139.81,
+      "pytorch_allocated_gib_reported": 138.87,
+      "pytorch_reserved_unallocated_mib_reported": 454.35,
+      "formal_stderr_sha256": "73d5e96c85829a7b9c13e5f1cb3c775577f89a2e0ff631b9f56824bd11f3d5cd",
+      "formal_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "disclosure": {
+      "read_scope": "traceback, allocator values, stage markers, assigned GPU UUID, file absence, and log hashes only",
+      "paired_wall_or_peak_outcome_existed": false,
+      "overhead_outcome_read": false,
+      "scientific_use": "none; preserve as failed-attempt history"
+    }
+  },
+  "diagnosis": {
+    "primary_blocker": "The R29 pair builder called the 4,033-token common document prefill outside torch.inference_mode. model.eval() does not disable autograd, and the reused upstream _build_document_cache helper relies on its caller to establish inference mode. The successful upstream resident runtime places this same prefill under a global inference-mode scope. The first attempt therefore recorded and retained an autograd graph for the long prefill until it exhausted the H20 before either comparison arm began.",
+    "classification": "implementation retention bug, not evidence that the frozen 4,033-token design is intrinsically infeasible",
+    "allocator_disposition": "Do not add PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True for v2. An allocator workaround would not correct the unintended autograd semantics; the frozen input length is unchanged."
+  },
+  "fairness_audit": {
+    "blocker": "The v1 baseline constructed Qwen35VllmPagedHitLedger without an explicit kernel while the instrumented arm constructed MultiForkHitLedger with the already-resolved frozen kernel. The baseline wrapper could therefore perform a cached kernel-resolution path that the instrumented arm did not, and the ledger implementations performed different non-observer checks. This violated the intended requirement that only optional ForkAudit work differ.",
+    "disposition": "Both v2 arms construct the same MultiForkHitLedger through one common factory and pass the same explicit frozen kernel. The sole factory argument difference is call_observer=None versus the live capture callback; append observers, ownership witnesses, hashing, and artifact persistence remain instrumented-only by definition."
+  },
+  "amendments": [
+    {
+      "file": "gpu/r29_live_overhead.py",
+      "before_sha256": "48cbd2ad3a218d63063c86aa3e7b0ded6087122c55f1c6ea2011c5542f5842a0",
+      "after_sha256": "d4d6e04ba07e90438472b72412a6cb302c431e0626f495cae8ce18b2344c825b",
+      "change": "Require one caller-established torch.inference_mode scope at run_pair and both arms; place warmup and all measured pairs under that single scope so common prefill, conversion, request construction, and both arms share inference semantics. Replace the asymmetric ledgers with one common MultiForkHitLedger factory using the same explicit frozen kernel, and record/gate common-ledger and kernel parity."
+    },
+    {
+      "file": "gpu/r29_replay_live_overhead.py",
+      "before_sha256": "891bcaca49d1186d1a93a6edde7db922418a427dfcbad8d0ad5e5ce6f8ea423e",
+      "after_sha256": "43eb9deaf45352ff30d8aada2a38ae2e820c19e2c88a7a11dd486815781fc5cb",
+      "change": "Independently reject results unless both arms report MultiForkHitLedger, the same nonempty kernel identity, explicit frozen-kernel injection, and the preregistered off/on call-observer states."
+    },
+    {
+      "file": "gpu/test_r29_live_overhead.py",
+      "before_sha256": "2079a7921eb194d06c412b13546cc99cb1b27368285dfc7dc0aeac3e77cf8658",
+      "after_sha256": "e589ce8c68df7e93321108a29a991ae0344fc3cc908d5ea9656d57f0fc1faa8b",
+      "change": "Add a runtime regression gate that run_pair fails closed outside inference mode and reaches common prefill inside it, plus a static fairness gate that both arms use the same common ledger factory and explicit kernel with only the observer argument switched. Extend the independent-replay fixture with the common-ledger receipt."
+    },
+    {
+      "file": "gpu/launch_r29_live_overhead_1gpu.sh",
+      "before_sha256": "b14dd58104f95cac3ee50c6491a052d12f5d0a89f96943b6f49e7874c62cb561",
+      "after_sha256": "dd8a248d09c496dc572b27b5ddafee552a1de56cdbe3773a835dd7ffeb4381c5",
+      "change": "Update only the embedded runner, replay, and focused-test hashes to bind the v2 implementations."
+    }
+  ],
+  "unchanged": {
+    "scientific_question": true,
+    "model_and_revision": true,
+    "pg19_document_and_query_tokens": true,
+    "input_hashes": true,
+    "pair_schedule_and_slots": true,
+    "warmup_and_measured_pair_counts": true,
+    "timed_region_start_and_stop": true,
+    "primary_and_secondary_estimands": true,
+    "semantic_and_operator_oracles": true,
+    "peak_baseline_definition": true,
+    "negative_result_policy": true,
+    "resource_request": true,
+    "claim_boundary": true,
+    "final_full_logit_copy_remains_after_timer_stop": true,
+    "allocator_environment": true,
+    "design_preregistration_bytes": true
+  },
+  "second_attempt": {
+    "required_fresh_staged_package_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_r29_live_overhead_20260825b",
+    "required_fresh_run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench_assets/runs/qcomem/r29-live-overhead-20260825b",
+    "must_not_reuse_first_package_or_run_dir": true,
+    "gpu_execution_authorized_by_this_amendment": false,
+    "outcome_policy": "Preserve any pass, failure, positive, negative, or counterintuitive valid result; never silently discard it."
+  },
+  "v2_disposition": "Only source-code-v2.sha256 is executable for a second attempt. The original preregistration remains the byte-identical scientific design; this amendment supersedes only its v1 runtime operationalization where needed to restore inference semantics and arm parity."
+}

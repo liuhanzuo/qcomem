@@ -1,0 +1,66 @@
+{
+  "reviewer_id": "R-TS-01",
+  "round": 3,
+  "snapshot_sha256": "55fab4ba9bdd9190d9d0b9b346235b663862f46eca3bf918a702dcbca44c3fec",
+  "role": "technical_soundness",
+  "overall_score": 7.1,
+  "confidence": 4,
+  "recommendation": "weak_accept",
+  "dimension_scores": {
+    "novelty": 4,
+    "significance": 3,
+    "technical_soundness": 4,
+    "experimental_rigor": 4,
+    "clarity": 3,
+    "reproducibility": 4,
+    "citation_integrity": 3,
+    "limitations_responsible_claims": 4
+  },
+  "paper_summary": "方法流程清晰，关键实验闭环完整，尤其是cross-N和raw重放。主要改进点在于表述严谨性与可读的限制条件。",
+  "strongest_verified_contribution": "复核层面加入了 allocator、storage、trajectory、query prefix 等多维闭环，实验解释相比先前报告更可复现。",
+  "strengths": [
+    "raw 级别验证覆盖了 token/logit/KV/GDN 与 storage，有效防止了 top-level 聚合误报。",
+    "N 曲线与公式参数与图表一致，参数化解释清晰。"
+  ],
+  "issues": [
+    {
+      "issue_id": "I-TS-1",
+      "severity": "minor",
+      "dimensions": ["clarity", "technical_soundness"],
+      "location": "方法与实验设置 第4段、图表与第2页表1",
+      "claim_ids": ["C3", "C4"],
+      "evidence_ids": ["E6", "E7", "E8"],
+      "observed_evidence": "文中在\"fresh/reuse\"公式与“80MiB doc pool + 90N/5N”的表述间有重复但未一次性给出符号定义来源（每层/全层）与适用对象（10个full-attn层）。",
+      "why_it_matters": "容易让读者误把‘解析账本’与‘全模型内存/显存’混淆，尽管正文多处强调了限制，但符号定义不统一会影响可读性。",
+      "required_fix": "统一符号定义并补一行‘n_layer=10 full-attn only’的注释，明确池大小口径与单位（单层/全层）。",
+      "verification_test": "新增一处公式旁注释并在 Discussion 中复述口径一致性。",
+      "evidence_needed": "无额外新实验；仅文本一致性。",
+      "expected_impact": "low",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I-TS-2",
+      "severity": "minor",
+      "dimensions": ["clarity", "technical_soundness"],
+      "location": "可复现性与治理\"，当前说明\"8 rank\"与\"单rank\"语义交替",
+      "claim_ids": ["C5"],
+      "evidence_ids": ["E10", "EXP1"],
+      "observed_evidence": "文稿多处将 allocator 结果写为 8-rank median 与 per-rank 运行状态，但缺少1句话澄清‘该值为 8 rank 中位数统计’，读者容易误读为单rank。",
+      "why_it_matters": "统计单元未统一会影响读者复现与他人复现外推。",
+      "required_fix": "在所有量化句子中统一标注统计单位（per-rank/raw-run和8-rank median）。",
+      "verification_test": "快速审阅全部指标表，检查是否出现未标注单位。",
+      "evidence_needed": "无新增实验。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "score_ceiling_under_current_evidence": 8.0,
+  "predicted_score_after_required_changes": 7.8,
+  "evidence_that_would_raise_score": [
+    "统一指标单位与公式定义后减少解释歧义",
+    "明确给出 per-rank 与跨rank聚合语义。"
+  ],
+  "evidence_that_would_lower_score": [
+    "若后续版本在摘要中出现 allocator 与 NVML 混用表述。"
+  ]
+}

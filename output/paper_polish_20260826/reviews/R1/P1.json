@@ -1,0 +1,132 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "074b0ec75463f223d717e02f07b0e792e9d8865bc2a08328ea8163f2ef081a88",
+  "role": "novelty_positioning",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "AUDIT-GATE 的三态输出、endpoint quintuple、manifest 状态和证书规则在 PDF 内定义得较完整，作者也如实披露第一版实现与预注册相冲突、未被固定且不可重放。问题在于 field corpus 只有同一 run 的 14 个单位，自然样本从未触发 POSTPONE，八个补充 fixture 又由 checker 作者构造；缺少独立标签总体，所以检测率、漏报率、误杀率和科学有效性均未建立。",
+    "presentation": "主文能说明 PASS 只代表机械可操作而非科学正确，图表无视觉错误。但 25 页包含 R27/R31/R41/R42/R52/R83 多个版次、冻结与当前两套 tally、26 个 machine strings、18 张表和大量内部路径/sha16；核心算法、验证状态与历史考古交织，显著妨碍读者评估。",
+    "contribution": "把 endpoint registration、positive controls、manifest hashes、缺失标记和 verdict projection 组合成可重放证书有一定工程价值，但这些元素与 provenance、reproducible builds、artifact evaluation、CI/assertion 和 assurance cases 高度邻近。当前没有自然独立数据上的性能或第三方采用，故贡献窄且新颖性未充分建立。"
+  },
+  "paper_summary": "论文提出 AUDIT-GATE，用静态、零 GPU 检查判断多代理研究 archive 的预注册决策是否机械可达和可重放，输出 PASS、FAIL 或 POSTPONE，并附冻结输入、checker 和单命令证书。框架包括五字段 endpoint、Clopper–Pearson 可决定性、正控、manifest 五状态、健康臂非退化和 machine-string 投影。六案例 ledger 与七个其他 seat archive 的 decisive cell 在冻结转录层得到 9 PASS/5 FAIL/0 POSTPONE；当前机械提取层的七单元变为 3 PASS/2 FAIL/2 POSTPONE。八个人工 defect fixtures 覆盖未触发分支，但论文承认没有独立标签总体，v2 校准所需的至少 118 个 defect-free archives 仍 blocked。",
+  "strongest_verified_contribution": "论文把“可重放”具体化为记录时 anchors、冻结 checker 和单命令接口，并对自己的首版未固定、自身 manifest 缺失、规则事后修复和 frozen/current verdict 漂移作了可审计披露；作为内部工程纪律，这比只写一段 reproducibility 声明更具体。",
+  "strengths": [
+    "持续强调机械 operability 不等于科学正确，PASS 不被用作研究结论背书。",
+    "保留首版不可重放的 self-FAIL、规则双向不包含关系以及当前/冻结 tally 的不一致，没有事后抹平。",
+    "为未覆盖的 POSTPONE、PRIM3 状态和不可达主分支提供显式 fixture，并承认它们只证明 branch execution。",
+    "逐页视觉检查覆盖全部 25 页，图表未见裁切、重叠或缺页。"
+  ],
+  "questions": [
+    "AUDIT-GATE 相对现有 artifact-evaluation checklists、reproducible-build attestations、data/model assertions 和 assurance cases 的最小新能力是什么，如何被实验而非术语证明？",
+    "endpoint 的 readout/side/n/threshold/path_id 由谁语义验证？若 archive 提供形式完整但错误或指向无关计算的 quintuple，当前静态 gate 会怎样处理？",
+    "为什么标题仍称 pre-registered，而 group rule、PRIM3 enumeration、G2 predicate 与 verdict map 都在观察后改变，且第一版实现未固定、不可重放？",
+    "能否由工具作者之外的团队，在未查看预期标签的情况下，从零安装 bundle 并审计一个新项目，报告耗时、失败点和与人工金标准的一致性？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P1-I1",
+      "severity": "major",
+      "dimensions": ["novelty", "significance", "citation_integrity"],
+      "location": "第 1–2 页第 1 节 Contributions；第 7–8 页第 4 节 Related Work；第 22–23 页附录 F",
+      "claim_ids": [],
+      "evidence_ids": ["PRIM1–PRIM5", "G1", "G2", "Table 2"],
+      "observed_evidence": "五字段注册、置信区间可达性、must-fail control、hash/absence manifest、字符串到三态投影和冻结重放均是已有统计或软件治理构件的组合。相关工作承认 provenance、versioning、reproducible builds、reporting standards 与 production assertions，但只用阶段/对象的文字差异定位，没有实现基线或展示现有工具无法检测而 AUDIT-GATE 能可靠检测的自然案例。",
+      "why_it_matters": "当前容易被理解为项目特定 MLOps common sense 的重包装；论文自己甚至设定 MERGE 条款来承认这一风险。没有清楚的概念或实证增量，难以达到 ICLR 主会贡献门槛。",
+      "required_fix": "定义一个项目无关的 threat model 和形式化保证，逐轴比较现有 assurance/artifact/attestation 工具；在独立自然 archives 上运行这些基线和 AUDIT-GATE，展示新增检测类别或显著减少人工成本。",
+      "verification_test": "每个 primitive 都应有最接近先例、相同输入上的基线输出和本文不可替代的增量；若增量只剩组合接口，应诚实定位为工程/工具论文并提供实际采用证据。",
+      "evidence_needed": "系统文献对照、可运行基线、独立项目任务和预设效用指标。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-I2",
+      "severity": "critical",
+      "dimensions": ["experimental_rigor", "technical_soundness", "significance"],
+      "location": "第 5–7 页第 3 节 Field Audit；第 8–9 页第 5–6 节；第 19–20 页表 11–12",
+      "claim_ids": [],
+      "evidence_ids": ["Table 1", "Figure 2", "Table 3", "Table 11"],
+      "observed_evidence": "14 个 field units 全来自同一 live run，冻结层只出现 PASS/FAIL 而没有 POSTPONE；八个缺陷 fixture 由 checker 作者构造。论文明确没有 independently labelled archive population，也不报告 detection 或 false-alarm performance；能够判定 5% false-kill 目标的 v2 设计要求至少 118 个独立 defect-free archives，目前 human_pending/blocked。",
+      "why_it_matters": "核心产物是一个审计 gate，但现有证据只能说明作者写的分支会在作者写的输入上执行，不能说明它对自然 archive 有效。没有独立校准，PASS/FAIL 的实际可靠性和工具价值未知，这是当前接收的决定性缺口。",
+      "required_fix": "完成独立、盲标的自然 archive 校准：由非作者定义 operability 金标准，按项目留出，冻结 checker 后报告逐类检测、误杀、POSTPONE、覆盖和置信区间；同时运行最接近简单规则/人工 checklist 基线。",
+      "verification_test": "标签制定者不得接触 checker 规则，开发/测试项目必须隔离；预注册的 false-kill≤5% 和 detection 下界必须在独立测试集上可判定，而非用 authored fixtures 充数。",
+      "evidence_needed": "至少达到论文 v2 功效设计的独立 defect-free 样本、多个缺陷家族、第三方标签与执行日志。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-I3",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "第 2 页引言末；第 4 页第 2.6–2.7 节；第 5–6 页第 3.2 节；第 20–21 页表 12–13",
+      "claim_ids": [],
+      "evidence_ids": ["Table 12", "Table 13", "Appendix H Tables 17–18"],
+      "observed_evidence": "第一版 group implementation 与预注册 predicate 冲突，看到结果后才改且旧代码未固定、无法重放；PRIM3 从三臂扩为五状态、verdict map 扩展、G2 从常量赋值改为读取谓词。注册 predicate 与 shipped rule 在枚举域上双向不包含（75 与 21 个分歧 multiset）。冻结七单元 tally 6/1/0，而当前机械层为 3/2/2。",
+      "why_it_matters": "这些不是局部 bug，而是决定 verdict 的语义与证据提取发生了观察后变化。论文诚实披露值得肯定，但标题中的“pre-registered”只能描述部分对象，不能给当前框架确认性地位。",
+      "required_fix": "将当前版本明确称为 observation-informed v2，把冻结层降为构建史；重新预注册完整规则、parser、map、group semantics 和校准指标，然后只在未见的新 archives 上评测。删除任何把旧 decisive cell 当作当前规则确认性验证的表述。",
+      "verification_test": "从新预注册 hash 到测试结束，所有决定 verdict 的代码和语义必须字节冻结；测试集不可参与规则设计；当前与历史输出只保留一个主层级。",
+      "evidence_needed": "全新 held-out decisive cell、完整冻结链和第三方复跑。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-I4",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "clarity"],
+      "location": "第 2–4 页第 2 节 Framework；第 17–20 页 Appendix C/D；第 23–24 页 Appendix G/H",
+      "claim_ids": [],
+      "evidence_ids": ["G1 quintuple", "PRIM3", "Table 9 verdict map", "Table 17"],
+      "observed_evidence": "AUDIT-GATE 依赖 filesystem/string facts、每 archive 一个定制 parser 和关键词映射。字段存在、hash 稳定或 computor 字符串可达，并不证明实现真的计算注册 estimand；解释过的 drift 只依赖 operator-supplied cause registry。当前 seat C/H 还因 G2/threshold 无法机械解析而 POSTPONE。",
+      "why_it_matters": "形式完整性可被语义错误或无关计算轻易满足，而 schema-specific parser 限制跨项目迁移。工具可能稳定重放一个错误 verdict，却无法识别最关键的科学或软件语义偏差。",
+      "required_fix": "明确可保证与不可保证的形式边界，并引入机器可读 typed schema、数据流/调用图绑定或可执行 assertion，把 endpoint 字段连接到实际计算；对 fabricated-but-well-formed archives 做独立对抗评测。",
+      "verification_test": "构造字段与 hash 均合法但计算错 estimand、阈值或数据集的自然istic defects；工具应按预设目标检出，且不依赖为每个样本手写专用 parser。",
+      "evidence_needed": "语义级缺陷集、通用 schema/validator、跨项目迁移和对抗结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-I5",
+      "severity": "major",
+      "dimensions": ["clarity", "reproducibility"],
+      "location": "第 1–9 页主文；第 10–25 页附录，尤其 Tables 6–18",
+      "claim_ids": [],
+      "evidence_ids": ["Tables 6–18", "Figures 3–4"],
+      "observed_evidence": "稿件维护冻结/当前两层 verdict、多个 round 与 judge 版本、26 个 unit strings、内部 seat 名称、路径和数十个 sha16；部分主文主张需到 Appendix H 才能得到 canonical current reading。第 25 页仅顶部少量文字，其余大幅留白。",
+      "why_it_matters": "审计工具论文应降低认知和核验成本；当前呈现本身需要读者进行复杂谱系审计，并使方法与一次特定多代理运行难以分离。",
+      "required_fix": "把当前规范、算法伪代码、一个项目无关示例和唯一验证表放在主文；将所有 round archaeology、完整字符串映射与 hash 清单移入 artifact。压缩或删除不再承担当前论证的历史表。",
+      "verification_test": "不了解该 run 的读者应能在主文中唯一确定当前算法、输入 schema、输出语义、验证数据和限制，并在不查内部 seat/round 的情况下复现一个示例。",
+      "evidence_needed": "不需要新实验来改善结构；第三方可用性研究可进一步验证重构。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文对其他 seat archives 使用匿名键，PDF 未显示个人敏感信息。若未来跨团队审计真实研究档案，应明确访问授权、秘密信息清理与责任归属；当前不足主要是方法有效性而非需触发的伦理违规。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R1 生成，仅用于内部投稿前质量控制；该子代理只读取冻结 PDF 与指定审稿规则，未与其他评审通信，也未读取其他评审输出。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 4,
+  "evidence_that_would_raise_score": [
+    "在独立自然 archive 总体上完成预注册、盲标的检测/误杀校准，并达到论文自己设定的决策界限。",
+    "由非作者团队完成 clean-room 安装、运行和新项目采用，展示实际节省与错误发现。",
+    "证明相对现有 artifact/attestation/assurance 工具的新增语义级检测能力。",
+    "用全新 held-out cell 验证当前冻结规则，而不是复用参与规则形成的同一 run。"
+  ],
+  "evidence_that_would_lower_score": [
+    "第三方发现字段齐全、hash 稳定但 estimand 错误的 archive 仍被 PASS，且此类错误常见。",
+    "独立校准显示误杀或漏报远高于注册界限。",
+    "clean-room 第三方无法凭 bundle 重放，或 frozen/current 层仍会被运行脚本意外改写。"
+  ],
+  "review_limitations": [
+    "本评审严格只读取指定冻结 PDF；未读取或执行论文列出的 checker、bundle、其他 seat archives、路径、hash 对应文件或任何旧稿。",
+    "因此无法验证证书命令、sha16、第三方 replay 记录或文件系统状态，相关可重放性只按 PDF 证据评价。",
+    "按任务要求未联网，也未核验外部引文或补充文献；新颖性仅相对于 PDF 的相关工作判断。",
+    "逐页视觉核查覆盖全部 25 页；未发现裁切、重叠或缺页，第 25 页有大量空白。"
+  ]
+}

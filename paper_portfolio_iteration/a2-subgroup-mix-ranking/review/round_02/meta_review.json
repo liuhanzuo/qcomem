@@ -1,0 +1,195 @@
+{
+  "round": 2,
+  "snapshot_sha256": "a59cc79648a2b5daedc8f4b8f57637648180e5cd8d1c9eb3abffc6739eb61edc",
+  "reviewer_count": 5,
+  "consensus_strengths": [
+    "Conditioned on valid simultaneous pair/group UCB coverage, Theorem 1's deterministic reduction is sound: nonnegative mixture weights preserve the component bounds, the maximum over comparators bounds regret, and the outer zero cap handles the self-comparator case for every simplex mixture without a grid-level union bound.",
+    "The manuscript unusually clearly distinguishes exact CP/Hoeffding/Maurer--Pontil claims from the normal/CLT diagnostic, and labels held-out zero-violation quantities as dependent diagnostics rather than nominal coverage.",
+    "The paper candidly discloses several important boundaries: constructed class-mixture evaluations, absent natural-shift validation, unmeasured fallback cost, missing M3 seed records, and the fact that the width surrogate is not the actual regret-UCB allocation objective.",
+    "The frozen package is internally coherent at the file level: every one of the 23 manifest entries matches its listed SHA-256 and size, and the source/PDF build artifacts are present and hash-consistent with the recorded round-2 build information."
+  ],
+  "consensus_weaknesses": [
+    "The finite-sample coverage theorem omits the sampling conditions required for CP, Hoeffding, and empirical-Bernstein coverage and does not state how fit, calibration, and any allocation rule preserve them; the central certificate is therefore not established for the stated setup as written.",
+    "Proposition 3 is formally incorrect: its displayed premise does not imply the upper-band selector condition, and it reverses the sign of regret. This affects a headline mechanism claim rather than a cosmetic proof detail.",
+    "The central empirical frontier is only partly auditable. The package permits consistency checks of the supplied E03 rows and the cap-repair audit, but omits the implementation, split/configuration/data provenance, environment, and sufficient inputs needed to verify that Table 2--3 values implement the stated exact UCB construction. Other displayed empirical artifacts are likewise absent or aggregate-only.",
+    "M3 is not operationally specified when subgroups are ground-truth classes: an unlabeled item cannot be targeted to a class-specific reveal count without an observable subgroup frame or another declared sampling oracle. Its aggregate three-seed records also cannot support directional allocation inference.",
+    "All evaluations are constructed class-mixture grids. No natural temporal/geographic target tests the fixed-within-group-risk premise or a precommitted fallback/cost endpoint, so the empirical case cannot establish practical deployment behavior beyond the conditional constructed setting.",
+    "The closest-work material does not compare the decision object to the nearest direct certified or risk-controlled post-training selection methods; the novelty boundary remains unverified. The presentation also foregrounds the asymptotic normal endpoint and uses an unsupported 'exactly' abstention phrase, which obscures the exact paired result's proper scope."
+  ],
+  "material_disagreements": [
+    {
+      "topic": "Whether the declared root snapshot hash is inconsistent with the manifest",
+      "positions": [
+        "CLAR-R2-02 treats 3cfe8b88... as the required root because it lexicographically sorts the fully rendered '<hash>  <path>' lines, and therefore calls the declared a59cc796... hash incorrect.",
+        "The reproducibility review reports a59cc796... as verified. Independent recomputation confirms it: the MANIFEST files array is sorted by snapshot_path, all 23 file hashes and sizes match, and hashing the canonical lines in that path order gives the declared a59cc796....",
+        "The wording 'over sorted ... lines' is ambiguous if read as sorting rendered lines by their hash prefixes; the included repository inventory instead specifies sorting by POSIX relative path."
+      ],
+      "recommended_resolution": "Treat this as documentation hygiene only: revise MANIFEST.json to say explicitly that canonical lines are ordered by snapshot_path/POSIX relative path and ship the promised verifier. Do not represent it as a file-integrity or root-hash failure.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Whether lack of a natural-shift study invalidates the theorem or limits only the deployment claim",
+      "positions": [
+        "ER-1 and CLAR-R2-03 treat the absent E11 natural time/region study and conditional-loss audit as a major barrier to deployment relevance.",
+        "The technical review correctly observes that a conditional mathematical theorem need not be tested on a natural shift if its stochastic calibration assumptions are explicitly stated and proved; however, the present manuscript uses deployment framing and constructed mixtures cannot validate the target premise."
+      ],
+      "recommended_resolution": "Separate the two claims. Repair and retain only the conditional theorem after its sampling assumptions are made explicit. Retain practical natural-turnover relevance only after E11 (including the invariance and fallback endpoints) is executed; otherwise narrow the title, abstract, and conclusions to constructed label-prior mixtures under the stated assumption.",
+      "needs_adjudicator": false
+    },
+    {
+      "topic": "Evidence ceiling under the current package",
+      "positions": [
+        "The novelty and clarity reviewers give a ceiling of 6 after focused presentation/positioning work, while noting missing reproducibility and natural-shift evidence.",
+        "The technical, experimental, and reproducibility reviewers give a ceiling of 4 because the coverage assumptions/proof, executable exact-UCB provenance, and/or empirical replay inputs are unresolved."
+      ],
+      "recommended_resolution": "Adopt the conservative ceiling of 4. The theorem and reported rows give a credible conditional core, but the current snapshot cannot substantiate a higher ICLR assessment while its central finite-sample conditions and implementation-to-result trace remain unverified.",
+      "needs_adjudicator": false
+    }
+  ],
+  "unsupported_reviewer_claims": [
+    {
+      "reviewer_issue_id": "CLAR-R2-02",
+      "reason": "Its alleged root-hash mismatch is not supported. Every manifest entry's hash and size match; the declared root is reproduced by the path-sorted files array, which is the ordering specified by the bundled canonical-procedure text. The review's alternate root follows only a different literal interpretation of 'sorted lines.' The phrasing should be clarified, but no artifact mismatch was found."
+    }
+  ],
+  "meta_score": 4,
+  "meta_recommendation": "marginally_below",
+  "evidence_ceiling": 4,
+  "prioritized_actions": [
+    {
+      "action_id": "A1_formalize_certificate_contract",
+      "issue_ids": [
+        "TS01_missing_sampling_conditions_for_exact_bands"
+      ],
+      "action_type": "method",
+      "description": "State the exact CAL data-generating and sampling conditions (including fit/CAL separation, within-group independence or a valid alternative, and any finite-population rule), derive the CP and paired-UCB simultaneous event under those conditions, and make clear that the empirical E03 claim is not evidence that those conditions were satisfied until provenance is supplied. A conditional theorem may be retained; an unstated coverage premise may not.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [],
+      "verification_criterion": "A proof audit can derive every component interval/UCB and its Bonferroni allocation from the declared sampling model, and can identify which empirical split/allocation records would be needed to show that model applies.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A2_correct_or_remove_prop3",
+      "issue_ids": [
+        "TS02_proposition3_condition_does_not_imply_selection_and_regret_sign_is_reversed"
+      ],
+      "action_type": "writing",
+      "description": "Remove Proposition 3 or replace it with a valid two-model condition that explicitly entails U_a(w) < U_b(w), distinguishes estimates from true risks, and defines regret as R_a(w)-R_b(w) when a is selected although b is better. Do not retain the present anti-selectivity statement merely by adding prose around it.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "low",
+      "dependencies": [
+        "A1_formalize_certificate_contract"
+      ],
+      "verification_criterion": "Symbolic reduction agrees with Proposition 2's argmin-U selector and a numerical two-model example satisfies every stated premise and the correctly signed regret conclusion.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A3_make_m3_observable_or_explicitly_oracular",
+      "issue_ids": [
+        "TS03_m3_requires_unobserved_subgroup_labels_to_allocate_them",
+        "ER-3",
+        "N2"
+      ],
+      "action_type": "claim_narrowing",
+      "description": "Specify a pre-label observable subgroup frame and collection pseudocode, or reframe M3/M3.5 throughout as an oracle-stratified, constructed-mixture diagnostic and remove it as a practical allocation contribution. Retaining a deployable allocation claim requires a feasible implementation trace and seed-level outcomes; wording alone cannot create that evidence.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [
+        "A1_formalize_certificate_contract"
+      ],
+      "verification_criterion": "For any operational claim, every queried item is selected using only declared pre-label information and the realized groupwise sample satisfies the certificate contract. For the narrowing alternative, no abstract, contribution, or conclusion language implies a deployable allocation rule or inferential allocation ranking.",
+      "possible_with_current_evidence": true
+    },
+    {
+      "action_id": "A4_release_replayable_exact_and_table_evidence",
+      "issue_ids": [
+        "R2-RP-01",
+        "R2-RP-02",
+        "TS04_exact_frontier_not_independently_auditable_from_bundled_evidence",
+        "ER-2",
+        "R1"
+      ],
+      "action_type": "code",
+      "description": "Provide a manifest-complete reviewer-safe bundle for each retained numerical table: paired-UCB implementation with exact formulas, alpha allocation and edge cases; immutable data/preprocessing and FIT/CAL/OUTER split identifiers; candidate configurations, seeds and environment lock; prediction/loss arrays or sufficient statistics; and clean commands/verifiers that regenerate E03 and all retained M3/M3.5/appendix aggregates. Otherwise remove or reclassify unavailable numerical assertions as unavailable historical observations.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "high",
+      "dependencies": [
+        "A1_formalize_certificate_contract",
+        "A2_correct_or_remove_prop3"
+      ],
+      "verification_criterion": "On a clean copy, the verifier checks the root manifest, regenerates the E03 rows and Table 2--3 aggregates within rounding, independently recomputes choices/UCBs/gates from supplied inputs, and reports the provenance status of every remaining displayed table.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "A5_test_real_shift_before_claiming_deployment_relevance",
+      "issue_ids": [
+        "ER-1",
+        "CLAR-R2-03",
+        "ER-4"
+      ],
+      "action_type": "experiment",
+      "description": "If the paper retains empirical deployment or natural-turnover relevance, execute the locked E11 time and held-out-region study with source-only FIT/CAL, target-only OUTER, the exact paired gate, predeclared subgroup/candidate configuration, conditional-loss invariance audit, and fixed fallback/penalty sensitivity record. A prose limitation can narrow the paper to constructed mixtures but cannot supply this missing evidence.",
+      "expected_impact": "high",
+      "confidence": "high",
+      "cost": "high",
+      "dependencies": [
+        "A1_formalize_certificate_contract",
+        "A4_release_replayable_exact_and_table_evidence"
+      ],
+      "verification_criterion": "Released target-level records allow recomputation of mixture changes, per-candidate/per-subgroup conditional-loss audits with multiplicity handling, exact-gate commitments and regret, abstentions, fallback outcomes, and the preregistered penalty sensitivity; failed invariance targets remain reported and are not relabeled post hoc.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "A6_establish_novelty_boundary_with_direct_work",
+      "issue_ids": [
+        "N1"
+      ],
+      "action_type": "citation",
+      "description": "Conduct a primary-source closest-method audit for certified/risk-controlled post-training model choice under distribution or prior shift. Add a compact comparison of candidate-pool setting, shift assumption, selection/abstention object, simultaneity domain, and guarantee; narrow the contribution or add a discriminating baseline if an equivalent decision object exists. Do not infer novelty from the present absence of a priority claim.",
+      "expected_impact": "high",
+      "confidence": "medium",
+      "cost": "medium",
+      "dependencies": [],
+      "verification_criterion": "A reviewer can identify the closest direct methods and determine, from cited primary sources and a proposition-level table, the precise non-overlapping contribution without relying on the authors' adjectives.",
+      "possible_with_current_evidence": false
+    },
+    {
+      "action_id": "A7_center_the_exact_paired_story_and_weaken_overprecision",
+      "issue_ids": [
+        "CLAR-R2-01",
+        "CLAR-R2-04",
+        "N2"
+      ],
+      "action_type": "writing",
+      "description": "Make the exact paired M2.5/MPB gate, rather than the normal 0.503 diagnostic or allocation surrogate, the unmistakable main result. Add a compact decision-flow display linking selection, paired UCB, tolerance and commit/abstain; consolidate the frontier presentation; replace 'abstaining exactly' with the supported aggregate diagnostic; and demote descriptive allocation material unless new evidence is supplied.",
+      "expected_impact": "medium",
+      "confidence": "high",
+      "cost": "medium",
+      "dependencies": [
+        "A2_correct_or_remove_prop3",
+        "A3_make_m3_observable_or_explicitly_oracular"
+      ],
+      "verification_criterion": "From the abstract, one primary figure/table, and the main empirical section alone, a reader can identify the exact primary rule, its conditional certificate, its reported commitment rate, the status of the normal row, and the limited evidence behind abstention/allocation statements.",
+      "possible_with_current_evidence": true
+    }
+  ],
+  "must_resolve_before_accept": [
+    "Repair the central finite-sample theorem contract by stating valid calibration/sampling assumptions and correct or remove the false Proposition 3; a conditional theorem cannot rest on unstated coverage premises.",
+    "Make every retained central numerical claim replayable from a manifest-complete implementation/provenance bundle, or remove/reclassify the claims that cannot be audited. Existing aggregate consistency is not an end-to-end replay.",
+    "Specify an observable M3 sampling model or explicitly restrict M3 to an oracle-stratified descriptive simulation; do not call it a deployable label-allocation method without feasible collection evidence.",
+    "Establish the novelty boundary against direct certified/risk-controlled post-training selection work, narrowing the claimed contribution if needed.",
+    "Either run E11 before retaining empirical deployment/natural-turnover relevance, or clearly limit the paper to a conditional theorem and constructed label-prior mixtures. Claim narrowing is not a substitute for the experiment when the broader claim remains."
+  ],
+  "score_gaming_suggestions_to_reject": [
+    "Do not promote the normal/CLT 0.503 commitment rate or zero dependent held-out violations into finite-sample coverage evidence.",
+    "Do not relabel aggregate M3 contrasts or the width surrogate as a safe operational allocation policy without an observable sampling model, seed-level evidence, and the appropriate certificate analysis.",
+    "Do not replace the E11 natural-shift/invariance/fallback experiment with post-hoc target selection or stronger deployment wording.",
+    "Do not treat a manifest-wording clarification as a remedy for missing implementation, split, data, and environment provenance."
+  ],
+  "decision_rationale": "All five independent reviewers rated the frozen submission 4 (marginally below) with panel medians Soundness 2, Presentation 3, and Contribution 2. I retain a 4 meta-score and a 4 evidence ceiling. The conditional algebraic core and unusually candid evidence labels are real strengths, but the paper presently omits the stochastic assumptions needed for its finite-sample certificate, contains a false proposition supporting a headline mechanism, and cannot connect its reported exact frontier to a replayable UCB implementation and isolated data pipeline. The constructed-mixture experiments do not establish natural-deployment applicability, and M3 lacks an operational observation model. These are material scientific/provenance gaps, not issues solvable by presentation alone. I reject only the claimed manifest root-hash failure: the declared root is correct under the explicitly path-sorted files array; the disagreement is a wording ambiguity. The preferred revision order is theorem correctness, M3 scope, reproducible empirical provenance, real-shift evidence if deployment claims remain, novelty comparison, and then presentation. Internal meta-review scores are quality-control judgments, not predictions of ICLR acceptance."
+}

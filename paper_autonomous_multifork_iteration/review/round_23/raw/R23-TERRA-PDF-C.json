@@ -1,0 +1,131 @@
+{
+  "reviewer_id": "R23-TERRA-PDF-C",
+  "round": 23,
+  "snapshot_sha256": "bb4f8371b83d07fa1ffc0cfb6ea4c5648d82c86c9e152099053cac70aba54a62",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "For its deliberately narrow target, the evidence is unusually carefully structured: the 2x2 factorial maintains exact registered observables across 96 configurations and 288 adjacent-fan-out comparisons; storage predicates are witnessed across lifecycle phases; selected attention and GDN operator checks use separately described FP32/NumPy references; and nine live faults reach predeclared gates (Sections 4-5, Figure 3, Tables 5, 7, and 18). The paper appropriately does not elevate relational equality, digest replay, or seeded faults into an end-to-end proof. However, the central conclusion remains conditional on trusted capture, selected inputs/operators, and one sequential implementation, while most tensors are represented by hashes rather than independently inspectable numeric arrays (Sections 4.3, 6, Appendix I). These are substantive but well-disclosed limits rather than a contradiction of the scoped claim.",
+    "presentation": "The manuscript is exceptionally clear about what each cohort can and cannot support. The contract targets, receipt classes, target-status table, cohort-authorization table, and limitation statements make a dense systems-audit argument tractable (Sections 3-7; Tables 4, 5, and 14). Figures 1 and 3 distinguish explanatory, relational, numerical, and fault-control evidence. The paper is information-dense and some appendix tables are small, but this does not materially obstruct review.",
+    "contribution": "The contribution is a coherent, phase-aware audit contract for hybrid token KV and mutable recurrent state, coupled to an unusually explicit evidence hierarchy and denominator discipline. That integration is useful and distinct from the cited caching, hybrid-prefix, and metamorphic-testing systems (Appendix G, Tables 9-10). It is nevertheless a narrowly validated methodology rather than a new cache policy, scheduler, or broadly demonstrated systems capability: validation is concentrated in one Qwen3.5 stack, one sequential CUDA-stream schedule, and selected numerical boundaries (Sections 4.1, 6, Appendix I)."
+  },
+  "paper_summary": "ForkAudit specifies receipt obligations for ownership isolation when a shared document prefix combines token-indexed attention KV with mutable Gated DeltaNet state. It evaluates full-copy versus shared-document KV and materialized versus borrowed GDN bases on a frozen Qwen3.5-35B-A3B setup. The primary evidence is a 96-cell, N={1,8,32} factorial with lifecycle storage witnesses, canonical digest equality, selected independent operator oracles, and targeted mutation controls; separate deployment and serving panels are explicitly not pooled with the audit (Sections 3-5; Tables 2, 4, and 15).",
+  "strongest_verified_contribution": "The strongest verified result is the bounded ownership witness for the frozen sequential stack: after first transition, the recorded ranges for all 60 mutable GDN tensors are disjoint from bases and peers, while the four ownership cells preserve registered token, logit, logical-KV, and final-GDN observables across all stated fan-outs (Section 5.3; Table 5; Figure 3).",
+  "strengths": [
+    "The paper makes a valuable distinction between semantic equality, storage ownership, numerical operator validation, fault sensitivity, allocator accounting, and production capacity instead of conflating them.",
+    "The factorial design directly separates KV and recurrent-base ownership choices, and the N=1 cell avoids making request-base disjointness merely a peer-comparison artifact (Sections 4.1 and 5.3).",
+    "The manuscript honestly scopes the evidence: Figure 3 and Sections 5.4-5.6 explicitly label the attention/GDN tests as selected and the mutations as positive controls, not completeness or detection-rate evidence.",
+    "Memory claims are disciplined: Table 15 reports allocator endpoints for the primary cohort while Appendix E distinguishes controlled pools, phase-bounded allocator peaks, and unmeasured service capacity.",
+    "The reproducibility statement and artifact map give concrete intended replay boundaries and explicitly acknowledge the limits of hashes, external weights/data, and compiled-dispatch binding (Section 7; Appendix J)."
+  ],
+  "questions": [
+    "Can the authors report audit-runtime and storage overhead, including how receipt capture scales with model depth, fan-out, and sequence length? Practical overhead is important for assessing whether this contract can be adopted beyond a one-off forensic run.",
+    "Can the primary ownership witness be independently reproduced on at least one additional hybrid runtime/model or under genuinely concurrent kernel execution? The current paper correctly excludes those regimes, but they are central to the practical setting motivating the work.",
+    "Will the released reviewer artifact include sufficient sidecars and an environment recipe to independently recompute the selected oracle rows and all aggregate predicates, rather than only verify producer-generated digest chains?",
+    "Why were the particular eight attention rows and four GDN layers sufficient for the chosen validation goal, and can the paper provide a sensitivity analysis over a wider precommitted sample of layers/windows?"
+  ],
+  "issues": [
+    {
+      "issue_id": "R23-C-1",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "significance"
+      ],
+      "location": "Sections 4.1-4.3, 5.3-5.5, 6; Table 5; Appendix I",
+      "claim_ids": [
+        "conditional receipt-level ownership evidence",
+        "general usefulness of the ForkAudit contract"
+      ],
+      "evidence_ids": [
+        "primary 96-cell factorial",
+        "Figure 3",
+        "Table 5",
+        "Table 18"
+      ],
+      "observed_evidence": "The primary result covers one Qwen3.5 configuration, one partial-tail geometry, BF16/Q16 KV, N<=32, and sequential round-major execution on one CUDA stream. The independent attention check covers eight selected rows and the GDN oracle covers four selected post-normalization transitions; Appendix I explicitly excludes concurrent kernels, continuous/ragged batching, eviction, multi-document serving, and broad runtime/model transfer.",
+      "why_it_matters": "The paper's narrowly worded empirical claim is supported, but the broader methodological value of a hybrid-state audit contract depends on whether its receipts remain adequate and feasible when execution interleaves in the regimes that make serving systems difficult.",
+      "required_fix": "Either add a clearly separated validation on a second hybrid implementation and/or a concurrent/interleaved execution regime, or further sharpen the framing so the contribution is presented as a frozen-stack audit case study with a proposed, not yet broadly validated, contract.",
+      "verification_test": "Provide a preregistered additional cohort with independent lifecycle/semantic replay and state whether each Table 5 target closes under the new execution regime; report capture/replay cost as well.",
+      "evidence_needed": "A second implementation or model, preferably with concurrent request execution or a realistic serving scheduler, plus raw receipt and replay outputs.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R23-C-2",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "technical_soundness"
+      ],
+      "location": "Sections 4.3, 7; Appendix I; Table 19",
+      "claim_ids": [
+        "independent replayability",
+        "full status of the frozen-identity and ownership targets"
+      ],
+      "evidence_ids": [
+        "reproducibility statement",
+        "artifact map",
+        "Table 5"
+      ],
+      "observed_evidence": "The manuscript states that most runtime tensors are shipped as digests rather than full arrays, weights and PG-19 text remain external, and replay cannot independently recapture the producer. The formal run also lacks per-call compiled-binary/autotuning binding, leaving dispatch partial.",
+      "why_it_matters": "Digest-chain replay can robustly test internal consistency of a captured record, but it is weaker than independent regeneration of the decisive execution. This limits how strongly readers can treat 'full' receipt status as externally independently established.",
+      "required_fix": "Make the executable release and its external dependencies unambiguous, provide the numerical sidecars and complete environment/version acquisition procedure needed for independent recomputation where feasible, and consistently foreground trusted capture as a prerequisite of target closure.",
+      "verification_test": "An uninvolved reproducer should be able to acquire the pinned dependencies, rerun the registered aggregate and selected numerical oracles, and obtain the documented identities and predicates without access to author-local state.",
+      "evidence_needed": "Publicly accessible manifest-pinned artifact, reproducible environment specification, and independent rerun report.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "R23-C-3",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "experimental_rigor"
+      ],
+      "location": "Sections 5.2 and 5.6; Tables 2, 12, 13, and 15",
+      "claim_ids": [
+        "contextual practical relevance"
+      ],
+      "evidence_ids": [
+        "unpooled deployment cohorts",
+        "allocator endpoints"
+      ],
+      "observed_evidence": "Several useful but unpooled context panels occupy substantial space. They are carefully caveated, yet their proximity to the primary audit can still encourage readers to infer a broader serving-performance result than the paper authorizes.",
+      "why_it_matters": "The central audit contribution would be easier to evaluate if primary evidence, supporting lifecycle checks, and contextual serving results were even more visually separated.",
+      "required_fix": "Condense or move some non-primary context tables to the appendix and add a compact main-text claim-to-cohort legend alongside the primary result.",
+      "verification_test": "A reader should be able to identify, from one summary figure/table, exactly which cohort supports each headline conclusion and which conclusions it explicitly cannot support.",
+      "evidence_needed": "Revised organization and claim map.",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent from the described systems evaluation. The paper includes an appropriate limited ethics statement and uses PG-19 training text only for systems behavior (Appendix A).",
+  "llm_usage_disclosure": "This internal review was generated with LLM assistance and based solely on the supplied frozen PDF snapshot and review materials.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "An independently rerun, manifest-pinned release that permits recomputation of primary predicates and selected numerical sidecars.",
+    "A preregistered second-model/runtime validation, especially one exercising nontrivial scheduling or concurrent execution.",
+    "Measured receipt-capture and replay overhead demonstrating practical applicability at realistic fan-outs and context lengths."
+  ],
+  "evidence_that_would_lower_score": [
+    "Failure of a clean independent rerun to reproduce storage-disjointness, digest equality, or stated oracle tolerances.",
+    "Evidence that the claimed compiled-dispatch or call receipts do not correspond to the execution being audited.",
+    "A discovered dependence of the ownership predicates on the single tested page geometry, schedule, or trusted capture path that contradicts the stated contract scope."
+  ],
+  "review_limitations": [
+    "This assessment was restricted to the supplied PDF-only snapshot; I did not inspect or execute the referenced artifact package.",
+    "The review evaluates the claims at their explicitly bounded scope and cannot independently verify the recorded hashes, replay scripts, or external dependencies."
+  ]
+}
+

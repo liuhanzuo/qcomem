@@ -1,0 +1,105 @@
+{
+  "schema_version": "forkaudit-r30-native-vllm-preregistration-v1",
+  "created_before_scientific_execution": true,
+  "created_at_utc": "2026-08-25T07:07:31Z",
+  "objective": "Determine whether one fixed Qwen3.5-35B-A3B/vLLM-0.26/H20 stack executes genuine native ragged and continuous batching, without relabelling the earlier sequential scheduler-interleave or two-CUDA-stream experiments.",
+  "prior_node_status": {
+    "job_id": 249885,
+    "trial_id": 1898483,
+    "pod": "qs-249885-1898483-ai-1442658-master-0",
+    "scientific_execution_started": false,
+    "terminal_condition": "pod deleted externally before upload or execution",
+    "reuse_prohibited": true
+  },
+  "fixed_stack": {
+    "model": "Qwen3.5-35B-A3B",
+    "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "python": "3.11.13",
+    "torch": "2.11.0+cu129",
+    "transformers": "5.14.1",
+    "vllm": "0.26.0",
+    "triton": "3.6.0",
+    "cuda": "12.9",
+    "hardware": "one NVIDIA H20-3e (compute capability 9.0, at least 140 GiB GPU memory)"
+  },
+  "data_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+  "data_selection": "first three distinct rows of the frozen PG19-train smoke64 JSONL; tokenize the first 50000 text characters locally; take the exact prefix lengths below",
+  "text_prefix_characters": 50000,
+  "model_artifact_ledger_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+  "model_weight_ledger_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014",
+  "source_sha256": {
+    "r30_native_scheduler_trace.py": "b082f696ecf96651cca57a73a6cd5e3b3d6be1b4b3a52db0f9917ae5b3482766",
+    "r30_replay_native_batching.py": "67ad7dfbffeb7f6d197afd4e906929f3511773f199dfaf8f4377861aa3a69d40",
+    "r30_run_native_batching.py": "93d1d78bbd97485146ca28fc100e23bdb38cd1dd7c7a948455364d5d2a02382b"
+  },
+  "seed": 20260825,
+  "requests": [
+    {
+      "role": "A",
+      "prompt_tokens": 1105,
+      "max_output_tokens": 2,
+      "lifecycle_role": "initial short request"
+    },
+    {
+      "role": "B",
+      "prompt_tokens": 2209,
+      "max_output_tokens": 5,
+      "lifecycle_role": "initial long-lived request"
+    },
+    {
+      "role": "C",
+      "prompt_tokens": 1537,
+      "max_output_tokens": 2,
+      "lifecycle_role": "waiting replacement admitted while B remains live"
+    }
+  ],
+  "engine_config": {
+    "engine": "vLLM V1 LLM offline engine with the configured native Scheduler subclass observer",
+    "max_model_len": 8192,
+    "max_num_batched_tokens": 4096,
+    "max_num_seqs": 2,
+    "gpu_memory_utilization": 0.85,
+    "dtype": "bfloat16",
+    "enforce_eager": true,
+    "enable_prefix_caching": false,
+    "enable_chunked_prefill": true,
+    "language_model_only": true,
+    "generation_config": "vllm",
+    "max_logprobs": -1,
+    "temperature": 0.0,
+    "ignore_eos": true
+  },
+  "full_vocab_logprob_tolerance": {
+    "atol": 0.005,
+    "rtol": 0.0,
+    "comparison": "all vocabulary entries at every generated step; identical finite/non-finite mask required"
+  },
+  "required_positive_gates": [
+    "the same native SchedulerOutput admits A and B as new requests with distinct prompt lengths 1105 and 2209",
+    "at least one later native SchedulerOutput contains cached decode work for both A and B",
+    "A reaches a terminal free receipt before B",
+    "a later native SchedulerOutput admits new request C while cached request B remains scheduled",
+    "scheduler-observed simultaneously live KV block IDs are pairwise disjoint within every cache group",
+    "every block ID reported as newly allocated to a new request is present in that step's native new_block_ids_to_zero receipt",
+    "sequential A/B/C controls never contain more than one request in a SchedulerOutput",
+    "native-batch and sequential-control generated token IDs are exactly equal for A, B, and C",
+    "native-batch and sequential-control full-vocabulary output log-probabilities meet the preregistered tolerance for A, B, and C"
+  ],
+  "scientific_negative_policy": "If any required positive gate fails after model execution, preserve the result as a completed scientific negative; do not relabel or automatically add it to the manuscript.",
+  "infrastructure_failure_policy": "Failures before any model execution are infrastructure/preflight failures, not scientific negatives.",
+  "claim_boundary": {
+    "eligible_if_all_gates_pass": [
+      "native vLLM scheduler ragged admission for two different-length requests",
+      "native continuous-batching turnover from finished A to waiting C while B remains live",
+      "scheduler-visible KV block ownership/lifecycle receipts",
+      "greedy-token and full-vocabulary output-log-prob comparison against sequential controls on this fixed stack"
+    ],
+    "not_established": [
+      "integration of the existing in-process CoMem/ForkAudit cache facade into vLLM EngineCore",
+      "ForkAudit GDN ownership under native batching",
+      "independent GPU-memory observation",
+      "native-batching throughput, capacity, cancellation, or production safety",
+      "cross-model or cross-runtime generality"
+    ]
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "b564bcaf9926acc12ba3c30bbf4ff09ab48b02dd88130b866bf3ef5eb432e625",
+  "role": "novelty_positioning",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "配对 decode-cluster bootstrap、AUROC 与 risk 分离、TOST 和空 Holm 家族均体现了良好统计意识。但 correctness 标签缺少原始 extraction provenance，独立 extractor 在 n=200 上与当前标签有 30% disagreement；同时 remasking policy、generation seed 和 prompt 未记录，无法重新生成中央 event stream。这些缺口使仅 0.0278 的 AUROC 差难以被视为可靠确认结果。",
+    "presentation": "14 页 PDF 的 estimand、gate、决策矩阵和限制写得细致，逐页视觉检查未见图表裁切。缺点是 R1–R5、H1–H6、多个 rerun 编号和事后边界相当繁复，主结论其实比呈现结构简单得多。",
+    "contribution": "比较 first/commit/all 三种 in-decoding confidence 聚合并把 rank 与实际 selective risk 分开，是一个有意义的测量问题；但所有方法组件来自标准 selective prediction 与聚合分析，证据只是一条不可再生成的单模型单任务事件流，而且 practical risk 增量未建立，当前贡献仍过窄。"
+  },
+  "paper_summary": "本文在一条冻结的 LLaDA-8B-Instruct/GSM8K 解码事件流上比较三种置信度 readout：位置首次暴露 first、最后修订 commit、以及修订期均值 all。n=974 的探索性事后对齐比较显示 commit 的 AUROC 0.7377、all 为 0.7100，配对差 +0.0278、95% CI [0.0123,0.0438]；但在 coverage 0.2/0.5/0.8 的 risk 差区间均跨零，仅 c=0.8 在事后 ±1 pp 界值下通过等价。早/晚分层 family 无 Holm survivor。论文还披露生成配置不可恢复、原始 extraction-stage labels 缺失，以及当前 canonical rerun 与一个独立 extractor 在人工样本上的高 disagreement。",
+  "strongest_verified_contribution": "最强的可核结论，是在同一冻结事件流、同一 block-mean decode score 和 decode-cluster bootstrap 下，commit 相对 all 的排序能力增加 +0.0278 AUROC，区间 [0.0123,0.0438]，同时三个实际 risk 增量区间均跨零（PDF pp.4–5，Table 5）。这种把 rank improvement 与 selection utility 分开报告的做法是严谨且有启发性的，但由于标签与生成 provenance 问题只能视为探索性。",
+  "strengths": [
+    "没有把 AUROC 提升自动转换为 risk 改善：PDF p.5 Table 5 并列报告 rank 和三个 coverage anchor，明确 risk CIs 均跨零。",
+    "推断单位与成对结构交代清楚，使用 decode-cluster bootstrap，并说明共享 lattice observation 不能重复计为独立证据（PDF p.4，§3.2–§3.3）。",
+    "对 TOST 的解读负责：PDF p.6 Table 8 明确 ±1 pp 界值是在原始效应后选定，较低 coverage 仍为 inconclusive，并给出下一床约 n=1960–2820 的设计目标。",
+    "关键可恢复性缺口没有隐藏：PDF pp.5–6 §4 明确表示作者自己也无法 re-decode，结论仅条件于现有 event stream。"
+  ],
+  "questions": [
+    "在 n=200 审计中所谓 canonical-independent extractor 的具体规则是什么？30% label disagreement 中有多少可由人工金标判定谁对谁错？",
+    "能否找回或重新生成记录了 remasking policy、prompt、generation seed 和原始 extraction path 的确认床，而不是继续扩展同一不可恢复流的事后分析？",
+    "为什么主打 +0.0278 AUROC，而三个 coverage 的 practical risk 改善均未建立；预期使用场景的最小有意义 risk 差究竟是多少？",
+    "commit/all 的差异是否会在不同 remasking policy、NFE、block length、temperature、模型和数据集上保持？",
+    "event-stream bundle 若不能匿名公开，外部审稿人如何复算三种 readout 和所有 paired endpoints？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A23-I1",
+      "severity": "critical",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF pp.5–6，§4 Experimental Setup and Reproducibility；PDF p.8，Table 10",
+      "claim_ids": [
+        "R3 aligned AUROC contrast",
+        "R4/R5 risk analysis"
+      ],
+      "evidence_ids": [
+        "Table 5",
+        "Table 10"
+      ],
+      "observed_evidence": "冻结工件没有保留原始 extraction-stage labels；当前数字来自在 frozen prediction text 上事后重跑 canonical extractor。last_num 分支占 257/974，另有 8/974 不可解析。n=200 与一个 canonical-independent extractor 的审计出现 30% label disagreement，论文只能把它称为 noise upper bound，不能给出校准金标误差。",
+      "why_it_matters": "AUROC、risk、TOST 和所有 permutation/bootstraps 都以 correctness label 为结果变量。未解决的标签构念差异可能远大于 +0.0278 AUROC 的 readout 差，使排序结论及实际风险结论都可能随 judge 改变。",
+      "required_fix": "对全部或充分分层样本建立盲人工金标，明确解析协议与分歧裁决；用多个合理 judge 重算所有主结果，并将 judge 作为敏感度轴。",
+      "verification_test": "报告每个 judge 相对人工金标的混淆矩阵及置信区间；commit−all AUROC 与 risk 结论需在预先接受的高准确 judge 下保持，且对 last_num 分支稳健。",
+      "evidence_needed": "逐项人工金标、解析分支 provenance 和多 judge 重分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I2",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "PDF pp.5–6，§4；PDF p.14，Appendix E",
+      "claim_ids": [
+        "recoverability of readouts",
+        "frozen-bed replication"
+      ],
+      "evidence_ids": [
+        "Table 10",
+        "Table 16"
+      ],
+      "observed_evidence": "remasking policy 决定 commit/first 构念，却未记录；generation seed 与 prompt template 也缺失，因此无法 re-decode。分析层虽有 hash 和脚本，但 raw event-stream bundle 是否发布仍取决于 data steward。",
+      "why_it_matters": "中央自变量正是由解码事件轨迹构造的，无法重建生成过程意味着外部人员既不能复现实验，也不能检查 readout 是否对 sampler 细节敏感。若事件流也不可得，只能相信汇总表。",
+      "required_fix": "重新运行一个完整记录 decoder 配置、prompt、seed、checkpoint 和 extraction path 的预注册床，并发布匿名事件流及一键重算脚本。",
+      "verification_test": "独立环境从 manifest re-decode，事件 schema 与哈希通过，随后逐项复算 Table 5、Tables 7–10 和所有决策标签。",
+      "evidence_needed": "可访问事件流、完整 decoder manifest 和独立重建记录。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I3",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp.4–6，§3.2–§4、Tables 5–8；PDF p.8，§6",
+      "claim_ids": [
+        "R3 rank separation",
+        "practical equivalence"
+      ],
+      "evidence_ids": [
+        "Table 3",
+        "Table 5",
+        "Table 8"
+      ],
+      "observed_evidence": "headline commit−all AUROC 是 post-alignment exploratory estimate；三个 risk CIs 均跨零。±1 pp 等价界是在初始效应后、TOST 重算前设定，只有 coverage 0.8 通过，0.2/0.5 不确定。早/晚 family 的 Holm(3) survivor set 为空。",
+      "why_it_matters": "当前数据支持排序差异的探索性信号，却未证明部署相关 coverage 下风险有改善或等价。事后阈值和同一流上的多轮分析不能替代独立确认。",
+      "required_fix": "在新床前固定主 readout 对、coverage、risk 差界值、AUROC/risk 层级和多重性，按 Table 8 的功效目标收集足量样本。",
+      "verification_test": "新床上主 risk endpoint 的 CI 排除零或完全进入预注册等价界，并且 AUROC 方向一致；所有 planned families 按固定校正报告。",
+      "evidence_needed": "n≈1960–2820 的预注册独立确认床。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A23-I4",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "PDF pp.6–8，§5 Related Work、Table 11、§6 Limitations",
+      "claim_ids": [
+        "construct-consistency contribution",
+        "generalization"
+      ],
+      "evidence_ids": [
+        "Table 11",
+        "Figure 2"
+      ],
+      "observed_evidence": "first/last/mean aggregation、AUROC 和 risk–coverage 均为标准组件；论文的新颖性定位是把 in-decoding revision 聚合连接到 decode-level selective score。实证只有一个模型、GSM8K、一个 temperature、每题一次生成，且没有对 readout 的干预或第二数据集。",
+      "why_it_matters": "单一事件流上的聚合比较难以说明这是 masked-diffusion decoder 的一般构念问题，而非该 sampler、block 配置或 judge 的偶发现象。实际 risk 增量未建立也限制应用意义。",
+      "required_fix": "扩展到多个 remasking 策略、NFE/block、模型和任务，并与常见后验置信度、verbalized confidence、self-consistency/energy 等强基线比较；最好加入会改变决策的风险门控实验。",
+      "verification_test": "在独立床上按预注册层级模型估计 readout×setting 交互，报告 selective risk、calibration 和 AUROC；证明 commit 的优势不只存在于单一配置。",
+      "evidence_needed": "跨配置复现、强置信度基线及实际门控效用。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现需要升级的伦理问题；研究是公开基准上的离线分析，论文也明确部署前需在目标分布上重新校准。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R1 独立完成，仅用于内部投稿前质量控制；未与任何其他评审者或评审代理通信，也未查看其输出。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "用人工金标解决当前 30% extractor disagreement，并证明主要 AUROC/risk 结论对 judge 稳健。",
+    "提供完整可恢复的新事件流与 decoder provenance，并由独立环境重建主表。",
+    "在按功效设计的新床上预注册确认 practical risk endpoint。",
+    "跨 remasking、NFE/block、模型和任务比较 commit/first/all 及强置信度基线。"
+  ],
+  "evidence_that_would_lower_score": [
+    "人工金标显示 last_num 分支含大量错误，重算后 +0.0278 AUROC 差消失或反转。",
+    "新可恢复床无法复现 commit 优势，或其方向强依赖 remasking policy。",
+    "事件流完整性、哈希或 paired decode 对齐无法通过独立检查。",
+    "更强的标准置信度基线在 rank、calibration 和 selective risk 上全面优于三个 readout。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的 14 页冻结 PDF；未读取源代码、事件流、匿名工件或任何其他评审输出。",
+    "按隔离任务约束未联网，未独立核验外部引文、相关工作覆盖完整性或工件可访问性；新颖性判断仅相对于 PDF 自述的相关工作。",
+    "30% 数字按论文所述仅解释为两个 extractor 的标签分歧/噪声上界，而非已确认的真实错误率。",
+    "逐页视觉核查未发现裁切或无法解析页面。"
+  ]
+}

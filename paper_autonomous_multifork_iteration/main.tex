@@ -1,0 +1,1272 @@
+\documentclass{article}
+\usepackage{iclr2026_conference,times}
+\input{math_commands.tex}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{placeins}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+
+\definecolor{shareblue}{RGB}{47,105,163}
+\definecolor{copyorange}{RGB}{230,126,34}
+\definecolor{mutegrey}{RGB}{90,90,90}
+\newcommand{\method}{\textsc{ForkAudit}}
+\newcommand{\materialize}{\textsc{Source+Materialize}}
+\newcommand{\share}{\textsc{Shared-Document}}
+\newcommand{\mib}{\,\mathrm{MiB}}
+\newcommand{\gib}{\,\mathrm{GiB}}
+
+\title{ForkAudit: Hybrid-LLM Ownership-Trace Validation Beyond Output Equality}
+
+\author{Anonymous authors}
+
+% Anonymous ICLR submission: keep \iclrfinalcopy commented out.
+% \iclrfinalcopy
+
+\begin{document}
+\raggedbottom
+\maketitle
+
+\begin{abstract}
+Forking many continuations from one prefix creates an ownership question that
+output equality cannot resolve: agreeing branches may still alias mutable
+recurrent state or share a defect.  We present \method{}, a phase-aware
+ownership-trace validator for hybrid KV and recurrent state whose byte-bound
+lifecycle, storage, tail-COW, transition, call, and semantic receipts fail
+closed: missing mandatory evidence prevents a pass and leaves the target open.
+
+On one fixed Qwen3.5/H20 stack, six of seven contract targets have complete
+trace coverage and a passing replay verdict; dispatch passes at Python-call
+scope with explicitly partial compiled-dispatch coverage.  Across 96 KV-by-GDN
+ownership configurations, every registered semantic observable matches, while
+transition receipts bind each completed request's 60 mutable GDN tensors as
+disjoint from bases and peers.  All nine preregistered primary faults reach their frozen
+first gates; when each named gate is separately suppressed, five reach
+semantics, where tokens catch $0/5$ and exact logits catch $1/5$.
+Separately, 44 captured-boundary numerical rows pass and 44 wrong-operator
+controls fail.  Process-separated GDN relation reconstruction passes all six
+phase and both lifecycle checks.  A designer--executor-separated campaign
+freezes five new matched fault pairs before executor preparation: all clean
+gates pass, every mutant is rejected first by its frozen predicate, four
+preserve tokens, and three also preserve full logits plus terminal logical
+KV/GDN.  A retrospective reproduction of one historical integration defect
+then preserves tokens, complete FP32 logits, terminal request GDN, and logical
+KV against a materialized control in three archived-coordinate and five
+additional frozen-input cells, yet corrupts the persistent base and reaches
+the authenticated owner-binding gate; the repair is storage-clean and exact
+in all eight cells.  These results establish fixed-stack validation for non-adversarial
+offline CI at declared observation points, not runtime attestation; faithful
+producer enumeration remains in the trusted computing base (TCB).
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Best-of-$N$ decoding, agents, tree search, and document QA fork many
+continuations from one prefix.  Paged KV caches, prefix trees, and scheduling
+exploit that structure~\citep{kwon2023pagedattention,zheng2024sglang,
+gim2024promptcache,srivatsa2025preble}.  Hybrid models add mutable recurrent or
+linear-attention state to read-only KV, so sharing also requires an explicit
+request-local recurrent view~\citep{yang2025gateddeltanet,lieber2025jamba,
+pan2025marconi}.
+
+Output equality is only relational: branches can agree while aliasing state,
+and compared implementations can share a defect.  An ownership audit must also
+witness prefix immutability, phase-conditioned request/base and request/peer
+relations, tail COW, transition-time rebinding, and call provenance.  Likewise,
+logical payload, cache pages, allocator peaks, process memory, and admitted
+capacity are distinct memory denominators.
+
+\method{} partitions document and request state, records page reservations and
+recurrent rebinding, fingerprints the Python attention callable, and combines
+a $2\times2$ ownership factorial with relational, physical-storage, and
+selected numerical checks.  Its executable contract joins a typed
+phase-indexed schema, fail-closed coverage, and ownership predicates spanning
+KV and recurrent state.  It targets accidental state-management regressions in
+instrumented offline CI; the capture/replay path is an explicit TCB
+(Section~\ref{sec:contract}).
+
+The methodological contribution is the executable ownership contract: a
+target can pass only when phase-complete evidence, pointer-free ownership
+predicates, and semantic relations all hold for both KV and recurrent state.
+Output relations alone can miss aliasing, while storage checks without
+lifecycle evidence can miss transition-time rebinding.  We instantiate this
+contract---not a new cache policy or production runtime---on one fixed stack:
+\begin{itemize}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \item \textbf{Fail-closed hybrid-state contract.} Mandatory records cover
+  document KV, private append, GDN bases and rebinding, tail COW, and call
+  contracts; missing records prevent a pass, and coverage remains distinct
+  from the replay verdict.
+  \item \textbf{Replayable ownership evidence.} Across 96 configurations,
+  semantic invariance is coupled to registered-point physical isolation.
+  Process-separated receivers derive 1,080 GDN descriptors and 96,660 relations
+  from opaque capture IDs and CUDA-IPC handles while slot enumeration stays in
+  the TCB.
+  \item \textbf{Falsification-oriented evaluation.} Captured-boundary numerical
+  controls, nine primary faults, and five designer--executor-separated faults
+  show violations that tokens and even exact logits can miss.  A separate
+  hash-bound case study reproduces and repairs one historical pre-fix alias
+  regression.  Outcomes are reported per frozen fault or cell, not as a
+  population rate.
+\end{itemize}
+
+We instantiate the contract on one fixed Qwen3.5/H20 stack with batch-one,
+sequential round-major calls; Section~\ref{sec:limitations} states its boundary.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/rr2_teaser_registered_transition.png}
+  \caption{\method{} in one view.  A common prefix forks into requests with
+  distinct KV and recurrent-state lifetimes.  Four ownership cells feed private
+  append and recurrent-rebinding checks.  The right-hand audit rail maps
+  ownership/call receipts, selected FP32 attention checks, and positive-control
+  faults into registered verdicts.  The callouts summarize 96
+  configurations, selected numerical checks, nine primary live faults, and the
+  $N=32$ endpoint.  This is a protocol schematic; quantitative authority comes
+  from the registered results in Section~\ref{sec:results}.}
+  \label{fig:teaser}
+\end{figure}
+
+\section{Background and Related Work}
+\label{sec:related}
+
+\paragraph{Paged and prefix-aware inference.}
+PagedAttention, Prompt Cache, RadixAttention, ChunkAttention, Hydragen, and
+Preble establish block sharing, prefix reuse, shared-prefix computation, and
+scheduling~\citep{kwon2023pagedattention,gim2024promptcache,zheng2024sglang,
+ye2024chunkattention,juravsky2024hydragen,srivatsa2025preble}.  We instead ask
+what execution evidence demonstrates isolation across coexisting state types.
+
+\paragraph{Hybrid state and cache management.}
+Gated Delta Networks maintain mutable compact state~\citep{yang2025gateddeltanet};
+Jamba, Marconi, and HYPIC address hybrid architectures or reusable hybrid
+prefixes~\citep{lieber2025jamba,pan2025marconi,liu2026hypic}, while Palu,
+SqueezeAttention, and HeadKV compress or budget KV~\citep{chang2025palu,
+wang2025squeezeattention,fu2025headkv}.  \method{} validates an ownership
+boundary rather than replacing those policies; Appendix
+Table~\ref{tab:published-context} separates published numbers from our controls.
+
+\paragraph{Persistent intermediate residual reuse.}
+CoMem persists a depth-$j$ residual per document token~\citep{liu2026comem,
+liu2026understanding}, motivating our persistent document object; its bounded
+deployment slice is context, not a new selector or quality--latency claim.
+
+\paragraph{Evaluation and metamorphic testing.}
+SCBench emphasizes cache lifecycles~\citep{li2025scbench}; metamorphic testing,
+MT-DLComp, and CRADLE motivate preserved relations and independent checks
+\citep{chen2018metamorphic,xiao2022metamorphic,pham2019cradle}; DNNMem separates
+memory denominators~\citep{gao2020dnnmem}.  Appendix Table~\ref{tab:closest}
+gives our component-wise boundary.
+
+\section{The ForkAudit Contract and Conditional Assurance Boundary}
+\label{sec:contract}
+
+Consider a document prefix $D$ and resident requests
+$r\in\{1,\ldots,N\}$.  Let $\mathcal{A}$ be the full-attention layers and
+$\mathcal{G}$ the recurrent linear-attention layers.  For
+$\ell\in\mathcal{A}$, the state is a read-only set of document pages
+$K^D_\ell$ plus a request-private reservation $K^r_\ell$.  For
+$\ell\in\mathcal{G}$, it is a persistent prefix base $G^D_\ell$ plus the
+request-local recurrent state $G^r_\ell$.  A logical fork is
+\begin{equation}
+  \mathcal{F}_r(D) =
+  \bigl(\{K^D_\ell,K^r_\ell\}_{\ell\in\mathcal{A}},
+        \{G^D_\ell,G^r_\ell\}_{\ell\in\mathcal{G}}\bigr).
+\end{equation}
+
+\paragraph{Threat model and assurance boundary.}
+Here ``audit'' means an offline, non-adversarial contract check for debugging
+and regression testing, not security attestation.  The instrumented
+state-management path may allocate, alias, append, rebind, or dispatch
+incorrectly, but is not assumed to coherently forge, suppress, or relabel
+observations.  The capture/replay path, mandatory-slot schema, and framework
+tensor/storage semantics form an explicit TCB, including faithful producer
+enumeration at every registered phase.  Under this TCB, a pass establishes
+that the registered predicates held at the captured slots and times; it does
+not validate the TCB or protect against coherent omission/fabrication,
+malicious-runtime behavior, OS/driver faults, or unobserved transient writes.
+
+A bounded GDN cohort moves descriptor/relation derivation to
+\texttt{spawn}-created processes.  The producer supplies opaque capture IDs and
+CUDA-IPC tensor handles for the frozen slot set; receivers derive descriptors
+and all-pairs relations and emit no verdict.  They receive neither candidate
+rows/verdicts nor live phase/policy/completion labels, while producer slot
+enumeration, PyTorch/CUDA-IPC semantics, and paused capture remain in the TCB.
+We therefore separate mandatory-trace \emph{coverage} from replay
+\emph{verdicts}.
+
+Seven audit targets may be fully witnessed, partially witnessed, or open:
+\FloatBarrier
+\begin{enumerate}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \item \textbf{Frozen identity.}  Model, data, query bank, layer geometry,
+  kernel descriptor, and protocol hashes are fixed before execution.
+  \item \textbf{Prefix immutability.}  $K^D_\ell$ and $G^D_\ell$ have identical
+  digests before and after all continuations.
+  \item \textbf{Private ownership.}  KV reservations of distinct
+  shared-document requests are disjoint in the common arena; independent
+  materialized arenas have disjoint storage.  At setup, a GDN request either
+  owns a materialized base or holds an explicitly read-only persistent-base
+  alias.  At the primary factorial's registered transition, all 60 mutable tensors must be
+  disjoint from the base and every peer.
+  \item \textbf{Tail-safe append.}  If the last document page is partial, its
+  valid tokens are copied once to a private page before a request appends.
+  \item \textbf{Dispatch provenance.}  Both controls invoke the same recorded
+  Python callable and query/mask/position/append contracts; fallback and
+  full-KV concatenation are forbidden.  Compiled binaries and autotuning are
+  not fingerprinted.
+  \item \textbf{Cross-arm equivalence.}  For the same query and schedule, the
+  materialized and shared ownership arms must have exactly equal generated
+  tokens, full-vocabulary logits, final logical KV, and request recurrent
+  state.
+  \item \textbf{Cross-$N$ prefix consistency.}  For each query observed at two or more
+  fan-outs, its result at every larger fan-out must match its smallest-$N$
+  result.
+\end{enumerate}
+
+Targets 2--5 are pre-output trace obligations; targets 6--7 are relational
+semantic checks, so matching outputs is insufficient.  The nine controls stop
+at frozen first gates before post-injection semantics: bounded localization,
+not unseen-fault coverage.  Separate executions suppress only the named gate
+and record the next outcome under frozen precedence; executions are not pooled
+into a rate.  The retrospective historical case is likewise a post-discovery
+reproduction of one defect mechanism, not a blind-fault or defect-population
+study.
+
+\paragraph{Conditional trace-validity statement.}
+Let $\Sigma$ be the frozen case specification, $E$ an execution, and
+$\tau=C_{\Sigma}(E)$ the producer trace.  For target $i$, let
+$M_i(\Sigma)$ be its mandatory record slots and $\Phi_i$ its registered replay
+predicates.  Coverage is \emph{complete} only when every slot in
+$M_i(\Sigma)$ has exactly one schema-valid, byte-bound record.  We define
+\begin{equation}
+  \operatorname{Pass}_i(\tau) \Longleftrightarrow
+  \bigl[\operatorname{Coverage}_i(\tau)=\mathrm{complete}\bigr]
+  \wedge \operatorname{Bind}_{\Sigma}(\tau)
+  \wedge \bigwedge_{\phi\in\Phi_i}\phi(\tau).
+\end{equation}
+If capture is honest and mandatory-event-complete, and manifest binding,
+digests, and replay are correct, $\operatorname{Pass}_i(\tau)$ implies that
+every registered predicate held at its captured observation point.  A missing
+or modified mandatory record, or a represented predicate violation, cannot
+produce a pass.  This statement is trace-relative: it provides no conclusion
+about coherent omission or fabrication, transient writes restored between
+observations, unrecorded compiled dispatch, common-mode semantics, or
+unseen-fault error rates.
+
+The out-of-process cohort is a separate supporting check on a bounded subset
+of GDN storage predicates; it does not change this conditional statement for
+the complete primary-factorial producer trace.
+
+\paragraph{Minimal adoption workflow and decision rule (normative).}
+\method{} (1) freezes code/model/data/protocol/runtime roles before outputs;
+(2) captures setup, transition, and final events with canonical digests,
+ranges, ordered receipts, outputs, and allocator snapshots; (3) replays every
+applicable predicate, labeling coverage complete, partial, or open separately
+from pass/fail/not-evaluated; and (4), when sensitivity is claimed, freezes the
+target-to-gate map and retains all outcomes.  Here terminal identity is
+complete and passing, while compiled dispatch/autotuning coverage is partial.
+Appendix~\ref{app:storage-schema} and Table~\ref{tab:normative-records} give the
+dependency matrix, pointer-free schema, and record obligations.
+
+``Exact'' means equality of a canonical serialization: contiguous CPU-FP32
+bytes with bound shape/dtype, or the specified logical-KV/GDN digest; it does
+not claim bitwise comparison of an unarchived device tensor.
+
+Targets 6--7 expose layout- or $N$-dependent changes in recorded observables.
+The factorial also captures one statically selected rank-specific attention
+row's post-RoPE query, K/V, positions, mask, and scale for dense IEEE-FP32
+comparison.  A candidate-import-free NumPy FP32 oracle evaluates four frozen
+GDN transitions after native BF16 q/k normalization.  Preregistration binds
+that boundary, $1/\sqrt{128}$ query scale, rows, tolerances, and seeded faults.
+These checks cover selected operator boundaries, not upstream construction,
+normalization, every GDN layer, or the end-to-end model.
+
+Figure~\ref{fig:architecture} maps the four primary-factorial cells and their
+lifecycle; allocator and witness cells are rebuilt separately so guards do not
+retain tensors during measurement.
+
+\begin{figure}[t]
+  \centering
+  \IfFileExists{figures/rr2_architecture_registered_transition.png}{%
+    \includegraphics[width=0.98\textwidth]{figures/rr2_architecture_registered_transition.png}%
+  }{\fbox{\parbox[c][2.10in][c]{0.94\textwidth}{\centering
+    ForkAudit architecture rendering; see the deterministic Matplotlib source and asset record.}}}
+  \caption{ForkAudit's ownership factorial.  The two left axes choose one KV
+  and one GDN setup policy for the request group: append tails are always
+  private, and a borrowed GDN base becomes private at the registered 32-token
+  transition.  The dashed lifecycle spine marks setup, that transition, and
+  final capture.  Left-to-right, the
+  bracketed bottom row records document KV, private append, persistent GDN,
+  request-private GDN, storage binding, call/semantic, and fault-to-gate
+  evidence.  Offline replay validates that bundle and reports coverage
+  separately from each verdict.  This mapped schematic is not experimental
+  evidence.}
+  \label{fig:architecture}
+\end{figure}
+
+\section{Trace-Validation Protocol}
+\label{sec:protocol}
+
+\subsection{Frozen case-study geometry}
+
+Primary feasibility uses one fixed Qwen3.5-35B-A3B configuration
+\citep{qwen2026qwen35,qwen2026qwen35modelcard}: ten vLLM-0.26 Triton
+full-attention layers with BF16 (``Q16'') KV and 128-token pages, plus thirty
+Transformers-torch GDN layers.  Eight H20-3e ranks run one book each with
+batch-one sequential calls on one CUDA stream/rank.  The ledger binds the
+Python callable, not the compiled binary; each GDN digest covers 60 tensors.
+
+Each distinct PG-19 book~\citep{rae2020compressive} supplies a 4,095-token
+document and 32-token registered transition.  Four cells evaluate
+$N\in\{1,8,32\}$ and eight argmax outputs; the query plus seven fed-back outputs
+give 39 state-appended tokens and exercise COW on the 127-token final page.
+Appendix Table~\ref{tab:cohorts} separates all supporting cohorts.
+
+\subsection{Audit sequence}
+
+Each primary-factorial cell binds identity, rebuilds allocator and witness executions,
+records setup--transition--final ownership, and compares tokens, logits,
+logical KV, and GDN state.  Replay adds fixed-axis projections, one dense-FP32
+sidecar/rank, and matched live faults.  A separate PDF-only designer freeze
+supplies five executor-separated pairs.  Aggregation requires every byte binding; Appendix
+Table~\ref{tab:witness} states target strength.
+
+\subsection{Controls, schedules, and oracles}
+
+The primary factorial uses sequential round-major steps on one CUDA stream/rank.  Full logits use
+shape/dtype-bound CPU-FP32 bytes; KV, GDN, bases, calls, storage, and allocator
+records use typed digests.  Detached replay cannot reconstruct unarchived
+tensors or recapture the producer.  A preregistered NumPy oracle checks four
+GDN layers after native q/k normalization against four wrong recurrences.
+
+Supporting protocols move GDN reconstruction to a spawn-created CUDA-IPC
+observer and record CUDA-event-bracketed model-call intervals around cancel,
+scrub, reclaim, and replacement.  Appendix Table~\ref{tab:cohorts} fixes their
+geometry and authorization.
+
+\subsection{Memory denominators}
+\label{sec:denominators}
+
+We separate logical state, pages, synchronized allocator bytes, and unmeasured
+service capacity.  Deployment ``Store'' is instead the union of tensor byte
+ranges owned by a retained document entry; it excludes metadata, pools, NVML
+deltas, and admission capacity.
+
+\subsection{Governance and live mutation checks}
+
+Pre-output ledgers bind code, model, data, queries, and protocol.  Nine fresh
+matched controls pair with live mutations spanning allocation/binding, COW,
+GDN aliasing, positions, masks, callable identity, and paged-view type; each
+mutant first stops at its predeclared gate, establishing localization, not a
+rate; the primary all-gates-on campaign records no post-injection token, logit,
+logical-KV, or GDN digest.  In
+a separate preregistered 18-case matrix, only that gate is suppressed.
+The precedence then records another \method{} gate, an allowlisted production
+assertion, the exact M8 payload sentinel, or completed-horizon token and FP32
+logit equality.  Unallowlisted exceptions are invalid; the sentinel is not a
+production detector.
+
+The designer--executor-separated campaign's designer receives only the prior PDF---not
+source, evidence, earlier faults, reviews, or state---and freezes five new
+definitions, loci, payloads, clean gates, precedence, and first predicates
+before executor preparation or candidate output.  Every fault runs all gates;
+selective reruns and post-output payload tuning are forbidden.
+
+The historical-regression protocol is separate from both mutation campaigns.
+Each rank builds fresh historical-pre-fix, repaired-borrowed, and materialized
+$N=2$ lanes for one token; the fault executor is blocked and no mutation is
+requested or applied.  Ranks 0--2 reproduce archived input coordinates, while
+ranks 3--7 are additional frozen inputs rather than defect-population samples.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Primary fixed-stack trace validation}
+
+Targets 1--4 and 6--7 have complete mandatory-trace coverage and a passing
+replay verdict for the frozen primary case study.  Dispatch provenance (target 5) passes
+at the recorded Python-call scope but has partial coverage because no per-call
+compiled-binary or autotuning-choice binding exists.  Thus the audit reports
+six complete passing targets and one explicitly partial passing target rather
+than silently upgrading missing dispatch evidence.
+
+\subsection{Relational equality holds for every registered observable}
+
+Across $8\times3\times4=96$ configurations (192 rebuilt allocator/witness
+cells), tokens, full logits, final logical KV, final GDN, both fixed-axis
+projections, and all 288 adjacent-fan-out comparisons match exactly.  These
+semantic relations are paired with physical ownership evidence: borrowed GDN
+starts as 60 immutable base aliases/request, materialized setup is disjoint,
+and both rebind at the registered 32-token transition boundary to 60
+request-private tensors disjoint from bases and completed peers.  Every phase
+passes; $N=1$ directly exercises request--base disjointness.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/rr2_validation_dashboard.pdf}
+  \caption{Primary validation.  Left: an independently implemented FP32 replay
+  starts from producer-captured post-RoPE inputs, and all selected attention
+  rows beat the pre-fixed tolerance.  Center: four ownership cells match on registered
+  observables.  Right: a separate primary all-gates-on reference reaches every
+  target gate with passing controls.  Together these panels connect selected
+  numerical agreement, cross-cell invariance, and targeted violation
+  localization.}
+  \label{fig:rr2-dashboard}
+\end{figure}
+
+\paragraph{Expanded captured-boundary numerical sweep.}
+The primary dense-FP32 attention oracle obtains relative-$L_2$
+$0.001484$--$0.001743<0.005$ on eight rows.  A preregistered expanded numerical sweep uses
+two distinct PG-19 inputs and checks 20 attention rows spanning all ten
+full-attention layers (160 query positions) plus 24 GDN rows spanning 12 of 30
+recurrent layers (192 token transitions).  All 44 clean rows pass:
+maximum attention relative-$L_2$ is $0.001897$; maximum GDN output/state
+relative-$L_2$ is $0.002073$/$2.08\times10^{-7}$.  All 20 attention and 24 GDN
+seeded wrong-operator controls are rejected.  The CPU/NumPy FP32 replay imports
+no candidate code, but begins from producer-captured post-RoPE attention and
+post-native-q/k-normalization GDN inputs; Appendix
+Table~\ref{tab:r30-expanded-oracle} fixes this captured-boundary scope.
+
+\input{tables/first_gate_localization_table.tex}
+
+Table~\ref{tab:first-gate-localization} adds a prospective same-system
+comparison.  All nine controls pass and no case is invalid.  Five suppressed
+mutants complete: tokens catch none, exact logits catch M5, and M1/M2/M6/M7
+retain both.  M3/M4 reach redundant audit gates, M9 a production assertion,
+and M8 its injected sentinel.  For the five semantic-complete designed faults,
+token equality catches $0/5$ and exact logits catch $1/5$, whereas the named
+ForkAudit gates reject all five in their separate all-gates-on executions.
+Appendix Table~\ref{tab:rr2-mutants} gives the full targeted-control boundary.
+
+\paragraph{Designer--executor-separated fault campaign.}
+Table~\ref{tab:r33-fresh-heldout} reports the separately frozen five-pair
+campaign.  Its faults are held out from executor preparation and output
+inspection, not from \method{}'s predicate vocabulary.  Every matched clean
+case passes complete coverage, byte binding,
+full-horizon execution, and exact allocator restoration; every mutant also
+completes and is rejected first by its pre-frozen primary predicate.  Four of
+five preserve the surfaced token sequence.  Of the four pairs with comparable
+call cardinality, three preserve every FP32-logit sidecar byte; the duplicate
+commit intentionally has one extra recorded call.  HF01, HF02, and HF05 also
+preserve terminal logical KV and GDN state.  These are five fixed frozen
+outcomes, not an estimate over a fault population.
+
+The five per-fault rows appear in Appendix
+Table~\ref{tab:r33-fresh-heldout}.
+
+\paragraph{Historical pre-fix regression and repair.}
+A preregistered retrospective study revisits one no-injection integration
+defect encountered before this protocol: borrowed request, persistent-base,
+and unadvanced-peer convolution tensors shared storage that the one-token GDN
+path updated in place.  In Table~\ref{tab:r35-historical-alias}, the pre-fix
+path reaches the expected authenticated binding predicate at all three
+archived coordinates and five additional frozen inputs.  Nevertheless, token,
+complete FP32 logits, terminal request GDN, and logical KV are exact against a
+fresh materialized control in 8/8 cells.  The repaired path privatizes the 30
+convolution states; it is storage-clean and exact to the materialized control
+in 8/8.  A persistent-base content invariant also catches 8/8 historical
+cells, so this case supports earlier owner/layer/family-specific localization
+beyond output and terminal-state differentials, not exclusive detection over
+every conventional invariant.
+
+\input{tables/r35_historical_alias_table.tex}
+
+Same-stack cancellation/reclamation checks match all 16 clean rank--geometry
+cells and reach the expected gate in all 48 preregistered schedule-fault trials
+(Tables~\ref{tab:lifecycle-transfer}--\ref{tab:scheduler-interleave}), extending
+the registered lifecycle through cancel, scrub, reclaim, lease change, and
+replacement under the frozen schedule.
+
+\paragraph{Out-of-process GDN observation.}
+Across two fresh $N=2$ GDN-policy cells and three phases per cell, one
+\texttt{spawn}-created observer per cell imports live tensor views through
+PyTorch CUDA IPC.  The receiver processes derive 1,080 storage descriptors and
+all 96,660 pair relations; frozen replay passes 6/6 phase and 2/2 lifecycle
+verdicts.  Both observer processes differ from the producer process, and the
+worker imports no candidate or model-runtime module and receives no candidate
+rows, verdicts, or live phase/policy/completion labels.  This is
+process-separated PyTorch/CUDA-IPC GDN observation, not OS/driver ground truth
+or independent model execution; the producer still enumerates and semantically
+binds the frozen slots.
+
+\paragraph{Bounded two-stream lifecycle.}
+Two host threads on distinct CUDA streams produce positive full-model-call
+interval overlap both before cancellation ($260.802\,\mathrm{ms}$) and after
+quiescent scrub/reclaim/replacement ($95.439\,\mathrm{ms}$).  All four tokens
+and full-logit samples, 20 terminal KV layer pairs, two 60-tensor GDN
+aggregates, and ownership/lifecycle receipts match the serialized reference.
+This establishes call-interval overlap and one clean quiescent transition, not
+simultaneous kernels or arbitrary in-flight cancellation.
+
+\paragraph{Ownership factors move different memory components.}
+
+At $N=32$, switching full-copy to shared-document KV reduces the final allocated
+delta by $2.672\gib$ with materialized GDN setup and $2.661\gib$ with borrowed
+setup.  Borrowing changes allocation timing, not the shared-KV end state: both
+GDN policies finish at $2.229\gib$.  Appendix Table~\ref{tab:rr2-memory} reports
+the four primary endpoints with their named allocator denominators.
+
+\paragraph{Unpooled Mac motivation context.}
+
+Across five fresh Apple-M4-Pro processes, CoMem BF16/Q8/Q4 share all selected
+top-1 decisions yet agree with vanilla dense on only 71.89\%.  Appendix
+Table~\ref{tab:mac-motivation} is motivation only, not primary or cross-hardware
+evidence~\citep{liu2026comem,liu2026understanding}.
+
+\FloatBarrier
+\subsection{Unpooled same-checkpoint deployment and nearest-work context}
+
+Table~\ref{tab:h20-deployment} places two unpooled end-to-end blocks beside an
+independent retained-state cohort.  All use the same checkpoint, eight
+LongBench items, one H20-3e/item, a 4,096-token cap, and greedy decoding;
+harnesses differ, so timings remain within block.  Full-prefix reuse is fastest
+in our Transformers block; CoMem Q8 records 39.14 F1 at 15.89 MiB and mixed
+Q4/Q8 records 39.01 F1 at 10.01 MiB.  In the separate official SGLang
+block~\citep{liu2026hypic}, Prefix Cache is fastest and HYPIC records 39.63 F1,
+$0.101\,\mathrm{s}$ TTFT, and 17.67 tokens/s; this is a TP=1 adaptation, not its
+published TP=2 reproduction.
+
+\input{tables/h20_deployment_table.tex}
+\FloatBarrier
+
+Independent Store cells retain 139.53 MiB/document for Prefix Cache and 324.09
+MiB for HYPIC, versus CoMem Q8's 15.89 MiB under the target-owned tensor-range
+estimand, which excludes metadata, pools, NVML, and capacity.  These eight
+items are context, not a complete LongBench, robustness, or cross-block speedup
+result.
+
+\paragraph{Further unpooled context.}
+vLLM/SGLang cache controls preserve 8/8 predictions
+(Table~\ref{tab:serving-controls}); bounded Hydragen/Palu transfers cover one
+captured layer family (Table~\ref{tab:related-transfer}), not a leaderboard,
+all-layer result, or combined system.
+
+\section{Discussion and Limitations}
+\label{sec:limitations}
+
+\method{}'s verdicts are conditional on the non-adversarial capture TCB in
+Section~\ref{sec:contract}; the process-separated GDN cohort changes where
+descriptors and relations are derived, not who enumerates slots.  Evidence is
+limited to one Qwen3.5/H20 stack, bounded schedules, captured-boundary
+numerical checks, and Python-scope dispatch.  The two-stream cohort establishes
+call-interval rather than kernel overlap and excludes in-flight cancellation.
+Full synchronous capture and persistence are costly and intended for offline
+debugging or CI.  The nine primary and five designer--executor faults remain
+constructed per-fault controls.  The retrospective case adds one previously
+encountered integration defect, not a natural-bug corpus: three archived and
+five additional frozen-input cells are one mechanism, not independent defect
+samples.  It supports neither recall/prevalence nor false-positive/negative
+rates; a conventional persistent-base invariant also catches this defect.
+Appendix~\ref{app:expanded-limitations} gives the exhaustive boundary, and
+Appendix~\ref{app:reproducibility} gives the manifest-first replay statement.
+
+\section{Conclusion}
+
+\method{} provides fail-closed, replayable hybrid KV/GDN ownership checks
+beyond output equality.  On one fixed Qwen3.5/H20 stack, it validates 96
+ownership configurations, 44 captured-boundary clean rows with 44 rejected
+controls, and process-separated GDN relations.  Five independently frozen
+PDF-only designer--executor pairs have passing controls and frozen-first-predicate
+rejections.  A reproduced historical defect preserves output and terminal state
+while corrupting the persistent base; the owner-binding gate localizes it, and
+the repaired path matches a materialized control in 8/8 cells.  These results
+support conditional trace validity at declared observation points, not
+end-to-end or OS/driver ground truth.
+
+\bibliography{references}
+\bibliographystyle{iclr2026_conference}
+
+\appendix
+
+\section{Reproducibility Statement}
+\label{app:reproducibility}
+
+Manifest-first CPU replay covers the primary-factorial package and named
+replayable supporting cohorts, not every contextual table.  The primary package
+rechecks 536 artifacts, 96 cells, 288 cross-$N$ comparisons, eight attention
+rows, and nine fault pairs.  The target-gate-suppression package rechecks 18
+cases and 24 FP32 sidecars; its disclosed wrapper changes only an inherited
+execution-identifier source and preserves every candidate byte.  The
+out-of-process observer package rechecks six IPC captures, 1,080
+receiver-derived rows, 96,660 relations, both observer PIDs, and all six
+phase/two lifecycle verdicts.  The bounded two-stream replay recomputes four
+full-logit comparisons and both interval overlaps.
+
+The designer--executor-separated package binds the PDF-only author freeze, a
+lifecycle-amended executor, five clean/mutant pairs, detached clean and pair
+replays, and 208 terminal files.  All five clean gates and expected-first
+classifications pass; the pre-injection amendment was frozen before all five
+ranks were rerun in a new output root.
+
+The historical-regression package binds the pre-discovery chronology, frozen
+pre-fix/repair sources, outcome-blind protocol and resource amendment, eight
+three-lane rank artifacts, 24 FP32-logit sidecars, and 24 fresh nonces.  A fresh
+candidate-import-free replay of every rank and the aggregate is byte-identical
+to the archived output.  The earlier invalid attempt supplies chronology only;
+none of its outcomes is imported.
+
+The expanded numerical-sweep package binds 272 sidecars totaling 140,199,936
+bytes and rechecks 20 attention and 24 GDN clean rows plus 44 controls.  HYPIC
+binds 4,404 timing artifacts and
+hash-replays all 16 Store cells.  No package independently re-executes the
+model, enumerates OS/driver allocations, or attests compiled dispatch;
+Appendix~\ref{app:artifact} maps exact artifacts and boundaries.
+
+\section{Ethics Statement}
+
+This work introduces no human-subject data collection and evaluates only
+systems behavior on the PG-19 training split.  It does not assess model safety,
+bias, privacy, or downstream deployment quality.  Memory efficiency can lower
+deployment cost but may also increase the scale of model use; those broader
+effects are outside this controlled systems study.
+
+\section{Protocol Geometry}
+\label{app:protocol-geometry}
+
+\begin{table}[H]
+  \caption{Frozen primary-factorial execution geometry.  The eight ranks
+  provide distinct books and query banks, not repeated stochastic
+  measurements.}
+  \label{tab:protocol}
+  \centering
+  \small
+  \begin{tabular}{@{}p{0.25\linewidth}p{0.65\linewidth}@{}}
+    \toprule
+    Component & Frozen value \\
+    \midrule
+    Model & Qwen3.5-35B-A3B; 10 attention + 30 GDN layers \\
+    Hardware & 8 $\times$ H20-3e; one book/rank \\
+    Software & Python 3.11.13; PyTorch 2.11.0+cu129; Transformers 5.14.1; vLLM 0.26.0+cu129; Triton 3.6.0; CUDA 12.9 \\
+    KV backend & vLLM fused attention; BF16/Q16; page 128 \\
+    Document / query & 4,095 / 32 tokens; PG-19 train only \\
+    Generation & 8 output tokens; 39 state-appended input tokens (32 query + 7 generated-token feedback) \\
+    Resident counts & $1,8,32$; four KV-by-GDN ownership cells \\
+    Primary schedule & all requests resident; batch-one sequential round-major calls on one CUDA stream/rank \\
+    Validation & 96 factor configurations; separate memory/witness cells \\
+    Fault campaigns & $N=2$; the primary all-gates-on campaign has nine live mutants with rebuilt controls; the target-gate-suppression campaign has nine fresh clean plus nine suppressed-gate cases on 8 H20s; the designer--executor-separated campaign has five new clean/mutant pairs on 5 H20s \\
+    Historical regression & one previously encountered one-token alias defect; 8 ranks $\times$ 3 fresh $N=2$ lanes; 3 archived-coordinate reproductions + 5 additional frozen inputs; no mutation \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begingroup
+\footnotesize
+\setlength{\LTpre}{0pt}
+\setlength{\LTpost}{0pt}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.32\linewidth}>{\raggedright\arraybackslash}p{0.39\linewidth}@{}}
+  \caption{Cohort-to-claim authorization.  Cohorts are never pooled; each row
+  supports only the listed inference.}
+  \label{tab:cohorts}\\
+  \toprule
+  Cohort & Frozen scope & Authorized claim / explicit exclusion \\
+  \midrule
+  \endfirsthead
+  \multicolumn{3}{c}{\textit{Table~\ref{tab:cohorts} continued.}}\\
+  \toprule
+  Cohort & Frozen scope & Authorized claim / explicit exclusion \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{3}{r}{\textit{Continued on next page}}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+  Primary ownership factorial & 8 books; $N=1,8,32$; four KV$\times$GDN cells; 8 decode steps & ownership lifecycle, cross-cell equivalence, selected attention oracle, live-mutant sensitivity, and four-cell allocator endpoints; not transfer or scheduler evidence \\
+  Fresh-process control & one independent $N=2$ process; one clean path and M1 & input reconstruction, cleanup, and one intended-gate reproduction; not pooled with the factorial \\
+  Lifecycle transfer & 8 books; aligned 4,096-token prefix; $N=4$; two cancelled slots & exact outputs/state, zero-scrub, exact reuse, and stale-lease rejection on the same adapter; not scheduler, concurrency, or performance evidence \\
+  Scheduler interleave & 8 books; $N=4$; page/prefix/tail geometries 64/3,985/17 and 128/4,033/65; cancel slot 3 after round 2 & deterministic request-step interleaving, zero-scrub, epoch change, exact reuse, uninterrupted-control equality, and three frozen scheduler-fault gates; not concurrent kernels, continuous-batching performance, detection rate, or production end-to-end correctness \\
+  Out-of-process GDN observer & one H20; fixed 4,095-token document and 32-token registered transition; two fresh $N=2$ shared-KV cells (shared-base/materialized GDN); three phases/cell; one spawn-created observer per cell & 1,080 receiver-derived descriptors and 96,660 pair relations; 6/6 phase and 2/2 lifecycle verdicts pass; no live candidate rows/verdicts or phase/policy/completion labels; producer slot enumeration and PyTorch/CUDA IPC remain trusted; not OS/driver ground truth, independent model execution, KV capture, kernel attestation, transient-write exclusion, or cross-stack evidence \\
+  Bounded two-stream lifecycle & one H20; one 4,033-token document; two 16-token query requests at $N=2$; two host threads and distinct CUDA streams; pre-cancel and post-reclaim phases; cancellation after synchronization & positive call-interval overlap plus exact four lifecycle outputs, 20 logical-KV layer pairs, two GDN slot aggregates, ownership, scrub, and reuse; not simultaneous kernels, native continuous batching, in-flight cancellation, production scheduling, or performance \\
+  GDN transition oracle & 1 frozen book/window; layers 0, 10, 20, 38; 4 query tokens & clean recurrence outputs/states and four seeded wrong-transition rejections conditional on post-normalization inputs; not all GDN layers or end-to-end semantics \\
+  Expanded captured-boundary numerical sweep & 2 distinct PG-19 inputs; all 10 attention layers and 12 of 30 GDN layers; 20 attention and 24 GDN clean rows plus one seeded control/row & captured-boundary numerical agreement and rejection of all 44 seeded wrong operators; not upstream-activation, independent-capture, full-model, or end-to-end validation \\
+  Target-gate suppression matrix & 9 fresh clean + 9 target-suppressed cases; same fixed model/data/$N=2$; 8 distinct H20s & per-fault comparison with redundant audit gates, exact allowlisted production assertions, and token/FP32-logit equality; M8's injected sentinel is not a detector; not a blind-fault study or rate \\
+  Designer--executor-separated faults & separate designer reads only the prior PDF; 5 new frozen $N=2$ clean/mutant pairs; 5 H20s; all gates enabled & all 5 clean gates pass and all 5 mutants fail first at their frozen primary predicate; per-fault sensitivity only, not a detection rate, natural-defect study, or cross-stack evidence \\
+  Historical alias regression & one pre-discovery integration defect; 3 archived coordinates + 5 additional frozen inputs; fresh pre-fix, repaired, and materialized $N=2$ one-token lanes; 8 H20s & pre-fix binding gate and base violation with output/terminal-state equality, plus storage-clean exact repair; one retrospective defect only, not prevalence, recall, statistical replication, or cross-stack evidence \\
+  Mac common-mode control & Apple M4 Pro; six documents/queries; five fresh MLX processes; vanilla dense plus CoMem BF16/Q8/Q4 at depth 7 & separates split-family agreement from agreement with vanilla dense; motivation only and separate from the H20 case \\
+  H20 deployment context & 8 LongBench validation workloads; vanilla dense, full-prefix KV reuse, and CoMem Q8/Q4/mixed variants (six configurations total) with 3 timing repeats & same-stack reusable-state, TTFT, TPOT, tokens/s, and mean F1 comparison; not pooled with the primary factorial and not scheduler/continuous-batching evidence \\
+  Matched serving controls & 8 LongBench validation workloads; vLLM 0.26 and SGLang 0.5.17 cache off/on plus 24 fixed-configuration HYPIC timing/quality cells; one H20-3e per workload & within-block cache-hit, quality, and client-wall timing context; not pooled with in-process CoMem timings, not a cross-framework leaderboard, and not continuous-batching evidence \\
+  HYPIC retained-state receipts & 8 Prefix Cache + 8 HYPIC cells on the same fixed TP=1 model/slice; receipt-instrumented SGLang lifecycle & median target-entry-owned physical tensor payload only; not timing, NVML/process memory, capacity, continuous batching, or ForkAudit ownership evidence \\
+  Related-work operator transfer & Hydragen at $N=8/32$ on one captured layer-3 attention family; Palu on one layer with 8 calibration and 1 held-out PG19 row & same-checkpoint numerical and logical-state trade-offs only; not an all-layer implementation, LongBench/quality result, speedup claim, or jointly optimized system \\
+\end{longtable}
+\endgroup
+
+\begin{table}[H]
+  \caption{Trace coverage and replay verdict for the seven contract targets in
+  the frozen case.  Equality denotes canonical byte-digest identity as
+  recorded.  Overall trace coverage remains partial because dispatch lacks a
+  per-call compiled-binary and autotuning-choice binding.  A passing primary
+  target verdict is conditional on the primary capture producer and target boundary in
+  Section~\ref{sec:contract}; the separate out-of-process GDN cohort is
+  supporting evidence and does not independently execute the model or upgrade
+  these seven targets to comprehensive system correctness.}
+  \label{tab:witness}
+  \centering
+  \scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.14\linewidth}p{0.11\linewidth}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}@{}}
+    \toprule
+    Target & Trace coverage & Replay verdict & Decisive witness & Boundary \\
+    \midrule
+    Frozen identity & complete & pass & identical preflight/terminal source ledgers, terminal model rehash, and stable data/query/protocol/execution bindings & one validated formal run; not independent producer recapture \\
+    Prefix immutability & complete & pass & physical document-KV digests and GDN base guards across all three phases & one frozen configuration/geometry \\
+    Private ownership & complete & pass & all-pairs request--base and request--peer range replay at the primary registered 32-token transition & pointer-free conservative intervals \\
+    Tail-safe append & complete & pass & one-time 127-token private-tail copy before append & one partial-tail geometry \\
+    Dispatch provenance & partial & pass at Python scope & Python callable, query/position/mask/append/scale receipts; four compiled cache artifacts bound & no per-call compiled-binary or explicit autotuning-choice binding \\
+    Cross-arm equivalence & complete & pass & tokens, shape/dtype-bound CPU-FP32 logit digests, logical KV, and GDN & one primary sequential schedule \\
+    Cross-$N$ consistency & complete & pass & 288 all-arm adjacent-fan-out comparisons over 72 rank--query identities & relational, not an independent oracle \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Selected attention and GDN numerical oracles, the nine targeted live faults,
+the lifecycle/scheduler extensions, the out-of-process GDN and bounded
+two-stream cohorts, the five PDF-only designer--executor-separated faults, and
+the one historical-regression reproduction are supporting
+checks rather than additional contract
+targets.  Their captured-input, same-adapter, process-separated-but-shared-IPC,
+and schedule boundaries are reported separately.
+
+\section{Pointer-Free Storage Witness Schema}
+\label{app:storage-schema}
+
+\paragraph{Target-to-record dependencies.}
+The following matrix is normative.  I, L, E, and F denote the Identity,
+Lifecycle, Execution, and Target/fault classes in Table~\ref{tab:normative-records};
+parenthesized entries name mandatory fields.  Missing any marked field makes
+that target open.  A preregistered geometry may make tail safety not applicable;
+the absence of a compiled-binary fingerprint leaves dispatch partial rather
+than silently full.  A missing F field invalidates the corresponding fault row,
+but does not change the separately evaluated seven-target witness.
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}p{0.13\linewidth}p{0.17\linewidth}p{0.17\linewidth}p{0.20\linewidth}p{0.08\linewidth}p{0.14\linewidth}@{}}
+\toprule
+Target & I & L & E & F & Blind predicate \\
+\midrule
+Frozen identity & code, model, data, protocol; role map & --- & --- & N/A & exact bytes and complete roles \\
+Prefix immutability & document/base roles; start digests & setup and final guards & canonical content digests & N/A & start $=$ final \\
+Private ownership & request/base/private roles & setup, registered-transition, final bindings & normalized storage ranges & N/A & non-vacuous all-pairs disjointness \\
+Tail-safe append & page geometry; document/private roles & first append event & ordered append and copied-tail receipt & N/A & one private copy before write \\
+Dispatch provenance & callable and protocol identity & --- & ordered call, query, mask, position, append, scale & N/A & schedule and callable equality; no fallback \\
+Cross-arm equivalence & factor, query, and schedule identities & final bindings & token, logit, logical-KV, GDN records & N/A & canonical semantic equality \\
+Cross-$N$ consistency & query and fan-out identities & --- & the same canonical semantic records & N/A & smallest-$N$ equals each larger $N$ \\
+Fault sensitivity (supporting) & frozen target/gate map & matched-control rebuild and cleanup & injected outcome and failed predicates & required & target, injection, expected gate, outcome \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each tensor-view row has the exact fields
+\texttt{storage\_id}, \texttt{shape}, \texttt{stride},
+\texttt{storage\_offset}, \texttt{dtype}, \texttt{device},
+\texttt{storage\_nbytes}, \texttt{tensor\_nbytes}, and
+\texttt{content\_sha256}; absolute addresses are forbidden.  Within each
+phase, the producer assigns \texttt{storage-0000}, \texttt{storage-0001},
+and so on in first-observation order to backing storages.  Reusing an ID with
+a different device or storage size is invalid.  Phase capture IDs are unique,
+whereas request and persistent lifecycle-guard IDs must remain stable across
+setup, the registered transition, and final generation.
+
+Let element size be $e$, storage offset $o$, shape $s_i$, and stride $t_i$.
+The independent replay initializes $m=M=o$ and, for every dimension, computes
+\begin{equation}
+  d_i=(s_i-1)t_i,\qquad
+  m\mathrel{+}=\min(d_i,0),\qquad
+  M\mathrel{+}=\max(d_i,0).
+\end{equation}
+The conservative half-open byte interval is
+\begin{equation}
+  I=[em,\,e(M+1)),
+\end{equation}
+which must be non-negative and contained in \texttt{storage\_nbytes}; also
+\texttt{tensor\_nbytes}$=e\prod_i s_i$.  Two rows overlap iff their normalized
+storage IDs match and $I_a^{\mathrm{start}}<I_b^{\mathrm{end}}$ and
+$I_b^{\mathrm{start}}<I_a^{\mathrm{end}}$.  Exact aliasing additionally
+requires equality of interval, geometry, dtype/device, storage and tensor
+sizes, and content digest.  This bounding interval can conservatively flag an
+exotic interleaved view, but it cannot miss a shared byte.
+
+At setup, every recurrent-state coordinate must either exactly alias the
+persistent state (borrowed-base arm) or be disjoint from it (materialized
+arm).  At the primary registered 32-token transition boundary, a completed
+request's 60 mutable rows must be disjoint from the base and every peer;
+incomplete borrowed requests must
+remain exact aliases.  At final, all request-local GDN states must be disjoint
+from the persistent GDN base and every peer; document KV remains intentionally
+shared.
+Independent binding-token receipts additionally require unchanged tokens for
+incomplete requests and changed binding/storage tokens for completed requests.
+The package applies this schema to all 96 timelines and 288 phase artifacts;
+nine adversarial tests cover exact aliasing, partial overlap, adjacent
+intervals, negative strides, conflicting ID reuse, pointer injection,
+capture/guard reuse, and cross-coordinate request--base and request--peer
+aliasing.
+
+\section{Executed Fault Rows and Invariant Map}
+\label{app:invariants}
+
+The row-level campaign is kept out of the main paper because it supports
+diagnosis and audit coverage rather than a separate headline result.
+Separately, the CPU governance suite passes 17 tests and rejects 28 explicit
+serialized-artifact tamper cases plus its registered helper/launcher faults.
+That result concerns schema and orchestration fail-closure only; it is not GPU
+semantic or performance evidence.
+\input{tables/rr2_mutant_table.tex}
+
+\paragraph{Designer--executor-separated fault detail.}
+The five fixed per-fault outcomes summarized in the main text are shown below;
+they remain constructed controls rather than a defect-population sample.
+\input{tables/r33_fresh_heldout_table.tex}
+
+\begin{table}[H]
+\caption{Representative failures each target is designed to expose.  These are
+the nine executed primary-factorial live mutants; the checks are not complete oracles.}
+\centering\small
+\begin{tabular}{@{}p{0.23\linewidth}p{0.66\linewidth}@{}}
+\toprule
+Target & Intended sensitivity and observed boundary \\
+\midrule
+Frozen identity & wrong model/data/query bank, changed protocol, stale shard (schema adversaries)\\
+Prefix immutability & M3 omits partial-tail COW; physical document digest and ownership gates fail\\
+Private ownership & M1 reservation alias, M4 request--base GDN alias, M5 request--peer GDN alias\\
+Sequence/view binding & M2 sequence swap and M9 dense-KV replacement\\
+Dispatch provenance & M6 position offset, M7 materialized mask, M8 wrong callable\\
+Factorial exactness & behavior changes when either KV or GDN setup ownership changes\\
+Bounded numerical oracle & numerical error in a selected fused full-attention result\\
+Raw replay & internally inconsistent trajectory, storage, allocator, or aggregate fields\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The primary all-gates-on execution is a first-gate localization study.  Every registered gate
+fires before the injected path produces a post-injection token, logit,
+logical-KV digest, or GDN digest; its output cells are therefore N/O rather
+than misses.
+Lifecycle/ownership/storage receipts supply the first gate for M1 and M3--M5;
+request-binding/call receipts supply it for M2 and M6--M9.  The full audit
+rejects all nine at their predeclared gates under passing matched controls.
+The separate target-gate-suppression matrix then suppresses one named gate per mutant while leaving
+the remaining observers active.  It provides the per-fault comparison in
+Table~\ref{tab:first-gate-localization}, but does not estimate a population
+rate, held-out-fault coverage, or false-positive rate.
+
+\section{Relation to Prior Work by Audit Obligation}
+\label{app:novelty-boundary}
+
+\begin{table}[H]
+  \caption{Primary-source positioning.  ``Evidence focus'' describes what the
+  cited work evaluates; it is not a claim that the work lacks all other checks.}
+  \label{tab:closest}
+  \centering
+  \footnotesize
+  \begin{tabular}{@{}p{0.16\linewidth}p{0.28\linewidth}p{0.43\linewidth}@{}}
+    \toprule
+    Work & Primary mechanism & Evidence focus / relation to \method{} \\
+    \midrule
+    PagedAttention & Paged KV allocation and sharing~\citep{kwon2023pagedattention} & Serving throughput and memory utilization; supplies the block-sharing substrate. \\
+    SGLang / Prompt Cache & Prefix reuse in structured or modular prompts~\citep{zheng2024sglang,gim2024promptcache} & Runtime performance and output behavior; establish reuse and positional handling as prior art. \\
+    CoMem & One persistent residual per token at split $j$; bounded selection; suffix replay~\citep{liu2026comem,liu2026understanding} & Motivates the reusable document object; the bounded deployment table supplies same-stack context, while the contribution here remains the hybrid-state ownership audit. \\
+    Marconi & Admission and eviction for hybrid-model prefixes~\citep{pan2025marconi} & Hybrid cache hit rate and time to first token; closest state-heterogeneous caching system, but a different policy-level contribution. \\
+    SCBench & Lifecycle-oriented KV-cache benchmark~\citep{li2025scbench} & Breadth over tasks and cache phases; exposes breadth absent from our single reference case. \\
+    MT-DLComp / CRADLE & Metamorphic compiler testing and cross-backend differential checking~\citep{xiao2022metamorphic,pham2019cradle} & Direct testing precedents; our audit adds ownership witnesses and a layerwise dense oracle, but not an independent end-to-end backend. \\
+    DNNMem & Component-wise GPU-memory accounting~\citep{gao2020dnnmem} & Supports denominator separation; it is an estimator, not a request-ownership audit. \\
+    \method{} & Typed, phase-indexed ownership/call/accounting trace with explicit coverage semantics & Integrates a mutation-tested KV-by-GDN ownership factorial, captured-boundary attention/GDN numerical sweeps, same-adapter lifecycle/scheduler-contract checks, and bounded out-of-process GDN storage observation; no new cache policy, production scheduler, OS/driver allocation monitor, independent model execution, or end-to-end oracle. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+\caption{Closest established precedent for each audit obligation.  The final
+column states the narrower integration contributed by \method{}; it does not
+claim that any individual mechanism is new.}
+\centering\scriptsize
+\begin{tabular}{@{}p{0.18\linewidth}p{0.31\linewidth}p{0.42\linewidth}@{}}
+\toprule
+Audit obligation & Closest established precedent & Integrated obligation in this work \\
+\midrule
+Frozen identity & Controlled variants in metamorphic and differential testing~\citep{chen2018metamorphic,xiao2022metamorphic,pham2019cradle} & Bind model, data, query bank, callable contract, and protocol bytes to every ownership receipt. \\
+Document immutability and tail COW & PagedAttention block sharing and copy-on-write for shared prefixes~\citep{kwon2023pagedattention} & Replay physical document pages, padding, active tables, and the partial-tail detach event. \\
+Recurrent-state ownership & Hybrid recurrent states and their in-place update constraint~\citep{yang2025gateddeltanet,pan2025marconi} & Witness request--base and request--peer ranges before and after the frozen schedule's registered transition boundary. \\
+Dispatch provenance & Cross-backend differential checking exposes implementation-dependent behavior~\citep{pham2019cradle} & Hold the backend fixed and record callable, position values, mask, scale, and append history per call. \\
+Cross-arm and cross-$N$ relations & Metamorphic relations over semantics-preserving transformations~\citep{chen2018metamorphic,xiao2022metamorphic} & Treat ownership policy and resident fan-out as transformations that must preserve registered request observables. \\
+Bounded numerical oracle & Independent backend comparison~\citep{pham2019cradle} & Reconstruct selected attention inputs for dense IEEE-FP32 math and selected post-normalization GDN inputs for a candidate-import-free NumPy recurrence. \\
+Memory denominators & Component-wise GPU-memory accounting~\citep{gao2020dnnmem} & Keep page geometry, allocator current/peak, and unmeasured process/service capacity as separate claim domains. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Supporting Control Experiments}
+\label{app:controls}
+
+\paragraph{Mac common-mode motivation.}
+The archival Apple-M4-Pro control is kept unpooled from the H20 experiments and
+serves only to show why split-family agreement does not replace a dense or
+independently implemented oracle.
+\input{tables/mac_m4_motivation_table.tex}
+
+\paragraph{Published systems context.}
+Table~\ref{tab:published-context} reports each cited system only in its native
+protocol and keeps all non-commensurate metrics outside our matched panels.
+This unpooled table is literature context, not ForkAudit evidence.
+\input{tables/related_work_reported_context.tex}
+
+\paragraph{Same-checkpoint transfer detail.}
+Table~\ref{tab:related-transfer} is the matched complement to the published
+context table: it uses our frozen Qwen3.5 checkpoint and H20-3e, binds the
+official Hydragen and Palu source revisions, and independently replays all raw
+operator sidecars.  Because it does not execute all layers or LongBench, it is
+kept separate from Table~\ref{tab:h20-deployment}.
+\input{tables/related_work_transfer_table.tex}
+
+\paragraph{Matched serving-framework and HYPIC context.}
+Table~\ref{tab:serving-controls} gives separately timed vLLM and SGLang
+cache-off/on controls plus the official-code HYPIC Full Recompute, Prefix
+Cache, and full HYPIC arms under the shared Qwen3.5 streaming boundary.  It
+remains a timing/quality-only panel and authorizes only within-framework
+interpretation; the separate 16-cell retained-state receipt cohort appears in
+Table~\ref{tab:h20-deployment}.
+vLLM and SGLang each record 8/8 prefix hits and preserve 8/8 cache-off
+predictions.  Within its TP=1 block, HYPIC gives 39.63, 0.101 s, and 17.67
+tokens/s; published Qwen3.5 panels use TP=2, so this is an adaptation.  Its 24
+timing cells bind a 4,404-entry terminal artifact ledger.  Across the
+16 retained-state cells, Prefix Cache retains a median 139.53 MiB and HYPIC
+retains 324.09 MiB; CoMem Q8 is $8.78\times$ and $20.39\times$ smaller,
+respectively, under the separate Store estimand.  This remains single-stream;
+it does not measure continuous batching.
+\input{tables/related_serving_table.tex}
+
+\paragraph{Hybrid-prefix policy context.}
+The separate preregistered Marconi trace extends the eight frozen workloads
+with a fixed synthetic follow-up turn and evaluates only prefix-policy token
+reuse under the artifact's native Attention--Mamba2 geometry.  It neither
+reruns LongBench quality nor supplies Qwen3.5 serving speed, so it is not
+pooled with the preceding panel or the primary audit.
+\input{tables/marconi_policy_table.tex}
+
+\begin{table}[H]
+  \caption{Normative record classes.  ``Mandatory'' means that absence makes
+  the corresponding target open rather than silently not applicable.}
+  \label{tab:normative-records}
+  \centering\footnotesize
+  \begin{tabular}{@{}p{0.14\linewidth}p{0.51\linewidth}p{0.26\linewidth}@{}}
+    \toprule
+    Record class & Mandatory payload & Independent replay \tabularnewline
+    \midrule
+    Identity & frozen code, model, data, protocol, and object-to-role map & exact bytes and role coverage \\
+    Lifecycle & setup, registered-transition, and final inventories and bindings & normalized ranges, aliases, and disjointness \\
+    Execution & ordered call/append receipts, semantic records, named allocator snapshots & frozen schedule, digests, and phase equations \\
+    Target/fault & predeclared target, gate, matched control, injection, and outcome & failed-predicate set and classified outcome \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Primary allocator endpoints.}
+Table~\ref{tab:rr2-memory} keeps the four ownership cells and their allocator
+denominators together under the primary 8-rank cohort.
+\input{tables/rr2_memory_table.tex}
+
+\paragraph{Aligned cancellation and reclamation lifecycle.}
+The separate lifecycle-transfer cohort uses eight ranks, eight distinct PG-19
+training books, an aligned 4,096-token prefix, and $N=4$.  It is not pooled
+with the primary factorial.
+
+\begin{table}[H]
+\caption{Lifecycle-transfer obligations on the existing Qwen3.5/vLLM Q16
+adapter.  Counts are deterministic rank outcomes, not stochastic replicates.}
+\label{tab:lifecycle-transfer}
+\centering\small
+\begin{tabular}{@{}p{0.55\linewidth}p{0.30\linewidth}@{}}
+\toprule
+Obligation & Result \\
+\midrule
+Frozen static/code/model/weight/raw bindings & pass; 14/14 weights, 8/8 shards \\
+Full-vocabulary logits and generated tokens vs. uninterrupted control & exact, 8/8 \\
+Final logical KV and final GDN state & exact, 8/8 \\
+Aligned prefix, immutable document, and zero partial-tail copy & pass, 8/8 \\
+Cancelled-slot zero-scrub and exact reservation reassignment & pass, 8/8 \\
+Stale epoch-0 rejection and matched epoch-1 acceptance & 8/8; 0 escapes, 0 wrong gates \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Scheduler-managed request-step interleaving.}
+The separate formal extension keeps four requests resident, cancels slot 3
+after its second round, zero-scrubs and increments its lease epoch, reassigns
+the exact reservation, and completes the replacement interleaved with the
+three survivors.  It is not pooled with the primary factorial or the aligned
+lifecycle-transfer cohort.
+
+\begin{table}[H]
+\caption{Formal scheduler-managed request-step interleaving on the frozen
+Qwen3.5/ForkAudit vLLM-Q16 stack.  Clean counts are deterministic rank outcomes;
+fault counts are preregistered expected-gate outcomes, not a detection rate.}
+\label{tab:scheduler-interleave}
+\centering\small
+\begin{tabular}{@{}p{0.20\linewidth}p{0.40\linewidth}p{0.29\linewidth}@{}}
+\toprule
+Case & Frozen geometry or intervention & Outcome \\
+\midrule
+Clean geometry 1 & page 64; 3,985-token prefix; 17-token document tail; 18-event cancel/replacement lifecycle & all semantic/storage gates and uninterrupted-control comparisons pass, 8/8 \\
+Clean geometry 2 & page 128; 4,033-token prefix; 65-token document tail; same lifecycle & all semantic/storage gates and uninterrupted-control comparisons pass, 8/8 \\
+FH1 & dispatch cancelled epoch-0 lease & \path{STALE_SLOT_LEASE}, 16/16 \\
+FH2 & dispatch lease under another request & \path{LEASE_REQUEST_MISMATCH}, 16/16 \\
+FH3 & reclaim before zero scrub & \path{RECLAIM_NOT_ZERO}, 16/16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Candidate-import-free GDN transition oracle.}
+The oracle uses one frozen PG-19 window and four query-time layer transitions
+at layers 0, 10, 20, and 38.  A single preregistration frozen before the
+successful run binds the post-native-q/k-normalization boundary, scale
+$1/\sqrt{128}$, tolerances, and seeded faults.  Its NumPy reference starts at
+that captured boundary; no candidate module is imported by the reference.
+
+\begin{table}[H]
+\caption{PDF-visible oracle selection and replay boundary.  Every listed row
+was locked before its successful candidate execution; neither oracle validates
+upstream activation construction or end-to-end model behavior.}
+\label{tab:oracle-selection}
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.13\linewidth}p{0.29\linewidth}p{0.20\linewidth}p{0.14\linewidth}p{0.15\linewidth}@{}}
+\toprule
+Oracle & Frozen rows / selection rule & Captured boundary & Decision rule & Replay availability \\
+\midrule
+Attention & rank $r$ uses layer $4r+3$ and round $r$, for
+$r\in\{0,\ldots,7\}$; request 0, $N=1$, shared-document KV + borrowed GDN;
+frozen rank/layer/round map
+& post-RoPE Q/K/V, positions, mask, scale, and ordered append shadows
+& dense CPU-FP32 rel. $L_2\leq0.005$
+& 8 raw rows and numerical sidecars; primary-package one-command replay \\
+GDN & layers $0,10,20,38$; four query tokens from one frozen PG-19 window
+& post-native-q/k-normalization recurrence; scale $1/\sqrt{128}$
+& output rel. $L_2\leq0.005$; state rel. $L_2\leq10^{-4}$; seeded fault must reject
+& 4 clean + 4 fault decisions from 40 sidecars; separate one-command replay \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\caption{Bounded GDN recurrence oracle.  Relative errors compare native outputs
+and final states with the candidate-import-free NumPy FP32 recurrence.}
+\label{tab:gdn-oracle}
+\centering\small
+\begin{tabular}{@{}rrrrll@{}}
+\toprule
+Layer & Output rel. $L_2$ & State rel. $L_2$ & Clean & Seeded fault & Rejected \\
+\midrule
+0  & 0.001584 & $1.23\times10^{-7}$ & yes & omit decay & yes \\
+10 & 0.001652 & $1.36\times10^{-7}$ & yes & complement $\beta$ & yes \\
+20 & 0.001572 & $1.39\times10^{-7}$ & yes & pre-decay memory & yes \\
+38 & 0.001638 & $1.30\times10^{-7}$ & yes & roll value heads & yes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\caption{Preregistered expanded captured-boundary numerical sweep.  Clean rows use
+candidate-import-free CPU/NumPy FP32 replay; every clean row has one seeded
+wrong-operator control.  Attention begins after RoPE and GDN begins after
+native q/k normalization, so the table does not validate upstream activation
+construction, independent capture, or end-to-end model behavior.}
+\label{tab:r30-expanded-oracle}
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Operator & Inputs & Layers & Clean rows & Positions / transitions & Max output rel. $L_2$ & Controls rejected \\
+\midrule
+Attention & 2 & 10/10 & 20/20 & 160 positions & 0.001897 & 20/20 \\
+GDN & 2 & 12/30 & 24/24 & 192 transitions & 0.002073\;($2.08\times10^{-7}$ state) & 24/24 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Full target-gate-suppression matrix.}
+The preregistered target-gate-suppression execution contains all M1--M9 faults and a fresh matched
+clean path for each.  Across eight distinct H20s, all 18 cases complete their
+declared horizon or an allowed classified stop, all 24 FP32 sidecars verify,
+and no case is operationally invalid.  Five mutant paths complete semantics:
+token equality catches 0/5, exact logits catch M5 only
+($L_\infty=0.75$, relative $L_2=0.0314$), and M1/M2/M6/M7 leave both exact.
+M3/M4 reach other audit gates; M9 reaches the paired-view production assertion;
+M8 reaches the exact injected payload sentinel, which is not a production
+detector.  The frozen aggregator initially read the inherited execution identifier from a
+detached-manifest field that the manifest schema omits.  A disclosed
+postexecution wrapper derives that identifier from the canonical receipt embedded in
+all eight manifest-bound primary-package shards, changes only the generated comparison-row
+\texttt{run\_id} from null to the preregistered value, and reproduces the
+summary byte-for-byte without modifying candidate outputs or frozen sources.
+
+\section{Expanded Limitations and Claim Boundary}
+\label{app:expanded-limitations}
+
+The primary factorial covers one model, one H20 hardware family, one page
+size, 16-bit KV, and $N\leq32$.  Its ownership conclusion is tied to one
+4,095-token partial-tail geometry, a registered 32-token continuation block,
+and the subsequent frozen sequential schedule; it is not a claim about an
+arbitrary first token or transition length.  The lifecycle cohort adds one
+aligned 4,096-token geometry and a fixed cancel/scrub/reclaim sequence.  The
+scheduler-interleave extension adds two geometries and deterministic
+request-step interleaving, but those requests execute sequentially on one CUDA
+stream.
+
+The separate two-stream cohort has two host workers and distinct CUDA streams
+with positive full-model-call interval overlap.  Its intervals include
+queuing, resource waits, and host-enqueue gaps; there is no per-kernel overlap
+trace.  Cancellation occurs only after synchronization, so the cohort does not
+test arbitrary or in-flight reclamation.  The out-of-process GDN observer
+removes same-process reconstruction and live judgment labels, but the producer
+still enumerates and semantically binds the frozen slots; both sides trust
+PyTorch tensor/storage and CUDA-IPC semantics, and mutation is paused for each
+snapshot.  It does not supply OS/driver allocation ground truth, independent
+model execution, KV/kernel attestation, or protection against a transient
+write followed by restoration.
+
+No cohort evaluates native continuous/ragged batching, eviction,
+multi-document serving, general scheduler cancellation, process-level NVML
+memory, OOM capacity, or a broad downstream benchmark.  Full-copy KV and
+materialized GDN bases are controlled ownership factors rather than optimized
+production baselines.  The GDN path is the Transformers Torch implementation,
+not an optimized recurrent kernel.  The compiled-cache ledger does not bind
+each call to a selected binary or expose an explicit autotuning artifact.
+
+The auxiliary serving panel uses one request stream per engine and compares
+each cache-enabled framework only with its own disabled reference.  It does not
+measure continuous batching, eviction, admission control, maximum concurrency,
+or best-tuned performance.  CUDA graphs were disabled in both pinned runs; the
+reported values describe that fixed configuration only.
+
+The HYPIC timing/quality comparison uses the authors' exact tracked commit on
+SGLang 0.5.14 in one fixed CUDA 12.9 / PyTorch 2.11 configuration, adapting
+Qwen3.5 execution from the paper's TP=2 to TP=1 so every arm uses one H20-3e per
+workload.  Cache-hit authority comes from OpenAI response usage.  Each of its 24
+timing/quality cells has one formal measurement after a discarded,
+prefix-disjoint warmup.  A separate receipt-instrumented run uses the same
+model/slice and fixed TP=1 serving configuration to produce 8 Prefix Cache and
+8 HYPIC retained-state cells; each completed cell binds raw output plus
+pre-measurement and terminal ownership receipts, and all 16 pass an external
+hash-bound replay.  The instrumentation adds target-entry byte-range receipts
+and a lifecycle-idempotency overlay; Store therefore does not come from the
+unmodified timing run.  Neither cohort establishes scheduler throughput, QPS,
+capacity, the paper's TP=2 latency, or accuracy robustness beyond this
+eight-item slice.
+
+The same-checkpoint related-work transfer is likewise operator-bounded:
+Hydragen uses one captured layer-3 shared-prefix attention family, and Palu
+uses one layer with eight calibration rows and one held-out row.  Neither
+executes all model layers, a fused Palu kernel, LongBench, or a jointly
+optimized Hydragen/Palu-plus-CoMem serving path.
+
+The page equations are deterministic identities, not learned laws; there is
+one observation per rank--configuration cell and no stochastic replication.
+Most runtime tensors are represented by hashes and equality receipts rather
+than archived in full.  The attention and GDN oracle rows are the exception
+and ship numerical sidecars, but cover only selected captured-input operator
+boundaries rather than an end-to-end model.  The expanded numerical sweep covers two
+short inputs, all ten attention layers, and 12 of 30 GDN layers; it does not
+establish length/input robustness or full recurrent-layer coverage.  Both the
+original and expanded GDN runs start after native q/k normalization and
+therefore do not validate that upstream boundary.  Pointer-free normalized
+intervals plus raw-byte hashes make the primary captured storage evidence
+replayable.  The out-of-process observer reconstructs receiver-visible GDN descriptors and relations
+in another process, but still trusts producer-side slot selection and the IPC
+substrate; neither constitutes protection against a malicious producer before
+capture.  The nine mutants are targeted
+positive controls; the target-suppression matrix adds a same-system comparison
+for those same designed faults, not blind or naturally occurring defects.
+Four complete with unchanged measured tokens and exact logits, one changes only full logits,
+and four stop earlier; N/O cells are not misses, while the injected M8 sentinel
+is not a production detector.  This is not a general detection rate, a
+blind-fault result, or superiority over every conventional test suite.  The scheduler
+extension's three frozen faults are expected-gate outcomes, not a detection
+rate or evidence of fault-set completeness.  Broader systems claims would
+additionally require a native production serving scheduler, per-kernel overlap
+evidence, in-flight cancellation tests, optimized controls,
+alignment/length/input sweeps, and process-level capacity accounting.
+
+The five additional designer--executor-separated faults are genuinely fresh relative to the
+disclosed PDF fault list and were fixed before executor preparation, but they
+remain deliberately constructed, fixed-stack mutations.  Passing all five does
+not estimate unseen-fault recall, false-positive rate, or robustness to arbitrary
+runtime, model, schedule, or adversarial capture defects.
+
+The retrospective case study concerns one organically encountered integration
+defect in our borrowed-state path.  Only ranks 0--2 reproduce its archived
+input coordinates; ranks 3--7 are additional frozen inputs, and none is a
+statistically independent defect.  The study does not estimate natural-defect
+prevalence or recall.  Output and terminal-state differentials miss the alias,
+while a persistent-base content invariant catches it; \method{} contributes
+authenticated transition-time owner/layer/family localization rather than
+exclusive detection over all conventional testing.
+
+\section{Artifact and Claim Map}
+\label{app:artifact}
+
+\paragraph{Artifact footprint.}
+The source-complete primary package, derived summaries, raw ledgers, and expanded
+numerical sidecars are content-bound and locally replayable.  The table below
+maps each manuscript claim to its machine-readable source and validation
+boundary; supporting measurements not used by a manuscript claim remain in
+the internal experiment registry.
+
+\begingroup
+\footnotesize
+\setlength{\LTpre}{0.5\baselineskip}
+\setlength{\LTpost}{0pt}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.64\linewidth}@{}}
+\caption{Artifact and claim map.  Relative paths are rooted at the accompanying
+research package.  Completed rows authorize only their stated bounded claims.
+Metadata-redacted derivatives preserve numerical fields and state digests,
+while most full tensors still require the pinned environment for independent
+numerical recomputation.}
+\label{tab:artifact-map}\\
+\toprule
+Claim/evidence & Machine-readable source \\
+\midrule
+\endfirsthead
+\multicolumn{2}{c}{\textit{Table~\ref{tab:artifact-map} continued.}}\\
+\toprule
+Claim/evidence & Machine-readable source \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r}{\textit{Continued on next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+Primary factorial replay package & \path{evidence/round_04_rr2_package/}\\
+Replay and package manifest & \path{evidence/round_04_rr2_package/replay/run_replay.sh} and \path{evidence/round_04_rr2_package/MANIFEST.json}\\
+Registered, derived, and raw evidence & \path{upstream/forkaudit-summary.json}, \path{derived/derived_summary_v2.json}, and \path{upstream/raw/} under the primary replay package\\
+Executed source and storage tests & \path{executed_source/gpu/} and \path{replay/test_storage_witness.py} under the primary replay package\\
+Identity, lifecycle, scheduler, and GDN extensions & \path{evidence/rr2_terminal_closure_a1_20260821/}, \path{evidence/lifecycle_transfer_reviewer_package/}, \path{evidence/round23_a2_scheduler_interleave/}, and \path{evidence/gdn_transition_oracle_preregistered_20260819d/}\\
+Mac and H20 deployment controls & \path{evidence/mac_m4_motivation/}, \path{evidence/h20_deployment_benchmark/}, and their generators under \path{scripts/}\\
+HYPIC retained-state receipts & \path{evidence/related_work_same_protocol/hypic-retained-state-r34-trial1892234/}\\
+Target-gate-suppression preregistration and raw ledger & \path{evidence/r28_full_detector_matrix/formal_run_20260824a/preregistration/detector-matrix-v2-plan.json}\newline\path{evidence/r28_full_detector_matrix/formal_run_20260824a/receipts/raw-artifacts.sha256}\\
+Target-gate-suppression summary and replay receipt & \path{evidence/r28_full_detector_matrix/formal_run_20260824a/detector-matrix-v2-summary.postexec-corrected.json}\newline\path{evidence/r28_full_detector_matrix/formal_run_20260824a/postexecution-correction-replay-receipt.json}; disclosed field-source amendment: \path{evidence/r28_full_detector_matrix/postexecution-rr2-run-binding-correction.json}\\
+vLLM, SGLang, HYPIC timing/quality, and Marconi controls & \path{evidence/related_work_same_protocol/}; exact package members and one-command replays reside under this directory\\
+Hydragen/Palu same-checkpoint transfers & \path{evidence/round24_related_work_transfer/} and its \path{executed_source/} directory\\
+Published context and table generator & \path{literature/reported_system_context.json} and \path{scripts/generate_related_work_context_table.py}\\
+Out-of-process GDN observer & \path{evidence/r33_independent_capture/formal_h20/result/preregistration/preregistration.json}\newline\path{evidence/r33_independent_capture/formal_h20/result/raw/out-of-process-gdn-capture.json}\newline\path{evidence/r33_independent_capture/formal_h20/result/replay/out-of-process-gdn-replay.json}\newline\path{evidence/r33_independent_capture/formal_h20/result/receipts/terminal-files.sha256}\\
+Designer--executor-separated faults & \path{evidence/r33_fresh_faults/author_freeze/designer_input/round32_input.pdf}\newline\path{evidence/r33_fresh_faults/author_freeze/PROTOCOL.md}\newline\path{evidence/r33_fresh_faults/executor_attempt_b/AMENDMENT.md}\newline\path{evidence/r33_fresh_faults/formal_h20/RESULT_VERIFICATION.json}\newline\path{evidence/r33_fresh_faults/formal_h20/r33-fresh-faults-20260825b/rank-run-*/rank-*/mutant-case.json}\newline\path{evidence/r33_fresh_faults/formal_h20/r33-fresh-faults-20260825b/summary.json}\newline\path{evidence/r33_fresh_faults/formal_h20/r33-fresh-faults-20260825b/terminal-files.sha256}\\
+Historical alias regression and repair & \path{evidence/r35_historical_alias_regression/design_decision.md}\newline\path{evidence/r35_historical_alias_regression/preregistration.json}\newline\path{evidence/r35_historical_alias_regression/preexecution-freeze-receipt.json}\newline\path{evidence/r35_historical_alias_regression/preexecution-resource-amendment.json}\newline\path{evidence/r35_historical_alias_regression/formal_h20/RESULT_VERIFICATION.json}\newline\path{evidence/r35_historical_alias_regression/formal_h20/r35-historical-alias-20260826a/aggregate.json}\newline\path{evidence/r35_historical_alias_regression/formal_h20/r35-historical-alias-20260826a/replay/}\\
+Bounded two-stream lifecycle & \path{evidence/r29_true_concurrency/formal_run_20260825b/raw/formal-result.json}\newline\path{evidence/r29_true_concurrency/formal_run_20260825b/replay/independent-replay.json}\newline\path{evidence/r29_true_concurrency/formal_run_20260825b/receipts/raw-and-replay.sha256}\\
+Expanded captured-boundary numerical sweep & \path{evidence/r30_expanded_oracle_sweep/}; 272 local arrays under \path{raw/sidecars/}; canonical result \path{oracle-result.json}; local replay source \path{r30_expanded_oracle_reference.py}; validation \path{validation_report.json}; terminal binding \path{terminal-products.sha256}\\
+Manuscript claim index & \path{evidence/claim_evidence_map.tsv}\\
+\end{longtable}
+\endgroup
+
+\end{document}

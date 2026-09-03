@@ -1,0 +1,197 @@
+% Appendix A: full proofs (r470). Included from paper.tex.
+\section{Proofs}
+\label{app:proofs}
+
+\subsection{Monotonicity of the fixed-$k$ flip probability (Lemma~\ref{lem:exact})}
+
+Recall
+\[
+f_K(k)=\P\big(\MV(k)\neq\MV(N)\,\big|\,K\big),
+\qquad x_k\sim\HG(N,K,k),
+\]
+with the negative side winning ties ($\MV(k)=1$ iff $x_k>k/2$).
+We prove that $f_K(k)$ is nonincreasing along the odd numbers
+$k\in\{1,3,5,\dots,N-1\}$ for every fixed $K$; this suffices for the paper,
+since the fixed-$k$ certificate family is evaluated on odd budgets only, and
+it makes $k^*(\alpha)=\min\{k:\E_H[f_K(k)]\le\alpha\}$ well defined and
+binary-searchable for every mixture $H$ (mixtures of nonincreasing functions
+are nonincreasing).
+
+\paragraph{Setup and case split.}
+$\MV(k)\neq\MV(N)$ can happen in only two ways:
+\begin{itemize}
+\item \textbf{Case U (upset).} $K\le N/2$ (full vote negative) and $x_k>k/2$
+(prefix votes positive).
+\item \textbf{Case R (reversal).} $K>N/2$ (full vote positive) and $x_k\le k/2$
+(prefix votes negative).
+\end{itemize}
+Write $f_K(k)=U_K(k)+R_K(k)$ with $U_K(k)=\P(x_k>k/2)\,\mathbf 1\{K\le N/2\}$
+and $R_K(k)=\P(x_k\le k/2)\,\mathbf 1\{K>N/2\}$. At most one of the two terms
+is nonzero for any $K$.
+
+\paragraph{The reflection identity.}
+Swapping the labels ``pass''/``fail'' of all $N$ rollouts maps the law
+$\HG(N,K,k)$ of $x_k$ onto the law of $k-x_k$ under count $N-K$, i.e.\
+$\P_{K}(x_k>s)=\P_{N-K}(x_k<k-s)$. Hence, for odd $k$,
+\[
+U_K(k)=\P_K(x_k>k/2)=\P_{N-K}(x_k<k/2)=R_{N-K}(k)
+\qquad(K\le N/2),
+\]
+since $k$ odd makes $k/2$ a half-integer, so the strict and weak
+inequalities coincide. Every upset probability thus equals a reversal
+probability at the reflected count, and it suffices to prove
+\begin{equation}
+\label{eq:revmain}
+R_K(k+2)\le R_K(k)\qquad\text{for all }K>N/2\text{ and odd }k,
+\end{equation}
+which covers Case R directly and Case U by reflection (the same display
+applied at count $N-K$).
+
+\paragraph{Coupling construction.}
+Fix $K>N/2$ and odd $k\le N-3$. We couple the two hypergeometric draws on a
+single probability space. Let the population of $N$ rollouts consist of $K$
+passes and $N-K$ fails. Draw an \emph{ordered} sample of size $k+2$ uniformly
+without replacement and split it as
+\[
+\underbrace{X_1,\dots,X_k}_{\text{prefix }k}\;\Big|\;
+\underbrace{X_{k+1},X_{k+2}}_{\text{extra pair }(A,B)} .
+\]
+The marginal law of $(X_1,\dots,X_k)$ is exactly $\HG(N,K,k)$, and
+$x_{k+2}=x_k+A+B$ has law $\HG(N,K,k+2)$. All statements below are about this
+joint space, so they hold for the two marginals simultaneously.
+
+Let $t=k/2+1/2$ be the (integer) flip threshold: the prefix at $k$ votes
+negative iff $x_k\le t-1$; the prefix at $k+2$ votes negative iff
+$x_{k+2}\le t$. Partition the event $\{x_k=s\}$ by the value of the pair
+$A+B\in\{0,1,2\}$:
+\[
+\begin{aligned}
+E_0&=\{x_k=t-1,\ A+B=0\}, &&\text{flip at }k,\ \text{flip at }k+2,\\
+E_1&=\{x_k=t-1,\ A+B=1\}, &&\text{flip at }k,\ \text{flip at }k+2,\\
+E_2&=\{x_k=t-1,\ A+B=2\}, &&\text{flip at }k,\ \text{no flip at }k+2,\\
+F_0&=\{x_k=t,\ \ \ A+B=0\}, &&\text{no flip at }k,\ \text{flip at }k+2,\\
+F_1&=\{x_k=t,\ \ \ A+B=1\}, &&\text{no flip at }k,\ \text{no flip at }k+2.
+\end{aligned}
+\]
+All other states agree on both sides (e.g.\ $x_k\le t-2$ flips under both, since
+$A+B\le2$; $x_k\ge t+1$ flips under neither). Therefore
+\begin{equation}
+\label{eq:rdiff}
+R_K(k)-R_K(k+2)=\P(E_2)-\P(F_0),
+\end{equation}
+and it remains to show $\P(E_2)\ge\P(F_0)$.
+
+\paragraph{Comparison of the two boundary atoms, including support boundaries.}
+Both atoms factor as (prefix probability) $\times$ (pair probability).  We
+first split off the case $\P(F_0)=0$.  Then \eqref{eq:rdiff} gives
+$R_K(k)-R_K(k+2)=\P(E_2)\ge0$ directly; in particular, no ratio is formed
+when a binomial factor in $F_0$ vanishes (including a zero remaining-fail
+count or an infeasible $x_k=t$ atom).  It remains to consider
+$\P(F_0)>0$.  This support condition makes every denominator below strictly
+positive and makes the ratio algebra legitimate. With $k=2t-1$, first,
+\[
+\P(x_k=t-1)=\frac{\binom{K}{t-1}\binom{N-K}{t}}{\binom{N}{k}},
+\qquad
+\P(x_k=t)=\frac{\binom{K}{t}\binom{N-K}{t-1}}{\binom{N}{k}},
+\]
+since $k-(t-1)=t$ and $k-t=t-1$. Given $x_k=t-1$, the remainder holds
+$K-t+1$ passes out of $N-k$, so
+$\P(A+B=2\mid x_k=t-1)=\binom{K-t+1}{2}\big/\binom{N-k}{2}$; given $x_k=t$,
+the remainder holds $N-K-t+1$ fails, so
+$\P(A+B=0\mid x_k=t)=\binom{N-K-t+1}{2}\big/\binom{N-k}{2}$. The
+denominators $\binom{N}{k}\binom{N-k}{2}$ are common to both atoms. Under
+$\P(F_0)>0$, hence
+\[
+\frac{\P(E_2)}{\P(F_0)}
+=\frac{\binom{K}{t-1}\binom{N-K}{t}\binom{K-t+1}{2}}
+{\binom{K}{t}\binom{N-K}{t-1}\binom{N-K-t+1}{2}}
+=\frac{K-t}{N-K-t},
+\]
+where the last equality uses the three elementary ratios
+$\binom{K}{t-1}\big/\binom{K}{t}=\frac{t}{K-t+1}$,
+$\binom{N-K}{t}\big/\binom{N-K}{t-1}=\frac{N-K-t+1}{t}$, and
+$\binom{K-t+1}{2}\big/\binom{N-K-t+1}{2}=\frac{(K-t+1)(K-t)}{(N-K-t+1)(N-K-t)}$,
+whose product telescopes to the displayed ratio. Therefore, with
+$C:=\binom{K}{t}\binom{N-K}{t-1}\binom{N-K-t+1}{2}\big/
+\big[\binom{N}{k}\binom{N-k}{2}\big]\ge 0$,
+\begin{equation}
+\label{eq:atomdiff}
+\P(E_2)-\P(F_0)=C\big[(K-t)-(N-K-t)\big]=C\,(2K-N)\;\ge\;0,
+\end{equation}
+because $K>N/2$ in Case R.  The excluded support case was already proved
+directly; if $t>K$, $\P(x_k=t-1)=0$ and both atoms vanish. By \eqref{eq:rdiff}
+this proves \eqref{eq:revmain} and, by the
+reflection identity, $U_K(k+2)\le U_K(k)$ as well, completing the proof of
+monotonicity along odd $k$.\qed
+
+\begin{remark}[Verification at $N=32$]
+Independently of the proof, the revision's exact-rational CPU audit enumerates
+all admissible $(N,K,k)$ for $2\le N\le64$, including the boundary
+$(N,K,k)=(32,17,29)$, checks \eqref{eq:rdiff}, the support split, and the
+monotonicity inequality.  The historical $N=32$ artifact remains a separate
+frozen result check.
+\end{remark}
+
+\begin{remark}[Why only odd $k$ enters the certificate]
+Requiring $k$ odd removes tie-breaking from the certificate family
+(every prefix has a strict majority side), and the binary search for
+$k^*(\alpha)$ is over the odd ladder only. Nothing else in the paper uses
+monotonicity at even $k$.
+\end{remark}
+
+\subsection{Oracle terminal-stop bookkeeping (Theorem~\ref{thm:tower})}
+
+For the oracle theorem, the stopping rule is
+$\tau=\min\{k\in\{3,\ldots,N\}:\oraclecert(x_k,k)\le\alpha\}$.  At a reachable
+terminal state, all $N$ binary outcomes have been observed, hence $x_N=K$.
+We define the endpoint certificate to be zero; whenever the posterior is
+supported, this also follows because the hypergeometric likelihood at
+$(x_N,N)$ has support only on $K=x_N$:
+\[
+\oraclecert(x_N,N)=0.
+\]
+Thus $k=N$ satisfies the same threshold rule rather than being an exceptional
+terminal state. The tower argument applies to this bounded stopping time,
+and
+\[
+\P_{\trueH}(\flip)=\E_{\trueH}\big[\oraclecert(x_\tau,\tau)\big]
+=\E_{\trueH}\big[\oraclecert\,\mathbf 1\{\tau<N\}\big]+\E_{\trueH}\big[\oraclecert\,\mathbf 1\{\tau=N\}\big].
+\]
+The first term is at most $\alpha\,\P(\tau<N)$, and the second term is zero.
+Therefore the integrand is bounded pointwise by $\alpha$ and
+$\P(\flip)\le\alpha$.  For each fixed true count $K$, a path reaching $N$
+also has $x_N=K$, so its terminal contribution to the DP flip probability
+$g(K;\alpha,\widehat H_m)$ is exactly zero. This endpoint fact also holds
+for the fitted DP, but it does not identify a fitted earlier-prefix score with
+the oracle conditional probability.
+
+\begin{remark}[The terminal-stop mass is small in practice]
+On the TEST split, the exact fraction of paths reaching $k=N$ under
+BAYES-H is $0.59\%$ at $\alpha=0.05$ and $1.10\%$ at $\alpha=0.02$ (the
+fitted score stops early on the reported bimodal mass). Their contribution to
+replay flip is zero; their contribution to the expected stopping count is
+included exactly (Appendix~\ref{app:dp}).
+\end{remark}
+
+\subsection{Linearity of the population flip rate}
+
+For the population statement, FIT and CAL are assumed independent i.i.d.
+task samples from the same count-exchangeable replay population. Conditional
+on FIT, every prior, fitted-score table, and candidate rule is frozen before
+CAL is inspected. For such a fixed rule and fixed prior $\widehat H_{\rm FIT}$
+used \emph{inside} the fitted score, the per-task flip probability $g(K)$
+depends only on the true count $K$ (via the hypergeometric law of prefixes)
+and on $\widehat H_{\rm FIT}$ (through the posterior threshold). The CAL
+values $g(K_i)$ are consequently i.i.d. bounded observations conditional on
+FIT, and the population replay flip rate is
+\[
+\P_{\text{replay},\trueH}(\flip)=\sum_{K=0}^{N} \trueH[K]\,g(K),
+\]
+a \emph{linear} functional of the true mixture $\trueH$. Conditional on FIT,
+empirical Bernstein on the CAL mean bounds the population quantity for a
+frozen rule, with each per-task quantity $g\in[0,1]$. Bonferroni over the
+pre-declared family of $J=64$ rules permits CAL-side selection because
+simultaneous UCBs cover all $J$ frozen linear functionals. The fixed benchmark
+TEST split is not used in this argument and remains descriptive. This
+population result is distinct from the oracle conditional identity in
+Theorem~\ref{thm:tower}.

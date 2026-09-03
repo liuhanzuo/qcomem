@@ -1,0 +1,56 @@
+\section{CoMem}
+\label{sec:method}
+
+Let a decoder-only transformer contain $L$ layers of width $d$.  We use
+half-open layer ranges: $F_{[0,j)}$ contains the bottom $j$ layers and
+$F_{[j,L)}$ the remaining layers.  Documents are divided into $M$ disjoint
+chunks $x_m$ of $c=512$ tokens.  The mechanism is training-free: no parameter of
+the frozen backbone is updated at any point.
+
+\paragraph{Write.}
+For every chunk, CoMem computes
+\begin{equation}
+    h_j^{(m)}=F_{[0,j)}(x_m;\,0{:}c-1),
+    \qquad h_j^{(m)}\in\mathbb{R}^{c\times d},
+\end{equation}
+using chunk-local positions, and writes one layer's per-token residual tensor
+per chunk to an external store.  It also retains the raw text needed to build a
+CPU BM25 index.  The hidden store therefore grows as $O(Mcd)$ and the text index
+as $O(|x|)$: the layer axis buys a persistent-storage \emph{rate} reduction, not
+a constant-size memory (Appendix~\ref{app:method-details}).
+
+\paragraph{Retrieve and read.}
+Given query $q$, BM25~\citep{bm25} ranks raw-text chunks and returns $S_k(q)$,
+the fixed top-$k$ indices.  CoMem sorts those indices back into original
+document order, computes the query activation $h_j^q$, gathers the paired
+stored activations, assigns fresh contiguous positions, and forms
+\begin{equation}
+ P_j(q)=[h_j^{\mathrm{sink}};,{h_j^{(m)}:m\in S_k(q)};,h_j^q].
+\end{equation}
+Layers $F_{[j,L)}$ then process the entire pack with full causal cross-pack
+attention.  Its length is $1+kc+|q|$ and is independent of $M$ when $k$ and
+$c$ are fixed.  Thus model read FLOPs and GPU read-time KV working set are
+bounded with respect to document length; write time, persistent storage, BM25
+index size, and generally retrieval work are not.  The sink and query
+construction, the selector settings and variants, the block-diagonal ablation,
+and the per-decoded-token upper-band rebuild that keeps the recorded $0.68$\,s a
+read/prefill rather than an end-to-end quantity are in
+Appendix~\ref{app:method-details}.
+
+\paragraph{What is and is not exact.}
+On one contiguous sequence with unchanged positions,
+$F_{[j,L)}(F_{[0,j)}(x))=F(x)$ up to implementation precision; this is an
+algebraic split/rejoin check.  The deployed $j>0$ path is different: chunks are
+encoded independently, selected, relocated, and jointly read with a query.  There
+is no exactness guarantee for that transformation, so we measure its fidelity
+against the same-retrieval $j=0$ arm, where selected raw tokens are re-forwarded
+through the whole model; at $j=L$ no model layers remain to condition the stored
+representation on the query, so intermediate $j$ is a quality--compute knob.  Two
+factors are confounded at every $j>0$: \textbf{(i)} \emph{chunk-independent
+encoding} (each chunk is written with chunk-local positions, without cross-chunk
+attention during the write), and \textbf{(ii)} \emph{position relocation}
+(retrieved chunks are reassigned fresh contiguous positions at read).  An
+identical-position split/rejoin is lossless by design and so isolates neither
+factor; disentangling (i) from (ii) requires the registered dual-step ablation of
+Section~\ref{sec:attribution}, reported separately from the headline depth
+curve.

@@ -1,0 +1,203 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "a70d0593930038db805ed9ae99c770ea52d4f7efec5155f1a4689d3b61482ac7",
+  "role": "technical_soundness",
+  "overall_score": 2,
+  "confidence": 4,
+  "recommendation": "reject",
+  "dimension_scores": {
+    "soundness": 1,
+    "presentation": 2,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "中心结论是三个支持在恢复前后的 AVG-9 range 从2.675收缩到0.118，但表1把 ALPS/ELSA 的原生值列为三种子均值、ProxSparse 为官方单点，而恢复后是各支持的单个恢复端点；论文没有证明这些原生数值就是每条恢复运行的精确起点。即使算术无误，缺少匹配起终点、训练重复和逐项配对输出，使“同一恢复压缩支持差异”的核心解释不可验证。附加的未配对 z 检验还对同一测试样本错误采用独立比例近似。",
+    "presentation": "论文非常坦率地罗列数据、导出和机制边界，主表也包含大量原始数值；但中心贡献被大量未验证的归档材料、未执行的导出流程和一个未证明的渐近猜想淹没。图1文字低于正文可读字号，附录与正文反复强调不可验证工件，整体更像审计记录而非完成的会议论文。",
+    "contribution": "在当前证据下，可核实的新知识主要是一组三个归档点估计的数值范围变化；论文自己承认不能做等价性、机制、样本效率、部署或跨模型结论。没有配对不确定性、没有有效的 SparseForge 625M 对照、没有可部署 exact-2:4 导出，尚不足以构成 ICLR 级贡献。"
+  },
+  "paper_summary": "论文汇总 LLaMA-2-7B exact-2:4 稀疏化的归档实验。ALPS、ELSA-4096、ProxSparse 三种支持在原生 AVG-9 上的范围为2.675个百分点，经相同标称625M token 的稀疏权重加 rank-16 SLoRB 恢复后，三个端点范围为0.118个百分点。由于未保留逐项预测，作者将其限定为描述性观察而非等价性结论。一个5B SparseForge 检查点被作为背景：其恢复语料清单与权重不可访问，SLoRB 分支仍在推理中，尚未折叠并重新投影成可部署 exact-2:4。论文还给出未隔离的曲率/退火管线、一个发散的 ELSA 长预算运行和多项历史记录。",
+  "strongest_verified_contribution": "就 PDF 中呈现的聚合数值而言，三条标称625M恢复行的 AVG-9 分别为55.82、55.94、55.91，所显示范围确为约0.12个百分点，且论文没有把这个小范围错误宣称为统计等价；它清楚指出需要逐项配对和联合 max-min 不确定性才能比较残余差异。",
+  "strengths": [
+    "对5B检查点的语料不可验证、SLoRB分支仍活跃、未执行fold/reprojection、组件未隔离等问题作了明确披露。",
+    "没有把0.52个百分点的单检查点边际标准误称为等价界、检测下限或联合range置信界。",
+    "表1给出九个任务和困惑度的完整同地评测，图2揭示平均值掩盖了RTE的巨大反向变化。",
+    "把长预算 ELSA 运行的发散限定为该恢复配方失败，而不是 ELSA 方法普遍失败。"
+  ],
+  "questions": [
+    "表5中每个 native AVG-9 是否来自随后进入对应625M恢复运行的同一个具体 mask/weight checkpoint？若 ALPS/ELSA 是三种子均值、ProxSparse 是官方单点，如何构成逐支持匹配的 before/after range？",
+    "三条625M恢复运行使用的确切恢复语料、样本顺序、初始支持哈希和起点权重是什么？为何这些信息未在表6或工件声明中固定？",
+    "SLoRB分支在推理时保持活跃后，有效算子和内存/延迟开销是多少？在未fold且未重新投影时，为什么主表标题仍称所有结果为 exact 2:4 sparsity？",
+    "在同一评价样本上比较两个检查点时，为什么使用独立两比例 z 检验？在未知配对协方差下，作者能否给出合法的最坏/最好方差界，而不是单一 p 值？",
+    "如果5B检查点、语料清单和分支参数均不可访问，哪些核心结果能够由匿名工件从头独立重现？"
+  ],
+  "issues": [
+    {
+      "issue_id": "S1-R2-001",
+      "severity": "critical",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第5页表1及§5.2、第10-11页附录A.2表5",
+      "claim_ids": [
+        "cross-support-range-compression",
+        "identical-625M-recovery"
+      ],
+      "evidence_ids": [
+        "表1",
+        "表5"
+      ],
+      "observed_evidence": "表1明确说 ALPS 和 ELSA 原生行是三种子均值，ProxSparse 是 official 单点；恢复后每个支持只有一个625M端点。表5直接把这些异质聚合的 native 数值与单个 recovered 数值并列，却没有给出每条恢复运行的精确起点 checkpoint、mask 哈希或逐运行 before 值。",
+      "why_it_matters": "若恢复行并非从表5所列的精确原生端点开始，2.675→0.118不是同三个实验单位的配对range变化，可能由种子平均、起点选择或支持实例差异造成。该缺口直接决定论文唯一的 load-bearing 结论是否成立。",
+      "required_fix": "为每个支持提供同一 mask/weight 实例的0-token和625M配对评测、不可变哈希与运行映射；更理想的是对多个独立支持/训练种子执行匹配恢复，并把支持和训练随机性分层。",
+      "verification_test": "逐支持从已哈希的0-token起点启动冻结625M流程，保存 pre/post 逐项预测；核对三条恢复的起点值确实形成报告的 native range，并在独立种子上重复 range 收缩。",
+      "evidence_needed": "逐运行起点/终点哈希、支持映射、0-token同实例评测和多种子恢复记录。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R2-002",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第1-2页摘要与贡献、第5页§5.2、第7页局限、第10-11页附录A.1-A.2",
+      "claim_ids": [
+        "post-recovery-spread-below-noise-scale"
+      ],
+      "evidence_ids": [
+        "表3",
+        "表4",
+        "表5"
+      ],
+      "observed_evidence": "0.118范围只有三个归档端点；没有训练重复、逐项预测或支持间联合协方差。0.52是单个固定检查点的边际二项标准误，不是两个检查点差异或max-min选择后的不确定性。论文虽反复披露这一点，标题、摘要和中心段落仍突出“低于0.52噪声尺度”。",
+      "why_it_matters": "在联合不确定性未知时，小于边际SE既不能说明残余差异不可分，也不能证明恢复真正压缩了潜在支持效应；它只是对三组有抽样误差点估计的描述。没有训练方差时，收缩也可能不稳定。",
+      "required_fix": "获取逐项预测并对预先定义的range或支持对比做配对联合推断；增加多个独立恢复种子，把评价抽样和训练方差分开。若无法取得，应删除噪声尺度比较，只保留三点算术事实。",
+      "verification_test": "对每个种子用相同评价项目计算支持间配对差，进行层级/多重比较校正的联合 bootstrap 或预注册等价检验；报告range收缩在种子间的区间。",
+      "evidence_needed": "逐项预测、独立训练种子和预定义联合推断协议。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R2-003",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "第1页§1、第4-5页§4.3-5.1与表1标题、第7页局限、第13-15页附录C.1-C.5",
+      "claim_ids": [
+        "exact-2:4-recovery-endpoints",
+        "deployable-sparsity-context"
+      ],
+      "evidence_ids": [
+        "表1",
+        "EXT-M3",
+        "算法1"
+      ],
+      "observed_evidence": "所有 SparseForge/恢复评测都保留 rank-16 SLoRB 分支参与推理；冻结 finalizer 不把 BP 折叠进权重，也未执行fold后的2:4重投影、组和断言或pre/post-export质量检查。论文没有对应检查点的吞吐/内存测量。",
+      "why_it_matters": "训练状态的稀疏基权重加稠密低秩分支不等同于已部署的原生 exact-2:4模型。支持差异可能正被共同分支补偿，且折叠/重投影可能改变支持、质量和系统收益，因此当前证据不能回答部署层面的半结构化稀疏化问题。",
+      "required_fix": "实现并冻结 SLoRB fold→exact-2:4 reprojection，加入逐组2/4断言，报告分支活跃、折叠前、折叠后三种状态的 AVG-9/PPL、支持变化、吞吐和内存。",
+      "verification_test": "对每个恢复支持执行 EXT-M3，逐层验证每组恰有两个非零，比较导出前后逐项预测与质量，并在目标GPU上测量系统指标。",
+      "evidence_needed": "可用权重/分支参数、导出器、支持验证日志、pre/post-export评测和系统基准。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R2-004",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor"
+      ],
+      "location": "第10页附录A.1行524-534、第11页表4",
+      "claim_ids": [
+        "per-task-significance-tests"
+      ],
+      "evidence_ids": [
+        "表4"
+      ],
+      "observed_evidence": "SparseForge与AST在同一任务的同一评价项目上预测，天然是配对数据；因逐项日志丢失，论文改用两个独立二项比例的未合并 z 检验，并据此报告四个未校正显著、两个Holm显著。",
+      "why_it_matters": "同项目预测的协方差未知，独立比例方差假设没有依据。仅凭两个边际正确数无法唯一确定McNemar方差，因此表4的p值不是当前设计下有效的配对推断，可能过保守也可能反保守。",
+      "required_fix": "删除这些显著性结论，或明确标为假设独立的描述性近似并给出在所有可行discordance计数下的敏感性界；最终应重新保存逐项预测并使用McNemar/配对bootstrap。",
+      "verification_test": "枚举与两个边际计数一致的可行(b,c)，展示p值范围；在新评测中用真实discordant pair重算并比较表4结论。",
+      "evidence_needed": "逐项预测或基于可行配对表的严格界。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R2-005",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "citation_integrity",
+        "limitations_responsible_claims"
+      ],
+      "location": "第4-7页§5.1-6、第15-16页附录C.6-C.7与D-E",
+      "claim_ids": [
+        "archived-5B-context",
+        "artifact-availability"
+      ],
+      "evidence_ids": [
+        "表1 SparseForge-5B行",
+        "表7",
+        "表8"
+      ],
+      "observed_evidence": "5B headline checkpoint、args.json、恢复语料tokenization和分支参数都在不可访问主机上，本地无副本；早期语料归因互相冲突后被撤销。lm-eval只给下限版本，历史跨家族和系统结果缺失完整套件/检查点映射。",
+      "why_it_matters": "5B对AST的比较、语料归因和任何导出复现都无法独立审计。虽然被降为背景，它仍占据表1、图2和大量论述，并可能误导读者把不可重现归档点当作方法证据。未知语料还带来许可和数据治理不确定性。",
+      "required_fix": "移除无法核验的5B/历史结果出中心叙事，或恢复完整匿名权重、manifest、精确软件环境、语料来源和运行映射；重新执行可访问的匹配实验。",
+      "verification_test": "第三方从匿名包定位所有输入，重建5B评测与导出；核对语料许可/来源、checkpoint哈希和表1/图2数值。无法通过则只保留为非证据历史注记。",
+      "evidence_needed": "可访问检查点、语料manifest、许可信息、精确环境锁和端到端重现。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "S1-R2-006",
+      "severity": "minor",
+      "dimensions": [
+        "clarity",
+        "technical_soundness"
+      ],
+      "location": "第11-12页附录A.2的Conjecture (C1)",
+      "claim_ids": [
+        "asymptotic-intercept-conjecture"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "所谓猜想先假设每个支持收敛到φ_s且瞬态g_s(T)趋零，再得到range趋向φ_s的range；随后关于“recovery-invariant subspace”的iff陈述没有定义可检验变换、没有证明，也没有由三端点数据识别任何φ_s。",
+      "why_it_matters": "目前可证明部分近乎由假设直接得到，其余部分不可证伪，不能解释已观察的有限预算压缩，反而模糊了论文仅有的描述性结论。",
+      "required_fix": "删除该猜想，或给出形式化定义、非平凡命题与证明，并设计多预算轨迹来估计/反驳不同支持的渐近截距。",
+      "verification_test": "在至少三个预注册恢复预算和多个种子上拟合预先规定的收敛模型，检验共享/不同截距预测；同时对命题进行形式证明或给出反例边界。",
+      "evidence_needed": "多预算配对轨迹、可识别模型和完整证明。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": true,
+  "ethics_concerns": "归档5B检查点的恢复语料身份、tokenization清单与许可均不可访问，论文也承认早期语料归因互相冲突；因此无法审计数据治理、版权/许可、隐私或内容风险。该检查点目前只是背景，但只要保留其结果，就应把未知语料来源作为明确伦理与可复现性风险。",
+  "llm_usage_disclosure": "本审稿由一个全新、隔离的 AI 子代理生成，仅用于内部投稿前质量控制；子代理只接收冻结 PDF、指定的 ICLR 2026 量表与输出 schema，未与任何其他评审通信，也未查看作者计划、旧评审或目标分数。",
+  "score_ceiling_under_current_evidence": 2,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "同一具体支持实例的0-token/625M配对起终点、多独立恢复种子和逐项预测，给出联合range不确定性。",
+    "完成SLoRB fold、exact-2:4重投影与逐组验证，并证明导出前后质量和系统收益。",
+    "可访问且许可清楚的恢复语料manifest、检查点和精确环境，使核心结果可端到端复现。",
+    "有效的SparseForge 625M匹配预算对照及组件消融，能够支持方法而非归档端点叙事。"
+  ],
+  "evidence_that_would_lower_score": [
+    "恢复运行的真实0-token起点不对应表5 native行，导致2.675→0.118配对压缩不成立。",
+    "多种子或逐项联合分析显示0.118范围不稳定，或支持差异仍可可靠区分。",
+    "fold/reprojection后质量显著下降、支持大幅改变或系统收益消失。",
+    "恢复语料来源存在许可/隐私问题，或5B数值无法从可访问工件复现。"
+  ],
+  "review_limitations": [
+    "仅审阅了指定冻结 PDF；按隔离要求未访问源代码、CSV、匿名镜像、归档主机或任何作者侧材料，因此无法独立重算表格或验证检查点/支持映射。",
+    "按任务要求未联网，未核验2025-2026文献、语料许可、匿名工件可访问性或外部系统基准。",
+    "由于逐项预测、运行映射和5B检查点在审稿快照中不可用，部分关键判断必须标为无法外部验证；本审稿针对论文当前可见证据而非潜在隐藏工件。"
+  ]
+}

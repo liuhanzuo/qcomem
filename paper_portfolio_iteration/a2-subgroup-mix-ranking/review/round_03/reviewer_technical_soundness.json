@@ -1,0 +1,130 @@
+{
+  "reviewer_id": "subgroup-r3-technical",
+  "round": 3,
+  "snapshot_sha256": "8e0822d2b79b3e0e8cd5702d40248003900fb554f228bfde1d25f431cebd18f2",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The central P1/P2/P3 results are mathematically sound under the explicit FIT/CAL contract: simultaneous cellwise events make both CAL-data-dependent selection and all mixture weights admissible, and the nonnegative outer maximum in Theorem 1 correctly handles negative pairwise UCBs. I do not treat the absent historical application contract as a counterexample to this conditional theorem; the paper explicitly labels E03 as a snapshot diagnostic. Nevertheless, E03 cannot establish that the theorem's finite-sample assumptions or exact UCB implementation applied to the numerical frontier, and Appendix F's claimed whole allocation-by-budget emptiness closure does not follow when reallocation/re-sampling also changes the empirical selector and its margin.",
+    "presentation": "The main paper is unusually explicit about conditionality, exact versus normal bounds, and the M3/M3.5 oracle boundary. The long Appendix-F discussion is harder to audit because its early 'safe upgrade' language precedes the later admission that all nontrivial relative-gate content is normal/asymptotic, and its allocation-axis proof elides which empirical statistics are held fixed.",
+    "contribution": "A simultaneous paired regret gate over a mixture simplex is a useful, narrowly stated construction and the negative M1 example is clear. However, the empirical frontier is not independently applicable to the stated finite-sample contract, M3/M3.5 are correctly demoted to non-deployable diagnostics, and the verified theorem is a fairly direct union-bound-plus-paired-UCB construction rather than a fully demonstrated deployment result."
+  },
+  "paper_summary": "The paper considers a fixed FIT-trained candidate pool under label-prior/subgroup-mixture turnover. Conditional on FIT/CAL independence, FIT-fixed design choices, and conditionally i.i.d. within-subgroup CAL observations, it proves absolute Clopper--Pearson and paired ordered-comparator UCB regret certificates that can gate a point-estimate-selected model for every mixture weight w, otherwise abstaining. It reports frozen constructed-mixture diagnostics on four classification carriers, explicitly distinguishes exact Hoeffding/MPB gates from a normal diagnostic, and limits M3/M3.5 to oracle-stratified width/count diagnostics rather than deployable allocation policies.",
+  "strongest_verified_contribution": "Theorem 1's conditional paired certificate is correct as written. On the simultaneous event covering all k(k-1)G ordered pair/group UCBs, each pairwise mixture difference is bounded for every simplex weight; taking the comparator maximum and an outer max with zero bounds regret for any CAL-data-dependent selected i*. This also justifies no additional grid-level Bonferroni factor. The supplied deterministic E12 audit additionally verifies that replacing historical pairwise UCB values by max(0,UCB) leaves all listed nonnegative-tolerance gate decisions unchanged.",
+  "strengths": [
+    "The FIT/CAL contract, its limits (without-replacement, adaptive CAL, CAL training/refitting), multiplicities kG and k(k-1)G, and MPB n_g>=2 condition are stated concretely in Assumption 2, Definition 1, and Theorem 1.",
+    "The P3 proof correctly permits CAL-data-dependent selection because the coverage event is simultaneous over every ordered pair/group cell; it does not incorrectly rely on independence between candidate models evaluated on the same CAL point.",
+    "The paper makes a useful distinction between a finite-sample conditional guarantee and a held-out estimated-regret diagnostic. It does not present the 1.000 diagnostic pass fraction as nominal coverage or a population true-regret estimate.",
+    "The frozen E03 artifact is internally consistent with its headline aggregate: parsing all 350 rows gives 176/350 normal, 34/350 Hoeffding, and 91/350 MPB rows at tau=0.04 (rates 0.503, 0.097, 0.260 after rounding), with zero stored held-out estimated regrets above tau among each corresponding committed set.",
+    "M3/M3.5 are candidly scoped as oracle-stratified constructed-mixture diagnostics; the manuscript does not turn missing pre-label subgroup observability into a claimed acquisition policy."
+  ],
+  "questions": [
+    "For Appendix F's M9/M10 whole-allocation claim, are the empirical paired means, i*, F0, and selector margin Delta intended to be frozen at the full allocation? If so, can the claim and proof be restricted to that fixed-statistic counterfactual rather than to reselected sampled allocations?",
+    "If the intended M9/M10 statement does cover re-selection after allocation/subsampling, what uniform argument controls the allocation-dependent empirical selector margin Delta(w), rather than only the monotonicity of the band width?",
+    "Can a reviewer-safe supplement release the FIT/CAL/OUTER split manifest, CAL sampling/collection law, per-group paired sufficient statistics, exact UCB implementation/configuration, and environment lock for E03? This is needed to determine whether the conditional theorem actually applies to the reported exact frontier.",
+    "Can the first M6 description explicitly call its nontrivial upgrade result asymptotic/descriptive, matching the later Appendix-F boundary statement?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TS-R3-01-historical-frontier-has-no-application-contract",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Theorem 1 scope on PDF p.4; Sec. 5/Tables 2--3 on PDF p.5; C03 and E03 in the bundled claim-evidence map and experiment registry.",
+      "claim_ids": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "evidence_ids": [
+        "E02",
+        "E03",
+        "E12"
+      ],
+      "observed_evidence": "E03 supplies only 350 aggregate-row records with chosen model, held-out estimated regret, and three stored UCB fields. The bundled provenance records explicitly state that it lacks a FIT/CAL/OUTER split manifest, CAL sampling/collection law, paired sufficient statistics, executed UCB implementation, raw data, and environment. The manuscript itself says E03 cannot show that Assumption 2 or CP/Hoeffding/MPB implementation conditions held.",
+      "why_it_matters": "The conditional theorem remains correct; this is not evidence against it. But the reported exact 0.260 MPB frontier cannot currently demonstrate an applied finite-sample certificate for the historical experiment, so it cannot substantiate the paper's practical safe-ranking premise beyond a snapshot-reported diagnostic.",
+      "required_fix": "Release a reviewer-safe application contract for E03: immutable split identities, CAL collection/sampling provenance, candidate/FIT isolation, paired sufficient statistics or raw loss arrays, exact UCB code/configuration, and an environment lock; then reproduce the frontier. Until then, retain the current snapshot-diagnostic wording in all headline locations.",
+      "verification_test": "An independent clean environment verifies the data/split hashes and FIT/CAL/OUTER isolation, recomputes each paired/absolute UCB from supplied sufficient statistics, and recovers the reported frontier to stated rounding while checking the finite-sample preconditions.",
+      "evidence_needed": "New reproducibility/provenance materials, not a prose revision alone.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-R3-02-allocation-axis-emptiness-proof-gap",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Appendix F, PDF pp.12--13, especially the M9/'M10' derivation around source/paper.tex lines 672--700 and Figure 1 caption.",
+      "claim_ids": [
+        "C07"
+      ],
+      "evidence_ids": [
+        "E07",
+        "E08"
+      ],
+      "observed_evidence": "The text says that at each budget it actually subsamples and re-selects F0/i*/misclassification (lines 673--676), but then derives a full allocation-box emptiness conclusion from a full-split selector margin Delta and monotonicity of c/sqrt(n_g) widths (lines 678--695). Reallocation or resampling can change empirical paired means, i*, F0, and therefore Delta; a larger width alone does not imply that every reselected allocation remains rejected. In addition, the stated premise 'any strictly finite-sample band satisfies UCB_g >= mu_g' is a coverage-event statement, not a deterministic property; the necessary-condition algebra should instead explicitly use the chosen UCB formula as empirical paired mean plus its nonnegative width.",
+      "why_it_matters": "The displayed whole feasible allocation-by-budget closure is stronger than the finite set of audited schedules. As written, the proof establishes at most a fixed-statistic/fixed-selector counterfactual, not universal rejection after the stated re-selection procedure. This does not invalidate Theorem 1 or the main absolute-gate result, but it materially overstates an appendix technical claim.",
+      "required_fix": "Either restrict M9/M10 and Figure 1 to fixed empirical statistics/candidates and state that limitation, or supply a valid uniform argument over re-selection and the allocation-dependent margin (plus evidence for the stated allocation class). Replace the deterministic UCB>=mu wording with the exact algebraic condition used by the relevant Hoeffding/MPB formula.",
+      "verification_test": "A proof explicitly tracks whether data, empirical means, selectors, and margins are fixed. For a universal reselected-allocation claim, a valid uniform bound or exhaustive stated allocation/sampling analysis must show no admissible switch; otherwise the claim is narrowed to the demonstrated schedules/fixed-statistic scenario.",
+      "evidence_needed": "A corrected proof and, if retaining universal reselected-allocation scope, new allocation/sampling evidence or a uniform analytical bound.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-R3-03-m6-scope-signposting",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "Appendix F, PDF p.12 M6 interpretation versus pp.12--13 exact-band boundary discussion; source/paper.tex lines 622--632 and 646--669.",
+      "claim_ids": [
+        "C07"
+      ],
+      "evidence_ids": [
+        "E07"
+      ],
+      "observed_evidence": "The early M6 paragraph says an operator who wants a 'safe upgrade' over an incumbent uses M6, while the later text establishes that every nontrivial M6 switch uses the asymptotic normal band and that the exact relative gate commits only the trivial i*=F0 case. The later text appropriately calls the relative gate asymptotic/descriptive.",
+      "why_it_matters": "A reader can overread the early phrase as a finite-sample operational guarantee before reaching the later qualification.",
+      "required_fix": "Qualify the first M6 description as an asymptotic/descriptive relative-gate diagnostic and point directly to the exact-gate vacuity result; reserve finite-sample operational language for the absolute M2.5 gate.",
+      "verification_test": "A raw source/PDF scan finds every nontrivial M6 upgrade statement labelled asymptotic/descriptive, while exact relative-gate commits are described as status-quo-only.",
+      "evidence_needed": "No new experiment; a consistency edit is sufficient.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No distinct human-subject, privacy, safety, or dual-use violation is demonstrated by the frozen snapshot. The main responsible-use concern is epistemic: a deployment-safety interpretation must remain conditional on the stated turnover and sampling assumptions and must not be inferred from the historical diagnostic alone.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. It reviewed only the frozen Round-3 submission snapshot, ran its bundled snapshot verifier and a read-only paired-certificate audit, and did not inspect prior reviews, scores, revision plans, or material outside that snapshot.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A reviewer-safe end-to-end replay that establishes the FIT/CAL contract and reproduces the exact paired frontier from frozen data, split, UCB, and environment artifacts.",
+    "A corrected or narrowed Appendix-F allocation-axis result that distinguishes fixed-statistic analysis from reselected allocation/sampling, with a valid proof for any retained universal claim.",
+    "A natural subgroup-mixture turnover evaluation with a predeclared within-subgroup invariance audit and a precommitted fallback/cost outcome, if the authors want a deployment claim beyond the conditional constructed-mixture theorem."
+  ],
+  "evidence_that_would_lower_score": [
+    "A counterexample to the P3 simultaneous ordered-pair/group UCB event under the declared conditional-i.i.d. contract, or evidence that the theorem relies on unaccounted CAL-dependent candidates/design choices.",
+    "Evidence that the historical tables are described more strongly elsewhere than snapshot-reported dependent diagnostics, or that their reported aggregates cannot be reproduced from the frozen rows.",
+    "Failure to correct the Appendix-F allocation-axis scope if its whole-box claim is retained despite re-selection-dependent empirical margins."
+  ],
+  "review_limitations": [
+    "Per the frozen-snapshot protocol, I did not inspect prior review rounds, author responses, target scores, repository history, raw data, or external literature beyond the supplied citation materials.",
+    "The E03 aggregate artifact was parsed in full and its headline rate arithmetic was checked, but the snapshot intentionally lacks the materials required to verify its sampling contract or reproduce model training and UCB computation."
+  ]
+}

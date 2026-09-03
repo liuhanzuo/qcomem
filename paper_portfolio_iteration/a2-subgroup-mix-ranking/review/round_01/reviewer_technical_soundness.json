@@ -1,0 +1,125 @@
+{
+  "reviewer_id": "subgroup-r1-technical",
+  "round": 1,
+  "snapshot_sha256": "c4bd8697ffe28029ff4eabaf874e40bd0268fba17f868c530f9bf85badf57a54",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 3},
+  "dimension_justifications": {
+    "soundness": "The linear-band argument and the intended paired simultaneous event are largely sound, but Theorem 1 omits the self-comparator and therefore its stated numeric upper bound can be negative while regret is zero. The adaptive confidence-sequence lemma also lacks conditions and endpoint definitions needed to establish its claim.",
+    "presentation": "The paper clearly labels asymptotic normal results and confines water-filling to a surrogate. However, important finite-sample qualifications, the adaptive sampling model, and the distinction between a theoretical coverage guarantee and an observed test-set fraction are not presented precisely enough.",
+    "contribution": "The simultaneous mixture-indexed certification framing and the correctly scoped one-mixture/multi-mixture surrogate analysis are useful. The current theorem error and unreplayable empirical artifacts substantially limit confidence in the claimed finite-sample frontier and budgeting findings."
+  },
+  "paper_summary": "The paper studies calibration-based selection among fixed classifiers under subgroup-mixture turnover. It uses simultaneous subgroup risk bands and paired error-difference bounds to gate point-estimate selections by a regret tolerance, reports constructed-mixture experiments, and analyzes a deliberately stylized beta/sqrt(n) allocation-width surrogate.",
+  "strongest_verified_contribution": "Conditioned on simultaneous valid per-pair, per-group UCBs and after capping the paired bound at zero, linearity makes the paired certificate simultaneous for every mixture in the continuous simplex and for data-dependent model choices. The one-mixture water-filling formula and its zero-coefficient boundary cases are correctly restricted to the surrogate; the finite predeclared multi-mixture dual is not conflated with arbitrary chosen-mixture water filling.",
+  "strengths": [
+    "Lemma 1 and Proposition P2 correctly use a single Bonferroni event to obtain coverage over all continuous-simplex mixtures without grid-level multiplicity.",
+    "The manuscript consistently separates normal/CLT diagnostics from non-asymptotic Hoeffding/Maurer--Pontil variants.",
+    "The water-filling section explicitly handles positive support, mixed zero/positive coefficients, and the all-zero degeneracy; it does not claim that this surrogate optimizes the actual paired regret UCB.",
+    "The finite multi-mixture expression correctly introduces a dual mixture over predeclared engines rather than reusing the one-mixture closed form."
+  ],
+  "questions": [
+    "Were all reported paired UCBs numerically capped at zero before being described as regret upper bounds? If not, can any committed or reported row have a negative paired certificate value?",
+    "What is the precise sampling filtration for the adaptive reveal rule: are subgroup identities available before label revelation, are observations sampled with or without replacement, and what target distribution is the confidence sequence covering?",
+    "Can the authors provide the raw result artifacts and runnable verifier/implementation files referenced as remote_snapshot paths so the numerical frontier and budget claims can be independently checked?",
+    "What is the independent statistical unit for the reported 1.000 coverage values, and what uncertainty interval applies after accounting for many mixtures sharing each calibration/test split?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TS-01-self-comparator-omitted",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "clarity"],
+      "location": "Section 3, Definition Paired-difference certificate and Theorem 1 proof",
+      "claim_ids": ["C01"],
+      "evidence_ids": ["E02"],
+      "observed_evidence": "Regret equals max over all j of R_i-R_j and therefore includes j=i, giving zero. Definition 1 instead takes max only over j not equal to i. If i is truly better than every other model and all valid UCBs are negative, the displayed UB_cf is negative although regret is zero; the proof incorrectly says the regret-attaining comparator is included.",
+      "why_it_matters": "Theorem 1's assertion that UB_cf itself is a regret upper bound is false as written. The commit rule can still be sound for nonnegative tau after replacing the bound by max{0,UB_cf}, but the stated central certificate and proof are not correct.",
+      "required_fix": "Define the paired regret certificate as max{0,max_{j not equal to i} sum_g w_g UCB_ijg}, or include j=i with a deterministic zero bound; repair the theorem, proof, and all descriptions of the reported certificate accordingly.",
+      "verification_test": "Check the repaired proof and a two-model counterexample with a strictly dominant chosen model and negative valid paired UCB. Verify numerically that every reported gate decision is unchanged for tau greater than or equal to zero, while the reported certificate values are nonnegative.",
+      "evidence_needed": "A corrected formal theorem/proof and a rerun or deterministic audit of the saved certificate values.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-02-no-general-strict-pairing-dominance",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "limitations_responsible_claims"],
+      "location": "Abstract; Contributions bullet P3; Section 3 after Theorem 1; Table 2/Certificate-price frontier",
+      "claim_ids": ["C02", "C03"],
+      "evidence_ids": ["E02", "E03"],
+      "observed_evidence": "The theorem proves validity conditional on simultaneous paired UCBs, not that a paired Maurer--Pontil UCB is strictly tighter than the CP-derived absolute bound at identical coverage. Different Bonferroni multiplicities, finite-sample constants, and paired-difference variance preclude universal strict dominance. The reported committed rates themselves are 0.260 for paired MPB versus 0.269 for absolute CP, not evidence of a uniform tightening claim.",
+      "why_it_matters": "A claimed strict finite-sample improvement is a central contribution, but it does not follow from the proof or displayed experiment. Pairing can help when shared errors reduce variance; it is not automatically or strictly tighter for every sample and candidate pair.",
+      "required_fix": "Replace universal strictly-tighter language with a conditional mechanism statement and an empirical comparison on these carriers, unless a valid dominance theorem with its assumptions is supplied.",
+      "verification_test": "Either provide a theorem comparing the exact implemented bounds under explicit assumptions, or enumerate paired Bernoulli calibration tables including correlated and anticorrelated errors to demonstrate that the revised claim is conditional rather than universal.",
+      "evidence_needed": "A formal dominance proof with matched confidence accounting, or narrowed manuscript claims plus reproducible empirical bound comparisons.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-03-adaptive-cs-not-established",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility"],
+      "location": "Section 6.2, adaptive-reveal confidence-sequence lemma and proof sketch",
+      "claim_ids": [],
+      "evidence_ids": ["E04"],
+      "observed_evidence": "The formula contains 1/(n-1) but claims validity at every count without defining n=0 or n=1 behavior. The proof also states sum_n 6/(pi^2 n(n+1))=1, whereas it equals 6/pi^2. That is conservative rather than fatal, but the lemma does not specify whether within-group sequential samples are iid or sampled without replacement from a finite pool, nor how a class-defined subgroup is selected from an unlabeled pool before its label is revealed.",
+      "why_it_matters": "The static certificate does not apply to the adaptive procedure, so this lemma is the sole asserted basis for its finite-sample validity. The stated assumptions are insufficient to verify optional-stopping validity for the actual adaptive sampling process.",
+      "required_fix": "Specify observable subgroup information, sampling model, filtration, and target estimand; define safe trivial bounds for low counts; correct the summation statement; and use or prove a confidence sequence valid for that exact process.",
+      "verification_test": "Prove simultaneous coverage under the stated filtration, including n=0 and n=1, and run a simulation or exhaustive small-pool audit over adversarial adaptive schedules to measure coverage at the stopping time.",
+      "evidence_needed": "A complete theorem with cited or derived finite-population/martingale conditions and runnable adaptive-certification implementation.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-04-observed-coverage-is-not-nominal-coverage-estimate",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "clarity"],
+      "location": "Abstract; Tables 1--3 captions; Sections 5.2 and 6.3; Claims C03/C05",
+      "claim_ids": ["C03", "C05"],
+      "evidence_ids": ["E03", "E04"],
+      "observed_evidence": "Coverage=1.000 is computed as the fraction of committed constructed-mixture rows whose regret is below tau on a held-out test split. Rows share calibration and test data within seeds and mixtures, so they are not independent Bernoulli coverage trials; additionally, held-out test reweighting estimates rather than observes true regret. No split-level uncertainty interval or test-estimation uncertainty is reported.",
+      "why_it_matters": "The finite-sample theorem is an unconditional probability statement over calibration samples, while the reported metric is a dependent descriptive diagnostic. Calling the latter certificate coverage or saying commits always have true regret overstates what the experiment establishes.",
+      "required_fix": "Call these quantities observed held-out violations or estimated-regret checks, state their dependence structure, and report uncertainty at an independent split/dataset-seed level. Keep the formal coverage guarantee separate from this descriptive check.",
+      "verification_test": "Recompute summaries using independent seed/split as the unit, report a cluster-aware interval and test-set uncertainty for committed regret, and confirm all prose preserves the distinction from the theorem's nominal 1-delta guarantee.",
+      "evidence_needed": "Per-seed raw settlement results, test-group counts, and a prespecified clustered analysis.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-05-snapshot-does-not-support-artifact-numerics",
+      "severity": "major",
+      "dimensions": ["reproducibility", "experimental_rigor"],
+      "location": "Tables 1--3 and M3.5; evidence/experiment_registry.json; evidence/method_provenance.tsv",
+      "claim_ids": ["C03", "C05", "C07"],
+      "evidence_ids": ["E03", "E04", "E05", "E07", "E08", "E09"],
+      "observed_evidence": "The frozen submission contains descriptions of remote_snapshot code and result files but does not bundle those files. The registry marks the central artifacts executed_snapshot_artifact_not_replayed, and the claim map labels the key metrics reported_snapshot_not_replayed. Build-record assertions of prior verifier passes cannot be independently rerun from the included snapshot.",
+      "why_it_matters": "The numerical certificate frontier, budget-allocation results, and fresh-seed boundary claims are not auditable from this submission. The paper appropriately labels some provenance limits, but the abstract and tables still rely on unavailable values as headline evidence.",
+      "required_fix": "Bundle reviewer-safe raw results, verifier scripts, exact configurations, and enough implementation/data-access instructions to reproduce every table, or narrow all numerical statements to unverified reported artifacts and remove them as decision-driving evidence.",
+      "verification_test": "In a clean environment using only the frozen supplement, rerun each named verifier and regenerate every headline table/figure; compare hashes and values to the manuscript.",
+      "evidence_needed": "The referenced result JSON files, scripts, configurations, environment lockfile, and data/split provenance.",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics violation is evident in the frozen snapshot. The main responsible-claim concern is accurately separating constructed-mixture and held-out-test diagnostics from guaranteed or deployed behavior.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A corrected nonnegative paired certificate theorem and proof, plus an exact audit showing reported decisions remain sound.",
+    "A fully specified and valid adaptive sampling confidence-sequence result, or removal of its finite-sample validity claim.",
+    "Runnable bundled artifacts that regenerate the paired frontier and budget tables, with independent-split uncertainty for descriptive settlement checks."
+  ],
+  "evidence_that_would_lower_score": [
+    "A finding that reported gates used negative uncapped paired bounds as regret certificates.",
+    "A replay showing the MPB/Hoeffding UCB implementations do not attain their stated simultaneous coverage under the actual sampling protocol.",
+    "A discrepancy between bundled raw artifacts and any headline committed-rate, regret, or coverage value."
+  ],
+  "review_limitations": [
+    "I reviewed only the specified frozen snapshot and its bundled rubric/schema; remote artifacts named in provenance files were not available for replay.",
+    "I did not perform external literature or web verification."
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "33380752971af33cdffd66c902f0b47bc87490a3e29c35c63920b2751cc5f13e",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "同一检索集上 j=12 低于 j=0 的系统级方向有配对证据且在两个生成上限下稳定；但五臂实验仍未控制 lower-band 所见 context set，不能支持“depth itself”归因。主风险差的所谓 exact conditional CI 也把观测 discordance rate 当成固定量，不能作为总体 paired risk difference 的精确区间。",
+    "presentation": "作者非常清楚地区分外部 O(context) 存储、固定 k read working set、read/prefill 与 end-to-end，并公开 selected magnitude、reader 依赖和未运行 arm。正文结构清晰，但 28 页附录与多个 run/reader/tier 仍造成较高核验负担。",
+    "contribution": "最可信的是一个训练免费、单模型、固定 retrieval 下的负结果与测量协议。没有实现同床 prior baseline，没有 end-to-end decode/latency、索引开销或跨模型证据；深度只节省 0.3 GB 且伴随显著质量损失，因此当前知识增量较窄。"
+  },
+  "paper_summary": "论文提出 CoMem：每个 512-token chunk 仅存某一深度 j 的 residual activation，BM25 取固定 top-k 后只重算上层。论文强调外部 activation/text/index 仍随上下文线性增长。Qwen3-8B 上，同一 oracle-retrieved chunks 的 j=12 读出显著差于 j=0 全层重前向；深度扫描总体向下。服务测量显示固定短读相对 full context 有 working-set 优势，但在相同约 6.7k read length 下，j=12 相对 j=0 仅省约 0.3 GB。五臂实验尝试分解 chunk-independent encoding 与位置迁移，但保留 lower-band context-set 差异。",
+  "strongest_verified_contribution": "第 4–6 页表 1–2与第 16 页表 5支持一个窄但可靠的负结果：在同一 100 个 qa1 样本、同一 oracle-selected chunks、相同 query/scorer/decoder 下，j=0 准确率 75% 而 j=12 为 48%（mnt160），第二生成上限为 76% 对 52%；即使放弃配对假设，两比例区间仍排除零。因此被部署的中层缓存读法不是对相同检索内容的无损替代。",
+  "strengths": [
+    "按照 KV-cache 专项标尺，论文正确区分 persistent hidden/text/index store、read-time KV working set、权重/临时峰值与 decode；没有把 fixed-k read 称为常数内存系统。",
+    "同一检索集 j=0 对照是真实 baseline，而不是把 prior 名称贴到作者控制上；作者明确说明未实现 Layer-Condensed KV、HCache 或 KV-Direct。",
+    "配对键、两个生成 cap、reader taxonomy、unpaired floor、exact McNemar b/c 和逐深度点均给出，且 selected 4k magnitude 与 pointwise multiplicity 被披露。",
+    "明确承认无 end-to-end latency、无每深度内存曲线、无索引延迟、无训练恢复、无多跳结论和无跨模型推广。"
+  ],
+  "questions": [
+    "能否运行作者自己指出的 confound-free arm：令 A 的 lower band 与 E 在完全相同 contiguous region、相同 positions/context set 上前向，只改变切分/缓存接口？",
+    "附录 J.1 为什么把对 discordant-sign 比例的 Clopper–Pearson 区间乘以观测 s/n 就称为 paired risk difference 的 exact CI？对总体 δ=p01−p10，s/n 本身也有抽样不确定性。",
+    "所谓 16k dense/re-forward 的 ≤6 pp ‘bound’如何约束 E–A 的 lower-band context-set confound？这两个对照既非同一变化对象，p=0.43/0.50 也只是非拒绝。",
+    "在当前实现每个 decode token 都重建 upper-band pack 的情况下，完整 end-to-end latency、吞吐和峰值是多少？0.26 s 的 prefill margin 是否会在 decode 后反号？",
+    "若没有同床 prior system，CoMem 相对 Layer-Condensed KV/HCache/KV-Direct 的实证价值应如何判断，而不只依赖结构表？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C2-R2-01",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 4 页 §4 五臂设计；第 7 页 §5.2 与表 3；第 8 页 Limitations",
+      "claim_ids": ["C8-D", "depth attribution", "depth itself costs a significant increment"],
+      "evidence_ids": ["Table 3", "E2 five-arm deck"],
+      "observed_evidence": "A 的 bottom layers 只看到 selected pack，而 E 的 h12 来自 contiguous document region，因此 E−A 除 cache depth 外还改变 lower-band context set。论文承认该 residual factor，却又写“depth itself costs”并以 16k dense/re-forward 相对 j=0 的非显著 ≤6 pp 作为 bound。",
+      "why_it_matters": "这不是纯 depth intervention；lower-band 接触到不同未检索上下文可显著改变 h12。不同对照上的非拒绝不能给该 confound 的大小作上界，尤其 n=100 且没有等价性设计。C8-D 的机制归因因而未被识别。",
+      "required_fix": "把 C8-D 收缩为被部署计算路径的联合差异，不称 depth itself；或新增同 context set、position、selector、decoder 下仅改变 materialization depth 的 arm，并预先设定等价/归因分析。",
+      "verification_test": "新 arm 与 A 只在 j=0 raw replay versus j=12 cached residual 上不同；逐样本输入 hash、各层 attention context 与 positions 必须一致。对 E−A 之外同时报告新纯对比及不确定性。",
+      "evidence_needed": "confound-free forward arm、逐层输入/位置审计和配对结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R2-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor"],
+      "location": "第 6 页表 2；第 27–28 页附录 J.1、表 16",
+      "claim_ids": ["exact conditional paired 95% CI", "primary magnitude interval"],
+      "evidence_ids": ["Table 2", "Table 16"],
+      "observed_evidence": "论文对 c/(b+c) 做 Clopper–Pearson，再以 (2p−1)s/n 缩放，称为 risk difference 的 exact conditional interval。该构造条件于观测 discordance count s，并把 s/n 当作无误差尺度。",
+      "why_it_matters": "exact McNemar 条件检验可对 H0:p01=p10 成立，但总体 paired risk difference δ=p01−p10 同时依赖 discordance probability p01+p10。忽略这一部分的不确定性不能给 δ 提供所声称的精确覆盖。论文还把该区间作为 primary magnitude。",
+      "required_fix": "将该区间改称 conditional discordance-imbalance sensitivity，不能叫 exact risk-difference CI；主区间使用适当的 paired risk-difference 方法（例如文中已有的 Newcombe Method 11）并清楚说明覆盖对象。",
+      "verification_test": "通过多项分布模拟覆盖率，比较 CP-rescaled 与正确 paired-difference interval；更新所有主文区间和 selected magnitude 语言。",
+      "evidence_needed": "覆盖模拟、方法引用/推导及重算表。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R2-03",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "clarity", "limitations_responsible_claims"],
+      "location": "第 6 页 §5.1；第 19–22 页图 4、表 8、表 10；第 25–26 页 preregistration timeline",
+      "claim_ids": ["load-bearing +27 pp magnitude", "preregistered negative result"],
+      "evidence_ids": ["Table 2", "Table 8", "Table 10", "Table 13"],
+      "observed_evidence": "anchor 在看过部分数据后从 1k 移到 4k；4k 是有效 2k/4k/8k 中最大显著 gap，未做选择调整。reader 规则显著改变点值，作者甚至承认更宽 strip rule 可反转符号；answer-anchored mnt512 为 p=0.0649。",
+      "why_it_matters": "固定 pinned reader 下方向明确，但 +27 pp 不是预先指定、reader-invariant 的效应量。标题与摘要的“pre-registered”容易让人误解为当前主 magnitude 在观察前冻结。",
+      "required_fix": "把 +27 pp 降为 selected cell 描述，主结论仅保留预先可辩护的方向；对 2k/4k/8k 和 reader family 做选择/多重性敏感性，或在独立样本上冻结 cell 与 reader 重复。",
+      "verification_test": "新的独立 qa1 样本在运行前固定 length、cap、reader；报告一个主配对区间以及所有预声明 secondary，不再从同一网格挑最大值。",
+      "evidence_needed": "独立确认运行或完整选择敏感性分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R2-04",
+      "severity": "major",
+      "dimensions": ["significance", "experimental_rigor", "novelty"],
+      "location": "第 2–3 页 §1–3；第 8 页 §5.3；第 12–13 页表 4与方法细节；第 18 页表 7",
+      "claim_ids": ["CoMem systems trade-off", "serving benefit"],
+      "evidence_ids": ["Table 4", "Table 7"],
+      "observed_evidence": "fixed-k working-set 优势同样由 j=0 short read 获得；depth 在 6,657-token read 仅省 0.3 GB，run-level timing 不支持 depth speedup。decode 每 token 重建 upper pack，未测 end-to-end；BM25/index latency 和 persistent-store baseline 未测，也没有同床 prior implementation。",
+      "why_it_matters": "按 KV-cache 论文的最低证据要求，当前结果没有展示可部署的 end-to-end 速度/内存/质量 Pareto 改善，且无法判断相对既有层轴或恢复方法的实际位置。实证贡献因此主要是内部负结果。",
+      "required_fix": "实现 upper-layer KV reuse 并报告含 retrieval、prefill、decode、store/index 的 end-to-end latency、吞吐和峰值；在相同硬件/质量点至少加入一个真正相关 baseline，或将论文明确重定位为纯测量/负结果短文。",
+      "verification_test": "同一请求分布、相同输出长度和质量约束下测 G=1 及并发；分别报告权重、active KV、persistent store 与 index，并画真实 Pareto front。",
+      "evidence_needed": "端到端系统测量、基线实现与质量匹配结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-R2-05",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "reproducibility"],
+      "location": "第 15、24–25 页 five-arm cross-trial audit 与 Appendix H",
+      "claim_ids": ["E2 pairing provenance"],
+      "evidence_ids": ["Table 12", "E2 merged scores"],
+      "observed_evidence": "A/D/R/C 与 E 来自两个 trial 和不同 driver snapshot；原 572907d7 blob 无法从历史恢复，只保存 diff。作者用静态 CLI whitelist 论证无副作用，并以 same-arm cross-trial endpoint 3/500 flips 作噪声界。",
+      "why_it_matters": "静态 diff 证据较强但不可从原 blob 独立重建；两 trial 的非确定性和 raw output 大量变化仍使小效应对比脆弱。当前主差大，不太可能反转，但 provenance 不完整。",
+      "required_fix": "在单一冻结代码版本一次性重跑全部五臂，或把不可恢复 blob 与跨 trial 合并明确列为历史证据限制。",
+      "verification_test": "同一 manifest、driver hash、seed/hardware 下生成 A/D/R/C/E，并比较当前 b/c 与点值。",
+      "evidence_needed": "统一 trial 输出与完整可恢复代码 snapshot。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文提醒 raw text 与 activations 的隐私、加密和 source-bound deletion，当前无用户数据或部署声明需要伦理升级。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审结果、作者计划、编辑上下文或历史评分。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "运行真正只改变 cache depth、lower-band context set 完全匹配的 arm，并确认方向。",
+    "用有效 paired risk-difference 区间替换主 CP-rescaled 区间，在独立冻结 cell/reader 上复现。",
+    "报告含 decode/retrieval/index 的端到端结果及至少一个同床 prior baseline，展示明确 Pareto 价值。"
+  ],
+  "evidence_that_would_lower_score": [
+    "confound-free arm 显示 E−A 差异主要来自 lower-band context set 而非 cached depth。",
+    "独立 reader 或新样本使 j=0>j=12 方向消失/反转。",
+    "完整 decode 后 j=12 的系统成本高于 j=0 且无存储优势，令机制没有可用 operating point。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、2026 年邻近工作、模型配置或硬件说明。",
+    "按要求完整读取了 KV-cache 专项校准文件，并仅将其用于 C2 的贡献类型、baseline、内存/速度/精确性与复现性判断。",
+    "仅审阅冻结 PDF；未读取或执行代码、数据、preregistration、trial tree、diff 或 artifact，因此 hash/pairing/运行日志仅按文稿评估。",
+    "PDF 共 28 页，已全文阅读并逐页视觉核查；未见解析缺页，部分附录页留白较多但不影响内容。"
+  ]
+}

@@ -1,0 +1,7 @@
+method_id	method_name	source_file_or_path	symbol/config	key_value	notes
+M1	Data construction / query bank build	RESULTS_GPU_QWEN35_VLLM_PAGED_MULTIFORK_RESIDENT_2026-08-14_ZH.md	PG-19 4095-token windows	32-query bank, stride 64, no synthetic marker	使用 8 个不同 PG-19 book window
+M2	Kernel execution	path: gpu/qcomem_vllm_paged_multifork_resident.py	unified_attention	descriptor consistency	check for 10 full-attn layers
+M3	Correctness validation	gpu/test_run_qcomem_qwen35_vllm_paged_multifork_resident.py	raw call/trajectory replay	requires matching token/logit/KV/GDN hashes	拒绝仅信任 shard 顶层布尔
+M4	Capacity formula computation	paper draft/analysis tables	fresh/reuse formulas	fresh=80+90N, reuse=80+5N	基于 10 层 full-attn 重放结果
+M5	Allocator metrics	report + summary script	current_delta / production_peak	PyTorch allocated/reserved counters	不与 NVML 等价
+M6	Gate/infra policy	gpu/launch_qcomem_qwen35_vllm_paged_multifork_resident_8gpu.sh	99_done ordering	stage ordering + integrity checks	00->01->02->99

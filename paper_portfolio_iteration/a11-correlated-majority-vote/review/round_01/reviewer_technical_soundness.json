@@ -1,0 +1,95 @@
+{
+  "reviewer_id": "a11-r1-technical",
+  "round": 1,
+  "snapshot_sha256": "cb94f35e16a4b324985dac9cc6701b665a8981d3a546f168751c510492c8289d",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 3},
+  "dimension_justifications": {
+    "soundness": "The hypergeometric replay definition, DP recursion, terminal k=N treatment, and tower argument are correct conditional on the stated count-exchangeable model and correctly specified prior. The independent FIT/CAL split makes empirical-Bernstein/Bonferroni population control plausible for a frozen rule. However, the monotonicity proof has an unhandled support-boundary division-by-zero case, and cross-shard TV wording treats an estimated distance as a population certificate without uncertainty.",
+    "presentation": "The model, scope, and distinction between binary pass-count replay and delivered-answer majority are explicit. The proof needs a boundary-case repair and TV discussion needs sharper conditional-versus-statistical language.",
+    "contribution": "An exact adaptive replay certificate for a count-exchangeable finite population, coupled with transparent calibration and exact DP, is useful. Relevance is appropriately bounded: it does not establish ordered-online deployment, stopped-answer correctness, or operational savings."
+  },
+  "paper_summary": "The paper studies adaptive early stopping of a binary pass-count majority vote. Under count-exchangeable replay, it infers the full-N pass-count majority from a random prefix using a hypergeometric posterior, stops below a posterior flip threshold, calibrates a frozen empirical prior using FIT/CAL/TEST with empirical-Bernstein and Bonferroni, evaluates exact replay quantities by DP, and gives fixed-rule TV robustness and synthetic drift stress tests.",
+  "strongest_verified_contribution": "For the stated replay model with model prior H, the posterior flip certificate is the conditional flip probability; including k=N as a zero-flip terminal state makes the tower-property stopping result valid without a union bound. The DP is consistent with that target, and the manuscript limits the target to binary pass-count full-vote agreement.",
+  "strengths": [
+    "The count-exchangeable model is concrete: conditional on K, prefixes are hypergeometric samples without replacement.",
+    "The k=N bookkeeping is correct across theorem and DP.",
+    "For a frozen FIT-derived rule, g(K) is a bounded fixed function, so population replay flip is linear in the target mixture and empirical-Bernstein plus Bonferroni is an appropriate control type for CAL selection.",
+    "The TV proposition's LP formulation and greedy/LP cross-checks support deterministic rule-conditional robustness.",
+    "The manuscript correctly distinguishes pass-count replay from delivered-answer majority, gold correctness, tokens/latency, cancellation, and ordered-online deployment."
+  ],
+  "questions": [
+    "Will the authors repair the monotonicity proof for all boundary-support cases rather than relying on a ratio with a potentially zero denominator?",
+    "Can the cross-shard TV result be conditional on the true target mixture lying in the ball, or supplemented with a simultaneous finite-sample confidence set establishing that premise?",
+    "Do all deployed frozen certificate tables define behavior for every prefix state reachable under a target K outside empirical-prior support? If so, state the convention and add a reachability/denominator check."
+  ],
+  "issues": [
+    {
+      "issue_id": "TS-01-monotonicity-boundary-proof",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "clarity"],
+      "location": "Lemma 1 proof, Appendix Proofs, especially ratio and atom-difference equations",
+      "claim_ids": ["C01"],
+      "evidence_ids": ["EV-THEORY-TOWER", "L2_lemmas_r468_result.json"],
+      "observed_evidence": "The ratio P(E2)/P(F0)=(K-t)/(N-K-t) and subsequent C(2K-N) identity divide through a factor that can be zero. At N=32, K=17, k=29, t=15, E2 has positive probability while F0=0. The denominator is zero and defined C contains binom(1,2)=0, so the displayed atom-difference equation incorrectly evaluates a positive difference as zero.",
+      "why_it_matters": "The monotonicity conclusion appears true and enumeration checks it, but the closed-form proof is invalid for all stated K,k. This weakens a named lemma used for binary-searchable fixed-k selection.",
+      "required_fix": "Add an explicit support-boundary case split before ratios: when the F0 binomial factor is zero, prove the inequality directly; otherwise use the ratio argument. Correct the main-text proof summary.",
+      "verification_test": "Symbolically enumerate all admissible (N,K,k) over a stated range including N=32, test inequality and every algebraic equality, and include N=32,K=17,k=29 as a repaired boundary test.",
+      "evidence_needed": "A corrected proof plus machine-checkable exhaustive boundary audit; no new carrier data required.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-02-tv-estimation-versus-deterministic-certificate",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "limitations_responsible_claims", "experimental_rigor"],
+      "location": "Proposition 1 and cross-shard interpretation, especially observed R=0.042 certifies transfer post hoc",
+      "claim_ids": [],
+      "evidence_ids": ["tv_robustness_r481_result.json", "shard1_robust_r471_result.json"],
+      "observed_evidence": "The LP result is exact conditional on a true deployment mixture q satisfying the TV ball for the fixed rule. Reported R=0.042 is the distance between fitted shard priors, not a confidence-bound demonstration that unknown target population mixture lies in that ball. LP checks validate deterministic optimization, not statistical containment.",
+      "why_it_matters": "Without sampling uncertainty, certified post hoc overstates the target-population result. This does not invalidate in-distribution CAL control but affects cross-shard robustness interpretation.",
+      "required_fix": "Describe cross-shard TV as deterministic sensitivity using fitted mixtures, or construct a simultaneous finite-sample confidence set and certify the supremum over it.",
+      "verification_test": "For each transfer claim, report confidence level and maximize q dot g over a valid target-mixture confidence set; if not done, ensure all prose uses descriptive/sensitivity language.",
+      "evidence_needed": "A finite-sample multinomial-mixture uncertainty analysis, or narrowed wording.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-03-tv-strict-refinement-qualification",
+      "severity": "minor",
+      "dimensions": ["technical_soundness", "clarity"],
+      "location": "Proposition 1 phrase strictly refines the 1-Lipschitz bound whenever g-profile nonconstant",
+      "claim_ids": [],
+      "evidence_ids": ["tv_robustness_r481.py", "tv_robustness_r481_result.json"],
+      "observed_evidence": "Strict improvement over base+R is not a general consequence merely of nonconstant g in [0,1]: equality occurs at R=0 and may occur over a positive interval when the relevant g-range is one. Carrier profiles may be strict at displayed radii, but the proposition is general.",
+      "why_it_matters": "This is a localized overstatement in an otherwise correct deterministic proposition.",
+      "required_fix": "Replace strictly refines with a qualified bound using realized range/capacities, and state strictness only for verified positive-radius regimes.",
+      "verification_test": "Evaluate V(R) and base+R over the displayed grid and assert strictness only where established.",
+      "evidence_needed": "A wording correction and existing LP outputs.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct ethics concern beyond the disclosed limitation that replay quantities should not be represented as delivered-answer correctness or operational savings.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "A corrected all-support monotonicity proof with exhaustive algebraic boundary checks.",
+    "A statistically valid cross-shard mixture/TV confidence analysis, or unambiguous narrowing to deterministic sensitivity.",
+    "Explicit verification that every reachable target prefix has defined frozen-certificate behavior."
+  ],
+  "evidence_that_would_lower_score": [
+    "A counterexample to the tower identity under stated true-H replay or to the DP recursion.",
+    "Evidence FIT and CAL are not independent as required.",
+    "Evidence replay pass-count outcomes were presented as delivered-answer majority or online operational measurements despite limitations."
+  ],
+  "review_limitations": [
+    "This review inspected only the frozen snapshot and reviewer-safe artifacts; experiments were not rerun.",
+    "The assessment is confined to count-exchangeable replay and does not validate natural chronological deployment."
+  ]
+}

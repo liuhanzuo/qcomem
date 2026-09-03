@@ -1,0 +1,104 @@
+{
+  "reviewer_id": "A14-R00-T",
+  "round": 0,
+  "snapshot_sha256": "3206716890f6f9c0e43fe4b2162e7057d58dc87e883fdf071488961acc8bb0d1",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 3,
+  "recommendation": "marginally_below",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The displayed discordance arithmetic and exact McNemar p-values are internally consistent, and the manuscript appropriately limits most conclusions to full-protocol, bed-local contrasts. However, the load-bearing estimand does not specify the randomness supporting inference, the stochastic scorers are represented by conditional realized records, exact 2L forward-count parity is not independently verifiable, and the raw records, implementations, and registrations needed to check the central claims are absent.",
+    "presentation": "The paper is unusually explicit about composite interventions, nominal draws versus forward calls, post-selection, heterogeneous pools, and unsupported mechanism claims. Evaluation is nevertheless obstructed by dense and partly ambiguous descriptions of the ten-test family, the relationship between the five-arm analysis and multiple mc_uniform budgets, and the unformalized finite-pool versus population interpretation.",
+    "contribution": "A paired audit showing that scoring protocol can change measured accuracy is useful, but the present evidence is confined to one checkpoint and one constructed benchmark bed. The interventions are composite, stochastic stability is unresolved, individual components are unidentified, and no independently verifiable artifact currently supports the reported numerical contribution."
+  },
+  "paper_summary": "The paper audits five multiple-choice scoring protocols for LLaDA-8B-Instruct on constructed four-choice GSM8K pools. It reports a pre-registered n=400 matched-draw s_conf versus mc_uniform gap of 13.0 percentage points, a post-selected equal-forward-count 2L/2L sensitivity with the same gap, a high-budget gap of 9.0 points, and fresh-pool evidence that fixed left-to-right injection exceeds s_conf on average while reversing direction at answer position 0. The intended conclusion is deliberately narrow: scoring protocols are non-interchangeable on this bed, without component-level mechanism, actual-compute parity, dose-response, or cross-bed claims.",
+  "strongest_verified_contribution": "Within the frozen snapshot, the strongest verifiable contribution is the explicit intervention-estimand and budget decomposition: the paper distinguishes scoring draws, schedule-selection forwards, total forward calls, feedback, and reveal schedule, and the reported effects and exact tests are arithmetically consistent with the displayed b/c counts. The underlying experimental records remain cannot_verify.",
+  "strengths": [
+    "Question-level pairing is appropriate for comparing correctness on shared items, and the manuscript reports discordant counts rather than only marginal accuracies.",
+    "The displayed effects and exact two-sided McNemar p-values in Tables 2, 5, 7, and 14 are internally consistent with the reported b/c counts.",
+    "The manuscript repeatedly and correctly states that s_conf versus mc_uniform is a composite protocol intervention and cannot isolate feedback, schedule, estimator, or compute mechanism.",
+    "Nominal scoring-draw matching, total-forward-call matching, and actual resource-cost parity are kept conceptually separate.",
+    "Historical, confirmatory, post-selected, and post-hoc analyses are generally labeled rather than silently pooled.",
+    "The main text fits within nine pages, references begin on page 9, and visible authorship is anonymized."
+  ],
+  "questions": [
+    "What is the precise probability space for the load-bearing estimand: a finite-pool conditional mean, a superpopulation of constructed GSM8K items, protocol randomization, or a joint item-and-randomization expectation?",
+    "For s_conf, what distinct computation occurs in each of the claimed L schedule-selection forwards and L scoring forwards, and why can the cross-entropy read used to select a position not also supply its scoring contribution?",
+    "How are mc_uniform mask draws seeded across questions and candidates, and what evidence shows that the matched-L and 2L conclusions are stable over sampler realizations?",
+    "Which exact ten hypotheses constitute the confirmatory Holm family, which mc_uniform budget belongs to the five-arm family, and where are the adjusted p-values and immutable pre-data registration?",
+    "How many top-score ties occur for each injected protocol, and do the fresh fixed-order aggregate and answer-position reversal persist under unique-winner-only or randomized tie-breaking analyses?"
+  ],
+  "issues": [
+    {
+      "issue_id": "A14-R00-T-I1", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "clarity"],
+      "location": "Page 3, Section 3, 'Statistics and derived diagnostics' and 'Load-bearing estimand'; pages 4-7, Tables 2 and 5 and Sections 4-6", "claim_ids": ["A14-C1", "A14-C2", "A14-C3"], "evidence_ids": ["A14-E1", "A14-E2", "A14-E3"],
+      "observed_evidence": "The estimand defines q_i as a fixed item tuple and takes an expectation over the n items of a named pool, yet it is also written as a probability contrast and accompanied by confidence intervals and McNemar tests. mc_uniform explicitly samples random masks, and rand_inject is one persisted random schedule, but no randomization variable enters the estimand and no item-sampling mechanism or exchangeable target population is defined.",
+      "why_it_matters": "For a fixed finite pool and fixed realized protocol randomness, the empirical gap is observed without sampling uncertainty. Inferential p-values and intervals require a stated item-sampling or randomization model. Conversely, if the target averages over protocol randomness, a single realized schedule or mask stream does not by itself define the claimed expectation. The current text therefore leaves the inferential target and coverage of the reported intervals unresolved.",
+      "required_fix": "Define all random variables and the target population explicitly. Either present finite-pool conditional contrasts as descriptive quantities, or justify an item-sampling/randomization model. If the estimand averages over scorer randomness, include that randomness in notation and estimate its contribution through replicated pinned seeds, an appropriate randomization analysis, or a justified per-item independent-randomness argument.",
+      "verification_test": "From the revised estimand, identify the independent sampling units and conditioning variables, derive or cite the validity of each reported test and interval for that target, and reproduce uncertainty estimates including protocol randomization where applicable.",
+      "evidence_needed": "Sampling-frame and item-selection documentation, exact scorer RNG policy, per-item/per-candidate random draws or seeds, and either multi-seed outputs or a formal justification that the recorded randomization supports the stated inference.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R00-T-I2", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "reproducibility"],
+      "location": "Page 8, Section 7, 'Reproducibility statement'; pages 19-20, Appendix H, Tables 22-23; evidence/claim_evidence_map.tsv, evidence/experiment_registry.json, and evidence/repository_inventory.md", "claim_ids": ["A14-C1", "A14-C2", "A14-C3", "A14-C4"], "evidence_ids": ["A14-E1", "A14-E2", "A14-E3", "E10", "E11", "E12", "E13", "E14", "E15"],
+      "observed_evidence": "The snapshot explicitly states that raw per-item outputs, registrations, environment capture, analysis code, and figure-generation scripts are absent. The claim-evidence map marks the quantitative claims source_reported/cannot_verify_locally, while Appendix H lists evidence objects that a complete bundle would need but does not provide them. The A14-E1/A14-E2/A14-E3 identifiers also do not resolve to immutable objects in the supplied snapshot.",
+      "why_it_matters": "The central counts, item pairing, pool disjointness, score vectors, bootstrap intervals, Holm families, and forward-count labels cannot be independently recomputed. The displayed aggregates are internally coherent, but coherence is insufficient to establish that they were produced by the stated protocol on the stated samples.",
+      "required_fix": "Provide a reviewer-safe immutable bundle containing item identifiers, per-arm predictions and correctness, score vectors, protocol traces, configurations, analysis scripts, and a manifest that resolves every claim-map evidence identifier. Otherwise, downgrade the confirmatory and verified language and retain the numerical results as unverified source reports.",
+      "verification_test": "Starting only from the bundle manifest, recompute every accuracy, b/c count, interval, exact test, multiplicity adjustment, construction/position split, and pool-overlap check, then compare the generated numerical payloads with all manuscript tables and figures.",
+      "evidence_needed": "The E10-E15 objects described in Table 22, executable statistical code, protocol traces, sampling-frame identifiers, environment information, and content hashes linking them to A14-E1 through A14-E3.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R00-T-I3", "severity": "major", "dimensions": ["technical_soundness", "reproducibility", "clarity"],
+      "location": "Pages 2-3, Table 1 and Section 3 'Five arms'; pages 4-5, Section 4 and Table 2; page 18, Table 19; evidence/method_provenance.tsv entry A14-M4", "claim_ids": ["A14-C1", "A14-C2"], "evidence_ids": ["A14-E1", "A14-E2", "A14-M1", "A14-M4"],
+      "observed_evidence": "The prose describes an injected arm as reading cross-entropy before each reveal, choosing a position, inserting the known token, and repeating. The ledger nevertheless assigns s_conf L schedule-selection forwards plus a distinct L scoring forwards, without pseudocode or a call trace showing the separation. The method-provenance map says the implementation was not located and that forward-count accounting is a manuscript-described proxy.",
+      "why_it_matters": "The narrow causal statement that equal 2L call counts rule out a fewer-reference-forward-calls-only explanation depends on exact accounting. Without an operational definition and trace, it is cannot_verify whether s_conf truly makes 2L model calls per candidate, whether any computation is reused, and whether mc_uniform's 2L calls are counted at the same granularity. The paper appropriately disclaims FLOP or latency equality, but even its narrower call-count equality remains unsupported.",
+      "required_fix": "Give executable pseudocode for all arms, define one forward call precisely, identify the tensors and masking state in every selection and scoring pass, and provide instrumented per-candidate traces for representative and full-run records. Preserve the existing disclaimer that equal call count does not imply equal actual cost.",
+      "verification_test": "Instrument the model invocation boundary and verify for every candidate that s_conf emits exactly 2L calls and the matched reference emits exactly 2L calls, with no hidden batched, cached, reused, or omitted pass; independently reconstruct Table 19 from those traces.",
+      "evidence_needed": "Scorer implementation, frozen configuration, model-call instrumentation logs indexed by item and candidate, and checks linking each Table 2 record to its call trace.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R00-T-I4", "severity": "major", "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "Page 3, Section 3 'Multiplicity' and 'Registration and principal-contrast selection'; page 5, Table 4; pages 7 and 14-15, Section 6 and Tables 12-13; page 12, Table 8; evidence/experiment_registry.json", "claim_ids": ["A14-C1", "A14-C2", "A14-C3"], "evidence_ids": ["A14-E1", "A14-E2", "A14-E3", "A14-X1", "A14-X2"],
+      "observed_evidence": "The paper says draw matching was selected after a small-pool scan and then separately registered on n=400; 2L/2L is explicitly post-selected; the fresh endpoint was elevated post-data; and fixed order is described as a pre-data extension. No machine-readable registration is supplied. Moreover, Table 1 defines the five-arm mc_uniform arm at nmc=1, while the registered primary is nmc,i=L, and the manuscript refers to a separate ten-test Holm family for the budget-curve analysis without enumerating its ten hypotheses or reporting their adjusted p-values.",
+      "why_it_matters": "The very small displayed raw p-values are not themselves contradicted, but the confirmatory status, multiplicity coverage, stopping rule, and independence of hypothesis selection cannot be verified. In particular, registration before a newly executed arm does not make a hypothesis fully independent if its comparator outcomes or the same pool were already inspected when the intervention was chosen.",
+      "required_fix": "Supply immutable timestamped registrations and a complete decision chronology tied to run hashes. Enumerate every hypothesis in each Holm family, identify the exact mc_uniform budget used in each five-arm comparison, report raw and adjusted p-values, and label any analysis selected after observing relevant pool or comparator outcomes as exploratory or post-selected.",
+      "verification_test": "Compare registration timestamps and hashes against data-access and execution timestamps, reconstruct each ordered Holm procedure from the full raw-p list, and confirm that every promoted endpoint satisfies only rules frozen before the relevant outcomes were available.",
+      "evidence_needed": "Original registrations, timestamp/hash metadata, full hypothesis-family tables, run chronology, stopping decisions, and evidence of when fresh-pool comparator outcomes were first accessed.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A14-R00-T-I5", "severity": "minor", "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "Page 3, Section 3, first-index tie rule; pages 7-8, Section 6; page 10, Table 7", "claim_ids": ["A14-C3", "A14-C4"], "evidence_ids": ["A14-E3", "E14"],
+      "observed_evidence": "The fresh fixed-order contrast is negative in aggregate but positive at answer position 0 and negative at positions 1-3. The position audit is post-hoc and reports Bonferroni-adjusted within-position tests against zero. The protocol uses deterministic first-index tie breaking, but top-score tie rates and tie-robust results are not reported, and no formal arm-by-position heterogeneity test is shown.",
+      "why_it_matters": "Four corrected within-position tests do not directly test whether effects differ across positions. Differential top-score ties combined with first-index tie breaking could also generate or amplify an option-position pattern. The empirical stratified values remain reportable, but the evidence is insufficient for an inferential position-dependence reading.",
+      "required_fix": "Report top-score tie counts by arm and answer position, repeat the contrast on unique-winner items and under randomized or averaged tie breaking, and test the arm-by-position interaction while jointly accounting for construction stratum. Keep the current result descriptive if these checks cannot be performed.",
+      "verification_test": "Using the item-level score vectors, reproduce Table 7, compute a prespecified heterogeneity statistic across positions, and verify that the sign pattern persists under tie-robust analyses and within both construction strata.",
+      "evidence_needed": "Per-option score vectors, tie indicators, answer positions, construction labels, and executable stratified-analysis code.", "expected_impact": "medium", "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No direct human-subject, privacy, safety, or deployment ethics issue is apparent from the frozen snapshot. Compute and energy are not measured, but the manuscript does not make efficiency or environmental claims.",
+  "llm_usage_disclosure": "This review was produced by isolated AI subagent A14-R00-T for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A complete immutable evidence bundle that reproduces every headline count, paired contrast, interval, multiplicity correction, and pool-disjointness claim.",
+    "A formally specified estimand and uncertainty analysis that includes the relevant item-sampling and scorer-randomization variables.",
+    "Instrumented traces confirming exact per-candidate 2L/2L model-call equality under an unambiguous scorer implementation.",
+    "Timestamped registrations and full hypothesis-family ledgers demonstrating that confirmatory and post-selected labels are correct.",
+    "Pinned multi-seed evidence showing that mc_uniform and seeded-random conclusions are stable, plus tie-robust and interaction analyses for the fixed-order position pattern.",
+    "Independent replication on an additional model, dataset, or independently constructed pool, which would materially raise the contribution ceiling."
+  ],
+  "evidence_that_would_lower_score": [
+    "Recomputation changes the reported b/c counts, intervals, p-values, or sample-overlap assertions.",
+    "Instrumented execution shows that the claimed 2L/2L arms do not use equal numbers of comparable model invocations.",
+    "Replication across mask or schedule seeds removes or reverses the matched-budget or reveal-order effects.",
+    "Registration timestamps show that primary contrasts, families, thresholds, or stopping rules were fixed after relevant outcomes were inspected.",
+    "The fixed-order position reversal disappears after accounting for top-score ties, construction stratum, or interaction multiplicity.",
+    "Item-level records reveal duplicated questions, inconsistent choice sets across arms, or leakage between the n=400 and fresh pools."
+  ],
+  "review_limitations": [
+    "The raw per-item records, implementations, analysis scripts, environment, and registrations are absent, so all experimental quantities beyond displayed-arithmetic checks are cannot_verify.",
+    "The citation lock reports a pending full audit with no citations verified this round, so literature support and novelty are not independently established from the supplied evidence."
+  ]
+}

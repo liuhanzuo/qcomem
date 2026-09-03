@@ -1,0 +1,183 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "d97f36aebfe3377236c0acc84ee88257d4b704e0d298ad74e88ccb435793821f",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "同题配对、精确 McNemar 检验、Holm 家族、问题 bootstrap 以及精确 2L/2L NFE 对照使“在该床上协议不可互换”得到较好支持。主要缺口是对照替换同时改变反馈、路径与预算结构，fresh reveal-order 结果又依赖单个随机日程并在观察异质性后升格，因此不能识别置信度反馈或揭示顺序的独立因果作用。",
+    "presentation": "19 页 PDF 的主表、分析地图、决策历史和限制总体清晰，逐页视觉核查未见裁切；但注册层级、多个池、多个区间约定和 post-selection 状态十分复杂，读者需要在主文与大量附录间往返才能识别哪个结果真正 load-bearing。",
+    "contribution": "论文给出了一个认真且有用的 bed-local scoring-protocol 测量审计，最强结果排除了“reference 仅因较少 nominal draws 而更差”的狭窄解释。但协议依赖本身并非新现象，本文没有新算法、通用估计理论或跨模型规律；相对于 PDF 所列工作，新增点主要是该 LLaDA/GSM8K-MC 实例的配对量化。"
+  },
+  "paper_summary": "本文在一个 LLaDA-8B-Instruct、四选一 GSM8K-MC 评测床上比较五种 scoring/reveal 协议：置信度顺序注入、随机顺序注入、反置信度、固定顺序以及无反馈的随机 mask reference。n=400 的参考预算曲线显示 s_conf 相对 mc_uniform 从单 draw 到高预算均有正的配对准确率差；最关键的总 NFE 对齐 2L/2L 点仍为 +13.0 pp，95% CI [6.75,19.25]。另一个不重叠 n=819 fresh pool 上，s_conf 胜一个固定 seeded-random 日程 +12.58 pp，但 fixed order 又平均胜 s_conf 5.62 pp，且效果随选项构造和答案位置反转。论文据此主张这些 scoring protocols 在该床上不可互换，但不主张置信度排序唯一、必要或因果最优。",
+  "strongest_verified_contribution": "最强证据是 n=400 同题配对的 reference-budget 曲线：在 s_conf 与 mc_uniform 都消耗每候选 2L 次总 NFE 的精确对齐点，s_conf 仍高 13.0 pp，配对区间 [6.75,19.25]、exact p=6.6×10^-5（PDF pp.4–6，Figure 2、Table 3）。这有力排除了“差异完全来自 reference 计算次数更少”的单一解释，但仍是完整协议替换的 bed-local 效应。",
+  "strengths": [
+    "对 nominal draw match 与 total-NFE match 作了明确区分，并用同一 n=400 题集给出数值不同的 paired record（PDF pp.4–6，§4、Table 3）。",
+    "确认性五臂比较采用十个 pairwise tests 的 Holm 家族，主表同时报告 b/c、区间和 exact McNemar p，而非只报边际 accuracy。",
+    "论文诚实承认 s_conf→mc_uniform 是反馈、路径和 passes 的联合替换，不能单独归因；也明确说明 fixed order 能胜 s_conf，因此置信度既非必要也非唯一最优（PDF pp.8–9，§6–§8）。",
+    "fresh pool 的构造层、答案位置反转、池间异质性与 post-selection 升格均有披露，而不是合并成一个跨床常数。"
+  ],
+  "questions": [
+    "能否用 factorial 设计分别操纵 ground-truth feedback、reveal order、schedule-selection pass 和 reference sampling，使协议差异可被因果分解？",
+    "seeded-random 只固定了一个持久化日程；跨多个预先固定 schedule seeds 后，s_conf 对随机顺序的 +12.58 pp 是否仍成立？",
+    "fresh pool 中 fixed order 的优势在答案位置 0 反转，作者如何排除固定位置、选项生成策略或 scorer 的位置偏置？",
+    "为何没有报告 length-normalized candidate likelihood、实际 FLOPs/latency/memory，以及更接近现有 dLLM multiple-choice scoring 的外部基线？",
+    "五选项 probe 的未确定结果是否意味着结论依赖四选一构造；需要多大样本才能进行预注册确认？"
+  ],
+  "issues": [
+    {
+      "issue_id": "A14-I1",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance"
+      ],
+      "location": "PDF pp.2–3，§2 Related Work and Local Evidence Context；PDF pp.9–10，§7–§8",
+      "claim_ids": [
+        "paper-level contribution",
+        "protocol non-interchangeability"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Related Work",
+        "Conclusion"
+      ],
+      "observed_evidence": "论文比较的评分、随机 mask、固定/随机/置信度 reveal 和 paired accuracy 工具均来自或紧邻既有实践；新增证据集中在单一 LLaDA-8B/GSM8K-MC 床。结论也只声称 bed-local non-interchangeability，没有提出新 decoder、评分器或一般理论。",
+      "why_it_matters": "协议实现细节会改变结果是重要警示，但仅证明一个自定义多选床上的差异，尚不足以说明该问题在主流评测、其他 dLLM 或实际生成任务中具有广泛影响。",
+      "required_fix": "与最接近的公开 dLLM scoring/reveal 方法做直接同床比较，并在至少另一个模型、任务和选项构造上预注册复现；清楚界定相对于既有协议敏感性研究新增的可迁移命题。",
+      "verification_test": "冻结统一 item/prompt/judge 后，在多个模型与选择题/自由生成任务上重复 factorial protocol matrix，检验效应方向、量级和 rank disagreement 是否保持。",
+      "evidence_needed": "强最近基线、跨模型/任务复现和明确的新颖性差异表。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I2",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "PDF pp.3–5，§3–§4、Table 1、Table 3；PDF p.9，§7",
+      "claim_ids": [
+        "reference gap",
+        "feedback/reveal attribution"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Figure 2",
+        "Table 3"
+      ],
+      "observed_evidence": "即便 2L/2L 对齐总 NFE，s_conf 仍进行 sequential candidate scoring、使用 ground-truth token 注入并以模型置信度选择 schedule；mc_uniform 使用不同 mask-out path、无 feedback。精确 2L 只对齐 forward 次数，没有保持状态路径、反馈或每次 forward 的 token 工作相同。",
+      "why_it_matters": "+13 pp 能证明完整协议不可互换，却不能定位差异来自置信度、答案注入、顺序、路径还是计算结构。若将其解释成 structured reveal 或 confidence 的优势，会超出识别范围。",
+      "required_fix": "构造正交的 factorial ablation：固定 feedback 后只换 order，固定 order 后只换 feedback，固定 mask path 后只换 selection rule；并测量 token-level FLOPs、wall-clock 与内存。",
+      "verification_test": "对每个单因素对照做同题配对区间和预注册多重性控制；只有某因素在其他因素固定时仍产生稳定差异，才可作对应归因。",
+      "evidence_needed": "正交消融、实际计算账本和相同路径对照。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I3",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "PDF p.3，§3（seeded-random provenance）；PDF pp.7–9，Tables 5–6、§6；PDF p.12，Appendix A",
+      "claim_ids": [
+        "structured reveal versus seeded-random",
+        "fresh-pool adjudication"
+      ],
+      "evidence_ids": [
+        "Table 5",
+        "Table 6",
+        "Appendix Table 8",
+        "Appendix Table 13"
+      ],
+      "observed_evidence": "s_conf 对 rand_inject 的 fresh 结果来自一个 persisted random schedule，而非 schedule-seed 平均；原 runner 使用未固定的 Python string hash，只能靠保存的逐候选顺序回放。fresh endpoint 是在发现 pilot/fresh 异质性后升格的 post-selection secondary，且固定顺序效果按构造层和答案位置变化并在 position 0 反转。",
+      "why_it_matters": "单个随机日程和观察后选池不能支持“structured reveal 胜随机策略族”的稳定结论；位置反转还提示多选构造可能驱动平均效应。",
+      "required_fix": "预先固定多个跨进程可复现的 schedule seeds，在同一新题池上平均；按预先规定的构造层和答案位置分层/平衡，并把 fresh pool 当作确认性新研究而非事后升格。",
+      "verification_test": "层级模型或 cluster bootstrap 同时覆盖 item 与 schedule seed；预注册主效应在各构造层保持方向，且 position interaction 被明确估计。",
+      "evidence_needed": "多 schedule-seed 重放、平衡新池和预注册交互分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I4",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "significance"
+      ],
+      "location": "PDF pp.5–9，Tables 2–6、§5–§7；PDF pp.13–15，Appendices B–D",
+      "claim_ids": [
+        "external validity",
+        "likelihood interpretation",
+        "five-option probe"
+      ],
+      "evidence_ids": [
+        "Table 2",
+        "Table 6",
+        "Appendix Table 11",
+        "Appendix Table 18"
+      ],
+      "observed_evidence": "所有主要结果来自一个 checkpoint 和一个四选一 GSM8K-MC 构造；candidate length 不一但未测 length-normalized likelihood。五选项 probe 依注册门判为 UNDETERMINED；reference 曲线也只覆盖几个离散 operating points，不能给出 dose response 或离床预测。",
+      "why_it_matters": "协议排序可能特定于候选长度、近错 distractor 生成与答案位置。若四选一之外不稳定，则“scoring protocols non-interchangeable”的实际适用范围很窄。",
+      "required_fix": "加入长度归一化和校准后的 scoring 基线，扩展到五选项/不同 distractor 机制/不同任务及 checkpoint，并预先规定推广目标。",
+      "verification_test": "在各构造中报告配对效应与 interaction；若主方向跨 option count、length normalization 和 task 保持且异质性可解释，才支持推广。",
+      "evidence_needed": "多构造外部验证与长度控制分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A14-I5",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "PDF pp.4–8，§3–§6 与 Table 5",
+      "claim_ids": [
+        "analysis hierarchy"
+      ],
+      "evidence_ids": [
+        "Table 5"
+      ],
+      "observed_evidence": "文中并列 pre-registered primary、post-selected decisive、pre-registered conservative、post-selection secondary、单对 k=1 和五检验 sensitivity 等多层标签，且使用不同区间约定。虽有 analysis map，主叙事仍容易让读者把确认性和探索性结果视为同等。",
+      "why_it_matters": "复杂的决策历史会增加选择性报告风险，也掩盖唯一可独立解释的核心结果。",
+      "required_fix": "主文只保留一个确认性主 estimand 和少数预先声明的 secondary；将历史 pilot、事后升格和替代区间集中到附录，并用统一术语标注。",
+      "verification_test": "让独立读者仅凭摘要和主结果表即可准确指出主假设、唯一 multiplicity family、主要区间和探索性结果。",
+      "evidence_needed": "简化后的分析层级与统一主表。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未发现需要升级的伦理问题；研究为公开数学题上的离线模型评测。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R1 独立完成，仅用于内部投稿前质量控制；未与任何其他评审者或评审代理通信，也未查看其输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "用正交 factorial 对照识别 feedback、order、path 和计算预算各自的作用。",
+    "在新题池上跨多个固定 schedule seeds 确认 reveal-order 结果，并控制答案位置/选项构造。",
+    "跨模型、任务、选项数和 length-normalized scoring 复现主要效应。",
+    "与最接近的公开 dLLM scoring 方法直接比较，并报告实际 FLOPs/延迟。"
+  ],
+  "evidence_that_would_lower_score": [
+    "多 seed 随机日程使 +12.58 pp fresh 效应消失或反转。",
+    "长度归一化或位置平衡后主要协议差异显著缩小。",
+    "其他模型/任务上协议排序不稳定且无可解释规律。",
+    "factorial 对照显示差异完全由答案注入或构造泄漏驱动，而非所讨论的 scoring 机制。"
+  ],
+  "review_limitations": [
+    "仅审阅指定 SHA256 的 19 页冻结 PDF；未读取源文件、逐题记录、匿名工件或任何其他评审输出。",
+    "按隔离任务约束未联网，未独立核验外部引文、相关工作覆盖完整性或工件可访问性；新颖性判断仅相对于 PDF 自述的相关工作。",
+    "逐页视觉核查未发现裁切或无法解析页面。"
+  ]
+}

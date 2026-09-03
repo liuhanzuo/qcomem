@@ -1,0 +1,134 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "b1eed7ac44c179e68b6d31e3b7235d19ddb1094fc99de461246f36a1de2d5edb",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 1
+  },
+  "dimension_justifications": {
+    "soundness": "论文对已测、派生、估计、外推和未测的边界异常坦诚，32k守护复跑也只作可行性记录。但 NOT_MEASURED register 的完备性仅相对于作者枚举的 ledger，措辞 scanner 是易漏同义改写的模式匹配；单个外部稿和单个盲读者不足以验证工具。",
+    "presentation": "表2、表3、表4的逐行 scope 很清楚，撤回内容没有被重新包装成正面 serving 结论。全文可读且无截断，但大量内部 C/D/S/R 编号、构建转录和撤回细节使主线较自指；第13–14页存在较多空白但不妨碍阅读。",
+    "contribution": "稿件本质上是一次撤回后的证据登记与报告工具，而非完成的 KV-selective serving 研究。核心 selector、adapter-matched、16k guarded rerun 与端到端服务均未测；报告工具又只有作者内和单案例验证，因此当前贡献不足以达到主会标准。"
+  },
+  "paper_summary": "本文撤回一个原先关于 KV-selective 多查询 serving 的成本—质量解释，并提出三个报告工具：逐主张 scope 标签、相对作者枚举 ledger 的 NOT_MEASURED register、以及对有限措辞模式运行的机器 scope gate。静态审计发现 full-context 并发 worker 缺少 inference-mode guard，以及 vendored selector 的参数名不匹配；前者经约两行修复后在单张 H20、Qwen3-8B、L=32k 上以G=1和G=4各3轮复跑，峰值分别29.31GB与70.73GB且无OOM。后者仅静态诊断。论文明确把16k guarded、KV selector、adapter-matched、LongEval逐题配对和单臂机制隔离标为 NOT_MEASURED，并限制冻结的串行成本、RULER质量与 Q* 派生值不得跨行聚合。",
+  "strongest_verified_contribution": "第6节表4提供了一个范围明确的修复后事实：在给定单模型、单GPU、L=32k、8个查询的实现上，加 inference-mode guard 后 full-context worker 在G=1和G=4均可有限执行且未OOM；G=4只有3个有效独立轮次，故这仅推翻该点上的“环境必然不可行”读法，而不是吞吐、容量边界或 KV selector 性能结论。",
+  "strengths": [
+    "摘要和结论都明确声明原成本—质量研究已撤回，没有用守护复跑偷偷恢复 KV-selective serving 优势。",
+    "表2统一列出 MEASURED、DERIVED、ESTIMATE、EXTRAPOLATED、NOT_MEASURED 等状态，并逐行给出关闭条件。",
+    "第6节区分已修复并复跑的 grad-mode leak 与仅静态诊断的 selector 参数错误，未把二者混成一个已解决 blocker。",
+    "表4正确说明G=4的12个请求只有3轮有效独立重复，且不把约4倍中位数比率解释为吞吐或扩展性。",
+    "附录C主动承认六类 scanner 漏掉9/27种最重要的诚实结构，并说明 gate 不是完整诚实证书。"
+  ],
+  "questions": [
+    "register 的 universe 完全由作者 ledger 定义时，什么证据能让第三方相信一个关键主张没有从 ledger 和正文同时遗漏？",
+    "所谓独立 annotator 是几名、如何招募、是否在分析冻结前完成、是否真正对 register ID 与作者期望盲法？",
+    "第8节为何说在一个外部稿上的91个 signal hits 证明 scanner generalizes，而没有 ground-truth precision/recall 或失败检测目标？",
+    "能否在相同32k配置中显式切换 guard on/off 多轮运行，保存完整峰值与每请求时延，以直接归因而非依赖一次历史 abort？",
+    "既然标题主题是 withdrawn KV-selective study，作者认为主会读者可复用的科学知识究竟是 serving 结果还是报告流程；后者相对已有 assurance case/模型卡的经验增量如何量化？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C3-R3-01",
+      "severity": "major",
+      "dimensions": ["significance", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "摘要、第1节及第9节结论（PDF第1、9页）；表2（PDF第5页）",
+      "claim_ids": ["paper-central-contribution", "withdrawn-serving-study"],
+      "evidence_ids": ["Table-2-NOT-MEASURED-register", "Table-4"],
+      "observed_evidence": "论文明确列出 KV-selector finite fetch、adapter-source recovery、adapter-matched arm、16k guarded rerun、LongEval逐题检验及单臂机制隔离均未测。唯一新增GPU结果是full-context 32k的guarded可行性复跑。",
+      "why_it_matters": "诚实撤回值得肯定，但它不产生原研究问题的答案。当前稿既没有 KV-selective serving 的有效成本—质量证据，也没有经广泛验证的独立报告方法，因此主贡献主要是个案记录。",
+      "required_fix": "选择一个可检验的主贡献：若为系统论文，修复selector并恢复/重建adapter，完成匹配质量和端到端并发测量；若为报告方法论文，则在独立、多项目语料上系统验证 register/gate。",
+      "verification_test": "系统路线需预先定义主 cell、对照、重复和端到端指标并一次性执行；方法路线需在隐藏标注集上报告遗漏率、误报率及与基线比较。",
+      "evidence_needed": "完整决定性实验，或多案例独立验证数据。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R3-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "reproducibility"],
+      "location": "第3.1节、第4节及附录C（PDF第3–5、12页）",
+      "claim_ids": ["register-completeness", "machine-checked-scope"],
+      "evidence_ids": ["Table-2", "Table-5", "coverage-self-critique"],
+      "observed_evidence": "register 的 exact-set 检查只保证作者 ledger 与生成表一致；scope gate 枚举有限短语，早期版本曾漏过 throughput 改写。附录C称六类 taxonomy 对27种结构漏掉9种。",
+      "why_it_matters": "同一来源生成与检查可检测转录漂移，却不能检测 ledger 和正文共同遗漏的主张，也不能对未枚举同义改写给出语义覆盖。称其为“complete”或机器检查工具容易被读成超过声明 universe 的保证。",
+      "required_fix": "将“complete”始终限定为 declared ledger，并以独立标注的主张语料评估 semantic recall/precision；加入未见过的释义、否定、跨句和数值组合攻击。",
+      "verification_test": "冻结多篇文稿和盲法 gold claim/scope 标签，在开发后一次性运行，报告每类遗漏、误报及置信区间；至少与关键词搜索和人工核查基线比较。",
+      "evidence_needed": "第三方 gold corpus、盲法标注协议、held-out adversarial fixtures 和误差分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R3-03",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第8节“Method validity: cross-case transfer”与附录C（PDF第9、12页）",
+      "claim_ids": ["scanner-generalizes"],
+      "evidence_ids": ["Table-5-method-transfer", "annotator-recovery"],
+      "observed_evidence": "scanner只额外运行在一篇SparseForge稿件上，得到91个signal hits，对本文得到68个；论文据此写“transfer shows the scan generalizes”。一个盲读者在当前PDF中回收14个register ID，但没有独立漏报/误报总体。",
+      "why_it_matters": "不同 hit 数只表明工具在第二篇文本上能匹配字符串，不表明其发现真实边界问题的准确性或跨领域泛化。单个读者、单个案例无法估计可靠性。",
+      "required_fix": "把该句改为可运行性演示，或扩展到多团队、多领域、含已知缺陷与无缺陷文稿的盲法评估，预先定义检出目标。",
+      "verification_test": "至少两名独立标注者建立 gold，报告一致性、precision、recall、每类性能与项目级留一验证；在冻结测试集上只评一次。",
+      "evidence_needed": "多案例独立标注及定量泛化结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C3-R3-04",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "reproducibility"],
+      "location": "第6节表4（PDF第8页）",
+      "claim_ids": ["grad-leak-causal-attribution", "32k-feasibility"],
+      "evidence_ids": ["Table-4-D1"],
+      "observed_evidence": "pre-guard 32k只有一次abort且没有峰值记录；post-guard在G=1与G=4各3轮，其中G=4是唯一并发数据。历史pre-guard 16k峰值139.2GB没有对应guarded 16k复跑。",
+      "why_it_matters": "post-guard可行性本身可信，但把早期边界归因于grad leak仍主要依赖静态代码检查与非对称历史记录。没有同配置 guard on/off 重复，无法量化缺陷的因果贡献或排除其他版本差异。",
+      "required_fix": "在隔离环境中只切换 inference-mode guard，按相同模型、版本、查询、L、G和监控多轮运行；至少补齐16k与32k。",
+      "verification_test": "保存每轮峰值、状态与请求级时延，对 guard on/off 做配对比较；证明除两行guard外环境和代码哈希一致。",
+      "evidence_needed": "受控ablation、完整原始记录和精确环境清单。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "C3-R3-05",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "clarity", "limitations_responsible_claims"],
+      "location": "第5节表3、图3及附录D–E（PDF第6–7、13页）",
+      "claim_ids": ["C13-break-even-estimates", "frozen-values-citability"],
+      "evidence_ids": ["Table-3-C13", "Table-6", "Figure-3"],
+      "observed_evidence": "G=512、128k的citable per-query margin仅0.0404秒，15单位配对bootstrap为[0.026,0.088]秒，但表3只给 Q*=164.2 的点值；1M的 Q*=180.2 又明确超出≤128k测量范围。",
+      "why_it_matters": "当分母很小且不确定时，break-even 比值高度不稳定；只给点值可能让读者低估范围。虽然论文标注了派生/外推，传播不确定性会使scope更可操作。",
+      "required_fix": "对每个Q*传播写入成本和per-query margin的不确定性，给出区间或分布；把1M严格留在外推敏感性表而非可引用主值。",
+      "verification_test": "用配对重采样联合重算 numerator/denominator，报告正分母比例和Q*分位数；检查结论在合理成本定义下是否稳定。",
+      "evidence_needed": "逐单位成本数据和Q*不确定性传播。",
+      "expected_impact": "medium",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "论文不涉及人类受试者、个人数据或模型发布。主要风险是冻结数字被脱离逐行scope复用；作者已在第7节明确禁止这些读法。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "完成 selector、adapter-matched、16k guarded 和端到端并发的预先定义复跑，恢复一个可评价的系统问题。",
+    "在多项目隐藏 gold corpus 上证明 register/gate 有可接受的 precision/recall，并优于简单基线。",
+    "受控 guard on/off ablation 复现内存缺陷归因，保存请求级原始记录。",
+    "多名真正独立标注者验证 ledger 的语义覆盖并报告一致性与遗漏。"
+  ],
+  "evidence_that_would_lower_score": [
+    "受控ablation显示guard不是历史内存异常的主要原因。",
+    "held-out释义测试发现pattern gate大量漏过未授权的serving/throughput主张。",
+    "独立审计发现关键主张同时从作者ledger和register遗漏。",
+    "冻结数值、Q*输入或表2状态无法从所称记录重建。"
+  ],
+  "review_limitations": [
+    "仅审阅指定冻结 PDF；按隔离要求未访问其匿名bundle、scanner、代码、日志或SHA清单，因此所有machine-check、复跑和冻结记录声明均未外部执行核验。",
+    "未联网，未核验外部引文、相关工作优先权、模型/框架版本或公开讨论；相关不确定性不应被解释为已验证。",
+    "已完整读取指定 KV-cache 校准说明并逐页视觉核查14页 PDF；未见图表截断，只有附录末页较多留白。"
+  ]
+}

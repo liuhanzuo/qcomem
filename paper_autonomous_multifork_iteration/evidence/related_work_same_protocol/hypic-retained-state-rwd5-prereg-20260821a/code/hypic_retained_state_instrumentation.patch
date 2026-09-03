@@ -1,0 +1,29 @@
+diff --git a/python/sglang/srt/mem_cache/common.py b/python/sglang/srt/mem_cache/common.py
+--- a/python/sglang/srt/mem_cache/common.py
++++ b/python/sglang/srt/mem_cache/common.py
+@@ -694,3 +694,8 @@ def release_kv_cache(req: Req, tree_cache: BasePrefixCache, is_insert: bool = True):
+     tree_cache.req_to_token_pool.free(req)
+ 
++    # ForkAudit RW-D5: inert unless both receipt environment paths are set.
++    from sglang.srt.retained_state_receipt import maybe_emit_owned_state_snapshot
++
++    maybe_emit_owned_state_snapshot(tree_cache)
++
+ 
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -3819,6 +3819,13 @@ class Scheduler(
+ 
+             if empty_cache:
+                 current_platform.empty_cache()
++
++            # ForkAudit RW-D5: check target ownership only after all pools clear.
++            from sglang.srt.retained_state_receipt import (
++                maybe_emit_terminal_ownership_snapshot,
++            )
++
++            maybe_emit_terminal_ownership_snapshot(self)
+             # Per-DP-group leader logs once: ranks within a DP group are
+             # state-synchronous, but DP groups may diverge.
+             if self.metrics_reporter.is_stats_logging_rank:

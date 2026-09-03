@@ -1,0 +1,65 @@
+\section*{Reproducibility Statement}
+
+Every quantitative claim in this paper is bound to a machine-readable record, and the
+binding is checked mechanically rather than by hand. A checker walks the marked numerals in the
+source and requires each to be either an exact match to a value in the evidence set, a
+correct rounding of one, or a stated difference of two. Table~\ref{tab:repro-audit} aligns the
+coverage counts, the sole checker-scope flag, and the wider scan. The flag is not a transcription
+error: the Qwen3 \texttt{k8}/PIQA accuracy in Table~\ref{tab:offmmlu-cells} matches its own per-cell
+record, while the checker treated the floor-adjacent literal as a floor. The same table records
+which statistics are emitted from per-item prediction records rather than transcribed, so a reader
+who re-runs the emitters obtains the printed tables or a diff.
+
+\input{sections/tab_repro_audit}
+
+The measurement protocol is fixed and reported in full in
+Section~\ref{sec:setup}: \texttt{chat\_template = False}, \texttt{add\_bos = 0},
+\texttt{desc\_style = none}, fp32 master weights with bf16-autocast forward, batch size 48,
+and maximum length 2048 for the cross-family MMLU-Pro runs, with zero truncation asserted
+per shard in every reported cell. The chat template is disabled deliberately and not for
+convenience: the evaluated systems are base language models with neither supervised
+fine-tuning nor RLHF, so applying a chat template would measure a different object.
+
+Three properties of this study are load-bearing for reproduction and are stated here
+rather than left implicit. First, the floor is a maximum over noisy label marginals and is
+therefore upward biased even under exactly uniform labels; any attempt to reproduce a
+floor-above-chance claim must reproduce that calibration, not only the point estimate.
+Second, content-side floors are not a property of a dataset alone: they are determined
+jointly by the tie convention, the length unit, and the tokenizer, so a reproduction that
+fixes only the dataset will not recover our numbers. Third, the ordering between the two
+nulls is a measured property of the reported cells under an explicitly stated regularity
+condition, not an identity; we give the margin by which it holds and the construction that
+violates it.
+
+We also record what a reproduction will \emph{not} find. Claims that earlier drafts of this
+work considered and that the evidence did not sustain are listed with their current status
+in Table~\ref{tab:claims}, including six retracted and two prohibited numeric claims. That
+ledger is part of the artifact: it exists so that a reader who encounters one of those
+numbers elsewhere can see that we withdrew it and why.
+
+\paragraph{Artifact availability.}
+The complete evidence pack, build record, code, and frozen
+sources of every table are attached as an anonymized supplementary archive to this
+submission (paths resolve relative to the code-repository root as in Table~\ref{tab:integrity}). The
+anonymisation gate covers the compiled PDF (\texttt{layout\_audit.json:anonymization});
+the longer identifiers and file paths inside evidence JSON and code files resolve only
+relative to the anonymized repository root, and contributor-identifying
+verbatim lines in non-\texttt{.tex} inputs were scrubbed by \texttt{code/scrub\_artifact\_paths.py}
+with a fail-closed post-pass verification (zero identifying literals remain). Every
+numeric value in the paper is one of (i) emitted by a script in the archive from a frozen
+input file, (ii) quoted from a public benchmark with its exact download checksum, or (iii)
+a pure-arithmetic rewriting of (i)--(ii); none is introduced by hand into a table or
+sentence. The numeral-checker run by \texttt{code/check\_prose\_vs\_evidence.py}
+(and its dedicated table-level sibling) validates \emph{transcription fidelity} between
+source manifests and the compiled PDF strings; it does \emph{not} verify the upstream
+statistical computation itself (raw-data to statistics); that second layer is the
+reproduction path documented above. The selection-aware joint bootstrap used for the
+$\mathbb{E}[\hat f]$ calibrating-reference verdicts is \emph{not run} in this version
+(per-item letter-level prediction shards are not in the release artifact; the
+numbered floors and counts reported are therefore plug-in/Wilson intervals only, and any
+future re-issue must re-run the selection step). The anonymous artifact registry lives
+at \texttt{paper/SHA\_PIN\_R13.\{json,md\}} (frozen manuscript identifier and content
+association), \texttt{paper/evidence/} (one JSON or CSV per evidence tag \textsf{E-A}
+through \textsf{E-K} plus \textsf{E-CAL}), and \texttt{review/SEAL\_RETIREMENT\_REGISTRY.json}
+(append-only lineage + successor replacement for the seal/identity sha of every
+superseded build).

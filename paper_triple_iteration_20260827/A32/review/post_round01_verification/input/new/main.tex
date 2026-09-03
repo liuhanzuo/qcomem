@@ -1,0 +1,296 @@
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\DeclareFontShape{OT1}{cmr}{bx}{n}{<-> ec-lmbx12}{}
+\usepackage{iclr2026_conference,times}
+\usepackage{amsmath,amssymb,booktabs,tabularx,url,float}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\raggedbottom
+\setlength{\belowcaptionskip}{5pt}
+
+\newcommand{\srcv}{\textsc{sr/cv}}
+\newcommand{\crossdiff}{D}
+
+\title{\raggedright An Evidence and Estimand Audit\\
+of a Paired Fixed-Filler Record}
+\author{Anonymous authors}
+\date{}
+
+\begin{document}
+\maketitle
+\lhead[Under review as a conference paper at ICLR 2026]{Under review as a conference paper at ICLR 2026}
+
+\begin{abstract}
+A score recorded when a masked-diffusion decoder commits a token and the
+correctness of its final answer are measurements at different levels.  We audit the
+evidence and estimand behind their cross-level mean difference in two source-reported
+records.  One record gives a natural-strata difference of $+0.2227$; another, on a
+different reported $400$-item pool, gives a paired $+37$-token,
+fixed-$\mathrm{NFE}{=}64$ filler contrast of $-0.0075$.  These point values concern
+different samples and estimands, and no joint comparison is defined or tested.  Their
+juxtaposition therefore has no shared inferential interpretation.  We independently check only
+the algebraic estimand definitions and arithmetic printed from the transcribed values.
+The empirical measurements themselves are source-reported and cannot be independently
+verified because the current package lacks the item records, exact intervention,
+decode traces, and analysis implementation.  The paired estimand is consequently a
+descriptive finite-pool quantity conditional on one recorded decode realization, not
+expected decoder behavior.  The commit score is also not verified as a probability of
+final-answer correctness.  No experiment was run as part of this audit.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Prompt length can covary with task content, formatting, and difficulty.  A natural
+length association therefore does not identify the effect of a prompt modification.
+This distinction is especially important for masked-diffusion decoding, where
+prompt construction, the unmasking trajectory, and a fixed inference budget can interact.
+We examine one source-described GSM8K \citep{cobbe2021gsm8k} /
+LLaDA-8B-Instruct \citep{nie2025large} record that places two analyses side by side:
+an independent natural-strata analysis and a paired fixed-filler analysis.
+
+The central quantity is a \emph{cross-level mean score--outcome difference}: the mean
+of a decoder's recorded token-commit score minus mean final-answer correctness.  The
+source artifacts call this quantity SCE; we retain that string only as an internal
+artifact alias.  We do not call the score confidence or an answer probability because
+the package contains neither the token-to-answer aggregation nor construct-validation
+evidence.  The quantity remains arithmetically well defined as a directional summary,
+but its zero point is not a calibration certificate
+\citep{ao2023miscalibration,seligmann2023beyond,cruz2024riskscores}.
+
+This paper is an evidence and estimand audit.  It asks what the source-described paired
+summary estimates, which statements can be checked from the current package, and which
+empirical conclusions remain unsupported.  The natural-strata and fixed-filler point
+values are catalogued as distinct source records; neither is used to decide what the
+other means.  The paper contributes:
+
+\begin{enumerate}
+\item a finite-pool estimand conditional on the recorded single-decode realization;
+\item a separation between independently checkable definitions and printed arithmetic,
+on the one hand, and empirical measurements that can only be transcribed, on the other;
+and
+\item a package inventory that makes the unavailable treatment, sample, score, decode,
+and implementation evidence explicit.
+\end{enumerate}
+
+\paragraph{Measurement status.}
+Throughout, \srcv{} means \emph{source-reported and not independently verifiable from
+the current package}.  Every empirical numerical value, count, and dose in the
+manuscript is \srcv{}.  This global label also applies when space prevents repetition
+in individual cells.  Evidence IDs A32-E1 and A32-E2 are opaque references to missing
+experimental records, not claims that those records were recovered or rerun.
+
+\section{Audit scope and evidence boundary}
+\label{sec:question}
+
+The audit is deliberately narrower than a study of whether prompt length has a causal
+effect.  We formalize the paired summary conditional on the source-described stored
+outputs and identify what evidence would be needed to interpret it more broadly.  The
+natural-strata result is a separate contextual record, not a second endpoint or a
+common-estimand comparator.
+
+\begin{table}[H]
+\centering
+\caption{Audit partition.  Every empirical numerical entry is \srcv{}.}
+\label{tab:hierarchy}
+\small
+\begin{tabularx}{\linewidth}{@{}p{0.22\linewidth}p{0.29\linewidth}p{0.16\linewidth}X@{}}
+\toprule
+Audit status & Object & Location & Boundary \\
+\midrule
+Independently checked & Estimand definitions and displayed arithmetic & This manuscript & Internal form only; no empirical input verification \\
+Transcribed only & Natural-strata point record & A32-E1 & Observational target on a separate, unavailable sample \\
+Transcribed only & Paired-filler point record & A32-E2 & Finite pool and one recorded decode; treatment and rows unavailable \\
+\bottomrule
+\end{tabularx}
+\normalsize
+\end{table}
+
+\paragraph{What is missing.}
+The authoring package does not contain the literal filler string, insertion location,
+tokenizer-level dose check, immutable $400$-item manifest or selection rule, overlap
+map with the natural-strata sample, exact prompt serialization, arm execution order,
+token-to-answer score construction, or gate implementation.  It also lacks per-item
+records, decode traces, preregistration, analysis code, model/tokenizer revision,
+environment lock, and a claim-to-file crosswalk.  Consequently, the treatment,
+sampling frame, score construct, and empirical measurements cannot be independently
+reconstructed.  No interval, probability-calibration, causal-effect, or
+decoder-expectation claim is retained.
+
+\section{Finite-pool recorded-realization estimand}
+\label{sec:estimand}
+
+Let $\mathcal P$ denote the source-described finite paired pool and
+$a\in\{S,L\}$ the Short and Long arms.  Let $\omega$ denote the complete recorded
+single-decode realization, including every stochastic choice used to produce the stored
+arm outputs.  For item $i$, let $s_{ia\omega}$ be the source-recorded commit score and
+$y_{ia\omega}\in\{0,1\}$ final-answer correctness under the source's matcher.  Define
+the arm summary
+\[
+ \crossdiff_{\mathcal P,\omega}(a)
+ = \frac{1}{|\mathcal P|}\sum_{i\in\mathcal P}
+   \left(s_{ia\omega}-y_{ia\omega}\right)
+\]
+and the paired filler contrast
+\[
+ \Delta_{\mathcal P,\omega}
+ = \crossdiff_{\mathcal P,\omega}(L)-\crossdiff_{\mathcal P,\omega}(S)
+ = \frac{1}{|\mathcal P|}\sum_{i\in\mathcal P}
+ \left[(s_{iL\omega}-y_{iL\omega})-(s_{iS\omega}-y_{iS\omega})\right].
+ \label{eq:recorded-estimand}
+\]
+This is a descriptive contrast for the named finite pool and stored decode realization.
+It is not an expectation over a problem population, decoder randomness, filler strings,
+or prompt constructions.  A decoder-expectation estimand would require deterministic
+replay evidence or multiple paired decode realizations; neither is available.
+
+Short and Long are labels attached to the source summaries.  Without the literal
+prompts, assignment record, pairing rows, and execution trace, this audit cannot verify
+arm construction, intervention fidelity, or execution order.
+
+The independent natural-strata analysis instead compares high- and low-length groups
+formed from a different source-reported record.  Natural prompt content and difficulty
+co-vary with those groups.  Because the package lacks item identities and an overlap
+map, no common-sample contrast, covariance-aware difference, prespecified comparison
+functional, or joint test can be formed.
+
+\section{Source-reported results}
+\label{sec:results}
+
+\subsection{Independent natural-strata context}
+
+The source reports that the high-minus-low natural-length contrast is $+0.2227$ in the
+cross-level mean difference.  Its component accounting is an identity: the reported
+score change is $-0.0314$ and the reported accuracy change is $-0.2541$, so
+$-0.0314-(-0.2541)=+0.2227$.  This verifies transcription arithmetic only, not the
+underlying measurements.
+
+\begin{table}[H]
+\centering
+\caption{\srcv{} independent natural-strata record (A32-E1).  The groups are
+observational and are not the paired filler pool.}
+\label{tab:natural}
+\small
+\begin{tabular}{@{}lc@{}}
+\toprule
+Quantity, high minus low & Source-reported point \\
+\midrule
+Mean recorded commit score & $-0.0314$ \\
+Mean answer correctness & $-0.2541$ \\
+Cross-level mean score--outcome difference & $+0.2227$ \\
+\bottomrule
+\end{tabular}
+\normalsize
+\end{table}
+
+\subsection{Paired fixed-filler diagnostic}
+
+The source describes a $400$-item paired comparison in which Long adds a fixed
+$37$-token filler to Short under reported $\mathrm{NFE}{=}64$.  Table
+\ref{tab:filler} transcribes the available summaries.  The literal filler, insertion
+position, tokenizer verification, sample construction, and per-item pairing records are
+missing, so these labels describe the source record rather than an independently
+instantiated intervention.
+
+\begin{table}[H]
+\centering
+\caption{\srcv{} Short/Long point record (A32-E2).  Empirical inputs and
+unrounded item-level values are unavailable.}
+\label{tab:filler}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Quantity & Short & Long & Long minus Short \\
+\midrule
+Cross-level mean score--outcome difference
+  & $-0.0724$ & $-0.0799$ & $-0.0075$ \\
+Mean recorded commit score
+  & $0.630$ & $0.543$ & $-0.0875$ \\
+Mean answer correctness
+  & $0.703$ & $0.623$ & $-0.0800$ \\
+\bottomrule
+\end{tabular}
+\normalsize
+\end{table}
+
+The source separately reports the paired-filler point $-0.0075$ and the natural-strata
+point $+0.2227$.  We do not compute a cross-record difference, ratio, or ordering from
+them.  They concern different item sets and estimands, and the package
+provides neither a common-sample functional nor a joint analysis.  Their juxtaposition
+is an index of two source records, not an empirical comparison.
+
+The source-displayed score arm means have three decimal places, whereas the separately
+reported score contrast has four.  Without unrounded records, subtraction of the
+printed means need not recover that contrast.  This is unresolved rounding opacity,
+not evidence of a numerical inconsistency.  The current package supports only an audit
+of the formal target and evidence boundary; it cannot establish intervention fidelity
+or explain the natural length association.
+
+\section{Closest neighboring work and boundary}
+\label{sec:related}
+
+Prior work establishes that prompt choices can change calibration-related behavior, but
+the verified neighboring studies do not test this exact operation.  Xia et al.
+\citep{xia2025influences} study calibration across four prompt styles; their analysis
+does not isolate prompt length, content-free filler, masked-diffusion commit scores, or
+a same-item $+37$-token intervention.  Zhao et al. \citep{zhao2024far} study six
+prompting strategies and propose a confidence-calibration prompting method; the
+prompting strategy and elicited confidence change, rather than the source-described
+fixed filler under fixed diffusion compute.  Kamoda et al.
+\citep{kamoda2023tta} show that prompt variations affect factual-probing outputs and
+evaluate prompt augmentation as a calibration intervention; they use prompt variants
+and ensembling for factual probing, not the present fixed-NFE masked-diffusion filler
+estimand.
+
+For measurement context, signed mean score--label summaries and their cancellation
+limits predate this study \citep{ao2023miscalibration,seligmann2023beyond,cruz2024riskscores}.
+The present contribution boundary is therefore an evidence and estimand audit of one
+source-described record, not a new metric, a general theory of prompt length, or a
+verified answer-calibration result.  A broader prompt-length-specific and
+masked-diffusion uncertainty search remains incomplete.
+
+\section{Limitations, availability, and disclosure}
+\label{sec:limits}
+
+\paragraph{Scientific limits.}
+The record covers one reported model--task setting, one fixed filler description, one
+dose, one inference budget, and one stored decode per item--arm.  The exact sample and
+intervention are missing.  The observational and paired analyses use different targets;
+the score construct is not verified as an answer probability; and decoder-run
+variation is unavailable.  These limits preclude causal, decoder-average, cross-model,
+cross-task, or transport conclusions.
+
+\paragraph{What the current package contains.}
+The mutable authoring directory contains \texttt{main.tex}, \texttt{refs.bib}, the ICLR
+style files, and compiled manuscript and auxiliary files.  It contains no figure asset,
+and this manuscript includes no figure.  The directory does not contain experimental
+records A32-E1 or A32-E2, literal prompts, item manifests, preregistration, protocol or
+analysis code, model/tokenizer revisions, decode configuration, an environment lock, or
+an evidence-ID crosswalk.  No empirical value was rerun or independently recomputed.
+
+\paragraph{AI assistance disclosure.}
+AI tools assisted with language editing, \LaTeX{} restructuring, and isolated internal
+pre-submission checks.  The authors remain responsible for every claim and evidence
+boundary.  AI assistance did not supply experimental records, generate new
+measurements, verify the source-reported values, or create scientific figures.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This audit formalizes a descriptive finite-pool, recorded-single-decode estimand for the
+source-reported filler point $-0.0075$.  A separate natural-strata record reports
+$+0.2227$.  The samples and estimands differ, and no joint analysis is available, so
+the two point values support no cross-record inference.  The estimand definitions and
+printed decomposition arithmetic can be checked independently; the empirical inputs
+can only be transcribed.  Missing records, intervention and sample construction, score
+semantics, and decoder-replay evidence prevent broader interpretation.
+
+\begingroup
+\fontsize{8}{8.8}\selectfont
+\setlength{\bibsep}{0pt}
+\bibliographystyle{iclr2026_conference}
+\bibliography{refs}
+\endgroup
+
+\end{document}

@@ -1,0 +1,112 @@
+{
+  "reviewer_id": "a11-r4-technical",
+  "round": 4,
+  "snapshot_sha256": "36a6e8c45f3c2aed3763f2ebb1efa07641e83957120cb31ac9cdba1bb234fd7d",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "The true-H oracle tower identity, its terminal k=N handling, the FIT-frozen conditioning argument, and the finite-family empirical-Bernstein/Bonferroni construction are sound under their stated count-exchangeable and task-i.i.d. assumptions. The packaged main replay also reproduces exactly from the derived count manifest. However, Lemma 1 as stated contains a false existence conclusion and its printed proof omits the even-N central-tie case; a separate model-motivation remark makes an unsupported inference from task demeaning. These are substantive, repairable technical defects.",
+    "presentation": "The oracle/fitted-score boundary, CAL-versus-TEST status, terminal convention, and TV diagnostic scope are unusually explicit and easy to audit. The proof is readable, but its central-tie omission and the unqualified k*(alpha) statement make the formal presentation less reliable than it appears.",
+    "contribution": "The narrow contribution is a clear, exact count-exchangeable replay analysis: a FIT-frozen plug-in stopping rule screened by held-out task-level replay loss. It is carefully distinguished from ordered online stopping and correctness/cost claims, but is a limited replay endpoint and its claimed supporting monotonicity result needs correction."
+  },
+  "paper_summary": "The paper models each task by a full-N binary pass count, treats an observed prefix as a uniform without-replacement replay, proves an oracle true-mixture posterior flip identity for eligible stopping times, and evaluates a distinct FIT-fitted posterior score. Conditional on FIT, it CAL-screens a pre-declared finite family using empirical-Bernstein UCBs with Bonferroni correction; TEST is presented as descriptive replay evidence only.",
+  "strongest_verified_contribution": "For a fixed FIT-frozen fitted-score rule, the exact replay loss is a bounded function g(K) of an i.i.d. CAL task count. Therefore the conditional empirical-Bernstein bound and Bonferroni simultaneous selection argument genuinely bound marginal count-replay flip risk under the explicitly stated task-i.i.d. model; this does not rely on identifying the fitted score with the true-H posterior.",
+  "strengths": [
+    "Theorem 1 correctly separates the true-H oracle posterior from the fitted score. Given a bounded prefix-filtration stopping time, the terminal state has x_N=K and zero flip, so the tower identity needs no union bound over stopping times.",
+    "Theorem 2 conditions on FIT before treating g_r(K_i) as bounded i.i.d. CAL observations. The reported 60 fixed-budget-by-level entries plus four BAYES-H levels are a conservative J=64 finite family, and the supplied standard-library replay reproduces the main JSON byte-for-byte from the declared count manifest.",
+    "The frozen-rule TV objective is correctly posed as a capacity-constrained linear program. Independent small-state enumeration agrees with the stated two-sided greedy solution; the paper appropriately labels the resulting curves as assumed-ball sensitivities rather than population-shift certificates.",
+    "The manuscript is forthright that its quantities are binary pass-count replay flip and expected replay count, not ordered deployment, delivered-answer correctness, or realized cost."
+  ],
+  "questions": [
+    "Will the authors repair Lemma 1 by proving the K=N/2 case separately and by conditioning k*(alpha) on existence on the odd grid (or adding an explicit full-N fallback)?",
+    "What estimand and finite-group correction, if any, support the claim that the task-demeaned correlation diagnoses absence of latent within-task dependence? If none, will the authors remove that inference and retain only the identifiable count-mixture statement?",
+    "Will Proposition 1 define tau*(alpha) only when V(0)<=alpha, or explicitly specify the convention for an empty feasible-radius set?"
+  ],
+  "issues": [
+    {
+      "issue_id": "TS-R4-01-LEMMA-CENTER-AND-EXISTENCE",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Lemma 1, manuscript PDF p.4 / source/paper.tex:259-275; Appendix A 'The reflection identity', PDF p.10 / source/appendix_proofs.tex:32-48.",
+      "claim_ids": [],
+      "evidence_ids": [
+        "EV-R02-MONOTONICITY-AUDIT"
+      ],
+      "observed_evidence": "For even N and K=N/2, the paper defines the full vote as negative. For any odd k, hypergeometric symmetry gives U_{N/2}(k)=P(x_k>k/2)=1/2. But the displayed reflection equates it with R_{N-K}(k)=R_{N/2}(k), which is 0 by the paper's own indicator 1{K>N/2}. Thus the reflection step does not cover the central-tie count. Moreover, for N=32, H=delta_16, and alpha=0.05, f_16(k)=1/2 at every odd k in {1,...,31}; hence the displayed minimum defining k*(alpha) is over an empty set, contrary to 'well defined for every mixture H'. The supplied audit checks only K>N/2 reversal cases, so it does not repair either logical point.",
+      "why_it_matters": "The monotonicity inequality itself is readily repairable, but the lemma currently combines an incomplete proof with a false universal feasibility conclusion. It is presented as the justification for binary-searchable fixed-budget certification, so the formal statement should not be accepted as written.",
+      "required_fix": "Handle K=N/2 separately using hypergeometric symmetry (f_{N/2}(k)=1/2 for odd k), restrict the reflection argument to K<N/2, and replace the unconditional k*(alpha) claim with 'when the odd-grid feasible set is nonempty' or include an explicit N-budget fallback and state its convention. Extend the exact audit to the center case and the no-feasible-budget behavior.",
+      "verification_test": "For every even N in the audit range, assert f_{N/2}(k)=1/2 for all odd k; then test H=delta_{N/2}, alpha<1/2 and confirm the revised definition returns the documented no-feasible/fallback outcome rather than an undefined minimum.",
+      "evidence_needed": "No new experiment is needed; a corrected proof and exact finite-state audit suffice.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-R4-02-DEMEANED-CORRELATION-INFERENCE",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "Remark 1 'Why the mixture, not the correlation', manuscript PDF p.3 / source/paper.tex:231-244, especially the inference from rho_FE approximately -1/(N-1) to 'essentially all observed correlation is across-task heterogeneity'.",
+      "claim_ids": [
+        "C13"
+      ],
+      "evidence_ids": [],
+      "observed_evidence": "Within every task with n rollouts, residuals y_ij-ybar_i sum to zero. Consequently the average off-diagonal residual covariance is mechanically -1/(n-1) times the average diagonal residual variance; its corresponding correlation floor -1/(n-1) occurs regardless of the original latent within-task dependence. A task-demeaned correlation therefore cannot establish that latent within-task dependence is absent or that 'essentially all' observed dependence is cross-task. This also conflicts with the paper's later, correct statement that count-only data cannot identify whether within-task correlation is dominant.",
+      "why_it_matters": "The remark is used to motivate replacing correlation-based reasoning by the mixture view. The replay framework need not make this causal-decomposition claim, but the stated inference is not identified by the described statistic and overstates what the carrier demonstrates.",
+      "required_fix": "Remove the conclusion about the source of correlation, or provide a precisely defined estimand and an analysis that remains informative after the finite-group demeaning constraint. Retain the defensible claim that the replay flip functional is determined by the count mixture under the specified replay model.",
+      "verification_test": "Show algebraically that the proposed statistic is not fixed by the within-task zero-sum identity, or else delete the latent-dependence conclusion and check that all remaining correlation wording agrees with the stated count-only limitation.",
+      "evidence_needed": "Either an identified, correctly finite-sample-adjusted within-task dependence analysis with its raw observations, or a claim narrowing; no new ordered-online experiment is required merely to remove the inference.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "TS-R4-03-TV-EMPTY-CRITICAL-RADIUS",
+      "severity": "minor",
+      "dimensions": [
+        "technical_soundness",
+        "clarity"
+      ],
+      "location": "Proposition 1, manuscript PDF p.5 / source/paper.tex:362-383; artifacts/results/tv_robustness_r481.py:125-137.",
+      "claim_ids": [],
+      "evidence_ids": [],
+      "observed_evidence": "The proposition defines tau*(alpha)=max{R:V(R)<=alpha} without a feasibility qualification. If alpha<V(0)=sum_K Hhat[K]g(K), this set is empty and has no maximum. The supplied implementation returns 0.0 in this case even though R=0 does not satisfy the displayed inequality. The named reported levels appear feasible, but the proposition is stated generally.",
+      "why_it_matters": "This is a formal edge-case error in an otherwise correct LP sensitivity result. It can mislabel an infeasible rule as having a zero critical radius.",
+      "required_fix": "State the definition only for V(0)<=alpha, or define an explicit infeasible sentinel/convention distinct from a feasible radius of zero; align the implementation and any figure/table reporting with that convention.",
+      "verification_test": "Use any frozen g,Hhat pair with alpha<V(0) and verify that the revised code reports infeasible/undefined rather than a radius claimed to satisfy V(R)<=alpha.",
+      "evidence_needed": "No new data; a definition and implementation edge-case test suffice.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No distinct ethics violation is established within the frozen replay-scope submission. The paper appropriately discloses that the supplied analysis does not measure deployed correctness, latency, tokens, or cancellation behavior.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control, using only the specified frozen Round-4 submission snapshot.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A corrected complete Lemma 1 proof and audit covering K=N/2 plus explicit no-feasible-budget/fallback semantics.",
+    "Removal or valid identification of the task-demeaned correlation inference, with wording consistent with the count-only limitation.",
+    "An explicit infeasible-radius convention for Proposition 1 and a passing edge-case test."
+  ],
+  "evidence_that_would_lower_score": [
+    "A counterexample to the oracle tower identity under the stated true-H count-exchangeable replay model or evidence that the implementation uses a different terminal/stopping rule.",
+    "A mismatch between the frozen count manifest, the FIT/CAL rule selection, and the reported main replay JSON.",
+    "Evidence that the claimed CAL family was not FIT-frozen or that its empirical-Bernstein/Bonferroni coverage calculation differs from the implemented one."
+  ],
+  "review_limitations": [
+    "Per isolation instructions, this review used only the frozen Round-4 snapshot and did not inspect raw parquet data, prior review rounds, author working directories, or other reviewer reports.",
+    "The main OMR numerical replay was independently rerun only conditional on the supplied derived count manifest; secondary recovered runners were inspected as provenance, not rerun end-to-end.",
+    "Literature positioning was assessed from the snapshot's scoped primary-source records rather than an unrestricted external survey."
+  ]
+}

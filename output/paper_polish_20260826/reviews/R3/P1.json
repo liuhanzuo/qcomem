@@ -1,0 +1,149 @@
+{
+  "reviewer_id": "R3",
+  "round": 1,
+  "snapshot_sha256": "074b0ec75463f223d717e02f07b0e792e9d8865bc2a08328ea8163f2ef081a88",
+  "role": "experimental_rigor",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "三态 verdict、端点可达性、正对照、锚点状态和总映射在形式上较完整，合成 fixtures 也覆盖了多个分支。但第一版实现违背注册规则且不可重算，现版本是在观察后修复；没有独立标注的自然 archive 总体或第三方执行，无法估计 false-kill 和 detection 性能。",
+    "presentation": "作者异常坦诚地披露修订、漂移和未闭合校准，核心表1可读。可是25页中内部轮次、sha16、PRIM/G/R编号和大量证书表占据主导，读者很难快速分辨方法定义、当前证据和未来设计；附录重放命令还有一处缺空格。",
+    "contribution": "把“统计读数是否正确”与“预注册判定是否可被第二台机器重算”分开，是有用的工程问题。当前实现和证据仍局限于同一多代理运行的内部 archive，自制 fixture 只能证明分支可执行，尚未显示该 gate 对真实研究档案的准确性或普适价值。"
+  },
+  "paper_summary": "本文提出 AUDIT-GATE，用 PASS/FAIL/POSTPONE 审计多代理研究 archive 中一个预注册判定点是否机械可操作和可重算。框架检查端点五元组、置信包络可达性、must-FAIL正对照、锚点的五种状态、不可达主腿和总 verdict 映射。现场证据包含六案例 ledger 与同一次运行中七个其他 seat 的 archive：冻结版为6 PASS/1 FAIL/0 POSTPONE，当前提取器因漂移变为3/2/2。八个作者构造 fixture 覆盖未在自然 archive 中触发的分支。论文披露第一版实现与注册的多样性谓词矛盾且在固定前被覆盖，并说明自然 archive 独立校准仍被阻塞，需要至少118个独立标注的无缺陷 archive。",
+  "strongest_verified_contribution": "最可信的是框架的总 verdict 映射与合成分支演示：表11/图2所述八个 defect-injected fixture 让 POSTPONE、PRIM4、各锚点状态等代码路径按预期触发，且作者没有把这解释成真实 archive 上的检测率。它证明当前 runner 的若干机械分支可执行，但不证明 gate 的分类有效性。",
+  "strengths": [
+    "第2节将 PASS 明确限定为判定可重算而非科学结论正确，避免概念外推。",
+    "第一版实现违背注册谓词且被覆盖的事实被作为 self-FAIL 公开，而不是静默替换。",
+    "表1同时保留冻结 tier 与当前漂移 tier，说明差异来自 archive/provenance drift 而非简单重算不确定性。",
+    "图2逐分支区分 live evaluated、live fired 与 fixture fired，明确自制 fixture 只证明机械路径。",
+    "第4节给出至少118个独立无缺陷 archive 的校准设计，并承认当前不存在满足条件的独立总体和第三方执行。"
+  ],
+  "questions": [
+    "标题为何仍称“pre-registered”，而当前可重算实现、PRIM3和组规则均在观察后修订；预注册究竟约束了哪个最终可评价对象？",
+    "七个“external archives”是否来自不同项目、不同作者和独立凭据，还是仅为同一运行中的其他 seat；它们之间的依赖如何处理？",
+    "EXECUTION_VALID 要求投影状态多样性时，为什么“至少两种状态”是 operability 的必要语义，而不是为当前案例选择的经验规则？",
+    "DRIFT_EXPLAINED 的 cause registry 由谁授权和不可变保存；攻击者或作者事后添加原因能否把任意 drift 变成 PASS？",
+    "未来118个无缺陷 archive 只校准 false-kill；检测侧36/36每 family 的缺陷类型、抽样框和独立标签将如何建立？"
+  ],
+  "issues": [
+    {
+      "issue_id": "P1-R3-01",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness", "significance"],
+      "location": "摘要、第3.3节与第4节表3（PDF第1、7–9页）",
+      "claim_ids": ["audit-gate-operability", "classification-validity"],
+      "evidence_ids": ["Table-1", "Figure-2", "Table-3"],
+      "observed_evidence": "现场 archive 均来自同一live run；八个缺陷 fixture 由作者按 checker 逻辑构造。论文明确没有独立标注的自然 archive 总体、没有第三方运行，且false-kill校准至少需要118个独立无缺陷 archive。",
+      "why_it_matters": "当前数据只能证明代码在已知构造输入上能走到相应分支，不能估计对真实 archive 的误杀、漏检或外部可操作性。没有这些指标，就无法评价 gate 是否比人工审计或简单 schema 检查更有用。",
+      "required_fix": "在作者之外收集并冻结独立、多项目自然 archive，由盲法标注者建立 operability gold；同时包含真实缺陷与无缺陷样本并预先冻结判定阈值。",
+      "verification_test": "按表3注册设计至少完成false-kill样本量，另对每类真实缺陷做有功效的检测评估；报告项目级cluster置信区间、precision/recall及与基线比较。",
+      "evidence_needed": "独立自然 archive、第三方 gold 标签、第三方重放日志和误差矩阵。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R3-02",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "reproducibility", "limitations_responsible_claims"],
+      "location": "摘要、第2.6节“Freeze-discipline disclosure”及附录C表12（PDF第1、4、20页）",
+      "claim_ids": ["pre-registered-audit", "current-runner-validity"],
+      "evidence_ids": ["Table-12-amendments", "first-run-self-fail"],
+      "observed_evidence": "第一版实现与注册的diversity predicate矛盾，而且在固定哈希前被覆盖，故原 verdict 不可重算；随后 verdict map、PRIM3、G2和组规则均在观察结果后修复。",
+      "why_it_matters": "当前证据评估的是后验修订系统，不能凭原始注册获得前瞻误差控制。标题和摘要若不精确区分，会让读者误以为当前 gate 的设计与主结果在观察前已冻结。",
+      "required_fix": "把当前证据明确称为开发/修复集；对最终代码、谓词、verdict map与分析完全重新预注册，并在新 archive 上前瞻运行一次。",
+      "verification_test": "提供新协议时间戳与代码摘要，在无任何规则变更下完成独立验证；任何 amendment 必须使该验证轮失效并另开新轮。",
+      "evidence_needed": "干净的前瞻注册、冻结实现和独立验证结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R3-03",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "limitations_responsible_claims", "significance"],
+      "location": "第3节 field audit 与表1 Panel B（PDF第5–7页）",
+      "claim_ids": ["seven-external-archives", "field-audit-transfer"],
+      "evidence_ids": ["Table-1-Panel-B"],
+      "observed_evidence": "七个所谓 external fire archives 属于同一运行中的其他 seat，并共享workspace、流程和潜在凭据/模板；论文也说明 replay process 不是party-independent。",
+      "why_it_matters": "这些单位并非独立项目样本，相关缺陷和共同基础设施会使6/1或3/2/2计数无法外推。把它们称为external容易高估跨环境验证程度。",
+      "required_fix": "改称cross-seat internal archives并限制解释；真正的外部验证应来自不同实验室、不同工作流和独立操作者。",
+      "verification_test": "由至少两个作者团队仅凭clean-room bundle执行重放，记录环境、失败原因和与gold verdict的一致性。",
+      "evidence_needed": "跨项目第三方 archive 与独立执行记录。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R3-04",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "clarity"],
+      "location": "第2.7节 group verdict、表1及附录C表12（PDF第4–7、20页）",
+      "claim_ids": ["EXECUTION_VALID-group-rule"],
+      "evidence_ids": ["Table-1", "Table-12-group-rule-disagreements"],
+      "observed_evidence": "EXECUTION_VALID 的组规则要求投影后出现至少两种状态；旧版与修订版规则在枚举中存在双向 disagreement。论文没有从 archive operability 的目标语义推导“状态多样性”为必要条件。",
+      "why_it_matters": "任意多样性条件可能拒绝全部一致且正确的 archive，或接受包含多种状态但整体不可用的组。后验改规则进一步说明该条件不是稳定构造。",
+      "required_fix": "给出 group verdict 的外部目标定义与损失函数，从该目标推导聚合规则；将状态多样性降为诊断而非通过条件，除非有独立校准支持。",
+      "verification_test": "在所有状态多重集及独立标注案例上构造混淆矩阵，证明规则对预定义operability目标的单调性和错误界限。",
+      "evidence_needed": "目标语义、形式性质及独立标注案例验证。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "P1-R3-05",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "reproducibility", "limitations_responsible_claims"],
+      "location": "第2.4节PRIM3、附录A/表4与附录C状态映射（PDF第3、11–12、20–22页）",
+      "claim_ids": ["DRIFT_EXPLAINED-pass", "anchor-integrity"],
+      "evidence_ids": ["Table-4", "Table-9", "PTSD-5-fixture"],
+      "observed_evidence": "锚点哈希漂移只要在cause registry中有记录即可投影为PASS_ANCHOR_DRIFT_EXPLAINED；合成fixture也正是通过加入已登记原因触发PASS。文中未给出cause记录的独立授权、签名或事前不可变机制。",
+      "why_it_matters": "若同一作者可以在看到漂移后补写原因，任意篡改都可能从FAIL变成PASS，削弱哈希锚点的完整性保证。可解释性记录不等于可信授权。",
+      "required_fix": "要求cause在变更前由独立权限签名并进入append-only日志；事后原因只能产生POSTPONE/人工仲裁，不能自动PASS。",
+      "verification_test": "用未授权事后cause、签名错误、时间倒置和registry删除fixture做攻击测试，确认均不能PASS；第三方验证日志链。",
+      "evidence_needed": "不可变cause registry规范、签名/时间证明和攻击测试。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "P1-R3-06",
+      "severity": "minor",
+      "dimensions": ["clarity", "reproducibility"],
+      "location": "附录H重放命令，PDF第24页表18附近",
+      "claim_ids": ["one-command-replay"],
+      "evidence_ids": ["Appendix-H-replay-command"],
+      "observed_evidence": "一处命令被排版为“python3analysis/audit_gate.py”，python3与脚本路径之间缺少空格；前文存在正确形式，但该处直接复制会失败。",
+      "why_it_matters": "论文把单命令重放作为核心接口，附录中的可复制错误会给独立执行制造不必要障碍。",
+      "required_fix": "修正空格并对PDF中所有16条命令从干净环境复制执行。",
+      "verification_test": "从最终PDF逐字提取命令，在clean-room bundle中逐条运行并保存exit code。",
+      "evidence_needed": "修正后的PDF与命令级重放记录。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "工作针对研究档案与可重算性，不涉及个人或敏感数据。若未来收集其他团队archive，应处理凭据、未公开研究内容与作者同意；当前PDF未给出需要升级为伦理警报的证据。",
+  "llm_usage_disclosure": "本审稿由隔离运行的 AI 子代理 R3 完成，仅用于内部投稿前质量控制；未与其他评审通信，未读取作者计划、旧评分或其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "在完全冻结的最终gate上完成真正前瞻、跨项目、第三方执行的验证。",
+    "至少118个独立无缺陷archive和有功效的真实缺陷样本给出可接受false-kill/漏检界限。",
+    "group verdict从明确外部目标推导，并在独立gold上优于简单schema/hash基线。",
+    "cause registry采用事前签名的append-only授权，攻击fixture不能把未授权漂移升级为PASS。"
+  ],
+  "evidence_that_would_lower_score": [
+    "第三方无法只凭clean-room bundle重放冻结verdict。",
+    "独立自然archive校准显示高false-kill或系统漏检。",
+    "最终规则继续在观察验证结果后修改而仍被称为同一预注册评估。",
+    "未授权cause或状态映射可以把明显损坏的archive投影为PASS。"
+  ],
+  "review_limitations": [
+    "仅审阅指定冻结 PDF；按隔离要求未访问论文所列代码、JSON、fixture、clean-room bundle、sha16记录或预注册文件，因此未执行任何证书或重放命令。",
+    "未联网，未核验外部引文、相关工作优先权、外部archive身份或公开讨论；相关不确定性不应被解释为已验证。",
+    "已逐页视觉核查25页 PDF；除附录H一处命令缺空格外，未发现影响阅读的图表截断。"
+  ]
+}

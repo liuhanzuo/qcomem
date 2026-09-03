@@ -1,0 +1,132 @@
+% P7 QUANT-GATE — appendix: provenance + pre-registered gate ledger.
+% These tables live AFTER the bibliography, outside the 9-page main text
+% (ICLR supplementary policy), and absorb the micro-type provenance footnotes
+% of Tables 1/2 and the numeric bands of Limitation F so main-text prose keeps
+% only conclusions + table references. Fonts here are >= footnotesize (9pt);
+% no \tiny / microfont. All columns are flex X columns; long tokens carry \bk
+% (discretionary) break opportunities so no cell can overflow the text block.
+
+\appendix
+\section{Provenance and pre-registered gate ledger}
+\label{app:provenance}
+
+\subsection{Provenance and reconstruction ledger}
+\label{app:provenance-ledger}
+Table~\ref{tab:app-provenance} collects the reconstruction and method-sensitivity notes that in
+the main text would otherwise sit as dense table footnotes (cf.\
+Table~\ref{tab:carrier-heterogeneity} and Table~\ref{tab:uncertainty-ledger}, whose footnotes
+here keep only a one-line pointer). All values are reproduced from the registered analysis JSONs
+listed in the \emph{source} column.
+
+\begin{table}[H]
+\centering
+\setlength{\tabcolsep}{4pt}
+\caption{Provenance and method-sensitivity ledger. All intervals are over probed blocks of one
+model --- the unit of analysis is a layer, not an independent sample (C4).}
+\label{tab:app-provenance}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X
+ >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X
+ >{\raggedright\arraybackslash}X}
+\toprule
+Quantity & Qwen3-4B & Qwen3-1.7B & Source / repro \\
+\midrule
+Probed blocks & 12 of 36: 0,1,4,7,12,17,22,27,32--35 & 11 of 28: 0,1,4,7,12,17,22,24--27 & fixed probe rule \texttt{0,\bk 1,\bk 4,\bk 7,\bk 12,\bk 17,\bk 22,\bk 27,\bk $-4,-3,-2,-1$} \\
+Fisher-$z$ 95\% CI on $\rho$ & $[+0.031,+0.871]$ & $[-0.665,+0.525]$ & \texttt{r31\_\bk paper\_\bk numbers.py} \\
+Bootstrap percentile 95\% CI on $\rho$ & $[-0.085,+0.921]$ & $[-0.718,+0.617]$ & \texttt{r31\_\bk paper\_\bk numbers.py} \\
+Permutation $p$ (two-sided, $B{=}20000$) & $0.045$ & $0.749$ & \texttt{r31\_\bk paper\_\bk numbers.py} \\
+Leave-one-block-out range of $\rho$ & $[+0.473,+0.709]$ & $[-0.273,+0.188]$ & \texttt{r31\_\bk paper\_\bk numbers.py} \\
+$\Delta z = z(\text{4B})-z(\text{1.7B})$ lower edge (8 seeds) & $0.794$, $[-0.04,+0.70]$ & --- & \texttt{R35\_\bk DELTA\_\bk Z\_\bk CI\_\bk FIX.json} \\
+$\Delta z$ upper edge (8 seeds); seeds excl.\ 0 & $[+0.21,+1.39]$; 7 of 8 & --- & \texttt{r35\_\bk delta\_\bk z\_\bk ci\_\bk fix.py} \\
+Fisher SE of $\Delta z$ (projected $+$~\texttt{zh}) & $0.486$ ($0.317$) & --- & \texttt{R35\_\bk DELTA\_\bk Z\_\bk CI\_\bk FIX.json} \\
+Power on $|\Delta z|{=}0.794$ (projected) & $0.37$ ($0.71$) & --- & Panel~B \\
+Smallest $|\Delta z|$ at 80\% power (proj.) & $1.36$ ($0.89$) & --- & Panel~B \\
+Partial-$\rho$ boot.\ 95\% CI, turnover$|$depth & $[-0.49,+0.66]$ & --- & \texttt{R34\_\bk PARTIAL\_\bk CI\_\bk BOOTSTRAP.json} \\
+Partial-$\rho$ boot.\ 95\% CI, depth$|$turnover & $[-0.15,+0.88]$ & --- & \texttt{r34\_\bk partial\_\bk ci\_\bk bootstrap.py} \\
+Permutation $p$ (layer-resampling) & $0.79$ / $0.18$ & --- & \texttt{r34\_\bk partial\_\bk ci\_\bk bootstrap.py} \\
+Depth-reweighted $\rho(\tau,\delta)$ (4B) & $0.401$ & --- & \texttt{R37\_\bk DEPTH\_\bk REWEIGHT\_\bk GATE3} \\
+Analysis JSON sha16 & \texttt{6c26aced50960e6d} & same & \texttt{r31\_\bk paper\_\bk numbers.py} \\
+Canonical payload digest ($\max|\Delta|{=}0$) & \texttt{04ac77be066fbe87} & \texttt{1b4143950e186756} & sha256 dump, \texttt{sort\_\bk keys} \\
+Evidence-ledger audit digest & \texttt{e6325486081538cb} & \texttt{b13c3221d8dedabc} & frozen cross-seat id \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\ContinuedFloat
+\centering
+\setlength{\tabcolsep}{4pt}
+\caption[]{Provenance and method-sensitivity ledger (continued).}
+\label{tab:app-provenance-cont}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X
+ >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X
+ >{\raggedright\arraybackslash}X}
+\toprule
+Quantity & Qwen3-4B & Qwen3-1.7B & Source / repro \\
+\midrule
+Registered gate AUROC (SAVED pad-polluted labels, r38) & $0.743$ ($p{=}0.10$) / $0.500$ ($p{=}0.54$) & --- & \texttt{r38\_\bk auroc\_\bk gate.py} \\
+Registered gate AUROC (MASKED labels, r40) & $0.800$ ($p{=}0.05$) / $0.567$ ($p{=}0.40$) & --- & \texttt{R40\_\bk AUROC\_\bk GATE\_\bk MASKED.json} \\
+Depth-baseline AUROC (MASKED labels) & $0.686$ / $0.500$ & --- & \texttt{r40\_\bk auroc\_\bk gate\_\bk masked.py} \\
+Sign flips, saved vs.\ masked labels & 4 of 12 & 1 of 11 & \texttt{R40\_\bk AUROC\_\bk GATE\_\bk MASKED.json} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\smallskip
+\begin{minipage}{\textwidth}
+\footnotesize\raggedright
+\emph{Method-sensitivity notes.}
+(i)~Bootstrap draws are draw-sensitive at these $n$: a prior archived draw gives
+$[-0.099,+0.922]$ on 4B vs.\ $[-0.085,+0.921]$ here --- both contain zero (C5).
+(ii)~Two-sided $p$ on 4B is convention-sensitive: $0.042$ asymptotic, $0.0488$ under the
+independent-estimator re-implementation, $0.045$ here; no claim is conditioned on $p<0.05$.
+(iii)~The three $\Delta z$ rows are the per-seed envelope ($B{=}40000$), i.e.\ a seed-unstable
+interval --- why C8 calls the sign difference observed and not established.
+(vii)~The partial-$\rho$ CIs span zero, so the partial contrast is directionally consistent but
+not statistically resolved. Run config / device / trial / host identifiers are withheld for
+double-blind review and given in the supplementary manifest.
+\end{minipage}
+
+\subsection{Pre-registered gate ledger}
+\label{app:gate-ledger}
+Table~\ref{tab:app-gate} is the decision record for the two pre-registered safety flags; it
+replaces in-prose repeats of the bands in Limitation~F and \S\ref{sec:results-main}.
+
+\begin{table}[H]
+\centering
+\setlength{\tabcolsep}{4pt}
+\caption{Pre-registered gate ledger: band rules, measured values, and verdict (computed 0 GPU
+from the registered cells on the \emph{corrected pad-masked} labels; depth baseline is the
+trivial block-index predictor). The AUROC half is computed under masked labels as disclosed in
+Limitation~F; the raw pad-polluted label readout is reported in
+Table~\ref{tab:app-provenance} for the label-source record, and the full three-label-set table
+is \texttt{R40\_AUROC\_GATE\_MASKED.json}.}
+\label{tab:app-gate}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X
+ >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X
+ >{\raggedright\arraybackslash}X}
+\toprule
+Gate / rule & Band definition & 4B measured / 1.7B measured (masked labels) & Verdict \\
+\midrule
+Pearson $r$ PASS/KILL (raw relation) & PASS $\ge 0.3$; MERGE $0.15\le r<0.3$; KILL $<0.15$ & $+0.490$ / $+0.021$ & PASS / KILL (2 cells only, C12) \\
+Registered AUROC gate & PASS: AUROC $\ge 0.85$ \emph{and} $\ge 30\%$ gain; MERGE $0.7\text{--}0.85$; KILL $<0.7$ & $0.800$ ($5/12$; perm.\ $p{=}0.05$) / $0.567$ ($6/11$; $p{=}0.40$) & MERGE / KILL; NOT passed; band fragile (F, C12) \\
+Damage-gain half (NOT evaluated; no fallback forward) & PASS requires $\ge 30\%$ damage reduction & FP PPL $18.95/19.60$; clean reference $16.29/16.95$ ($\approx14\%/13.5\%$ feasibility bound) & Feasibility-bound below target; no fallback measured (C7) \\
+\bottomrule
+\end{tabularx}
+
+\smallskip
+\begin{minipage}{\textwidth}
+\footnotesize\raggedright
+\emph{Notes.} Values are the AUROC half over probed blocks, labels positive iff masked
+degradation $>0$ (\texttt{R40\_AUROC\_GATE\_MASKED.json}). At the corrected masked labels the
+trivial depth-baseline AUROC is $0.686$ (4B) / $0.500$ (1.7B) --- i.e.\ the depth baseline does
+\emph{not} beat the turnover AUROC on either carrier, correcting Limitation~F.
+The band verdict is fragile: a single label flip moves the 4B AUROC to anywhere in
+$[0.639,0.889]$, spanning KILL/MERGE/PASS, and the 4B mask label count rests on one near-zero
+layer (C12). The gate's damage-gain half ($\ge 30\%$) needs a fallback-baseline simulation and
+was not run (C7). Both rules were defined over \emph{eight} cells of which only two were run
+(C12), so both classifications are boundary observations, not passes or kills of the rules.
+\end{minipage}
+\end{table}

@@ -1,0 +1,23 @@
+\begin{table}[H]
+\caption{Unpooled timing/quality-only serving context on Qwen3.5 and the same eight-item Qasper/2WikiMQA slice.  Each row uses one H20-3e per item, a 4,096-token cap, greedy decoding, and at most 32 generated tokens.  Times are OpenAI-compatible streaming client wall-clock; F1 is the eight-item mean.  Hit is interpreted only against the disabled/full-recompute reference inside each framework block.  No cross-framework speedup, retained-state, scheduler-throughput, capacity, or broad-quality claim is made.}
+\label{tab:serving-controls}
+\centering\scriptsize
+\setlength{\tabcolsep}{4.0pt}
+\begin{tabular}{@{}llrrrrc@{}}
+\toprule
+Framework & Prefix reuse & F1 & TTFT (s) & TPOT (ms) & tok/s & Hit \\
+\midrule
+vLLM 0.26 & off & 39.63 & 1.445 & 56.31 & 4.70 & -- \\
+vLLM 0.26 & align on & 39.63 & 0.179 & 53.99 & 14.00 & 8/8 \\
+\midrule
+SGLang 0.5.17 & off & 39.14 & 0.283 & 53.38 & 12.73 & -- \\
+SGLang 0.5.17 & Radix on & 39.14 & 0.146 & 53.15 & 15.83 & 8/8 \\
+\midrule
+HYPIC code & full recompute & 39.14 & 0.217 & 49.21 & 14.77 & -- \\
+HYPIC code & prefix cache & 39.14 & 0.072 & 50.15 & 19.07 & 8/8 \\
+HYPIC & transition+seam 8 & 39.63 & 0.101 & 52.13 & 17.67 & 8/8 \\
+\bottomrule
+\end{tabular}
+\vspace{0.4mm}
+\parbox{0.97\textwidth}{\footnotesize vLLM uses experimental Mamba \texttt{align}; SGLang 0.5.17 uses \texttt{extra\_buffer} Radix caching.  The HYPIC rows use the authors' commit 98147c0 on SGLang 0.5.14, TP=1, full \texttt{transition\_rope\_recompute}, and an eight-token seam.  Its full and prefix rows are controls from that same codebase; published TP=2 results and the separate retained-state receipt cohort are not inserted here.}
+\end{table}

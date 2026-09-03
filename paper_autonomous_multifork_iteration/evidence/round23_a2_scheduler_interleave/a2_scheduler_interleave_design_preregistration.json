@@ -1,0 +1,119 @@
+{
+  "schema_version": "qcomem-forkaudit-scheduler-interleave-design-v1",
+  "status": "preregistered_before_gpu_outputs",
+  "created_at_utc": "2026-08-20T18:00:35Z",
+  "round_22_meta_action": "A2-test-operational-and-heldout-fault-boundary",
+  "protocol": "qcomem-forkaudit-scheduler-interleave-v1",
+  "model": {
+    "id": "Qwen/Qwen3.5-35B-A3B",
+    "revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "adapter": "frozen vLLM-Q16 ForkAudit adapter",
+    "model_artifact_ledger_sha256": "c0a23e9d3f9d220257af97b78fd97661f315f0c82a3a010b57a771e3eeefbbfb",
+    "model_weight_ledger_sha256": "8314a82c9188b9b817193e039b0b0eb0636b328512f19b0c12455853b7e20014"
+  },
+  "source_inputs": {
+    "pg19_train_jsonl_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "pg19_train_manifest_sha256": "5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c",
+    "world_size": 8,
+    "debug_rank": 0,
+    "document_source_per_formal_rank": "one distinct deterministic PG19-train book",
+    "query_tokens": 16,
+    "resident_requests": 3,
+    "rounds_per_completed_request": 4,
+    "cancel_slot": 2,
+    "cancel_after_rounds": 2,
+    "seed": 20260821
+  },
+  "source_bundle": {
+    "runner_sha256": "92e44e14b6da512e717c06738745448fb798bcf315664ad32f6f4d02c6d3ae84",
+    "scheduler_contract_sha256": "e9eb78d7981bf2c6a56032774a3bb64904e6e9892dcc16d07e2fb6b42205617f",
+    "scheduler_contract_test_sha256": "b12a0503f026436b23855c2af0aa1adee0b8b6f4ef8893940643974c77927ff4",
+    "upstream_code_ledger_sha256": "7620f05821fc5435a9aaa260ae82577988a5a20eff0f42901b66e6c6871fd2b9",
+    "upstream_bundle": "qcomem_gpu_forkaudit_lifecycle_transfer_20260819c/gpu"
+  },
+  "geometry_cells": [
+    {
+      "cell_id": "g64-prefix3985-tail17",
+      "page_size": 64,
+      "document_tokens": 3985,
+      "document_tail_tokens": 17
+    },
+    {
+      "cell_id": "g128-prefix4033-tail65",
+      "page_size": 128,
+      "document_tokens": 4033,
+      "document_tail_tokens": 65
+    }
+  ],
+  "forced_interleaving": {
+    "scheduler": "single-GPU scheduler-managed request-step interleaving",
+    "concurrent_kernel_execution_claimed": false,
+    "initial_round_0_slot_order": [1, 0, 2],
+    "initial_round_1_slot_order": [2, 1, 0],
+    "post_reclaim_order": [
+      "initial-slot-0/round-2",
+      "replacement-slot-2/round-0",
+      "initial-slot-1/round-2",
+      "replacement-slot-2/round-1",
+      "initial-slot-1/round-3",
+      "replacement-slot-2/round-2",
+      "initial-slot-0/round-3",
+      "replacement-slot-2/round-3"
+    ],
+    "control_round_orders": [[1, 0, 2], [2, 1, 0], [0, 2, 1], [1, 0, 2]]
+  },
+  "heldout_faults": [
+    {
+      "fault_id": "FH1_cancelled_lease_dispatch",
+      "injection_boundary": "scheduler dispatch after slot epoch increments and replacement acquires the slot",
+      "expected_gate": "STALE_SLOT_LEASE"
+    },
+    {
+      "fault_id": "FH2_cross_request_dispatch",
+      "injection_boundary": "scheduler dispatch binds a live slot lease to a different live request",
+      "expected_gate": "LEASE_REQUEST_MISMATCH"
+    },
+    {
+      "fault_id": "FH3_reclaim_without_zero_scrub",
+      "injection_boundary": "actual written private KV reservation is offered for reassignment before zero scrub",
+      "expected_gate": "RECLAIM_NOT_ZERO"
+    }
+  ],
+  "positive_gates": [
+    "exact frozen scheduler order replays",
+    "live private reservations remain pairwise disjoint",
+    "document storage remains immutable",
+    "cancelled private pages are zero before reassignment",
+    "replacement receives the exact cancelled reservation",
+    "stale epoch lease is rejected before model execution",
+    "full-vocabulary logits and generated tokens equal uninterrupted control",
+    "terminal logical KV and GDN state equal uninterrupted control"
+  ],
+  "reporting_rule": {
+    "debug_outputs_are_evidence": false,
+    "debug_detection_rate_may_be_reported": false,
+    "formal_detection_rate_requires": "eight fresh rank shards plus fail-closed aggregation under this exact design and static input manifest",
+    "negative_and_wrong_gate_outcomes_must_be_preserved": true
+  },
+  "formal_launch_requirements": {
+    "fresh_output_directory": true,
+    "rank_count": 8,
+    "one_visible_gpu_per_rank": true,
+    "distinct_pg19_train_books": 8,
+    "same_design_preregistration_sha256": true,
+    "same_static_input_manifest_sha256": true,
+    "same_runner_and_contract_sha256": true,
+    "fail_closed_aggregate": true,
+    "old_factorial_vllm_sglang_gdn_marconi_cells_rerun": false
+  },
+  "claim_boundary": {
+    "new_evidence_if_formalized": "scheduler-managed forced interleaving, cancellation/reclamation, two prefix/page geometries, and three preregistered scheduler-path faults on one frozen Qwen3.5/ForkAudit stack",
+    "not_established": [
+      "concurrent CUDA kernel safety",
+      "continuous-batching throughput or capacity",
+      "cross-model or cross-runtime generality",
+      "completeness over all scheduler faults",
+      "production end-to-end correctness"
+    ]
+  }
+}

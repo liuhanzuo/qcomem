@@ -1,0 +1,109 @@
+{
+  "reviewer_id": "a11-r4-novelty",
+  "round": 4,
+  "snapshot_sha256": "36a6e8c45f3c2aed3763f2ebb1efa07641e83957120cb31ac9cdba1bb234fd7d",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 4,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "Within the stated count-exchangeable replay model, the paper cleanly separates the true-H posterior identity from the fitted score and states the FIT-frozen, finite-family CAL result as a marginal bound. This review found no novelty-related contradiction in that scope, although the theorem-level concentration instantiation is not independently re-derived here.",
+    "presentation": "The positioning is unusually explicit: the abstract, related-work section, feature matrix, claim map, and limitations consistently say that replay disagreement is neither online deployment, delivered-answer correctness, nor operational cost. The closest-work prose is readable and avoids unsupported firstness claims.",
+    "contribution": "The defensible residual is a narrow composition: use a fitted count-mixture posterior as a candidate rule, then screen a finite FIT-frozen family with held-out exact task-level replay loss. This is a legitimate distinction from an oracle posterior and from generic WoR confidence sequences, but the current evidence does not establish that it is a substantial methodological advance rather than a standard hold-out calibration wrapper around an obvious finite-population stopping construction."
+  },
+  "paper_summary": "The paper studies a count-exchangeable random-prefix replay model for binary rollout pass counts. Under the unknown true count law, it gives an oracle posterior replay-flip identity; in implementation it fits a count mixture on FIT, freezes a finite score-rule family, and uses CAL empirical-Bernstein UCBs plus Bonferroni to select rules whose marginal full-vote replay loss is controlled under iid-task assumptions. The empirical results are explicitly descriptive offline replay readouts.",
+  "strongest_verified_contribution": "A carefully bounded protocol that converts a FIT-frozen plug-in count-mixture score into a selected rule with a finite-family, task-level CAL replay-loss screen, while explicitly not treating the plug-in score as an oracle conditional certificate.",
+  "strengths": [
+    "The oracle/fitted distinction is repeated consistently in the abstract, Theorems 1--2, protocol, figure, claim map C01--C03, and limitations; this avoids a common but serious posterior-calibration overclaim.",
+    "The closest-work package names Waudby-Smith and Ramdas as the nearest finite-population WoR precedent and names Rossell--Mueller and Novikov as Bayesian sequential-decision antecedents. A primary-source spot check confirms the stated high-level distinctions: WoR hypergeometric, time-uniform frequentist CSs in the former and Bayesian-risk stopping in the latter.",
+    "The paper does not turn the absence of rollout order into a hidden claim: its synthetic drift results are labeled exploratory and nonconfirmatory, and C13 accurately records the missing online/correctness/cost evidence.",
+    "The feature matrix and citation lock contain every active citekey and make the intended endpoint--model boundary substantially easier to audit."
+  ],
+  "questions": [
+    "For the same count-exchangeable replay endpoint, what is the exact relationship between BAYES-H plus FIT/CAL screening and a direct Waudby-Smith--Ramdas-style WoR confidence-sequence stopper that stops once every count in a confidence set has the same full-N majority?",
+    "Can the authors provide either a same-endpoint comparison against that natural finite-population CS stopper or a formal separation showing why it cannot serve as the relevant comparator?",
+    "Which part of the claimed advance remains non-generic after viewing FIT/CAL screening as finite candidate-policy evaluation with bounded task losses, rather than as a new stopping or confidence-sequence principle?",
+    "Can the feature matrix explicitly distinguish MARS's parallel, partial-trace full-vote-matching setup from this offline count replay setup, including the fact that the present paper does not measure returned-answer correctness or token cost?"
+  ],
+  "issues": [
+    {
+      "issue_id": "NOV-01",
+      "severity": "major",
+      "dimensions": [
+        "novelty",
+        "significance",
+        "experimental_rigor",
+        "citation_integrity"
+      ],
+      "location": "Related work, especially lines 175--204 and 183--195 of source/paper.tex; Appendix feature matrix, lines 700--718; literature/closest_work_round4.md; claim C11 / EV-LIT-R4-CLOSEST.",
+      "claim_ids": [
+        "C03",
+        "C11"
+      ],
+      "evidence_ids": [
+        "EV-LIT-R4-CLOSEST",
+        "WaudbySmithRamdas2020Confidence"
+      ],
+      "observed_evidence": "The paper correctly calls Waudby-Smith and Ramdas (2020) the closest finite-population WoR precedent, but the feature matrix reduces that comparison to generic 'CS' rather than including the checked finite-population binary-hypergeometric method. Its primary source gives finite-population random-order inference, binary hypergeometric prefixes, working-prior machinery, and time-uniform frequentist CSs. A confidence-set rule that stops once all plausible final counts lie on one side of the full-N majority threshold is therefore an immediately relevant same-model/same-terminal-decision comparator. The snapshot contains neither that comparator nor a proof that it is inapplicable or qualitatively weaker for the claimed endpoint.",
+      "why_it_matters": "The oracle posterior identity is a standard conditional-expectation stopping argument under a true model, and the operational theorem is standard empirical-Bernstein plus Bonferroni after conditioning on FIT. Without a direct WoR-CS comparison or separation, the residual claim can read as an efficient but incremental policy-fitting and held-out-screening composition, not substantial new sequential-inference knowledge. This is a novelty/significance issue, not an allegation that the present theorem is false or that its citations are inaccurate.",
+      "required_fix": "Add Waudby-Smith--Ramdas explicitly to the feature matrix and make the endpoint-level relationship precise. Then either evaluate a pre-specified finite-population CS majority stopper on the same replay artifacts, using exact replay loss and mean-k reporting, or supply a formal argument identifying the target/guarantee/efficiency property that prevents it from being the relevant comparator. State the surviving contribution as model-assisted FIT/CAL policy screening if no stronger separation is established.",
+      "verification_test": "At each reported alpha, implement a pre-specified WoR-CS-to-majority stopping rule under the paper's random-prefix model; compute its exact per-task replay loss and expected k on the frozen carrier splits, and compare it with BAYES-H under the same endpoint. Alternatively, a proof must show that no such CS-derived stopping rule can instantiate the same full-N binary replay target under the stated model.",
+      "evidence_needed": "A same-endpoint baseline result or a rigorous target-level separation; this does not require ordered online rollout data.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "SIG-02",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Abstract, lines 49--75; experiments, lines 437--589; limitations, lines 621--669; claim C05 and C13.",
+      "claim_ids": [
+        "C05",
+        "C13"
+      ],
+      "evidence_ids": [
+        "EV-OMR-R469",
+        "EV-REPRO-R4",
+        "EV-MISSING-ORDER",
+        "EV-MISSING-ENDPOINT",
+        "EV-MISSING-COST"
+      ],
+      "observed_evidence": "All reported gains are reductions in replay prefix count while matching a binary full-N pass-count decision. The snapshot expressly lacks natural rollout order, stopped-answer gold correctness, generated-token/latency/cancellation measurements, and an ordered deployment evaluation. MARS is formally documented as an adjacent parallel partial-trace method with a future-vote bound and full-budget-vote/token evaluations, but this difference is not a logical counterexample to the paper's declared replay theorem.",
+      "why_it_matters": "The narrow claim boundary is responsible and should be retained, but it caps the current contribution's practical significance for LLM early stopping: the offline replay target is not yet shown to translate to the user-facing endpoint motivating the introduction. This limitation lowers the contribution score; it does not invalidate the count-replay result or justify penalizing the paper for failing an unclaimed theorem.",
+      "required_fix": "Keep the present explicit replay-only framing. To claim broader LLM early-stopping significance or exceed the current evidence ceiling, add a separately registered ordered-rollout study that measures stopped-answer correctness against the delivered full-budget answer and operational token/latency/cancellation cost; otherwise position the contribution as an offline certification and calibration analysis.",
+      "verification_test": "On retained ordered rollout traces, run the frozen rule chronologically, compare the stopped answer with the full-budget delivered answer and gold evaluation, and report actual generated/cancelled tokens and latency with a pre-specified analysis. No such test is required for the current model-scoped replay theorem itself.",
+      "evidence_needed": "Ordered raw rollouts, answer-level evaluation, and operational telemetry; absent that new evidence, the current scope wording is appropriate but the significance ceiling remains.",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is apparent from the frozen count-replay study. The main concern is scientific scope: replay agreement must not be represented as user-facing correctness or compute savings, and the manuscript currently states that boundary clearly.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A direct, pre-specified finite-population WoR-CS majority-stopper comparison on the same replay endpoint that demonstrates a meaningful efficiency or calibration distinction for FIT/CAL screening.",
+    "A formal target-level separation showing that the closest WoR-CS construction cannot provide the claimed policy/efficiency role under the stated model.",
+    "For stronger practical LLM significance, a registered ordered-rollout, answer-correctness, and actual-cost evaluation; this is not needed to validate the current offline replay theorem."
+  ],
+  "evidence_that_would_lower_score": [
+    "Evidence that the FIT/CAL family was not fully frozen before CAL, that task iid/FIT-CAL independence is violated for the claimed population result, or that the empirical-Bernstein selection coverage is misapplied.",
+    "A same-endpoint WoR-CS or existing stopping baseline that matches the reported replay efficiency and guarantee, leaving no demonstrated benefit beyond routine held-out policy screening.",
+    "Any use of replay count reduction or full-vote agreement as if it established online answer correctness, tokens, latency, or cancellation cost."
+  ],
+  "review_limitations": [
+    "This is an isolated novelty/positioning review limited to the specified Round-4 frozen snapshot; it is a scoped closest-work assessment, not an exhaustive literature search.",
+    "I primary-source spot-checked Waudby-Smith--Ramdas, Novikov, ASC, and MARS/formal records, and used the snapshot citation lock for the remaining local-support audit. The conclusion that a WoR-CS majority stopper is a natural comparator is reviewer inference from those verified ingredients, not a claim that the cited authors explicitly studied this exact replay loss.",
+    "I did not treat missing ordered-online experiments as a logical refutation of the paper's stated count-exchangeable replay theorem; they determine the practical-significance evidence ceiling instead."
+  ]
+}

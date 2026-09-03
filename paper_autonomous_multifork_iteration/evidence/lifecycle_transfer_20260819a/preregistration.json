@@ -1,0 +1,59 @@
+{
+  "schema_version": "forkaudit-lifecycle-transfer-preregistration-v1",
+  "issue_id": "A-EXPERIMENT-07",
+  "created_before_gpu_execution": true,
+  "protocol": "qcomem-forkaudit-aligned-reclamation-transfer-v1",
+  "formal_configuration": {
+    "model_id": "Qwen/Qwen3.5-35B-A3B",
+    "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "world_size": 8,
+    "hardware_family": "H20-141G",
+    "pg19_train_books": 8,
+    "document_tokens": 4096,
+    "query_tokens": 32,
+    "page_size": 128,
+    "resident_count": 4,
+    "semantic_rounds": 4,
+    "cancel_after_rounds": 2,
+    "cancel_slots": [2, 3],
+    "kv_policy": "vllm-q16-shared-document-reuse",
+    "gdn_policy": "borrow-immutable-base-functional-rebind",
+    "scheduler": "single-cuda-stream-phase-interleaved-sequential"
+  },
+  "frozen_inputs": {
+    "remote_static_manifest": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/qcomem_gpu_forkaudit_lifecycle_transfer_20260819a-inputs/static-manifest.json",
+    "static_manifest_sha256": "c59b66df16ac1a9b6ae79c31490ff4c3ddb8911aaf0ef9c6a89219f92d97745f",
+    "aligned_windows_sha256": "cca6c3643b3e77178cac3c906ef0202c686a23de9578287adef95a5d8af16aa9",
+    "pg19_data_sha256": "ef18893b6bfb0f4b8cb29eab85ccf2a0ef1fdb44606e9742a70405cca564e18c",
+    "pg19_manifest_sha256": "5d789d67aa239f089e92de8a4267b86d2f1d2723d5f1370970883738f5f89a9c",
+    "code_ledger_sha256": "99934504645f7f3dce7e957f96ba0c2678cb37f335927f2f9291b92a608a9bf3",
+    "runner_sha256": "01957bbd15b2fdf5460e2cc016b74684bd0a978f70111e8faf4b68afb5b1d319",
+    "lifecycle_adapter_sha256": "32e7779b5b65dbbd27f70b88701babf928c79cb3a6154b4242f9f6691e3f3589",
+    "launcher_sha256": "78527fc5e5b95573410b6fc7b93aa260058a95e469162657411d6ff8022f2e6e"
+  },
+  "fault": {
+    "description": "schedule an epoch-0 cancelled request handle after its exact slot has been scrubbed and reassigned at epoch 1",
+    "expected_gate": "STALE_SLOT_LEASE",
+    "matched_clean": "the epoch-1 replacement must pass the same lease guard and execute normally"
+  },
+  "success_criteria": [
+    "all eight ranks use distinct PG-19 train books",
+    "survivor and replacement full-vocabulary logits are torch.equal to the uninterrupted control for all four rounds",
+    "generated tokens, final logical KV, and final GDN states exactly match the control",
+    "immutable document KV digests are unchanged",
+    "aligned prefix records zero partial-tail staging bytes",
+    "cancelled reservation slots are zero-scrubbed and exactly reassigned",
+    "the stale handle is detected at STALE_SLOT_LEASE with no wrong-gate outcome",
+    "the matched clean replacement executes successfully"
+  ],
+  "claim_boundary": {
+    "authorized_if_positive": "aligned-page and cancellation/reclamation lifecycle transfer for the existing Qwen3.5 plus vLLM Q16 adapter",
+    "not_authorized": [
+      "second model or runtime implementation",
+      "different recurrent backend",
+      "true concurrent kernel execution",
+      "production engine scheduler integration",
+      "latency, throughput, or NVML capacity"
+    ]
+  }
+}

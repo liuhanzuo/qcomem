@@ -1,0 +1,130 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "319da71b563edd52d9f4d3e6303bcedcc188048744461a33c9d87c7bebb866dc",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 2,
+    "presentation": 2,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "把 nominal chance、观测 best-constant floor 与 arm-conditional permutation null 分开的核心逻辑成立，且合法选项数修复是重要的自我纠错。但 v1 的主区间固定了在同一标签样本上选择出的获胜字母，没有在重采样中重做 max；v2 仅按 option count 分层，因而排除的是该条件下的全局边际匹配，而不是所有非题目级信息。这些缺口实质限制了 headline inferential labels。",
+    "presentation": "定义、作用域、修复史和逐单元表非常完整，但 28 页中多套 null、校准面、materiality gate 与大量撤回台账反复交叉引用；若干表字号很小，主线被审计细节淹没。",
+    "contribution": "要求 MC 构造在比较前报告可实现的 input-blind reference 是实用贡献；可变选项数内的预测边际置换也是有用的操作化。best-constant 和 chance-corrected agreement 本身并非新统计量，增量主要是将它们组合成报告协议并量化对损伤模型结论的影响。"
+  },
+  "paper_summary": "论文指出多选评测中“高于 nominal chance”可能仍不如输入盲常量预测器。v1 用观测 gold-label 边际的最佳常量作为跨 arm 的接口 floor；v2 在 option-count strata 内置换某一 arm 的预测向量，用于检测超过其边际匹配的信号。作者在 MMLU-Pro 及五个较小基准、四个模型家族/损伤梯级上展示：按 point estimate，高于 chance 的 damaged cell 远多于高于 floor 的 cell；v2 又重排部分 v1 判断。论文同时修复了 MMLU-Pro 非法标签 null、bootstrap p 值、截断和 OOM 等缺陷。",
+  "strongest_verified_contribution": "第 3–5 页式 (2)–(5) 对两个问题的分离最有价值：v1 的 best constant 是所有 arm 共用、确实可在观测题集上实现的比较基线；v2 的 option-count-stratified permutation 在其定义域内使合法的纯常量预测向量得到零增量。这解释了为什么 nominal chance 能给空预测器虚假正分，而 floor 不会。",
+  "strengths": [
+    "对 MMLU-Pro 的初始 legality-blind balanced null 明确撤回，并用逐题合法选项集合重算 E[f̂] 与 p=0.083；修复方向和下游不变项均说明清楚。",
+    "区分 arm-independent 接口可比性与 arm-conditional 信息检测，避免把通过某一个 reference 误称为构造有效性证明。",
+    "公开 multiplicity、power、regime/family confounding、post-hoc v2 规则、精度与 tokenizer/truncation 修复，负结果处理较诚实。",
+    "完整报告 17 个 MMLU-Pro damaged cells、27 个 v2 cells 与 60 个 off-MMLU cells，使异常值和边界项可见。"
+  ],
+  "questions": [
+    "为什么 v1 的 paired bootstrap 不在每个重采样内重新选择 argmax gold letter？若 floor 是超总体函数，这一步不可省；若目标只是固定题集，为什么还把 bootstrap 区间解释为推断？",
+    "v2 所谓 item-level information 如何排除 subject/domain、选项模板或其他可见元数据造成的组级预测—答案关联？是否做过 subject×n_opt 或其他预定义 nuisance strata 的置换？",
+    "materiality cutoff 0.10×同家族 intact-anchor recovery fraction 的决策理论依据是什么？表 18 在 c=0.05 时 damaged material cells 从 1 增至 4，为何把 0.10–0.25 称为 intended range？",
+    "能否提供一个预先固定、选择感知且控制家族的聚合检验，替代 85 个相关 per-cell 决策的描述性计数？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C1-R2-01",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor"],
+      "location": "第 5 页 §3.2 Reference-choice reporting rule；第 7 页表 1；第 13 页 Reproducibility statement；第 23 页表 15",
+      "claim_ids": ["v1 headline interval-floor counts", "above/at/below floor verdicts"],
+      "evidence_ids": ["Table 1", "Table 15"],
+      "observed_evidence": "v1 floor 是 f_const=max_L m_L，但 paired bootstrap 固定观测样本选出的 winning letter；论文明确说 selection-aware joint resample 未运行，因为逐题 letter shards 缺失。主文仍用这些区间形成 3/12、1/12、9/85 等 interval-level counts。",
+      "why_it_matters": "若推断对象是从题目总体抽样后的 best-constant floor，max 的选择必须在每次重采样内重做；固定赢家忽略选择不确定性并可能低估或错估 ∆floor 的方差。若对象只是这个固定题集，模型 accuracy 与 floor 都是确定量，bootstrap 的统计解释又需重新界定。",
+      "required_fix": "恢复逐题 gold/prediction shards，在每次联合重采样中重选常量标签并重算差；在完成前将区间级 headline counts 降为条件于获胜字母的敏感性，不作正式 verdict。",
+      "verification_test": "比较 fixed-winner 与 reselect-winner bootstrap 的全部边界 cell；报告覆盖模拟或至少 verdict-change table，并以选择感知结果更新表 1/15。",
+      "evidence_needed": "逐题标签与预测记录、联合重采样代码、重算区间和结论差异。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R2-02",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 4–5 页 §3.2 式 (3)–(5)；第 23–25 页表 17–18",
+      "claim_ids": ["arm-specific item-level information", "v2 permutation gate"],
+      "evidence_ids": ["Table 17", "Table 18"],
+      "observed_evidence": "v2 只在 n_opt strata 内置换预测，保持每个 strata 的整体预测边际。它没有条件化 subject、题型、选项模板或其他可能同时影响模型 letter bias 与 gold marginal 的组变量。",
+      "why_it_matters": "正的 ∆perm 只能证明预测与 gold 的关联超过 n_opt 条件下的整体边际匹配；它仍可能来自 subject-level 或格式级信息，而非单题内容信息。因此“does this arm carry item-level information”比该 null 实际识别的量更强。",
+      "required_fix": "把结论改为“超出 n_opt-stratified marginal alignment”；或预先定义并加入关键 nuisance strata/条件随机化模型，验证 v2 信号不是组级标签先验。",
+      "verification_test": "在 subject×n_opt（以及可行的模板/合法标签集）内重新置换，检查 27-cell verdict 与 materiality 是否保持；稀疏 strata 需报告合并规则。",
+      "evidence_needed": "逐题元数据、分层置换结果与对 strata 选择的预先说明。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    },
+    {
+      "issue_id": "C1-R2-03",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "technical_soundness"],
+      "location": "第 5 页 materiality 与 preregistration status；第 7–9 页 §5；第 19 页附录 A.4–A.5；第 24–25 页表 17–18",
+      "claim_ids": ["material damaged signal", "aggregate direction and concentration"],
+      "evidence_ids": ["Table 1", "Table 17", "Table 18"],
+      "observed_evidence": "v2 在 27 个已评分 cell 之后设计；作者已看过 collapse 形状。0.10 相对恢复阈值及同家族 intact anchor gate 决定只有一个 damaged cell 为 material；c=0.05 时有四个。v1 的 85-cell headline 又由相关、嵌套 cell 的未校正逐单元决定组成，正式 BH/Bonferroni 后两参考均无 matched-standard cell。",
+      "why_it_matters": "阈值选择和 family definition 可实质改变叙事；把相关 per-cell crossing 的集中性作为 load-bearing aggregate evidence，没有一个预先固定的联合零分布或 family-level uncertainty 支持。",
+      "required_fix": "把 v2 定位为探索性重分析，并报告全阈值曲线而非二值 material 标签；为未来/新数据预注册阈值、family 与聚合统计，并用 cluster-aware 或层级方法控制共享题目/嵌套 arm。",
+      "verification_test": "在冻结规则的新模型/新基准上运行；主聚合检验的 family、阈值和方向须在观察前固定，并报告 simultaneous uncertainty。",
+      "evidence_needed": "预注册文件、新的独立 cell 集或严格的选择敏感性分析。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R2-04",
+      "severity": "minor",
+      "dimensions": ["experimental_rigor", "clarity"],
+      "location": "第 6–9 页 §4–6；第 13–14 页 Limitations 与表 4；第 21–22 页表 13",
+      "claim_ids": ["healed-ladder concentration"],
+      "evidence_ids": ["Table 4", "Table 13"],
+      "observed_evidence": "只有 OLMo-2 采用 prune-then-heal，其他三家族是 evaluation-time truncation；语料、训练暴露、相对深度和模型家族均不匹配。所有 off-MMLU interval clears 都集中于 OLMo-2 的高层数 healed arms。",
+      "why_it_matters": "该集中性不能区分 healing、family、relative depth 或训练数据；读者容易把一个特定 ladder 的描述读成损伤恢复规律。",
+      "required_fix": "将结果严格命名为 OLMo-2 ladder 描述，避免跨 regime 比较；若要机制或 family 结论，需在至少两个家族上做匹配的 prune-then-heal 对照。",
+      "verification_test": "同 retained fraction、语料/steps 与评分协议的第二家族 healing curve 复现后，再检验 family×regime 交互。",
+      "evidence_needed": "匹配的跨家族 healing 实验或更窄的文字。",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C1-R2-05",
+      "severity": "minor",
+      "dimensions": ["clarity"],
+      "location": "全文，尤其第 20–27 页表 12、15、17、18、21、22",
+      "claim_ids": [],
+      "evidence_ids": ["Tables 12–22"],
+      "observed_evidence": "主结论散落于 28 页、多套编号和极密集小字号表中；正文同时保留当前结论、敏感性面、修复史和 16 条撤回台账。",
+      "why_it_matters": "即使数字可追踪，审稿人也很难区分正式 estimand、条件敏感性、历史修复和描述性计数，增加误读和无法快速核验的风险。",
+      "required_fix": "主文只保留两个 estimand、一个主统计表和一个限制表；把完整修复史与逐 cell 网格移入补充材料，并增加单页 claim→estimand→valid inference 映射。",
+      "verification_test": "让未参与项目的读者仅用主文准确复述 v1/v2 的对象、正式推断和不可推断项；同时检查表字号。",
+      "evidence_needed": "重组后的 PDF 和独立可读性检查。",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未见人类受试或部署伦理问题。潜在风险是把校准 gate 当成构造有效性认证，论文已明确“necessary, not sufficient”，修订时应保持。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审结果、作者计划、编辑上下文或历史评分。",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "以每次重选 best constant 的联合 bootstrap 更新 v1 headline，且结论在边界 cell 上稳定。",
+    "在 subject/format 等关键 nuisance strata 下 v2 信号仍成立，并在新 cell 集上按预注册 materiality 规则复现。",
+    "增加第二家族匹配的 prune-then-heal 实验，或彻底移除跨 regime 的机制暗示。"
+  ],
+  "evidence_that_would_lower_score": [
+    "selection-aware bootstrap 使主要 interval-level floor counts 大幅变化。",
+    "加入 subject×n_opt 条件后 v2 的 surviving damaged signal 消失，表明原信号仅是组级边际。",
+    "发现 legality-aware null 或逐题合法标签集合与实际 scorer 不一致。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、优先权、模型/基准官方实现或 2026 年文献。",
+    "仅审阅冻结 PDF；未读取或执行论文所述 evidence pack、代码、逐题 shards、修订记录或其他 reviewer 输出，因此作者报告的 hash、重算和修复影响未外部验证。",
+    "PDF 共 28 页，已全文阅读并逐页视觉核查；表 12、15、17、18 等字号很小但可放大阅读，未见页面截断。"
+  ]
+}

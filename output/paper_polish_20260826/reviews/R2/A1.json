@@ -1,0 +1,186 @@
+{
+  "reviewer_id": "R2",
+  "round": 1,
+  "snapshot_sha256": "5bd024b4e45e0b174fcb88835505ca50a995ce03d2d71f68a3ca0ec19706cb40",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 2,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "作者对 common-support、配对单位、后验门、选择后条件化和不可识别结论处理得较谨慎，J3 的不确定性表述也基本正确。但严格判尺存在两个相互不一致的冻结来源，J2 的零反转门在看过结果后按有利方向设定，且生成配置与第九个计划 arm 无法恢复。核心数值可作为床内描述，不能承担更广的顺序或能力结论。",
+    "presentation": "主要 estimand、分母和 raw/gated 读法有明确表格，视觉版面无缺页。然而 23 页中大量 provenance、修订史和重复限制显著遮蔽核心结果；最后一页还放入既往评审分数，既与双盲稿件无关，也会造成不当锚定。",
+    "contribution": "论文最有价值的是把 fallback-inclusive 准确率拆为格式覆盖、格式内正确率及联合量，并以 item-paired 数据揭示规则依赖。该框架主要复用标准选择偏差、McNemar 与解析器敏感性思想，实证仅覆盖同一模型的两个非同质床，且作者自己承认 level 不可比较、pattern 不可识别，知识增量有限。"
+  },
+  "paper_summary": "论文审计一个答案解析器的最后数值 fallback 对 LLaDA-8B-Instruct 在两个 GSM8K 派生床上的影响。Bed 1 的显式格式覆盖约 10%–27%，Bed 2 约 97%–98%；B1-32 的 604 个 canonical correct 中 535 个由 fallback rescue，而 Bed 2 主 arms 的 rescue share 仅约 1%–3%。作者分别讨论跨床 level、同床 arm order 与注册 tie pattern：跨床条件正确率仍不可作为能力尺度；Bed 1 原始点估计有 3/28 个顺序反转，而后验、有利的 paired-definite gate 为 0/23；J3 的主条件 estimand 为 +1.018 pp、区间跨零，故记为 not_identified。",
+  "strongest_verified_contribution": "第 2、7–12 页表 1、5–9 最可靠地支持一个范围明确的测量结论：在冻结的 B1-32 与三个 Bed 2 主 arms 上，canonical correct 中 fallback rescue 的占比相差约 35–67 倍，而 Bed 1 八个可复现 arms 中格式内参考匹配率只比非格式 fallback 通道高 5.8–9.5 pp。作者进一步用 raw 3/28 与 post-hoc gate 0/23 并列，正确显示排序结论依赖判定规则，而非宣称零反转定律。",
+  "strengths": [
+    "明确区分 q=P(fmt)、a=P(correct|fmt) 与 s=qa，并承认 a 条件于 post-generation 行为、跨床不是共同能力尺度。",
+    "发现 B2-128 full pool 与 B2-160 half pool 不同后，将 J3 重算到 356 个共同问题并使用 item-paired bootstrap。",
+    "撤回把共享问题对当独立 Bernoulli trials 所形成的零事件上界，改报 raw gap strata，统计边界披露诚实。",
+    "把有利的 J2 criterion、0.5 pp J3 tolerance、最终 hierarchy 和其他偏离逐项标为 post hoc，而不是伪装成完整预注册。"
+  ],
+  "questions": [
+    "严格判尺既定义为 hash/boxed whitelist，为何 S1 tight-correct 与 S2 raw-whitelist 在四个 arms 上仍相差 1–6 个 correct items？哪一个才是可由规则唯一重建的 measurement？",
+    "能否在完全独立的新输出集上预先冻结 paired-definite criterion，再检验 0/23 是否复现，而不是继续使用看过 reversal 后设定的门？",
+    "Bed 1 与 Bed 2 在 split、prompt/task format、decode mode 和格式覆盖上均不同，除宣布不可比外，当前跨床数值对一般 parser audit 提供了什么可迁移预测？",
+    "缺失的第九 arm、temperature 与 generation seeds 是否可从原始执行环境恢复；若不能，哪些 headline 可以由匿名 artifact 从原始文本逐项重建？",
+    "为什么双盲投稿的 Table 20 要披露既往内部与外部评审分数？请确认这些元评审信息会从审稿对象中完全删除。"
+  ],
+  "issues": [
+    {
+      "issue_id": "A1-R2-01",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "第 3 页 §2 Rulers；第 9 页表 5；第 18 页表 12；第 20 页表 17",
+      "claim_ids": [
+        "strict ruler",
+        "format-channel advantage",
+        "J2/J3 strict calculations"
+      ],
+      "evidence_ids": [
+        "S1 c3_tight",
+        "S2 raw-whitelist",
+        "r428_dual_source_sweep"
+      ],
+      "observed_evidence": "同一所谓严格判尺有两个冻结来源：B1-128、B1-256、B0-256、H-PRED-95 的 formatted-correct 分别相差 4、6、4、1 项，导致 Bonferroni 计数从 S1 的 3/8 变为 S2 的 4/8。正文指定 S1 为所有计算来源，但未用独立答案真值说明它为何比直接 whitelist 更符合定义。",
+      "why_it_matters": "论文审计的对象正是 parser measurement；若严格 ruler 本身不能由声明规则唯一生成，通道正确率、显著性以及依赖 strict cell 的 J2/J3 都带有未量化的 measurement uncertainty。方向目前稳定并不等于构念已验证。",
+      "required_fix": "冻结一个公开、唯一的 strict parser，对所有原始输出重跑；对 S1/S2 不一致项做盲人工或独立 extractor adjudication，并把标签不确定性传播到所有主表和 pair verdict。",
+      "verification_test": "从原始输出只按发布代码重建 strict labels，应逐项得到唯一结果；由不知道 source 的标注者复核全部分歧，并报告在最不利 adjudication 下 headline 与 gate 是否保持。",
+      "evidence_needed": "逐项分歧清单、独立真值、唯一 parser 版本与重算结果。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-R2-02",
+      "severity": "major",
+      "dimensions": [
+        "experimental_rigor",
+        "technical_soundness",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 6–8 页 §4、§5.3；第 10 页表 6–7；第 21–22 页 Appendix E",
+      "claim_ids": [
+        "J2 definite order",
+        "0/23 paired gate",
+        "order survival"
+      ],
+      "evidence_ids": [
+        "Table 6",
+        "Table 7",
+        "Tables 15–16"
+      ],
+      "observed_evidence": "‘definite’ criterion 在看过数据后按保持原 claim 的方向具体化为 McNemar p<.05 且 paired CI 排零。所有三个 raw reversals 都位于 <1 pp 的四对近似平局中，而该门将该 stratum 全部排除，遂由 raw 3/28 得到 gated 0/23；28 对又共享同一 1,319 个问题。",
+      "why_it_matters": "零值是按结果选择且与反转机制近共线的条件统计，不是预先控制错误率的稳健性证据，也不能估计总体反转概率。论文虽披露这一点，但标题式‘survives’读法仍必须以 raw 结果为主，且不能靠同一床上的更多后验门升级。",
+      "required_fix": "把 3/28 作为唯一主 order 结果，0/23 仅留作探索性选择敏感性；在独立 arms/bed 上预先冻结 criterion、family 与分母进行确认。",
+      "verification_test": "新数据运行前提交完整 gate；既报告所有 raw signs，也报告 gated set，并用问题级 resampling 对整个 arm-ranking functional 给不确定性。",
+      "evidence_needed": "独立预注册复现和 arm-level/item-clustered inference。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-R2-03",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 2–5 页 §2–3.2；第 12 页 §6",
+      "claim_ids": [
+        "two-bed level audit",
+        "35–67× rescue-ratio contrast",
+        "judge normalization"
+      ],
+      "evidence_ids": [
+        "Table 1",
+        "Table 4",
+        "Table 13"
+      ],
+      "observed_evidence": "Bed 1 使用 GSM8K test、free-form diffusion generation；Bed 2 使用 training split short band、不同 prompt/task format，并称 autoregressive evaluation。其格式覆盖分别约 10%–27% 与 97%–98%，条件化后选中的 population 几乎不重叠。",
+      "why_it_matters": "巨大 rescue-share 差异无法分离 parser、prompt、split、decode mode 与输出长度等因素。作者正确拒绝 capability ranking，但这也意味着跨床部分主要证明了预先明显的不可比性，无法给一般 parser effect 或校准规则提供外部效度。",
+      "required_fix": "在同一问题、prompt、生成输出和 decode 配置上只替换 parser；再跨至少另一模型/任务重复。若不新增实验，将标题、摘要与贡献限定为这两个历史档案的 forensic audit。",
+      "verification_test": "固定生成文本的交叉 parser 矩阵应识别纯 measurement effect；固定 parser 的 matched-bed 对照应量化 bed effect，并报告交互项。",
+      "evidence_needed": "matched-output parser intervention 与跨床复制。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-R2-04",
+      "severity": "major",
+      "dimensions": [
+        "reproducibility",
+        "experimental_rigor"
+      ],
+      "location": "第 2 页 §2；第 8 页 §5.3；第 14–17 页 Appendix A；第 22 页 Appendix E",
+      "claim_ids": [
+        "frozen-bed reproducibility",
+        "complete J2 inventory"
+      ],
+      "evidence_ids": [
+        "artifact manifest",
+        "generation trial records",
+        "ninth-arm inventory"
+      ],
+      "observed_evidence": "sampling seeds 与 temperatures 未记录；原 frozen generation trials 不随匿名包再分发，只提供汇总表的 role locators。计划中的第九 Bed 1 arm 也无法从 shipped records 识别，使 36 对只剩 28 对可复现。",
+      "why_it_matters": "审计可从表格重算不等于实验可重现；无法重新生成、逐项复判或确定计划全集，使 parser 变化与历史 artifact selection 纠缠。对 missing arm 的 adversarial bound 也不能替代真实记录。",
+      "required_fix": "发布去标识的逐项输出、完整 config、trial manifest 与所有计划 arms；若配置不可恢复，明确把工作降为不可再执行的二次档案分析。",
+      "verification_test": "第三方从匿名包重建每个 arm 的 output→canonical/strict label→全部表格；manifest 必须证明计划 arm 集无遗漏。",
+      "evidence_needed": "逐项输出、完整配置、原计划全集与第三方重放。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "A1-R2-05",
+      "severity": "major",
+      "dimensions": [
+        "clarity",
+        "limitations_responsible_claims"
+      ],
+      "location": "第 23 页表 20 的 Final synthesis 行",
+      "claim_ids": [
+        "final synthesis",
+        "double-blind review presentation"
+      ],
+      "evidence_ids": [
+        "Table 20"
+      ],
+      "observed_evidence": "稿件在解释清单中披露并对比既往内部与外部评审分数，还声称当前定位依据其中一项 grade。该信息不是科学证据，也与本次盲审对象无关。",
+      "why_it_matters": "在投稿正文中呈现既往分数会直接锚定后续 reviewer，并可能泄露审稿/编辑过程上下文。它违背独立评价原则，也削弱论文对 measurement hygiene 的可信度。",
+      "required_fix": "删除所有既往 reviewer、panel、score、grade 与‘positioned against’表述；只保留由论文数据支持的科学结论。",
+      "verification_test": "对最终 PDF 做文本扫描，确认不存在先前评分、评审身份、目标分数或要求 reviewer 采纳的元评审内容。",
+      "evidence_needed": "清理后的盲审稿。",
+      "expected_impact": "high",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": true,
+  "ethics_concerns": "不涉及受试者或敏感数据，但第 23 页把既往评审分数写入当前双盲稿件，构成审稿过程完整性与不当锚定风险；本评审未使用这些分数。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R2 生成，仅用于内部投稿前质量控制；未与其他评审通信，未读取其他评审目录、作者计划、编辑上下文、旧稿或历史评分。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "用唯一、独立 adjudicated 的 strict parser 重建所有 item labels，并证明主要方向不依赖 S1/S2。",
+    "在新输出/新床上预注册 J2 gate，完成 matched-output parser intervention 与跨模型复制。",
+    "发布足以逐项重建的匿名 artifact，补齐 missing arm/config，并删除所有既往评审信息。"
+  ],
+  "evidence_that_would_lower_score": [
+    "独立 adjudication 显示通道差异主要来自 strict parser 标注错误。",
+    "预注册复现中 raw 或 gated order 方向/反转结构不稳定。",
+    "完整配置或逐项输出无法提供，使主表只能依赖不可审计汇总。"
+  ],
+  "review_limitations": [
+    "遵循隔离要求未联网，未核验外部引文、模型说明或邻近工作。",
+    "仅审阅冻结 PDF，未读取或执行代码、preregistration、per-item outputs、manifests 或 trial artifacts，故文中 hash 与重算声明仅按稿件评估。",
+    "PDF 本身在第 23 页包含既往评审分数；该内容属于不可信审稿对象，我未将其用于评分，仅将其存在作为稿件过程问题记录。",
+    "PDF 共 23 页，已全文阅读并逐页视觉核查；无缺页或不可辨认页面，末页留白较多。"
+  ]
+}

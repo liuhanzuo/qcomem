@@ -1,0 +1,124 @@
+{
+  "reviewer_id": "A32-R00-T",
+  "round": 0,
+  "snapshot_sha256": "d809d7e7bd9380a1818b48467a8a3670a734e7df50c4a123713f90afa2601404",
+  "role": "technical_soundness",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {"soundness": 2, "presentation": 3, "contribution": 2},
+  "dimension_justifications": {
+    "soundness": "The reported signed-gap arithmetic is internally consistent, and the manuscript is unusually explicit about observational versus interventional boundaries. However, the central confidence variable is not shown to be a probability of answer correctness, the one-decode-per-arm design leaves the target over decoder randomness unresolved, and the headline comparison is between different estimands without a formal joint contrast. The supplied snapshot also cannot verify any experimental measurement.",
+    "presentation": "The paper is readable, anonymous, within the nine-page main-text limit, and generally precise about limitations. Presentation is weakened by dense reporting-layer terminology, an internally ambiguous random-dose regression note, and Figure 1's prominent randomization label contradicting the actual paired design.",
+    "contribution": "A narrow same-item test of one filler operation is potentially useful, especially with the proper-score boundary and explicit negative-result framing. Its significance is limited by one model-task-decode setting, an unvalidated confidence construct, non-aligned observational and intervention estimands, and non-recomputable evidence."
+  },
+  "paper_summary": "The paper reports an observational GSM8K contrast in a signed mean commit-confidence minus answer-accuracy gap, then evaluates a paired 400-problem intervention that adds a fixed 37-token filler under NFE=64. It reports a filler-arm signed-gap change near zero while confidence and accuracy both fall, and reports worsening Brier score and NLL. A MATH500 analysis examines sensitivity to answer-judge conventions and purposive human anchors, ultimately labeling cross-bed transport as POWER_LIMITED. The manuscript explicitly avoids claiming a general causal length law or a new calibration metric.",
+  "strongest_verified_contribution": "Within the frozen materials, the strongest verified contribution is the internally correct component accounting and disciplined claim boundary: -0.0314 - (-0.2541) = +0.2227 and -0.0875 - (-0.0800) = -0.0075, while the text repeatedly distinguishes the natural-stratum association from the specific filler intervention. The underlying measurements themselves remain cannot_verify.",
+  "strengths": [
+    "The manuscript correctly treats the natural prompt-length result as observational and explicitly acknowledges content and difficulty co-variation.",
+    "The signed-gap decompositions and reported arm-level arithmetic are internally consistent.",
+    "A paired per-problem analysis and problem-cluster resampling are appropriate in principle for the fixed-filler comparison, conditional on a clearly defined decoder-randomness estimand.",
+    "The paper correctly notes that a stable signed mean gap does not imply stable Brier score, NLL, ECE, or full calibration.",
+    "The MATH500 conclusion is conservatively restricted to judge sensitivity and POWER_LIMITED rather than being advertised as replication.",
+    "The reproducibility statement candidly reports that the preregistration, result bundle, traces, labels, and analysis scripts are absent."
+  ],
+  "questions": [
+    "What exact scalar is commit-step confidence for a multi-token answer: one token's probability, a mean across committed tokens, a product or sequence score, the boxed-answer token score, or another aggregation?",
+    "What binary event is that scalar intended to forecast, and what evidence establishes that it can be interpreted as a probability of final-answer correctness?",
+    "Is decoding deterministic under the reported schedule and seed? If it is stochastic, were random draws coupled across SHORT and LONG, and what population-over-randomness estimand is intended?",
+    "Do the 400 intervention problems overlap the 670 problems in the observational extreme-stratum contrast, and can a joint covariance-aware contrast be computed on a common problem frame?",
+    "What exact model equation and design matrix produced the RANDOM-arm dose slope, intercept -0.109, and predicted shift +0.023?",
+    "How were NLL probabilities bounded or clipped, and were all four metric formulas and the Bonferroni family frozen in the unavailable preregistration?",
+    "What selection rule produced the 30 purposive MATH500 anchors, and what justifies treating the anchor correction as independent of the bed-level component computed from the same bed?"
+  ],
+  "issues": [
+    {
+      "issue_id": "A32-R00-T-I1", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "p.2, Section 2 Definitions, lines 57-64; p.4, Table 1 Brier/NLL rows; p.7, Calibration paragraph, lines 361-373; p.8, Limitations, lines 393-395", "claim_ids": ["A32-C1", "A32-C2", "A32-C4"], "evidence_ids": ["A32-E1", "A32-E2", "A32-E3"],
+      "observed_evidence": "The paper defines confidence as a decoder probability recorded at a commit step but compares it with answer-level correctness. It explicitly states that no separate validation establishes this score as an answer-correctness probability. Nonetheless it calls the mean difference calibration-in-the-large and interprets Brier and NLL as overall probabilistic quality. Method entry A32-M1 says the construct trace was not located, and the repository inventory says per-problem confidence traces are absent.",
+      "why_it_matters": "Calibration-in-the-large, Brier score, and Bernoulli NLL require a probability or forecast score tied to the evaluated binary event. If the commit probability targets a token event rather than final-answer correctness, the arithmetic is still definable, but the calibration and proper-score interpretations do not follow. This affects the central construct and the claimed Brier/NLL boundary.",
+      "required_fix": "Define the extraction and token-to-answer aggregation exactly, identify the forecast event, and validate the resulting score as an answer-correctness probability. If that interpretation cannot be established, rename the quantity as a cross-level score-outcome diagnostic and remove claims that Brier/NLL measure the model's answer-level probabilistic quality. Specify Brier and NLL equations, aggregation, numerical clipping, and missing-value handling.",
+      "verification_test": "Starting from frozen per-decode traces, reconstruct one confidence value and one answer label per problem-arm, reproduce every mean, signed gap, Brier value, and NLL value, and verify that the score is explicitly targeted to answer correctness. Report reliability/calibration behavior and sensitivity to at least the plausible alternative token-to-answer aggregations.",
+      "evidence_needed": "Per-token and per-answer confidence traces, extraction code, the exact aggregation rule, Brier/NLL implementation including clipping, and an answer-level construct-validation analysis.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-T-I2", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "p.4, Table 1 and caption; p.8, Limitations, lines 397-399; evidence/experiment_registry.json entry A32-X4", "claim_ids": ["A32-C2", "A32-C4"], "evidence_ids": ["A32-E2", "A32-E3"],
+      "observed_evidence": "The analysis has one decode per item-arm. The paper states that the problem bootstrap does not quantify within-item decoder randomness unless decoding is deterministic, and the registry marks the multi-seed or deterministic replay audit as not_run. A fixed NFE schedule and one named seed do not by themselves establish deterministic generation.",
+      "why_it_matters": "If decoding is stochastic, the observed LONG-SHORT differences combine the filler operation with arm-specific realization noise, while the reported intervals resample only problems. Without an explicit conditional fixed-seed estimand or repeated paired draws, causal wording such as 'adding filler lowers confidence and accuracy' is not supported for the decoder's expected behavior.",
+      "required_fix": "State whether the target is a deterministic fixed-run transformation effect or an expectation over decoder randomness. For the former, provide a determinism/replay audit and narrow all claims to that frozen decoder. For the latter, run multiple paired decode seeds, couple random numbers across arms where meaningful, and use a hierarchical or paired estimator that includes run-level variability.",
+      "verification_test": "Repeat identical prompt-arm decodes enough times to establish bitwise or outcome determinism. If nondeterministic, rerun SHORT and LONG over multiple paired seeds and verify that the signed-gap, confidence, accuracy, Brier, and NLL conclusions persist with uncertainty over both problems and decoder runs.",
+      "evidence_needed": "Decode launcher and full sampling configuration, replay hashes or multi-seed outputs, random-number coupling details, and a two-level uncertainty analysis.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-T-I3", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "clarity", "limitations_responsible_claims"],
+      "location": "Title and Abstract; p.2, paired-filler discussion, lines 92-107; p.4, Table 1 caption; p.8, Conclusion, lines 410-420; evidence claim A32-C3", "claim_ids": ["A32-C3"], "evidence_ids": ["A32-E1", "A32-E2"],
+      "observed_evidence": "The headline says the filler intervention does not reproduce the +0.2227 observational magnitude because +0.2227 lies outside the filler interval. The manuscript simultaneously acknowledges that the samples and estimands differ and that this is not a formal equality or difference test. The claim map accordingly marks A32-C3 only partially_supported.",
+      "why_it_matters": "Non-coverage of one estimate by another analysis's interval is not a covariance-aware test of equality, non-reproduction, or practical separation. More importantly, a natural high-versus-low content stratum and a fixed filler transformation target different quantities. The paper's central comparison is therefore descriptive unless it defines an aligned target and a formal criterion.",
+      "required_fix": "Either retitle and rewrite the central contribution as a descriptive contrast between two explicitly different estimands, or define a common problem population, dose, and contrast-of-contrasts together with a preregistered practically meaningful separation margin.",
+      "verification_test": "Compute a joint per-problem bootstrap for the aligned difference between the filler effect and natural-length contrast, preserving overlap covariance where samples share problems. Verify that the interval excludes the preregistered non-reproduction margin; otherwise use only descriptive language.",
+      "evidence_needed": "Problem identifiers for both analyses, overlap information, an aligned estimand, joint resampling code, and a prespecified practical-separation threshold.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-T-I4", "severity": "minor", "dimensions": ["technical_soundness", "experimental_rigor", "clarity", "reproducibility"],
+      "location": "p.4, Table 1 note, lines 183-198", "claim_ids": ["A32-C2"], "evidence_ids": ["A32-E2"],
+      "observed_evidence": "The note says the regression response is a within-problem ΔSCE and the predictor is RANDOM-arm dose, yet says the bootstrap carries all three arms, interprets a single intercept of -0.109 as absorbing each problem's base level, and reports the mean-dose predicted shift as 0.0009×25.2 = +0.023 without the stated intercept. These descriptions cannot all characterize the same ordinary regression.",
+      "why_it_matters": "The dose-slope estimand, fitted values, and uncertainty base cannot be reconstructed. Clustered standard errors do not themselves eliminate problem-content heterogeneity from the point estimator, and the reported prediction is inconsistent with a response model that includes the stated intercept.",
+      "required_fix": "Give the regression equation, row-level observations, arm and dose coding, item effects, intercept interpretation, bootstrap procedure, and prediction formula. Distinguish clearly between raw per-arm SCE and within-item SCE changes.",
+      "verification_test": "Reproduce the slope, intercept, interval, p-value, and +0.023 prediction from the released table-level data; verify algebraically that the prediction uses the declared model and demonstrate with a synthetic test that pairing and repeated-arm dependence are handled as claimed.",
+      "evidence_needed": "Per-problem three-arm data, exact regression code, design matrix, and bootstrap replicates.", "expected_impact": "medium", "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-T-I5", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "p.3, Section 3, lines 149-161; pp.6-7, Section 6; pp.10-12, Appendix A-B and Table 6", "claim_ids": ["A32-C5"], "evidence_ids": ["A32-E4"],
+      "observed_evidence": "The MATH500 correction uses 30 purposively chosen anchors and a 20-item gradient subset. Appendix B assigns an anchor uncertainty term sqrt(k)/10 and adds it in quadrature to the bed component under an independence assumption, while conceding that this is a convenience sensitivity rather than an identified sampling standard error. The anchors come from the evaluated bed, and no covariance justification is supplied. The paper also calls v2 'validated' despite a non-probability audit and a certified hidden false accept outside the reuse frame.",
+      "why_it_matters": "A purposive sample does not induce a repeat-sampling standard error, and overlap with the bed data makes independence doubtful. Thus the numerical corrected interval is neither a confidence interval nor a demonstrated bound. The qualitative POWER_LIMITED conclusion is appropriately conservative, but the quantitative judge comparison and broad validation wording are not established.",
+      "required_fix": "Until a probability sample is available, present the convention results as descriptive scenario analyses without confidence-like semantics and qualify 'validated' to the exact oracle and hand-spot coverage. Complete the planned FULL-193 probability sample, estimate false-accept and false-reject behavior by stratum, and propagate judge uncertainty jointly with the bed statistic, including covariance.",
+      "verification_test": "Audit the probability-sampling frame and frozen labels, then recompute the corrected gap with a joint or nested resampling procedure that resamples problems and judge labels consistently. Confirm coverage in simulation for the declared estimator and report sensitivity to residual anchor-label errors.",
+      "evidence_needed": "Anchor selection frame, all human labels and adjudication records, judge outputs, FULL-193 probability-sampled labels, and joint uncertainty code.", "expected_impact": "medium", "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-T-I6", "severity": "major", "dimensions": ["technical_soundness", "experimental_rigor", "reproducibility"],
+      "location": "p.8, Reproducibility Statement; p.12, Data and Reproducibility; evidence/claim_evidence_map.tsv, evidence/method_provenance.tsv, evidence/experiment_registry.json, and evidence/repository_inventory.md", "claim_ids": ["A32-C1", "A32-C2", "A32-C3", "A32-C4", "A32-C5"], "evidence_ids": ["A32-E1", "A32-E2", "A32-E3", "A32-E4"],
+      "observed_evidence": "The snapshot lacks the preregistration, experimental result files, per-problem predictions and confidences, judge decisions, human-anchor labels, decode launcher, analysis scripts, and advertised table reproducer. X1-X3 are registered as reported_not_rerun; the claim map labels the quantitative evidence source_reported/cannot_verify_locally; and all method implementations are not located.",
+      "why_it_matters": "No experimental number, predeclaration claim, multiplicity family, sample identity, judge correction, or bootstrap interval can be independently recomputed. This is a cannot_verify finding, not evidence that the values are false, but it imposes a hard ceiling on technical confidence.",
+      "required_fix": "Restore the exact preregistration, immutable per-problem outputs, confidence extraction, answer labels, judge and anchor artifacts, environment and model revision, analysis scripts, and table generator. Pin hashes and ensure the public instructions correspond to the frozen results.",
+      "verification_test": "Run the advertised reproducer from a clean environment and require exact or tolerance-declared agreement for all tables, figures, sample counts, arm definitions, intervals, multiplicity-adjusted endpoints, and judge ledgers. Cross-check artifact hashes against the registry.",
+      "evidence_needed": "The complete referenced result, preregistration, processing, anchor, and script bundles plus model/decode configuration and environment lock.", "expected_impact": "high", "confidence": "high"
+    },
+    {
+      "issue_id": "A32-R00-T-I7", "severity": "minor", "dimensions": ["clarity", "limitations_responsible_claims"],
+      "location": "p.3, Figure 1 middle-panel banner and caption, lines 125-135", "claim_ids": ["A32-C2"], "evidence_ids": [],
+      "observed_evidence": "The figure prominently labels the design 'WITHIN-ITEM RANDOMIZATION,' while the caption admits that this is inherited conceptual shorthand and that only the RANDOM arm randomizes dose; SHORT versus fixed LONG is a paired intervention without randomized arm allocation.",
+      "why_it_matters": "The visual conveys stronger randomization-based causal identification than the actual primary fixed-filler comparison. A corrective caption is less salient than the banner and does not remove the ambiguity.",
+      "required_fix": "Regenerate the figure with an exact label such as 'WITHIN-ITEM PAIRED INTERVENTION' and separately mark the RANDOM arm as randomized dose. State whether decoding randomness is coupled or fixed.",
+      "verification_test": "Have an independent reader infer the arm-allocation and dose-randomization scheme from the figure alone, then compare that inference with the Methods specification.",
+      "evidence_needed": "A corrected deterministic figure asset and an explicit design statement.", "expected_impact": "low", "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern is identifiable from the frozen snapshot. The selection, provenance, and adjudication process for the small human-anchor set should be documented, but this is presently a methodological and reproducibility concern rather than an evident ethics violation.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control.",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "A complete, hash-pinned artifact bundle that exactly reproduces every reported result and verifies the preregistration and multiplicity plan.",
+    "A defensible answer-level confidence construction with explicit extraction, event semantics, calibration validation, and robust Brier/NLL results across plausible aggregations.",
+    "A determinism audit or multi-seed paired experiment showing that the fixed-filler conclusions survive decoder-run variability.",
+    "A common-frame, covariance-aware contrast with a prespecified practical separation margin supporting the non-reproduction claim.",
+    "A probability-sampled MATH500 judge audit with joint uncertainty propagation and no reliance on purposive-anchor pseudo-standard errors.",
+    "Replication across additional models, decoders, filler operations, doses, or content-bearing length interventions sufficient to establish broader significance."
+  ],
+  "evidence_that_would_lower_score": [
+    "Reconstruction showing that commit-step confidence is a token-level quantity with no stable mapping to answer correctness, or that Brier/NLL conclusions depend strongly on an arbitrary aggregation or clipping rule.",
+    "Formal reruns failing to reproduce the reported means, intervals, multiplicity adjustments, or preregistered analysis.",
+    "Multi-seed decoding showing filler effects or proper-score changes are dominated by run-to-run variance or reverse sign.",
+    "A joint aligned comparison showing the filler effect remains compatible with the observational magnitude under a reasonable non-reproduction margin.",
+    "Probability-sampled judge labels revealing systematic false accepts or false rejects that materially change the MATH500 sensitivity."
+  ],
+  "review_limitations": [
+    "All experimental measurements are author-reported in the snapshot and cannot be independently recomputed because the referenced artifacts are absent.",
+    "The review used only the frozen submission snapshot and did not inspect repository history, author notes, prior reviews, or external files.",
+    "Literature and novelty assessment was limited to the frozen manuscript and citation summary; the primary specialty of this review is technical soundness."
+  ]
+}

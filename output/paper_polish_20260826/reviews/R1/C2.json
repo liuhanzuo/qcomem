@@ -1,0 +1,117 @@
+{
+  "reviewer_id": "R1",
+  "round": 1,
+  "snapshot_sha256": "33380752971af33cdffd66c902f0b47bc87490a3e29c35c63920b2751cc5f13e",
+  "role": "novelty_positioning",
+  "overall_score": 4,
+  "confidence": 4,
+  "recommendation": "marginally_below",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 3,
+    "contribution": 2
+  },
+  "dimension_justifications": {
+    "soundness": "固定 qa1 样本、oracle selector、读长和解码设置下，j=12 相对 j=0 的质量下降方向有配对计数、精确检验、两种 cap 与多种 reader 敏感性支撑，作者也把 4k 幅度称为选择后的 magnitude 而非预设效应量。主要不足是 E2 的所谓 depth-only 切换仍改变低层表示生成时所见上下文，且没有等效性证据排除该通道；系统收益又缺少端到端 decode 与真实同类基线。",
+    "presentation": "论文对 claim、estimand、scope、evidence 的对应关系异常细致，主图与表格视觉完整，负结果边界也较明确。另一方面，28 页包含大量 protocol matrix、reader lineage、五臂字母缩写和历史修复，重要的三件事——质量损失、深度独立成本、检索带来的系统收益——仍需读者跨多节重新拆分。",
+    "contribution": "把 cached-depth read-out 在一个严格匹配点上测成负结果具有实用提醒价值，但 CoMem 机制是既有 retrieval、hidden-state caching 与 upper-layer recomputation 的组合，论文未实现同床最近系统基线。依据指定的 KV-cache 校准锚点，已接收工作通常用真实基线、多模型/工作负载/生命周期、明确内存核算与端到端性能证明贡献；本文只有单模型、单主要任务、无优化 kernel 和无端到端 decode，因而贡献仍属窄的测量报告。"
+  },
+  "paper_summary": "论文研究 CoMem：把长文档按块运行到 Qwen3-8B 的第 j 层并持久化 hidden states，查询时检索固定 k 个块后只重算上层。核心匹配实验在 qa1、oracle selector、同一检索包上比较 j=12 与 j=0；4k 条件下准确率为 48% 对 75%，两种输出 cap 均显示显著负差，深度 sweep 也随 j 增大而下降。五臂实验试图区分 relocation、chunk-local write 与 depth caching。系统测量显示检索式读相对完整 128k prefill 大幅降内存和时间，但在相同 6,657-token read 长度下 j=12 相对 j=0 只少约 0.3 GB；论文没有端到端 decode 收益。",
+  "strongest_verified_contribution": "第 5.1 节表 2/5 的同样本、同检索块、同解码设置负结果：在两个 cap 下 j=0−j=12 的准确率差方向一致，4k 主单元的配对区间排除零，且深度 sweep 给出随缓存深度加深而质量下降的具体操作点；这为“缓存层数不能只按成本选”提供了可信的单床反例。",
+  "strengths": [
+    "明确把检索收益与 cached-depth 的增量收益分开，并在表 7 报告相同读长下仅 0.3 GB 的深度归因内存差。",
+    "使用配对样本、固定 selector 与多个 cap/reader 检查，报告精确 McNemar、区间、Bonferroni 读法及选择后幅度。",
+    "对单模型、oracle selector、无端到端 decode、未测索引成本、历史配对摘要和硬件差异披露充分。",
+    "逐页视觉检查覆盖 28 页，图表未见裁切或覆盖。"
+  ],
+  "questions": [
+    "A 与 E 之间低层网络所见上下文不同：A 在选中包上重算，E 的 h12 在写入时可见更长的连续文档。作者如何把这一区别与“深度本身”的表示损失分开？",
+    "如果把 j=0 retrieval read 作为真正系统基线，j=12 在端到端多轮生成中何时能以质量损失换来可测的吞吐、延迟或容量增益？",
+    "为什么没有在同一模型、任务、硬件和服务生命周期下实现 Layer-Condensed KV、HCache 或 KV-Direct 中至少一个最接近基线？",
+    "主结论对非 oracle 检索、不同 k、不同 Qwen/非 Qwen 模型和非 qa1 任务的预先规定验证计划是什么？"
+  ],
+  "issues": [
+    {
+      "issue_id": "C2-I1",
+      "severity": "major",
+      "dimensions": ["novelty", "significance", "citation_integrity"],
+      "location": "第 2–3 页第 2 节 Related Work；第 12–13 页附录 A/B；第 9 页结论",
+      "claim_ids": [],
+      "evidence_ids": ["Table 4 closest-work comparison"],
+      "observed_evidence": "论文将 Layer-Condensed KV、HCache 和 KV-Direct 列为最近工作，也承认没有任何一个在同床实现；CoMem 本身由分块写入、BM25/固定选择、hidden-state store 和上层重算组成，方法独特性主要是组合与测量。最近工作比较停留在定性对象/选择/缓存类型，没有同工作负载下的质量、持久存储、峰值内存或端到端性能。",
+      "why_it_matters": "没有同床最近基线，就无法判断观察到的质量代价是 cached-depth 家族的普遍问题、CoMem 的具体实现问题，还是已被适配/训练方法解决的问题；也无法建立相对已接收 KV-cache 工作的实际贡献。",
+      "required_fix": "在同一 Qwen3、数据、检索包、生成长度和硬件上实现至少一个最接近 hidden-state/KV 缓存基线，或将贡献明确限定为 CoMem 个案的负面测量；比较必须覆盖精度、持久与运行时内存、prefill、完整 decode、吞吐和 exactness/approximation。",
+      "verification_test": "检查所有方法在相同生命周期和质量目标下计费；报告同质量或质量-成本 Pareto，而非分别引用原论文数字。若不新增基线，摘要、标题和结论不得外推到 hidden-state cache 类别。",
+      "evidence_needed": "同床最近系统实现与统一端到端测量；若无法实现，需要更强的机制证据说明为什么 CoMem 反例可代表一个方法族。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-I2",
+      "severity": "major",
+      "dimensions": ["significance", "experimental_rigor", "limitations_responsible_claims"],
+      "location": "第 5 页表 1 的 C6/C7；第 8 页第 5.3 节；第 17 页图 3；第 26–27 页附录 H/J",
+      "claim_ids": ["C6", "C7"],
+      "evidence_ids": ["Figure 3", "Table 7", "Table 15"],
+      "observed_evidence": "128k 的 71.4→18.29 GB 和 72.7→0.68 s 对比把完整上下文换成固定 k 检索读，主要收益并非深度缓存。相同 6,657-token read 下，j=0 与 j=12 的峰值仅 18.2 对 17.9 GB；深度 sweep 没有逐层内存曲线，保留的 wall-clock 不支持时间节省。decode 每 token 重建上层 pack，且 break-even 只覆盖 read/prefill、不含完整生成。",
+      "why_it_matters": "论文标题询问 cached-depth read-out 的成本，但最大的系统数字归因于检索/缩短上下文，而深度处理的独立实益几乎未展示。没有端到端指标，无法判断 24–36 pp 的质量损失换来了什么可部署价值。",
+      "required_fix": "把 full-context 对比改标为 retrieval-system 上界/背景，不作为深度缓存收益；补充 matched j=0 vs j>0 的完整生命周期测量，包括写入、索引、持久存储、prefill、逐 token decode、吞吐、并发和峰值内存，并提供质量-成本曲线。",
+      "verification_test": "所有标题性成本数字都能分解成 selection/retrieval 与 depth 两项；端到端重复查询实验在预设查询数与生成长度上直接测得总延迟和峰值，并与解析的 break-even 一致。",
+      "evidence_needed": "优化或至少代表性的完整 decode 实现、多个查询数/生成长度/并发点，以及 matched j=0 基线的同进程测量。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-I3",
+      "severity": "major",
+      "dimensions": ["experimental_rigor", "significance", "limitations_responsible_claims"],
+      "location": "第 4–6 页第 4–5.1 节；第 20–22 页附录 F/G；第 25 页 Frozen stack and preregistration",
+      "claim_ids": ["C1", "C2"],
+      "evidence_ids": ["Table 2", "Table 8", "Table 10"],
+      "observed_evidence": "主决策只用一个 Qwen3-8B、qa1、oracle selector、n=100 和固定 k=12；4k 是有效候选中最大的显著差且 anchor 从 1k 改到 4k，论文无 selection-adjusted statistic。pinned/stripped reader 保持方向，但 answer-anchored mnt512 仅 +14 pp、p=0.0649、区间跨零；更宽 reader strip 还会改变幅度。",
+      "why_it_matters": "方向性反例在该床上可信，但效应大小、解析器不变性和任务/模型普遍性都未建立。选择最大差异再强调 +27 pp 容易高估可复现幅度。",
+      "required_fix": "把 +27 pp 降为选择后示例，以跨 cap 的方向/包络为主；在新任务、真实检索与至少第二模型上预注册主要 reader、深度和上下文长度，报告层级或多重性调整后的总体效应。",
+      "verification_test": "确认新主单元在结果可见前冻结，reader 不依赖模型输出事后调整；至少一项非 qa1、非 oracle 评测以同样 paired protocol 复现方向，并报告模型/任务交互。",
+      "evidence_needed": "多模型、多任务、真实 selector 的 held-out 配对研究和选择调整；更大 n 的 answer-anchored 验证。",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "C2-I4",
+      "severity": "major",
+      "dimensions": ["technical_soundness", "experimental_rigor", "clarity"],
+      "location": "第 7 页第 5.2 节五臂 A/D/R/C/E 设计；第 16–18 页附录 D/E；第 21 页表 9",
+      "claim_ids": ["C3b"],
+      "evidence_ids": ["Table 3", "Table 9"],
+      "observed_evidence": "A 是在选中原始块上从第 0 层重算，E 则读取写入阶段在连续长文档中形成的第 12 层状态。两臂虽有相同选中原始文本和 fresh positions，但低层注意力所见 token 集与表示形成时机不同；因此 E−A 同时包含缓存深度、写时上下文化和重新拼接后的分布移位。论文用另一个 16k dense/reforward 诊断的 ≤6 pp 来约束这一差异，但该诊断不是等效性检验且并非同一五臂 estimand。",
+      "why_it_matters": "这使“depth-only cost”不能被唯一解释为跳过前 j 层造成的表示损失。负结果仍适用于部署操作，但机制归因过强，影响方法设计建议。",
+      "required_fix": "把 A−E 改称为完整 operational cached-depth treatment；若要做机制归因，增加低层上下文匹配的写入/读取控制，例如让 j=0 与 j=12 在相同 token 序列与注意力掩码上生成低层表示，并单独操纵缓存边界。",
+      "verification_test": "新的因子设计应使任意一对归因比较除单个因素外输入 token、position、mask、低层可见上下文和 scorer 完全相同，并给出等效性界限而非“不显著”来排除剩余通道。",
+      "evidence_needed": "低层上下文与位置严格匹配的因子实验、足够功效的等效性检验和中间表示诊断。",
+      "expected_impact": "high",
+      "confidence": "medium"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "未见人类受试者。持久 hidden-state/text store 可能继承敏感文本的保留、删除和访问控制义务，论文第 6 节已指出但未来部署应提供实证治理方案。",
+  "llm_usage_disclosure": "本审稿由隔离的 AI 子代理 R1 生成，仅用于内部投稿前质量控制；该子代理只读取冻结 PDF、指定审稿规则及针对 C2/C3 的 ICLR KV-cache 校准材料，未与其他评审通信，也未读取其他评审输出。",
+  "score_ceiling_under_current_evidence": 4,
+  "predicted_score_after_required_changes": 6,
+  "evidence_that_would_raise_score": [
+    "同床实现最近 hidden-state/KV-cache 基线，并展示统一质量目标下的端到端 Pareto 优势或有价值的负结论。",
+    "在多模型、多任务、真实检索器上预注册复现 cached-depth 质量下降方向。",
+    "完成 matched j=0/j>0 的写入、存储、索引、prefill、decode、并发全生命周期测量。",
+    "用严格因子设计把低层上下文化、位置重定位和跳层分别识别。"
+  ],
+  "evidence_that_would_lower_score": [
+    "在低层上下文严格匹配后 A−E 差异消失，表明当前负结果主要是写时上下文化混杂。",
+    "非 oracle 检索或不同 reader 下主方向不复现。",
+    "端到端实现显示 j=12 相对 matched j=0 没有可测成本优势，却仍保留较大质量损失。"
+  ],
+  "review_limitations": [
+    "本评审严格只读取指定冻结 PDF、官方审稿规则与指定的 ICLR KV-cache 校准材料；未读取代码、数据、artifact 或旧稿。",
+    "按任务要求未联网，也未核验外部引文；对最近工作的判断仅基于 PDF 的相关工作和指定校准锚点，未机械沿用任何锚点评分。",
+    "未实测 GPU、内存或运行时间，因此只能审查论文内报告的测量设计与核算边界。",
+    "逐页视觉核查覆盖全部 28 页；未发现裁切、重叠或缺页，第 28 页存在较大留白但不影响内容完整性。"
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": "forkaudit-r39-independent-slot-census-protocol-v1",
+  "status": "frozen_before_dual_producer_execution_and_before_candidate_outputs",
+  "experiment_id": "R39-DUAL-PRODUCER-REPEAT-20260826A",
+  "objective": "Derive the complete expected GDN semantic-slot set from frozen model geometry and the request schedule before either of two fresh producer processes starts.",
+  "source_evidence": {
+    "raw_capture_path_from_paper_root": "evidence/r33_independent_capture/formal_h20/result/raw/out-of-process-gdn-capture.json",
+    "raw_capture_sha256": "50d39cfcea072fb770da539d90abeddcd8a40802b88f4f95315001333c09e974",
+    "preregistration_path_from_paper_root": "evidence/r33_independent_capture/formal_h20/result/preregistration/preregistration.json",
+    "preregistration_sha256": "67c001a04e61006967befe1ff1e26018b58bc02630b8e48dd40f16067a44ea65",
+    "source_result_schema": "forkaudit-r33-out-of-process-result-v1"
+  },
+  "model_geometry": {
+    "model_id": "Qwen/Qwen3.5-35B-A3B",
+    "model_revision": "59d61f3ce65a6d9863b86d2e96597125219dc754",
+    "num_hidden_layers": 40,
+    "full_attention_period": 4,
+    "full_attention_offset": 3,
+    "expected_linear_layer_count": 30,
+    "state_index": 0,
+    "state_families": {
+      "conv": {
+        "shape": [1, 8192, 4],
+        "allowed_strides": [[33546240, 1, 8192], [32768, 4, 1]],
+        "storage_offset": 0,
+        "dtype": "torch.bfloat16",
+        "device_prefix": "cuda:",
+        "storage_nbytes": 65536,
+        "tensor_nbytes": 65536,
+        "byte_start": 0,
+        "byte_end_exclusive": 65536
+      },
+      "recurrent": {
+        "shape": [1, 32, 128, 128],
+        "allowed_strides": [[524288, 16384, 128, 1]],
+        "storage_offset": 0,
+        "dtype": "torch.float32",
+        "device_prefix": "cuda:",
+        "storage_nbytes": 2097152,
+        "tensor_nbytes": 2097152,
+        "byte_start": 0,
+        "byte_end_exclusive": 2097152
+      }
+    }
+  },
+  "schedule": {
+    "resident_count": 2,
+    "owner_roles": ["persistent", "request"],
+    "policy_cells": ["shared-base", "materialized"],
+    "captures": [
+      {
+        "capture_id": "c-2d8d91660bc7",
+        "phase": "setup_pre_transition",
+        "completed_request_indices": []
+      },
+      {
+        "capture_id": "c-7b91ee24a5d3",
+        "phase": "post_transition",
+        "completed_request_indices": [0]
+      },
+      {
+        "capture_id": "c-f109e345a0c8",
+        "phase": "post_generation",
+        "completed_request_indices": [0, 1]
+      }
+    ]
+  },
+  "slot_id_derivation": {
+    "domain": "r33-gdn-slot-v1",
+    "prefix": "s-",
+    "sha256_hex_characters": 20,
+    "canonical_json": "sort_keys=true,separators=(',',':'),ensure_ascii=true"
+  },
+  "expected_counts": {
+    "slots_per_capture": 180,
+    "captures_per_policy_cell": 3,
+    "policy_cells": 2,
+    "row_observations": 1080,
+    "unordered_relations_per_capture": 16110,
+    "unordered_relations": 96660
+  },
+  "independence_contract": {
+    "expectation_inputs": [
+      "model layer-count and periodic layer-type geometry",
+      "GDN state-family tensor geometry",
+      "resident request count and completion schedule",
+      "deterministic opaque-slot identifier derivation"
+    ],
+    "not_used_as_expectation_inputs": [
+      "either producer result cell.slot_manifest.slots",
+      "either producer capture rows",
+      "either producer row_count",
+      "either producer candidate verdicts"
+    ],
+    "retrospective": false,
+    "claim_boundary": "The census independently fixes expected emitted semantic slots before either producer starts. It does not prove that a malicious producer supplied the correct live tensor under a correct slot id, independently execute the model, or provide OS/driver allocation ground truth."
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "schema": "a11-boolq-ordered-correctness-cost-v2",
+  "status": "frozen_pre_submission_recovery_r5",
+  "frozen_at_utc": "2026-08-22T15:31:47Z",
+  "freeze_note": "scientific implementation unchanged; R5 paths target files provisioned from inside a QS training container onto the authoritative tidal-alsh-hilab dataset/diandian mount after Trial 1882455 proved that the Singapore /newcpfs path was not the same data plane",
+  "carrier": {
+    "name": "BoolQ labeled train+validation",
+    "source": "google/boolq",
+    "revision": "35b264d03638db9f4ce671b711558bf7ff0f80d5",
+    "license": "cc-by-sa-3.0",
+    "canonical_jsonl": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/a11_boolq_ordered_formal_20260822a_actual/data/boolq_35b264d_all_12697.jsonl",
+    "canonical_jsonl_sha256": "13c2f4143ae320a0191c6de5be919248a20c15515f58c6deb7d3732068f2d31a",
+    "canonical_jsonl_bytes": 8835655,
+    "rows": 12697,
+    "unique_prompt_pairs": 12697,
+    "unique_stripped_passages": 10144,
+    "source_files": {
+      "data/train-00000-of-00001.parquet": {
+        "rows": 9427,
+        "sha256": "4f028e992c0bd4df30b9f056f4946b64f5c23028034ff0ed5ea467d8538cc623"
+      },
+      "data/validation-00000-of-00001.parquet": {
+        "rows": 3270,
+        "sha256": "52355d11524b4b874a9b9dcc278feb10f672d52c4f4eff9872e695ede59820f8"
+      }
+    },
+    "canonicalization": "train rows then validation rows; keys answer,passage,question,source_index,source_split; json.dumps(sort_keys=True,separators=(',',':'),ensure_ascii=False); one LF per row",
+    "task_identity": "sha256(strip(passage) + NUL + strip(question))",
+    "passage_identity": "sha256(strip(passage))",
+    "gold_evaluator": "exact boolean equality between delivered Yes vote and BoolQ answer; call-graph isolated from PromptTask/acquisition/stopping and invoked only after both paired TEST decisions are append-only and hash-sealed (not a separate-process isolation claim)"
+  },
+  "allocation": {
+    "seed": "20260822-A11-BOOLQ-v2-passage",
+    "method": "group all 12697 rows by passage_id; within each group retain the row minimizing sha256(seed + ':within-passage:' + task_id); sort the 10144 representatives by sha256(seed + ':passage:' + passage_id); first 3000 FIT, next 3000 CAL, next 3000 TEST",
+    "eligible_passage_representatives": 10144,
+    "duplicate_passage_rows_discarded": 2553,
+    "fit": 3000,
+    "cal": 3000,
+    "test": 3000,
+    "unused_representatives": 1144,
+    "outcome_blind": true,
+    "shadow_test": 300,
+    "shadow_method": "sort TEST by sha256(seed + ':shadow:' + task_id); first 300",
+    "selected_manifest_serialization": "task_id + TAB + passage_id + TAB + source_split + TAB + lowercase true|false; selected order; LF between rows; no trailing LF",
+    "selected_manifest_sha256": "c1cb98d45600db7c234396c73161921905c4fa414a0cdd57f02b8d304d5505d8",
+    "split_manifest_sha256": {
+      "FIT": "ec6c8374a4e6de92a16c56851fe65798b118345047355918bf7a174cdc5d405c",
+      "CAL": "414a283b1aa8d090cbd1be620be80264a10dc32819a457072cd3d728aa0230f4",
+      "TEST": "c9b78322628264da323593447bfec323e77f6572ad4a047222b8374c82f24886"
+    },
+    "shadow_manifest_serialization": "selected shadow task_ids in shadow hash order; LF between rows; no trailing LF",
+    "shadow_manifest_sha256": "89fd7fb6b42dad981b564116e755aecbc3ab2c41dcd14e5e0a65b7bd1053d013",
+    "split_passage_overlap_required": 0
+  },
+  "model": {
+    "repository": "Qwen/Qwen2.5-7B-Instruct",
+    "revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "staged_path": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/a11_boolq_ordered_formal_20260822a_actual/model/Qwen2.5-7B-Instruct-a09a354",
+    "runtime_network_fetch": false,
+    "snapshot_manifest_contract": "exactly these 14 top-level regular files; no symlinks or other entries; only a top-level .cache directory may be ignored; ledger is LC_ALL=C filename order with one '<sha256><two spaces><basename>\\n' line per file, including final LF",
+    "snapshot_manifest_sha256": "3ee6c9510b7e50bfcd46d6df33cafa3e2019f13a6a09bf1d2f9e80cdfe1164e8",
+    "snapshot_files": {
+      ".gitattributes": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+      "LICENSE": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+      "README.md": "f366f33bbf6bcadbb7d87f0a21a7b65584a56b8d58b0743c77c88bee625b93a6",
+      "config.json": "7463bb0ea78315365e6c6b74de4e73bbcc8359dfb0c5a737584e077d42c0b03c",
+      "generation_config.json": "3a8f9087e486054c8a4a08dae2e5a3ba62e23da212b5b8c08bc42cb983c3459f",
+      "merges.txt": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+      "model-00001-of-00004.safetensors": "a1333e6293854747c481288ea83b348226af178dd565c49b6f9495ba1966aba7",
+      "model-00002-of-00004.safetensors": "f5d25a2772cb825164a2a2c0fb6d51a87e282abf21e4dd75bc5cfb3cd0ea6185",
+      "model-00003-of-00004.safetensors": "8efdec4c1bc12317ae1a38dc42b595ce777738a64deea3fcb8a0a91381bcdfd5",
+      "model-00004-of-00004.safetensors": "1a72d403cdf0c1ec3cb7f289f17b394a01e64394c2e9b3c0f94dbce3faf879bd",
+      "model.safetensors.index.json": "624bf7c47cd12468fdc16e38a47cf4f19e0415b859a223ba3c027eed2f0e1028",
+      "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "tokenizer_config.json": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583",
+      "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+    }
+  },
+  "inference": {
+    "image": "artifactory.devops.xiaohongshu.com/media/verlai/verl:vllm017.latest",
+    "image_id": 593,
+    "image_api_created_updated_date": "2026-07-03",
+    "image_digest": "unavailable_from_QS_API",
+    "image_tag_caveat": "the literal vllm017.latest tag is mutable-looking; record the literal tag, QS image ID, API date, runtime package versions, GPU UUID/name, and driver rather than claiming digest-level immutability",
+    "servers": 8,
+    "tensor_parallel_size": 1,
+    "max_concurrent_tasks_per_server": 16,
+    "strictly_one_inflight_request_per_task": true,
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "max_tokens": 4,
+    "n": 1,
+    "prefix_caching": false,
+    "gpu_memory_utilization": 0.9,
+    "max_model_len": 2048,
+    "prompt_length_gate": "fail closed unless every selected rendered input_tokens + max_tokens <= max_model_len; record empirical min/median/p90/p95/p99/p99.9/max",
+    "local_pinned_tokenizer_reference": {
+      "transformers": "4.48.3",
+      "selected_tasks": 9000,
+      "min": 53,
+      "median": 160,
+      "p90": 264,
+      "p95": 306,
+      "p99": 410,
+      "p99_9": 657,
+      "max": 1295,
+      "above_2044": 0
+    },
+    "dtype": "bfloat16",
+    "request_timeout_seconds": 180,
+    "server_seed": 20260822,
+    "retry_policy": "disabled",
+    "request_seed": "nonnegative signed-int32-compatible value: first 8 hex digits of sha256(allocation_seed + NUL + task_id + NUL + episode_id + NUL + rollout_index), masked with 0x7fffffff; distinct episode IDs namespace FIT/CAL/TEST and FULL/BAYES; shadow uses the preassigned BAYES suffix indices; per-task FULL/BAYES seed sets must be disjoint, while any global collisions across different prompts are reported rather than treated as dependence",
+    "prompt": {
+      "system": "Answer the question from the passage. Output exactly one word: Yes or No.",
+      "user_template": "Passage:\n{passage}\n\nQuestion:\n{question}\n\nAnswer:",
+      "rendering": "pinned model tokenizer apply_chat_template(tokenize=False,add_generation_prompt=True)"
+    },
+    "parser": "case-insensitive first whole word among yes/no; Yes iff that first canonical word is yes, otherwise No; strict_compliant iff stripped output is exactly yes or no",
+    "vote_semantics": "parsed Yes is 1 and parsed No is 0; the policy-visible PromptTask and acquisition/stopping call graph contain no gold field"
+  },
+  "policy": {
+    "name": "BAYES-H-online",
+    "theory_binding": "Z_i=1 iff rollout i parses to Yes; x_k=sum_{i<=k} Z_i; K=x_N; MV(k)=1{x_k>k/2}; ties are No. This is a new Yes-vote carrier and does not reuse old pass/fail H or tables.",
+    "N": 32,
+    "minimum_stop_k": 3,
+    "tie": "No",
+    "fit_prior": "empirical histogram of full-N Yes-vote counts on FIT",
+    "posterior": "H[K] * Hypergeometric(N,K,k,x)",
+    "unsupported_state": "if posterior denominator is zero, do not stop and continue to FULL-N",
+    "primary_alpha": 0.05,
+    "delta_cal": 0.05,
+    "calibration_family": {
+      "kind": "single predeclared BAYES-H threshold",
+      "family_size": 1,
+      "alpha_stop": 0.05,
+      "delta_cal": 0.05,
+      "loss": "exact DP replay flip g_r(K) evaluated from each complete CAL count K",
+      "bound": "empirical Bernstein at delta_cal; no multiplicity division because J=1"
+    },
+    "cal_gate": "the alpha=0.05 FIT-frozen BAYES-H rule must have CAL empirical-Bernstein UCB <=0.05; otherwise terminate before TEST",
+    "test_arms": ["FULL-N", "BAYES-H-online"],
+    "arm_order": "sort TEST by a dedicated outcome-blind hash; exactly 1500 tasks FULL-N first and 1500 BAYES-H-online first; independent arm seed namespaces",
+    "shadow": "for the frozen 10% subset only, defer continuation until every FULL-N and BAYES-H TEST primary decision is append-only/hash-sealed and the global all_test_primary_decisions_sealed marker is written; then continue the same BAYES-H trajectory/seed suffix to N; every continuation row is excluded_from_primary_cost=true"
+  },
+  "primary_analysis": {
+    "correctness": "paired TEST difference accuracy(BAYES-H-online)-accuracy(FULL-N); one-sided 95% task bootstrap lower bound; noninferiority margin -0.02",
+    "cost": "paired completed output-token reduction with 95% bootstrap interval; also report input tokens, request count, time to final answer, TTFT, and GPU/server metadata",
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 2026082205,
+    "agreement": "shadow prefix answer versus same-episode continued full-N vote; secondary only",
+    "causality": "each stop may reference only completed primary rollout rows whose response_arrival_monotonic_ns <= decision_monotonic_ns; UTC wall timestamps are recorded separately and never used for ordering",
+    "required_strata": ["gold Yes", "gold No", "FULL-N tie", "missing canonical vote", "strict parser noncompliance"],
+    "forced_choice_limitation": "max_tokens=4 and forced Yes/No make output-token savings close to request-count savings; input tokens, request count, and latency must be reported and TTFT is not presumed to improve"
+  },
+  "execution": {
+    "run_dir_must_not_exist": true,
+    "code_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/a11_boolq_ordered_formal_20260822a_actual/code",
+    "run_dir": "/mnt/tidal-alsh-hilab/dataset/diandian/user/liuhanzuo/indep-bench/a11_boolq_ordered_formal_20260822a_actual/runs/formal-20260822a-r5",
+    "append_only_ledgers": [
+      "task_manifest.jsonl",
+      "rollout_trace.jsonl",
+      "stop_decision.jsonl",
+      "cancellation_ledger.jsonl",
+      "episode_result.jsonl"
+    ],
+    "global_test_primary_seal": "locks/all_test_primary_decisions_sealed.json; contains a hash of all 6000 TEST decision seals and a monotonic seal timestamp; every shadow dispatch must be later",
+    "gold_manifest_materialization": "expected selected/split hashes are verified in memory during preflight; gold-bearing TSVs are written only post-TEST after both decisions for every pair are hash-sealed",
+    "unknown_not_zero": ["provider_billable_tokens", "cancellation_acknowledgement"],
+    "failure_classes": ["infrastructure_preflight", "data_evaluator", "calibration_screen_rejection", "online_policy_integrity", "scientific_negative_result"]
+  }
+}

@@ -1,0 +1,7 @@
+# V10 regression counterexamples
+
+The 18-test discovered suite rejects missing or unsigned bindings; wrong terminal/consumption roots; wrong attempt or nonce; replay with an uncleared terminal; replay after clearing the same terminal inode; a re-signed binding for the same run identity; replay to fresh terminal or durable-root inodes; signed typed-token, path, CUDA, and environment drift; executable byte or loaded-inode substitution at the Popen boundary; coordinated terminal/env/spec forgery; incorrect aggregate anchors; archive/gzip/ledger mutants; symlink and hard-link inputs; and every tested no-replace/parent-replacement race.
+
+A valid control launches and reaps exactly eight local harmless workers. Each receipt is checked against the child report for logical and typed argv, exact environment/CUDA UUID, cwd device/inode, effective loaded Python path/device/inode/SHA-256, PID/PGID, and actual-spec commitment. The terminal gate independently rebuilds all eight typed specs and compares their canonical aggregate with provenance.
+
+The signal-window regression covers both SIGINT and SIGTERM. It injects the signal after a real child exists but before the Popen wrapper returns, then verifies the conventional signal exit code, eight failure terminals, and absence of the recorded child. Static AST enumeration covers all packaged Python files, requires all 18 discoverable tests to live in `test_v10.py`, rejects skip/xfail mechanisms and shell execution, and permits production process APIs only at the two formal-entrypoint sites.

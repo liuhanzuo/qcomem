@@ -1,0 +1,213 @@
+{
+  "reviewer_id": "r39_sol_pdf_review_c",
+  "round": 39,
+  "snapshot_sha256": "d8b96dc83a6cf79bd48be23f2b3da5dde0a500cbbbd74f89dcafe35a23a13516",
+  "role": "technical_soundness",
+  "overall_score": 6,
+  "confidence": 4,
+  "recommendation": "marginally_above",
+  "dimension_scores": {
+    "soundness": 3,
+    "presentation": 2,
+    "contribution": 3
+  },
+  "dimension_justifications": {
+    "soundness": "The phase-indexed ownership contract is unusually explicit, fail-closed at the represented record level, and tested with exact cross-arm/cross-N relations, storage witnesses, numerical sidecars, constructed mutations, one historical regression, an independent expected-slot census, repeat execution, and a bounded second-model reference comparison. The conclusions are generally calibrated to the evidence. Soundness remains conditional on a substantial trusted capture/binding boundary, and dispatch provenance is knowingly incomplete.",
+    "presentation": "The manuscript is technically precise and exceptionally candid about boundaries, but the central argument is obscured by an extremely dense accumulation of cohorts, ledgers, counts, qualifications, and contextual panels. Twenty-four tables/figures and many overlapping caveats make it difficult to distinguish the essential contract validation from secondary engineering and related-work measurements.",
+    "contribution": "The strongest contribution is the integration of lifecycle, ownership, storage, call, and semantic receipts into a replayable, fail-closed contract for hybrid KV/recurrent forks. Individual mechanisms have close precedents, and the work is explicitly neither a new cache policy nor a production runtime, but the integrated ownership-focused audit is meaningful at its stated CI/debugging scope. Its broader practical value is not yet established on native production serving workloads or unseen defects."
+  },
+  "paper_summary": "The paper presents ForkAudit, an offline ownership-trace validation contract for hybrid LLM inference state containing shared document KV and mutable recurrent/GDN state. It defines seven audit targets, pointer-free storage witnesses, phase-aware lifecycle records, exact semantic relations, and fail-closed coverage semantics. On one primary Qwen3.5/H20 configuration, six targets have complete passing evidence while dispatch provenance remains partial. Supporting evidence includes designed fault campaigns, one historical alias regression, lifecycle and scheduler schedules, a source-distinct N=2 expected-slot census with repeat executions and out-of-process observers, selected NumPy FP32 operator replays, and a bounded Falcon-H1 comparison against an official Transformers reference. Separate panels report allocator and retained-tensor Store reductions under explicitly different denominators.",
+  "strongest_verified_contribution": "A clearly specified, pointer-free, phase-indexed ownership contract that distinguishes mandatory evidence coverage from replay verdicts and demonstrates, for the frozen primary configuration, that output equality alone misses a real historical persistent-state alias while transition-time ownership and base-immutability receipts localize it.",
+  "strengths": [
+    "The contract separates coverage from verdicts, so absent mandatory records do not silently become passes.",
+    "The paper explicitly states its TCB and repeatedly avoids upgrading trace-relative observations into general correctness or security claims.",
+    "The pointer-free interval schema covers request-base and request-peer overlap at setup, transition, and final phases and includes adversarial schema tests.",
+    "The 2x2 KV-by-GDN ownership factorial with N in {1,8,32} tests semantic invariance jointly with physical isolation rather than relying on output equality.",
+    "The historical regression is decision-relevant: tokens, logits, terminal GDN, and logical KV remain exact while persistent storage is corrupted.",
+    "The preproducer census removes producer-emitted rows as expected-set authority for its bounded cohort, and fresh producer/observer repetitions reduce single-run risk.",
+    "The Falcon-H1 track supplies a cautiously bounded second-architecture check against a separately executed official reference.",
+    "Memory denominators and cohort boundaries are consistently separated, and limitations are unusually comprehensive.",
+    "The PDF is visually complete and readable, with no evident clipping, broken glyphs, or missing pages."
+  ],
+  "questions": [
+    "Which minimum subset of records and checks is intended as the practically deployable ForkAudit core, and what capture/replay overhead does that subset impose?",
+    "Can the authors bind the selected compiled binary and autotuning decision per model call, or should dispatch provenance be removed from the claimed complete contract until that evidence exists?",
+    "How would a consumer independently establish that each opaque slot ID was bound to the intended live tensor, rather than merely trusting the instrumented producer?",
+    "Have any additional organically occurring ownership defects been evaluated prospectively, after the contract and gates were frozen?",
+    "What specific production integration boundary would be required to apply the contract to continuous/ragged batching and in-flight cancellation?"
+  ],
+  "issues": [
+    {
+      "issue_id": "I1_CAPTURE_BINDING_TCB",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Pages 3-4, Section 3, Threat model and conditional trace-validity statement; pages 24-25, Appendix H",
+      "claim_ids": [
+        "C_FAIL_CLOSED_OWNERSHIP_CONTRACT",
+        "C_INDEPENDENT_EXPECTED_SLOT_EVIDENCE"
+      ],
+      "evidence_ids": [
+        "E_PREPRODUCER_CENSUS",
+        "E_DUAL_PRODUCER_REPEAT",
+        "E_POINTER_FREE_STORAGE_REPLAY"
+      ],
+      "observed_evidence": "The census independently fixes the expected semantic slot set and observers derive descriptors and relations, but opaque slot-ID-to-live-tensor binding, capture honesty, paused capture, framework storage semantics, and CUDA IPC semantics remain trusted. Two executions reuse the same frozen producer implementation.",
+      "why_it_matters": "Correct binding is precisely the bridge between replayed ownership facts and the live tensors whose ownership is being claimed. A consistent producer-side binding error or coherent relabeling can survive census closure, repeat execution, and receiver-side relation replay. This does not falsify the paper's carefully conditional theorem, but it limits the practical assurance obtained from the headline audit.",
+      "required_fix": "Provide an independently generated binding witness for at least the principal ownership coordinates, or make the live-tensor binding mechanism externally checkable through independently derived object-role identities and challenge-based sampling. At minimum, elevate this dependency into the headline decision rule and distinguish census independence from binding independence more prominently.",
+      "verification_test": "Before producer capture, an independent component should sample frozen semantic coordinates, derive expected live objects without consuming producer rows, and verify that the exported storage/content descriptor corresponds to those objects. Seed systematic slot swaps and coherent role relabels that preserve row counts and relation cardinalities; the independent binding check must reject them.",
+      "evidence_needed": "A frozen protocol, clean results, and mutation results for independent live-tensor binding checks, including coherent slot-swap and role-relabel controls.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I2_DISPATCH_PROVENANCE_PARTIAL",
+      "severity": "major",
+      "dimensions": [
+        "technical_soundness",
+        "reproducibility",
+        "limitations_responsible_claims"
+      ],
+      "location": "Pages 3-6, Sections 3, 4.1, and 5.1; page 15, Table 5; page 24, Appendix H",
+      "claim_ids": [
+        "C_SEVEN_TARGET_CONTRACT",
+        "C_DISPATCH_PROVENANCE"
+      ],
+      "evidence_ids": [
+        "E_PYTHON_CALL_RECEIPTS",
+        "E_COMPILED_CACHE_ARTIFACT_LEDGER"
+      ],
+      "observed_evidence": "The Python callable, masks, positions, scale, append history, and four compiled cache artifacts are bound, but the selected compiled binary and autotuning choice are not bound per call. The paper correctly reports target 5 as partial.",
+      "why_it_matters": "Dispatch provenance is one of the seven central audit obligations and is intended to rule out fallback or divergent execution paths. Package-level presence of compiled artifacts does not establish which binary or autotuned choice actually served an individual call.",
+      "required_fix": "Record and replay a stable per-call identifier for the selected compiled artifact and relevant autotuning configuration, or narrow the contract so Python-call provenance is the explicit target.",
+      "verification_test": "Run matched cells that intentionally select distinct compiled variants or fallback paths while preserving the same Python callable. The audit should identify the per-call divergence and fail target 5 without relying on output changes.",
+      "evidence_needed": "Per-call compiled-dispatch receipts, replay rules, and clean/mutant results demonstrating sensitivity to binary-selection and autotuning divergence.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I3_FIXED_FAULT_AND_SCHEDULE_SCOPE",
+      "severity": "major",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Pages 6-8, Section 5.2; pages 16-17, Tables 6-9; pages 23-25, Tables 19-23 and Appendix H",
+      "claim_ids": [
+        "C_FAULT_SENSITIVITY",
+        "C_PRACTICAL_AUDIT_VALUE"
+      ],
+      "evidence_ids": [
+        "E_NINE_LIVE_MUTANTS",
+        "E_FIVE_DESIGNER_EXECUTOR_FAULTS",
+        "E_HISTORICAL_ALIAS_REGRESSION",
+        "E_SCHEDULER_INTERLEAVE"
+      ],
+      "observed_evidence": "The fault campaigns are targeted positive controls largely aligned with the audit predicate vocabulary; five designer-executor-separated faults remain deliberately constructed. Only one organically encountered defect is studied, retrospectively. Primary calls are batch-one and sequential, interleaving is deterministic on one stream, and cancellation is synchronized rather than in-flight.",
+      "why_it_matters": "The experiments establish that named gates work at frozen loci, but leave uncertainty about false positives and incremental detection value on unseen, naturally occurring faults under the concurrency and lifecycle conditions where hybrid-state ownership is most difficult.",
+      "required_fix": "Add a prospective, outcome-blind evaluation on an independently collected set of real or historically archived ownership/lifecycle regressions, or a substantially broader independently generated mutation suite, and report both detection and clean-run false-positive outcomes. Include at least one native ragged/continuous-batching or in-flight lifecycle scenario if practical applicability to serving is emphasized.",
+      "verification_test": "Freeze ForkAudit before revealing defect labels; run it on clean and faulted cases supplied independently of gate construction; then report per-case localization, misses, false positives, and any open targets.",
+      "evidence_needed": "Outcome-blind prospective results on independently sourced defects or mutations, plus clean controls under more realistic scheduling.",
+      "expected_impact": "high",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I4_NO_AUDIT_COST_MEASUREMENT",
+      "severity": "minor",
+      "dimensions": [
+        "significance",
+        "experimental_rigor",
+        "reproducibility"
+      ],
+      "location": "Pages 4-6, Sections 3-4; page 8, Section 6; pages 11-14, Appendices A and C",
+      "claim_ids": [
+        "C_OFFLINE_CI_ADOPTION",
+        "C_MINIMAL_ADOPTION_WORKFLOW"
+      ],
+      "evidence_ids": [
+        "E_PRIMARY_PACKAGE_COUNTS",
+        "E_REPLAYABLE_ARTIFACT_MAP"
+      ],
+      "observed_evidence": "The paper enumerates hundreds of artifacts and extensive sidecars but reports no capture-time, replay-time, trace-size, or instrumentation-memory overhead for the proposed CI workflow.",
+      "why_it_matters": "The contribution is a testing/audit methodology rather than a new runtime. Its practical significance therefore depends partly on whether teams can afford to run the full or minimal contract in CI.",
+      "required_fix": "Report audit overhead and identify a recommended minimal profile versus extended validation profiles.",
+      "verification_test": "Measure uninstrumented execution, core capture, full capture, replay wall time, peak memory perturbation, and artifact size on the primary configuration.",
+      "evidence_needed": "A reproducible overhead table with clearly defined denominators and enabled record classes.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I5_MAIN_STORY_OVERLOADED",
+      "severity": "minor",
+      "dimensions": [
+        "clarity"
+      ],
+      "location": "Pages 1-8, especially Abstract, Introduction, Figure 3, and Sections 5.2-5.3; pages 12-28, extensive supporting tables",
+      "claim_ids": [
+        "C_CORE_CONTRIBUTION_COMMUNICATION"
+      ],
+      "evidence_ids": [
+        "E_FULL_MANUSCRIPT_PRESENTATION"
+      ],
+      "observed_evidence": "The core ownership contract is mixed with allocator results, CoMem Store-F1 measurements, HYPIC context, Hydragen/Palu ports, multiple scheduler cohorts, two numerical sweeps, several fault campaigns, and artifact-ledger detail. Many sentences carry numerous counts and boundary qualifications.",
+      "why_it_matters": "The density makes it difficult to identify the minimum decisive evidence for the central ICLR contribution and increases the chance that readers conflate supporting cohorts or denominators despite the authors' explicit warnings.",
+      "required_fix": "Center the main paper on the contract, primary factorial, one decisive historical fault, independent census, and bounded transfer. Move deployment and related-system panels to a clearly labeled secondary appendix and add one concise claim-to-evidence summary with the decisive result and remaining open target.",
+      "verification_test": "A reader should be able to state the contract, strongest evidence, TCB, and unresolved target after reading the abstract, introduction, and one results table without consulting multiple appendix panels.",
+      "evidence_needed": "A reorganized manuscript with a shorter main narrative and visibly subordinate contextual results.",
+      "expected_impact": "medium",
+      "confidence": "high"
+    },
+    {
+      "issue_id": "I6_SMALL_STORE_F1_VALIDATION",
+      "severity": "minor",
+      "dimensions": [
+        "experimental_rigor",
+        "limitations_responsible_claims"
+      ],
+      "location": "Pages 8-9, Section 5.3 and Table 2; pages 14 and 24, Table 4 and Appendix H",
+      "claim_ids": [
+        "C_DEPLOYMENT_STORE_F1"
+      ],
+      "evidence_ids": [
+        "E_EIGHT_ITEM_DEPLOYMENT_COHORT"
+      ],
+      "observed_evidence": "The reported 88.68%/93.06% Store reductions and mean-F1 deltas use only eight validation items from Qasper/2WikiMQA, with a four-item calibration set for the per-layer policy. The paper does label this result bounded and makes no broad-quality claim.",
+      "why_it_matters": "Near-zero mean-F1 changes on eight items cannot establish robustness of the Store-quality tradeoff, so this panel should not materially support acceptance of the audit contribution.",
+      "required_fix": "Either further demote this panel to an illustrative case study or validate Store-quality behavior on a larger preregistered sample with item-level uncertainty.",
+      "verification_test": "Repeat the frozen policy on a substantially larger disjoint validation set and report paired item-level differences and uncertainty intervals.",
+      "evidence_needed": "Larger disjoint quality evaluation or narrower wording that treats Table 2 solely as an engineering example.",
+      "expected_impact": "low",
+      "confidence": "high"
+    }
+  ],
+  "ethics_flag": false,
+  "ethics_concerns": "No material ethics concern identified from the PDF. The work uses public text/benchmark data and reports no human-subject collection. Broader efficiency externalities are acknowledged.",
+  "llm_usage_disclosure": "This review was produced by an isolated AI subagent for internal pre-submission quality control. The subagent reviewed only the frozen 28-page PDF identified by the supplied SHA-256, did not inspect source code, repositories, experiment logs, prior reviews, or author notes, and did not browse the web.",
+  "score_ceiling_under_current_evidence": 6,
+  "predicted_score_after_required_changes": 8,
+  "evidence_that_would_raise_score": [
+    "Per-call compiled-binary and autotuning provenance that closes target 5, with a dispatch-divergence control.",
+    "Independent live-tensor binding evidence that rejects coherent slot swaps or role relabeling rather than trusting producer binding.",
+    "A prospective outcome-blind evaluation on independently sourced natural regressions or a broad independently generated mutation suite, including clean-case false-positive reporting.",
+    "A realistic native continuous/ragged-batching or in-flight cancellation validation showing the ownership contract remains usable under production-like lifecycle pressure.",
+    "Measured capture/replay overhead and a clearly defined minimal CI profile.",
+    "A substantially streamlined main narrative that makes the core claim, decisive evidence, TCB, and one remaining open target immediately legible."
+  ],
+  "evidence_that_would_lower_score": [
+    "Discovery that census closure or dual repetition can pass under a systematic slot-ID-to-live-tensor misbinding not represented by current controls.",
+    "Failure of clean runs or ownership predicates under a second realistic schedule, hardware family, or optimized recurrent kernel within the stated intended scope.",
+    "Evidence that the historical alias is equally localized by a much simpler conventional invariant with no meaningful incremental benefit from transition ownership receipts.",
+    "Inability to reproduce the primary package or a mismatch between PDF-visible counts and machine-readable evidence.",
+    "Evidence that instrumentation materially changes allocation, aliasing, or dispatch behavior in the audited execution."
+  ],
+  "review_limitations": [
+    "The review is based exclusively on the frozen PDF; machine-readable packages, paths, hashes, code, and numerical sidecars named in Appendix I were not inspected or executed.",
+    "Citation existence and the accuracy of published-system numbers could not be externally verified because web browsing and non-PDF evidence were prohibited.",
+    "The PDF supports assessment of reported protocol design and internal consistency, but not independent confirmation that executions occurred as described.",
+    "Visual inspection covered all 28 rendered pages at contact-sheet scale, supplemented by complete layout-preserving text extraction; fine-grained graphical values were assessed from captions and extracted tables."
+  ]
+}

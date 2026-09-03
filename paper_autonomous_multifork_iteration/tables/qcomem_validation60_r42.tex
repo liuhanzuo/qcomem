@@ -1,0 +1,36 @@
+\begin{table}[t]
+\caption{Retained-state--quality trade-off on the 60-item archival validation
+cohort (30 Qasper, 30 2WikiMQA).  TTFT and Recall columns are blank because
+this run recorded neither metric.}
+\label{tab:qcomem-validation60}
+\centering\scriptsize
+\setlength{\tabcolsep}{3.1pt}
+\begin{tabular}{@{}lrrrrrl@{}}
+\toprule
+\multicolumn{7}{@{}l}{\emph{Dataset: Qasper (30 items) + 2WikiMQA (30 items)}}\\
+Retained state & Store (MiB/doc) & vs. prefix & TTFT (s) & F1 (0--100) & Recall &
+$\Delta$F1 vs. full-prefix [95\% CI] \\
+\midrule
+No-cache dense recompute & -- & -- & & 54.29 & & $-0.39$ [$-4.66$, $2.60$] \\
+Full-prefix, native dtype & 136.235 & 1.00$\times$ & & 54.68 & & $0.00$ [$0.00$, $0.00$] \\
+\qcomem{} split Q16 & 34.683 & 3.93$\times$ & & 54.62 & & $-0.06$ [$-0.18$, $0.00$] \\
+\qcomem{} frozen Q4/Q4/Q8 & 9.661 & 14.10$\times$ & & 54.24 & & $-0.45$ [$-2.06$, $0.99$] \\
+\qcomem{} same-memory mixed & 9.395 & 14.50$\times$ & & 53.36 & & $-1.32$ [$-4.33$, $0.92$] \\
+\qcomem{} aggressive mixed & 7.536 & 18.08$\times$ & & 49.19 & & $-5.50$ [$-11.58$, $-0.20$] \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+\parbox{0.97\textwidth}{\scriptsize Store and F1 are 60-item means. Every column, compression included, uses one
+reference arm: the full-prefix entry as the unmodified stack retains it, in its
+native dtypes. $30.000$ MiB/document of that $136.235$ MiB is FP32 GDN
+recurrent state in excess of a BF16 encoding; an all-BF16 reference is
+$106.235$ MiB/document, giving $1.00/3.7038/10.9965/11.3073/14.0969\times$ for
+the rows above. Intervals are paired 10,000-resample item-level bootstrap
+percentile intervals against full-prefix (seed 20260902); deltas use unrounded
+means. The catastrophic-regression count is 0/60 against dense under the
+registered $\leq-50$ point rule and 0/60 against full-prefix. An interval
+crossing zero is not statistical equivalence, and the headline policy was
+selected on this panel without multiplicity adjustment.
+Appendix~\ref{app:all-intervals} gives the method and all 42 intervals; blank
+cells are unmeasured metrics, not zeros.}
+\end{table}

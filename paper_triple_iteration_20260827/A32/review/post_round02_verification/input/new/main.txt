@@ -1,0 +1,309 @@
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+000
+001
+      A N E VIDENCE AND E STIMAND AUDIT
+002   OF A PAIRED F IXED -F ILLER R ECORD
+003
+004
+005    Anonymous authors
+006    Paper under double-blind review
+007
+008
+009                                              A BSTRACT
+010
+011            A score recorded when a masked-diffusion decoder commits a token and the cor-
+012            rectness of its final answer are measurements at different levels. We audit the
+013            evidence and estimand behind their cross-level mean difference in two source-
+014            reported records. One record gives a natural-strata difference of +0.2227; another,
+015            on a different reported 400-item pool, gives a paired +37-token, fixed-NFE=64
+016
+               filler contrast of −0.0075. These point values concern different samples and es-
+               timands, and no joint comparison is defined or tested. Their juxtaposition there-
+017
+               fore has no shared inferential interpretation. We independently check only the
+018
+               algebraic estimand definitions and arithmetic printed from the transcribed values.
+019            The empirical measurements themselves are source-reported and cannot be in-
+020            dependently verified because the current package lacks the item records, exact
+021            intervention, decode traces, and analysis implementation. The paired estimand is
+022            consequently a descriptive finite-pool quantity conditional on one recorded decode
+023            realization, not expected decoder behavior. The commit score is also not verified
+024            as a probability of final-answer correctness. No experiment was run as part of this
+025            audit.
+026
+027
+      1   I NTRODUCTION
+028
+029
+      Prompt length can covary with task content, formatting, and difficulty. A natural length association
+030   therefore does not identify the effect of a prompt modification. This distinction is especially im-
+031   portant for masked-diffusion decoding, where prompt construction, the unmasking trajectory, and a
+032   fixed inference budget can interact. We examine one source-described GSM8K (Cobbe et al., 2021)
+033   / LLaDA-8B-Instruct (Nie et al., 2025) record that places two analyses side by side: an independent
+034   natural-strata analysis and a paired fixed-filler analysis.
+035
+      The central quantity is a cross-level mean score–outcome difference: the mean of a decoder’s
+036   recorded token-commit score minus mean final-answer correctness. The source artifacts call this
+037   quantity SCE; we retain that string only as an internal artifact alias. We do not call the score con-
+038   fidence or an answer probability because the package contains neither the token-to-answer aggre-
+039   gation nor construct-validation evidence. The quantity remains arithmetically well defined as a
+040   directional summary, but its zero point is not a calibration certificate (Ao et al., 2023; Seligmann
+041   et al., 2023; Cruz et al., 2024).
+042   This paper is an evidence and estimand audit. It asks what the source-described paired summary
+043   estimates, which statements can be checked from the current package, and which empirical conclu-
+044   sions remain unsupported. The natural-strata and fixed-filler point values are catalogued as distinct
+045   source records; neither is used to decide what the other means. The paper contributes:
+046
+047        1. a finite-pool estimand conditional on the recorded single-decode realization;
+048        2. a separation between independently checkable definitions and printed arithmetic, on the
+049           one hand, and empirical measurements that can only be transcribed, on the other; and
+050        3. a package inventory that makes the unavailable treatment, sample, score, decode, and im-
+051           plementation evidence explicit.
+052
+053   Measurement status. Throughout, SR / CV means source-reported and not independently verifi-
+      able from the current package. Every empirical numerical value, count, and dose in the manuscript
+
+
+                                                       1
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+054
+      is SR / CV. This global label also applies when space prevents repetition in individual cells. Evidence
+055   IDs A32-E1 and A32-E2 are opaque references to missing experimental records, not claims that
+056   those records were recovered or rerun.
+057
+058
+059
+      2    AUDIT SCOPE AND EVIDENCE BOUNDARY
+060
+      The audit is deliberately narrower than a study of whether prompt length has a causal effect. We
+061
+      formalize the paired summary conditional on the source-described stored outputs and identify what
+062   evidence would be needed to interpret it more broadly. The natural-strata result is a separate contex-
+063   tual record, not a second endpoint or a common-estimand comparator.
+064
+065
+066                      Table 1: Audit partition. Every empirical numerical entry is SR / CV.
+067   Audit status                Object                             Location          Boundary
+068
+      Independently checked       Estimand definitions and dis-      This manuscript   Internal form only; no em-
+069
+                                  played arithmetic                                    pirical input verification
+070   Transcribed only            Natural-strata point record        A32-E1            Observational target on a
+071                                                                                    separate, unavailable sam-
+072                                                                                    ple
+073   Transcribed only            Paired-filler point record         A32-E2            Finite pool and one
+                                                                                       recorded decode; treat-
+074
+                                                                                       ment and rows unavailable
+075
+076
+077   What is missing. The authoring package does not contain the literal filler string, insertion loca-
+078   tion, tokenizer-level dose check, immutable 400-item manifest or selection rule, overlap map with
+079   the natural-strata sample, exact prompt serialization, arm execution order, token-to-answer score
+080   construction, or gate implementation. It also lacks per-item records, decode traces, preregistration,
+081   analysis code, model/tokenizer revision, environment lock, and a claim-to-file crosswalk. Conse-
+082   quently, the treatment, sampling frame, score construct, and empirical measurements cannot be inde-
+083
+      pendently reconstructed. No interval, probability-calibration, causal-effect, or decoder-expectation
+      claim is retained.
+084
+085
+086   3    F INITE - POOL RECORDED - REALIZATION ESTIMAND
+087
+088   Let P denote the source-described finite paired pool and a ∈ {S, L} the Short and Long arms. Let
+089   ω denote the complete recorded single-decode realization, including every stochastic choice used
+090
+      to produce the stored arm outputs. For item i, let siaω be the source-recorded commit score and
+      yiaω ∈ {0, 1} final-answer correctness under the source’s matcher. Define the arm summary
+091
+                                                    1 X
+092                                   DP,ω (a) =           (siaω − yiaω )
+093                                                |P|
+                                                               i∈P
+094   and the paired filler contrast
+095                                                        1 X
+096
+                     ∆P,ω = DP,ω (L) − DP,ω (S) =              [(siLω − yiLω ) − (siSω − yiSω )] .
+                                                          |P|
+                                                               i∈P
+097
+098
+      This is a descriptive contrast for the named finite pool and stored decode realization. It is not an ex-
+      pectation over a problem population, decoder randomness, filler strings, or prompt constructions. A
+099
+      decoder-expectation estimand would require deterministic replay evidence or multiple paired decode
+100
+      realizations; neither is available.
+101
+102   Short and Long are labels attached to the source summaries. Without the literal prompts, assignment
+103   record, pairing rows, and execution trace, this audit cannot verify arm construction, intervention
+104
+      fidelity, or execution order.
+105   The independent natural-strata analysis instead compares high- and low-length groups formed from
+106   a different source-reported record. Natural prompt content and difficulty co-vary with those groups.
+107   Without item identities or an overlap map, no common-sample analysis, covariance estimate, joint
+      test, or prespecified comparability/equivalence margin is available.
+
+
+                                                               2
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+108
+      4     S OURCE - REPORTED RESULTS
+109
+110
+      4.1   I NDEPENDENT NATURAL - STRATA CONTEXT
+111
+112   The source reports that the high-minus-low natural-length contrast is +0.2227 in the cross-level
+113   mean difference. Its component accounting is an identity: the reported score change is −0.0314
+114   and the reported accuracy change is −0.2541, so −0.0314 − (−0.2541) = +0.2227. This verifies
+115   transcription arithmetic only, not the underlying measurements.
+116
+117
+      Table 2: SR / CV independent natural-strata record (A32-E1). The groups are observational and are
+118
+      not the paired filler pool.
+119
+120                        Quantity, high minus low                     Source-reported point
+121                        Mean recorded commit score                         −0.0314
+122                        Mean answer correctness                            −0.2541
+123                        Cross-level mean score–outcome difference          +0.2227
+124
+125
+126   4.2   PAIRED FIXED - FILLER DIAGNOSTIC
+127
+      The source describes a 400-item paired comparison in which Long adds a fixed 37-token filler to
+128
+      Short under reported NFE=64. Table 3 transcribes the available summaries. The literal filler, inser-
+129   tion position, tokenizer verification, sample construction, and per-item pairing records are missing,
+130   so these labels describe the source record rather than an independently instantiated intervention.
+131
+132
+133   Table 3: SR / CV Short/Long point record (A32-E2). Empirical inputs and unrounded item-level
+134   values are unavailable.
+135             Quantity                                       Short       Long      Long minus Short
+136
+                Cross-level mean score–outcome difference     −0.0724    −0.0799         −0.0075
+137             Mean recorded commit score                     0.630      0.543          −0.0875
+138             Mean answer correctness                        0.703      0.623          −0.0800
+139
+140
+141   The source separately reports the paired-filler point −0.0075 and the natural-strata point +0.2227.
+142   We do not compute a cross-record difference, ratio, or ordering from them. They concern different
+143   item sets and estimands, and the package provides neither a common-sample functional nor a joint
+144   analysis. Their juxtaposition is an index of two source records, not an empirical comparison.
+145   The source-displayed score arm means have three decimal places, whereas the separately reported
+146   score contrast has four. Without unrounded records, subtraction of the printed means need not
+147   recover that contrast. This is unresolved rounding opacity, not evidence of a numerical inconsistency.
+148   The current package supports only an audit of the formal target and evidence boundary; it cannot
+149   establish intervention fidelity or explain the natural length association.
+150
+151   5     C LOSEST NEIGHBORING WORK AND BOUNDARY
+152
+153   Prior work establishes that prompt choices can change calibration-related behavior, but the verified
+154   neighboring studies do not test this exact operation. Xia et al. (Xia et al., 2025) study calibration
+155   across four prompt styles; their analysis does not isolate prompt length, content-free filler, masked-
+156   diffusion commit scores, or a same-item +37-token intervention. Zhao et al. (Zhao et al., 2024)
+157   study six prompting strategies and propose a confidence-calibration prompting method; the prompt-
+158   ing strategy and elicited confidence change, rather than the source-described fixed filler under fixed
+159   diffusion compute. Kamoda et al. (Kamoda et al., 2023) show that prompt variations affect factual-
+160
+      probing outputs and evaluate prompt augmentation as a calibration intervention; they use prompt
+      variants and ensembling for factual probing, not the present fixed-NFE masked-diffusion filler esti-
+161
+      mand.
+
+
+                                                          3
+      Under review as a conference paper at ICLR 2026
+
+
+
+
+162
+      For measurement context, signed mean score–label summaries and their cancellation limits predate
+163   this study (Ao et al., 2023; Seligmann et al., 2023; Cruz et al., 2024). The present contribution
+164   boundary is therefore an evidence and estimand audit of one source-described record, not a new
+165   metric, a general theory of prompt length, or a verified answer-calibration result. A broader prompt-
+166   length-specific and masked-diffusion uncertainty search remains incomplete.
+167
+168
+      6     L IMITATIONS , AVAILABILITY, AND DISCLOSURE
+169
+170   Scientific limits. The record covers one reported model–task setting, one fixed filler description,
+171   one dose, one inference budget, and one stored decode per item–arm. The exact sample and inter-
+172   vention are missing. The observational and paired analyses use different targets; the score construct
+173   is not verified as an answer probability; and decoder-run variation is unavailable. These limits pre-
+174   clude causal, decoder-average, cross-model, cross-task, or transport conclusions.
+175
+176   What the current package contains. The mutable authoring directory contains main.tex,
+177   refs.bib, the ICLR style files, and compiled manuscript and auxiliary files. It contains no
+178   figure asset, and this manuscript includes no figure. The directory does not contain experimen-
+179
+      tal records A32-E1 or A32-E2, literal prompts, item manifests, preregistration, protocol or analy-
+      sis code, model/tokenizer revisions, decode configuration, an environment lock, or an evidence-ID
+180
+      crosswalk. No empirical value was rerun or independently recomputed.
+181
+182
+      AI assistance disclosure. AI tools assisted with language editing, LATEX restructuring, and iso-
+183   lated internal pre-submission checks. The authors remain responsible for every claim and evidence
+184   boundary. AI assistance did not supply experimental records, generate new measurements, verify
+185   the source-reported values, or create scientific figures.
+186
+187
+      7     C ONCLUSION
+188
+189
+      This audit formalizes a descriptive finite-pool, recorded-single-decode estimand for the source-
+190   reported filler point −0.0075. A separate natural-strata record reports +0.2227. The samples and
+191   estimands differ, and no joint analysis is available, so the two point values support no cross-record
+192   inference. The estimand definitions and printed decomposition arithmetic can be checked inde-
+193   pendently; the empirical inputs can only be transcribed. Missing records, intervention and sample
+194   construction, score semantics, and decoder-replay evidence prevent broader interpretation.
+195
+196   R EFERENCES
+197
+      Shuang Ao, Stefan Rueger, and Advaith Siddharthan. Two sides of miscalibration: Identifying over and under-confidence
+198      prediction for network calibration. In Proceedings of the Thirty-Ninth Conference on Uncertainty in Artificial Intelligence,
+199      volume 216 of Proceedings of Machine Learning Research, pp. 77–87. PMLR, 2023. URL https://proceedings.
+         mlr.press/v216/ao23a.html.
+200
+      Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry
+201      Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. Training verifiers to solve math word
+202      problems. arXiv preprint arXiv:2110.14168, 2021. URL https://arxiv.org/abs/2110.14168.
+      André F. Cruz, Moritz Hardt, and Celestine Mendler-Dünner. Evaluating language models as risk scores. In Advances in
+203      Neural Information Processing Systems, volume 37, pp. 97378–97407, 2024. doi: 10.52202/079017-3089.
+204   Go Kamoda, Benjamin Heinzerling, Keisuke Sakaguchi, and Kentaro Inui. Test-time augmentation for factual probing. In
+205      Findings of the Association for Computational Linguistics: EMNLP 2023, pp. 3650–3661. Association for Computational
+         Linguistics, 2023. doi: 10.18653/v1/2023.findings-emnlp.236.
+206   Shen Nie, Fengqi Zhu, Zebin You, Xiaolu Zhang, Jingyang Ou, Jun Hu, Jun Zhou, Yankai Lin, Ji-Rong Wen, and Chongxuan
+207      Li. Large language diffusion models. arXiv preprint arXiv:2502.09992, 2025. URL https://arxiv.org/abs/
+208      2502.09992.
+      Florian Seligmann, Philipp Becker, Michael Volpp, and Gerhard Neumann. Beyond deep ensembles: A large-scale evaluation
+209      of Bayesian deep learning under distribution shift. In Advances in Neural Information Processing Systems, volume 36,
+210      pp. 29372–29405, 2023. doi: 10.52202/075280-1278.
+      Yuxi Xia, Pedro Henrique Luz De Araujo, Klim Zaporojets, and Benjamin Roth. Influences on LLM calibration: A study of
+211
+         response agreement, loss functions, and prompt styles. In Proceedings of the 63rd Annual Meeting of the Association for
+212      Computational Linguistics (Volume 1: Long Papers), pp. 3740–3761. Association for Computational Linguistics, 2025.
+213      doi: 10.18653/v1/2025.acl-long.188.
+      Xinran Zhao, Hongming Zhang, Xiaoman Pan, Wenlin Yao, Dong Yu, Tongshuang Wu, and Jianshu Chen. Fact-and-
+214      reflection (FaR) improves confidence calibration of large language models. In Findings of the Association for Com-
+215      putational Linguistics: ACL 2024, pp. 8702–8718. Association for Computational Linguistics, 2024. doi: 10.18653/v1/
+         2024.findings-acl.515.
+
+
+                                                                    4
+
